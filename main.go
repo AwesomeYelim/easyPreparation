@@ -117,7 +117,7 @@ func main() {
 func createPresentation(slides []SlideData, filePath string) {
 	ppt := presentation.New()
 	defer ppt.Close()
-
+	//TEST
 	for _, slideData := range slides {
 		slide := ppt.AddSlide()
 
