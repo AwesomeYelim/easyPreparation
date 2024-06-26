@@ -9,22 +9,21 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 // SlideData 구조체는 슬라이드에 포함될 데이터를 나타냅니다.
 type SlideData struct {
 	Title   string
-	Content string
+	Content []string
+	TrackID int
 }
 
-type SongInfo struct {
-	TrackID int
-	Lyrics  string
-}
+var slidesData []SlideData
 
 // searchLyricsList 함수는 가사 목록을 검색합니다.
-func (si *SongInfo) searchLyricsList(baseUrl, query string, isDirect bool) {
-	if si.Lyrics != "" {
+func (si *SlideData) searchLyricsList(baseUrl, query string, isDirect bool) {
+	if len(si.Content) > 0 {
 		return
 	}
 	searchUrl := formatSearchURL(baseUrl, query, isDirect)
@@ -63,7 +62,7 @@ func formatSearchURL(baseUrl, query string, isDirect bool) string {
 }
 
 // parseTrackList 함수는 트랙 리스트를 파싱합니다.
-func (si *SongInfo) parseTrackList(doc *goquery.Document) {
+func (si *SlideData) parseTrackList(doc *goquery.Document) {
 	doc.Find("table.trackList tbody tr[rowtype='lyrics']").Each(func(i int, s *goquery.Selection) {
 		albumID, exists := s.Attr("trackid")
 		if exists {
@@ -80,13 +79,38 @@ func (si *SongInfo) parseTrackList(doc *goquery.Document) {
 }
 
 // parseLyrics 함수는 가사를 파싱합니다.
-func (si *SongInfo) parseLyrics(doc *goquery.Document) {
+func (si *SlideData) parseLyrics(doc *goquery.Document) {
 	doc.Find(".lyricsContainer xmp").Each(func(i int, s *goquery.Selection) {
-		fmt.Println(s.Text())
-		si.Lyrics = s.Text()
+		// 공백 제거
+		trimmedText := removeEmptyLines(s.Text())
+		// 두 줄씩 자르기
+		lines := strings.Split(trimmedText, "\n")
+		for i := 0; i < len(lines); i += 2 {
+			if i <= len(lines) {
+				si.Content = append(si.Content, lines[i]+"\n"+lines[i+1])
+			} else {
+				si.Content = append(si.Content, lines[i]) // 마지막줄 홀수 인경우에만
+			}
+		}
 	})
+	slidesData = append(slidesData, *si)
+
+	// 프레젠테이션 생성 및 슬라이드 추가
+	createPresentation(slidesData, "output.pptx")
+
 }
 
+// removeEmptyLines 함수는 중간 공백을 제거합니다.
+func removeEmptyLines(text string) string {
+	lines := strings.Split(text, "\n")
+	var result []string
+	for _, line := range lines {
+		if strings.TrimSpace(line) != "" {
+			result = append(result, strings.TrimSpace(line))
+		}
+	}
+	return strings.Join(result, "\n")
+}
 func init() {
 	// UniOffice 라이센스 설정
 	err := license.SetMeteredKey("468eb71b0f562ed29385b487b55d413ad506b3c48950ead1de75bd736c7c17c4")
@@ -96,18 +120,8 @@ func init() {
 }
 
 func main() {
-	// 슬라이드 데이터 생성
-	slides := []SlideData{
-		{"Title 1", "Content 1"},
-		{"Title 2", "Content 2"},
-		{"Title 3", "Content 3"},
-	}
-
-	// 프레젠테이션 생성 및 슬라이드 추가
-	createPresentation(slides, "output.pptx")
-
 	// 가사 검색
-	song := &SongInfo{}
+	song := &SlideData{}
 	song.searchLyricsList("https://music.bugs.co.kr/search/lyrics?q=%s", "하나님은 너를 지키시는자", false)
 
 	fmt.Println("Presentation saved to output.pptx")
@@ -117,25 +131,27 @@ func main() {
 func createPresentation(slides []SlideData, filePath string) {
 	ppt := presentation.New()
 	defer ppt.Close()
-	//TEST
 	for _, slideData := range slides {
-		slide := ppt.AddSlide()
 
-		// 제목 설정
-		titleBox := slide.AddTextBox()
-		titlePara := titleBox.AddParagraph()
-		titleRun := titlePara.AddRun()
-		titleRun.SetText(slideData.Title)
-		titleBox.Properties().SetPosition(50, 50)
-		titleBox.Properties().SetSize(50, 50)
+		for _, content := range slideData.Content {
+			slide := ppt.AddSlide()
+			// 제목 설정
+			titleBox := slide.AddTextBox()
+			titlePara := titleBox.AddParagraph()
+			titleRun := titlePara.AddRun()
+			titleRun.SetText(slideData.Title)
+			titleBox.Properties().SetPosition(50, 50)
+			titleBox.Properties().SetSize(50, 50)
 
-		// 내용 설정
-		contentBox := slide.AddTextBox()
-		contentPara := contentBox.AddParagraph()
-		contentRun := contentPara.AddRun()
-		contentRun.SetText(slideData.Content)
-		contentBox.Properties().SetPosition(50, 50)
-		contentBox.Properties().SetSize(50, 50)
+			// 내용 설정
+			contentBox := slide.AddTextBox()
+			contentPara := contentBox.AddParagraph()
+			contentRun := contentPara.AddRun()
+			contentRun.SetText(content)
+			contentBox.Properties().SetPosition(50, 50)
+			contentBox.Properties().SetSize(600, 400)
+		}
+
 	}
 
 	if err := ppt.SaveToFile(filePath); err != nil {
