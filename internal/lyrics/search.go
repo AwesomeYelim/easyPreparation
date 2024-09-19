@@ -11,6 +11,7 @@ import (
 
 // searchLyricsList 함수는 가사 목록을 검색합니다.
 func (si *SlideData) SearchLyricsList(baseUrl, query string, isDirect bool) {
+
 	if len(si.Content) > 0 {
 		return
 	}
