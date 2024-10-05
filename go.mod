@@ -4,7 +4,7 @@ go 1.21.6
 
 require (
 	github.com/PuerkitoBio/goquery v1.9.2
-	github.com/unidoc/unioffice v1.36.0
+	github.com/jung-kurt/gofpdf/v2 v2.17.3
 )
 
 require (

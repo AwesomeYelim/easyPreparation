@@ -2,78 +2,56 @@ package presentation
 
 import (
 	"easyPreparation_1.0/internal/lyrics"
-	"github.com/unidoc/unioffice/color"
-	"github.com/unidoc/unioffice/common"
-	"github.com/unidoc/unioffice/measurement"
-	"github.com/unidoc/unioffice/presentation"
+	"github.com/jung-kurt/gofpdf/v2"
 	"log"
+	"os"
 )
 
-// CreatePresentation 함수는 프레젠테이션을 생성하고 슬라이드를 추가합니다.
+// CreatePresentation 함수는 프레젠테이션을 PDF로 생성하고 슬라이드를 추가합니다.
 func CreatePresentation(slidesData *lyrics.SlideData, filePath string) {
-	ppt := presentation.New()
-	defer ppt.Close()
-	imgColor, err := common.ImageFromFile("background.png")
-	if err != nil {
-		log.Fatalf("unable to create image: %s", err)
+	pdfSize := gofpdf.SizeType{
+		Wd: 297.0,
+		Ht: 167.0,
 	}
-	irefColor, err := ppt.AddImage(imgColor)
+	// PDF 객체 생성
+	pdf := gofpdf.NewCustom(&gofpdf.InitType{
+		OrientationStr: "P", // "P"는 세로, "L"은 가로
+		UnitStr:        "mm",
+		Size:           pdfSize,
+	})
 
-	// 슬라이드 크기 설정 (예: 960x540, 16:9 비율)
-	//var slideWidth measurement.Distance = 960.0
-	//var slideHeight measurement.Distance = 540.0
+	// 한글 폰트 등록 (나눔고딕 폰트 파일을 사용하는 예시)
+	fontPath := "NotoSansKR-Bold.ttf" // 폰트 파일 경로를 지정
+	if _, err := os.Stat(fontPath); os.IsNotExist(err) {
+		log.Fatalf("폰트 파일을 찾을 수 없습니다: %s", err)
+	}
+	pdf.AddUTF8Font("NotoSansKR-Bold", "", fontPath)
+	pdf.SetFont("NotoSansKR-Bold", "", 40) // 등록한 폰트 사용
+	// 글씨 색상 변경 (RGB 색상 지정: 회색 예시)
+	pdf.SetTextColor(130, 130, 130) // 회색
 
-	//// 텍스트 상자를 중앙에 배치하기 위한 함수
-	//centerPosition := func(slideWidth, slideHeight, boxWidth, boxHeight measurement.Distance) (measurement.Distance, measurement.Distance) {
-	//	xPos := (slideWidth - boxWidth) / 2
-	//	yPos := (slideHeight - boxHeight) / 2
-	//	return xPos, yPos
-	//}
-
+	// PDF 페이지 추가
 	for _, content := range slidesData.Content {
-		slide := ppt.AddSlide()
+		pdf.AddPage()
 
-		ibColor := slide.AddImage(irefColor)
-		ibColor.Properties().SetWidth(2 * measurement.Inch)
-		ibColor.Properties().SetHeight(irefColor.RelativeHeight(2 * measurement.Inch))
+		// 배경 이미지 추가 (배경 이미지를 추가하려면 파일이 필요합니다)
+		backgroundImage := "background.png"
+		if _, err := os.Stat(backgroundImage); err == nil {
+			pdf.ImageOptions(backgroundImage, 0, 0, 297, 167, false, gofpdf.ImageOptions{ImageType: "PNG"}, 0, "")
+		} else {
+			log.Printf("배경 이미지 파일이 존재하지 않음: %s\n", err)
+		}
+		var textW float64 = 250
+		var textH float64 = 20
+		// 텍스트 추가 (내용 설정)
+		pdf.SetXY((pdfSize.Wd-textW)/2, (pdfSize.Ht-textH)/2)
+		pdf.MultiCell(textW, textH, content, "", "C", false)
 
-		// 제목 설정
-		//titleBox := slide.AddTextBox()
-		//titlePara := titleBox.AddParagraph()
-		//titleRun := titlePara.AddRun()
-		//titleRun.SetText(slidesData.Title)
-
-		// 제목 상자 크기 설정
-		//var titleBoxWidth measurement.Distance = 300.0
-		//var titleBoxHeight measurement.Distance = 50.0
-		//titleXPos, titleYPos := centerPosition(slideWidth, slideHeight/4, titleBoxWidth, titleBoxHeight) // 제목은 상단에 배치
-		//pos1 := measurement.Distance(3) * measurement.Inch
-		//titleBox.Properties().SetPosition(pos1, pos1)
-		//titleBox.Properties().SetSolidFill(color.AliceBlue)
-		//titleBox.Properties().LineProperties().SetSolidFill(color.Blue)
-		//titleBox.Properties().SetPosition(titleXPos, titleYPos)
-		//titleBox.Properties().SetSize(titleBoxWidth, titleBoxHeight)
-
-		// 내용 설정
-		contentBox := slide.AddTextBox()
-		contentPara := contentBox.AddParagraph()
-		contentRun := contentPara.AddRun()
-		contentRun.SetText(content)
-
-		// 내용 상자 크기 설정
-		//var contentBoxWidth measurement.Distance = 600.0
-		//var contentBoxHeight measurement.Distance = 400.0
-		//contentXPos, contentYPos := centerPosition(slideWidth, slideHeight, contentBoxWidth, contentBoxHeight) // 내용은 중앙에 배치
-		//contentBox.Properties().SetPosition(contentXPos, contentYPos)
-		//contentBox.Properties().SetSize(contentBoxWidth, contentBoxHeight)
-
-		pos := measurement.Distance(3) * measurement.Inch
-		contentBox.Properties().SetPosition(pos, pos)
-		contentBox.Properties().SetSolidFill(color.AliceBlue)
 	}
 
-	// 프레젠테이션 저장
-	if err := ppt.SaveToFile(filePath); err != nil {
-		log.Fatalf("Error saving presentation: %v", err)
+	// PDF 저장
+	err := pdf.OutputFileAndClose(filePath)
+	if err != nil {
+		log.Fatalf("PDF 저장 중 에러 발생: %v", err)
 	}
 }
