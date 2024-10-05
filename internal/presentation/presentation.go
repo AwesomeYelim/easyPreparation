@@ -27,8 +27,8 @@ func CreatePresentation(slidesData *lyrics.SlideData, filePath string) {
 	}
 	pdf.AddUTF8Font("NotoSansKR-Bold", "", fontPath)
 	pdf.SetFont("NotoSansKR-Bold", "", 40) // 등록한 폰트 사용
-	// 글씨 색상 변경 (RGB 색상 지정: 회색 예시)
-	pdf.SetTextColor(130, 130, 130) // 회색
+	// 글씨 색상 변경 (RGB 색상 지정)
+	pdf.SetTextColor(255, 255, 255) // 흰색
 
 	// PDF 페이지 추가
 	for _, content := range slidesData.Content {
