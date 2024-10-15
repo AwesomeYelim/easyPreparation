@@ -2,6 +2,7 @@ package lyrics
 
 import (
 	"easyPreparation_1.0/pkg"
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -27,6 +28,8 @@ func (si *SlideData) parseTrackList(doc *goquery.Document) {
 			}
 			si.TrackID = int(tempNo)
 			si.SearchLyricsList("https://music.bugs.co.kr/track/%s", albumID, true)
+		} else {
+			fmt.Println("the trackId is not exist")
 		}
 	})
 }

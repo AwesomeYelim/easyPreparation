@@ -21,7 +21,7 @@ func CreatePresentation(slidesData *lyrics.SlideData, filePath string) {
 	})
 
 	// 한글 폰트 등록 (나눔고딕 폰트 파일을 사용하는 예시)
-	fontPath := "NotoSansKR-Bold.ttf" // 폰트 파일 경로를 지정
+	fontPath := "./public/font/NotoSansKR-Bold.ttf" // 폰트 파일 경로를 지정
 	if _, err := os.Stat(fontPath); os.IsNotExist(err) {
 		log.Fatalf("폰트 파일을 찾을 수 없습니다: %s", err)
 	}
@@ -35,7 +35,7 @@ func CreatePresentation(slidesData *lyrics.SlideData, filePath string) {
 		pdf.AddPage()
 
 		// 배경 이미지 추가 (배경 이미지를 추가하려면 파일이 필요합니다)
-		backgroundImage := "background.png"
+		backgroundImage := "./public/images/background.png"
 		if _, err := os.Stat(backgroundImage); err == nil {
 			pdf.ImageOptions(backgroundImage, 0, 0, 297, 167, false, gofpdf.ImageOptions{ImageType: "PNG"}, 0, "")
 		} else {
