@@ -9,5 +9,9 @@ require (
 
 require (
 	github.com/andybalholm/cascadia v1.3.2 // indirect
+	github.com/mattn/go-sqlite3 v1.14.24 // indirect
+	github.com/timshannon/bolthold v0.0.0-20240314194003-30aac6950928 // indirect
+	go.etcd.io/bbolt v1.3.8 // indirect
 	golang.org/x/net v0.27.0 // indirect
+	golang.org/x/sys v0.22.0 // indirect
 )
