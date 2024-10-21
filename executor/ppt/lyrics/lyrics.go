@@ -47,10 +47,8 @@ func createPresentationForSongs(songTitles []string) {
 		fmt.Printf("프레젠테이션이 '%s'에 저장되었습니다.\n", fileName)
 
 		// Bolthold 데이터베이스 열기
-		store, err := bolthold.Open("local.db", 0666, nil)
-		if err != nil {
-			log.Fatalf("DB 열기 오류: %v", err)
-		}
+		store, err := bolthold.Open("data/local.db", 0666, nil)
+
 		defer store.Close()
 		// DB에 노래 저장
 		err = db.SaveSongToDB(store, title, song.Content)
