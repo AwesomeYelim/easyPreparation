@@ -3,13 +3,12 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/nsf/termbox-go"
+	"github.com/timshannon/bolthold"
 	"log"
 	"os"
 	"strings"
 	"time"
-
-	"github.com/nsf/termbox-go"
-	"github.com/timshannon/bolthold"
 )
 
 // Song 구조체 정의 (Bolthold 데이터 저장용)
@@ -107,7 +106,7 @@ func selectSong(songs []Song) int {
 		case termbox.EventError:
 			log.Fatal(ev.Err)
 		}
-		time.Sleep(50 * time.Millisecond) // 지연 추가
+		time.Sleep(50 * time.Millisecond) // 50초 제한
 	}
 }
 
