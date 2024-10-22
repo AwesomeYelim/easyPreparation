@@ -6,7 +6,6 @@ import (
 	"easyPreparation_1.0/internal/lyrics"
 	"easyPreparation_1.0/internal/presentation"
 	"fmt"
-	"github.com/timshannon/bolthold"
 	"log"
 	"os"
 	"regexp"
@@ -47,11 +46,11 @@ func createPresentationForSongs(songTitles []string) {
 		fmt.Printf("프레젠테이션이 '%s'에 저장되었습니다.\n", fileName)
 
 		// Bolthold 데이터베이스 열기
-		store, err := bolthold.Open("data/local.db", 0666, nil)
-
+		store := db.OpenDB("data/local.db")
 		defer store.Close()
+
 		// DB에 노래 저장
-		err = db.SaveSongToDB(store, title, song.Content)
+		err := db.SaveSongToDB(store, title, song.Content)
 		if err != nil {
 			log.Printf("노래 저장 실패: %v\n", err)
 		} else {
