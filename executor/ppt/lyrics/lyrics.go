@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -38,8 +39,11 @@ func createPresentationForSongs(songTitles []string) {
 		song := &lyrics.SlideData{}
 		song.SearchLyricsList("https://music.bugs.co.kr/search/lyrics?q=%s", title, false)
 
-		// 파일 이름 만들기
-		fileName := sanitizeFileName(title) + ".pdf"
+		outPutDir := "./output/pdf"
+		if _, err := os.Stat(outPutDir); os.IsNotExist(err) {
+			_ = os.MkdirAll(outPutDir, 0700)
+		}
+		fileName := filepath.Join(outPutDir, sanitizeFileName(title)+".pdf")
 
 		// PDF 프레젠테이션 생성
 		presentation.CreatePresentation(song, fileName)
@@ -50,7 +54,8 @@ func createPresentationForSongs(songTitles []string) {
 		defer store.Close()
 
 		// DB에 노래 저장
-		err := db.SaveSongToDB(store, title, song.Content)
+		song.Title = title
+		err := db.SaveSongToDB(store, song)
 		if err != nil {
 			log.Printf("노래 저장 실패: %v\n", err)
 		} else {

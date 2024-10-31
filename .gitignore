@@ -1,3 +1,4 @@
 *.pdf
-bin
-data
+bin/
+data/
+output/
