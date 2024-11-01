@@ -1,6 +1,9 @@
 package pkg
 
-import "strings"
+import (
+	"os"
+	"strings"
+)
 
 // RemoveEmptyLines 함수는 중간 공백을 제거합니다.
 func RemoveEmptyLines(text string) string {
@@ -12,4 +15,10 @@ func RemoveEmptyLines(text string) string {
 		}
 	}
 	return strings.Join(result, "\n")
+}
+
+func CheckDirIs(dirPath string) {
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		_ = os.MkdirAll(dirPath, 0700)
+	}
 }

@@ -5,6 +5,7 @@ import (
 	"easyPreparation_1.0/internal/db"
 	"easyPreparation_1.0/internal/lyrics"
 	"easyPreparation_1.0/internal/presentation"
+	"easyPreparation_1.0/pkg"
 	"fmt"
 	"log"
 	"os"
@@ -12,6 +13,22 @@ import (
 	"regexp"
 	"strings"
 )
+
+func main() {
+	// 노래 제목 입력받기
+	songTitle := getSongTitle()
+	if songTitle == "" {
+		fmt.Println("노래 제목을 입력하지 않았습니다. 프로그램을 종료합니다.")
+		return
+	}
+
+	// 노래 제목을 쉼표로 구분하여 배열로 변환
+	songTitles := strings.Split(songTitle, ",")
+
+	// 노래 목록에 대한 프레젠테이션 생성 및 DB 저장
+	createPresentationForSongs(songTitles)
+
+}
 
 // 사용자로부터 노래 제목을 입력받는 함수
 func getSongTitle() string {
@@ -40,9 +57,8 @@ func createPresentationForSongs(songTitles []string) {
 		song.SearchLyricsList("https://music.bugs.co.kr/search/lyrics?q=%s", title, false)
 
 		outPutDir := "./output/pdf"
-		if _, err := os.Stat(outPutDir); os.IsNotExist(err) {
-			_ = os.MkdirAll(outPutDir, 0700)
-		}
+		pkg.CheckDirIs(outPutDir)
+
 		fileName := filepath.Join(outPutDir, sanitizeFileName(title)+".pdf")
 
 		// PDF 프레젠테이션 생성
@@ -62,20 +78,4 @@ func createPresentationForSongs(songTitles []string) {
 			fmt.Printf("'%s' 노래가 데이터베이스에 저장되었습니다.\n", title)
 		}
 	}
-}
-
-func main() {
-	// 노래 제목 입력받기
-	songTitle := getSongTitle()
-	if songTitle == "" {
-		fmt.Println("노래 제목을 입력하지 않았습니다. 프로그램을 종료합니다.")
-		return
-	}
-
-	// 노래 제목을 쉼표로 구분하여 배열로 변환
-	songTitles := strings.Split(songTitle, ",")
-
-	// 노래 목록에 대한 프레젠테이션 생성 및 DB 저장
-	createPresentationForSongs(songTitles)
-
 }

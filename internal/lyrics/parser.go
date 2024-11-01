@@ -17,7 +17,7 @@ type SlideData struct {
 	TrackID int
 }
 
-// parseTrackList 함수는 트랙 리스트를 파싱합니다.
+// 트랙 리스트를 파싱
 func (si *SlideData) parseTrackList(doc *goquery.Document) {
 	doc.Find("table.trackList tbody tr[rowtype='lyrics']").Each(func(i int, s *goquery.Selection) {
 		albumID, exists := s.Attr("trackid")
@@ -34,7 +34,7 @@ func (si *SlideData) parseTrackList(doc *goquery.Document) {
 	})
 }
 
-// parseLyrics 함수는 가사를 파싱합니다.
+// 가사 파싱
 func (si *SlideData) parseLyrics(doc *goquery.Document) {
 	doc.Find(".lyricsContainer xmp").Each(func(i int, s *goquery.Selection) {
 		// 공백 제거

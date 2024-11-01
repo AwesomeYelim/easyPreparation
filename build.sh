@@ -2,6 +2,7 @@
 
 # 빌드할 Go 파일 경로 설정
 GO_FILES=(
+  "전체 선택"   # 전체 선택 항목 추가
   "./executor/ppt/lyrics/lyrics.go"
   "./executor/ppt/history/history.go"
 )
@@ -28,7 +29,7 @@ print_menu() {
   echo "빌드할 Go 파일을 선택하세요 (화살표로 이동 후 엔터로 선택):"
   for i in "${!GO_FILES[@]}"; do
     if [ $i -eq $selected ]; then
-      # 선택된 항목에 초록색 적용
+      # 선택된 항목에 색상 적용
       echo -e "${YELLOW}> ${GO_FILES[i]}${RESET}"
     else
       echo "  ${GO_FILES[i]}"
@@ -79,17 +80,28 @@ build_file() {
 
   # 빌드 성공 여부 확인
   if [ $? -eq 0 ]; then
-    echo -e "${GREEN}빌드 성공: ${file} -> ${BIN_DIR}/${bin_name}"
+    echo -e "${GREEN}빌드 성공: ${file} -> ${BIN_DIR}/${bin_name}${RESET}"
   else
     echo -e "${RED}빌드 실패:${RESET} ${file}"
     exit 1
   fi
 }
 
+# 전체 빌드 함수
+build_all_files() {
+  for file in "${GO_FILES[@]:1}"; do  # 첫 항목 제외하고 빌드
+    build_file "${file}"
+  done
+}
+
 # 메뉴 탐색 시작
 navigate_menu
 
-# 선택된 파일 빌드 수행
-build_file "${GO_FILES[selected]}"
+# 선택된 파일 또는 전체 빌드 수행
+if [ $selected -eq 0 ]; then
+  build_all_files
+else
+  build_file "${GO_FILES[selected]}"
+fi
 
 echo -e "${BLUE}모든 빌드가 성공적으로 완료되었습니다!${RESET}"
