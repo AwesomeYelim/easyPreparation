@@ -43,7 +43,7 @@ func CreatePresentation(slidesData *lyrics.SlideData, filePath string) {
 		objPdf.AddPage()
 		// 배경 이미지 추가 (배경 이미지를 추가하려면 파일이 필요합니다)
 		backgroundImage := "./public/images/ppt_background.png"
-		objPdf.CheckImgPath(pdfSize, backgroundImage, 1)
+		objPdf.CheckImgPlaced(pdfSize, backgroundImage, 1)
 
 		var textW float64 = 250
 		var textH float64 = 20
@@ -61,7 +61,7 @@ func CreatePresentation(slidesData *lyrics.SlideData, filePath string) {
 
 // img 경로 확인 로직
 
-func (pdf *PDF) CheckImgPath(pdfSize gofpdf.SizeType, path string, place float32) {
+func (pdf *PDF) CheckImgPlaced(pdfSize gofpdf.SizeType, path string, place float32) {
 	if _, err := os.Stat(path); err == nil {
 		switch place {
 		case 1:

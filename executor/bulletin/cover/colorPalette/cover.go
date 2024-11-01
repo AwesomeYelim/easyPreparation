@@ -25,8 +25,8 @@ func GetColorWithSortByLuminance() LsColorWithLuminance {
 }
 
 func Init() []color.Color {
-	// 이미지에서 팔레트 추출 (4개의 색상)
-	colors, err := colorthief.GetPaletteFromFile("./public/images/coverdesign.png", 4)
+	// 이미지에서 팔레트 추출
+	colors, err := colorthief.GetPaletteFromFile("./public/images/coverdesign.png", 100)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return []color.Color{}
@@ -49,8 +49,12 @@ func (lsc *LsColorWithLuminance) Print() {
 	// 정렬된 색상 출력
 	fmt.Println("\n정렬된 색상 (명도 순):")
 	for i, cl := range *lsc {
-		r, g, b, a := cl.Color.RGBA()
-		ansiColor := fmt.Sprintf("\033[48;2;%d;%d;%d;%dm  \033[0m", r>>8, g>>8, b>>8, a>>8)
-		fmt.Printf("Color %d: %s R:%d, G:%d, B:%d, A:%d, Luminance: %.2f\n", i+1, ansiColor, r>>8, g>>8, b>>8, a>>8, cl.Luminance)
+		rgba := ConvertToRGBRange(cl.Color.RGBA())
+		ansiColor := fmt.Sprintf("\033[48;2;%d;%d;%d;%dm  \033[0m", rgba[0], rgba[1], rgba[2], rgba[3])
+		fmt.Printf("Color %d: %s R:%d, G:%d, B:%d, A:%d, Luminance: %.2f\n", i+1, ansiColor, rgba[0], rgba[1], rgba[2], rgba[3], cl.Luminance)
 	}
+}
+
+func ConvertToRGBRange(r, g, b, a uint32) []uint32 {
+	return []uint32{r >> 8, g >> 8, b >> 8, a >> 8}
 }
