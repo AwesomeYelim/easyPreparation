@@ -17,11 +17,11 @@ mkdir -p "${BIN_DIR}"
 selected=0
 
 # 색상 코드 설정
-RED='\e[31m'
-GREEN='\e[32m'
-YELLOW='\e[33m'
-BLUE='\e[34m'
-RESET='\e[0m'  # 색상 리셋
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+RESET='\033[0m'  # 색상 리셋
 
 # 메뉴 출력 함수
 print_menu() {
@@ -47,7 +47,7 @@ navigate_menu() {
 
     case "$input" in
       $'\x1b')  # ESC (화살표 키 시작)
-        read -rsn2 -t 0.1 input  # 화살표 키 전체 읽기
+        read -rsn2 -t 0.1 input  # 화살표 키 방향 감지
         case "$input" in
           "[A")  # 위쪽 화살표
             ((selected--))

@@ -1,8 +1,10 @@
 package presentation
 
 import (
+	"easyPreparation_1.0/executor/bulletin/cover/colorPalette"
 	"easyPreparation_1.0/internal/lyrics"
 	"github.com/jung-kurt/gofpdf/v2"
+	"image/color"
 	"log"
 	"os"
 )
@@ -74,4 +76,18 @@ func (pdf *PDF) CheckImgPlaced(pdfSize gofpdf.SizeType, path string, place float
 	} else {
 		log.Printf("배경 이미지 파일이 존재하지 않음: %s\n", err)
 	}
+}
+
+// 선 그려주는 함수
+
+func (pdf *PDF) DrawLine(length, padding float64, color color.Color) {
+	rgba := colorPalette.ConvertToRGBRange(color.RGBA())
+
+	pdf.SetDrawColor(int(rgba[0]), int(rgba[1]), int(rgba[2]))
+	pdf.SetLineWidth(0.5)
+	pdf.Line(padding, padding, length, padding)
+}
+
+func (pdf *PDF) DrawText() {
+
 }
