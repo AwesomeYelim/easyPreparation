@@ -17,8 +17,9 @@ func RemoveEmptyLines(text string) string {
 	return strings.Join(result, "\n")
 }
 
-func CheckDirIs(dirPath string) {
-	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-		_ = os.MkdirAll(dirPath, 0700)
+func CheckDirIs(dirPath string) (err error) {
+	if _, err = os.Stat(dirPath); os.IsNotExist(err) {
+		err = os.MkdirAll(dirPath, 0700)
 	}
+	return err
 }

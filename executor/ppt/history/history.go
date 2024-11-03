@@ -3,13 +3,21 @@ package main
 import (
 	"bufio"
 	"easyPreparation_1.0/internal/db"
+	"easyPreparation_1.0/pkg"
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 func main() {
 	// Bolthold 데이터베이스 열기
-	store := db.OpenDB("data/local.db")
+	path := "data/local.db"
+	err := pkg.CheckDirIs(filepath.Dir(path)) // 경로가 없다면 생성
+	if err != nil {
+		fmt.Printf("디렉토리 생성 중 오류 발생: %v\n", err)
+		return
+	}
+	store := db.OpenDB(path)
 	defer store.Close()
 
 	// 노래 리스트 출력
