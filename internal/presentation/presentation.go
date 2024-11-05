@@ -71,7 +71,7 @@ func CreatePresentation(slidesData *lyrics.SlideData, filePath string) {
 func (pdf *PDF) CheckImgPlaced(pdfSize gofpdf.SizeType, path string, place float32) {
 	if _, err := os.Stat(path); err == nil {
 		switch place {
-		case 1:
+		case 0:
 			pdf.ImageOptions(path, 0, 0, pdfSize.Wd, pdfSize.Ht, false, gofpdf.ImageOptions{ImageType: "PNG"}, 0, "")
 		case 0.5:
 			pdf.ImageOptions(path, pdfSize.Wd/2, 0, pdfSize.Wd/2, pdfSize.Ht, false, gofpdf.ImageOptions{ImageType: "PNG"}, 0, "")
