@@ -13,6 +13,11 @@ type PDF struct {
 	*gofpdf.Fpdf
 }
 
+type BoxSize struct {
+	Width  float64
+	Height float64
+}
+
 func New(size gofpdf.SizeType) PDF {
 	// PDF 객체 생성
 	pdf := gofpdf.NewCustom(&gofpdf.InitType{
@@ -78,16 +83,69 @@ func (pdf *PDF) CheckImgPlaced(pdfSize gofpdf.SizeType, path string, place float
 	}
 }
 
-// 선 그려주는 함수
+// 박스 그려주는 함수
+func (pdf *PDF) DrawBox(boxSize BoxSize, x, y float64, color ...color.Color) {
+	colorList := colorPalette.GetColorWithSortByLuminance()
+	highestLuminaceColor := colorList[len(colorList)-1] // 채도 가장 낮은 색상 - background
 
-func (pdf *PDF) DrawLine(length, padding float64, color color.Color) {
-	rgba := colorPalette.ConvertToRGBRange(color.RGBA())
+	var rgba []uint32
+	if len(color) <= 0 {
+		rgba = colorPalette.ConvertToRGBRange(highestLuminaceColor.Color.RGBA())
+	} else {
+		rgba = colorPalette.ConvertToRGBRange(color[0].RGBA())
+	}
+
+	pdf.SetFillColor(int(rgba[0]), int(rgba[1]), int(rgba[2]))
+	pdf.Rect(x, y, boxSize.Width, boxSize.Height, "F")
+
+}
+
+// 선 그려주는 함수
+func (pdf *PDF) DrawLine(length, x, y float64, color ...color.Color) {
+
+	colorList := colorPalette.GetColorWithSortByLuminance()
+	lowestLuminaceColor := colorList[0] // 채도 가장 낮은 색상 - background
+
+	var rgba []uint32
+	if len(color) <= 0 {
+		rgba = colorPalette.ConvertToRGBRange(lowestLuminaceColor.Color.RGBA())
+	} else {
+		rgba = colorPalette.ConvertToRGBRange(color[0].RGBA())
+	}
 
 	pdf.SetDrawColor(int(rgba[0]), int(rgba[1]), int(rgba[2]))
 	pdf.SetLineWidth(0.5)
-	pdf.Line(padding, padding, length, padding)
+	pdf.Line(x, y, x+length, y)
 }
 
-func (pdf *PDF) DrawText() {
+// 글씨 쓰는 함수
+func (pdf *PDF) WriteText(totalSize BoxSize, text string, padding float64, place string, color ...color.Color) {
+	fontPath := "./public/font/NotoSansKR-Bold.ttf" // 폰트 파일 경로 지정
+
+	pdf.AddUTF8Font("NotoSansKR-Bold", "", fontPath) // UTF-8 폰트 등록
+	pdf.SetFont("NotoSansKR-Bold", "", 16)           // UTF-8 폰트를 기본 폰트로 설정
+	textWidth := pdf.GetStringWidth(text)
+
+	colorList := colorPalette.GetColorWithSortByLuminance()
+	lowestLuminaceColor := colorList[0] // 채도 가장 높은 색상 - background
+
+	var rgba []uint32
+	if len(color) <= 0 {
+		rgba = colorPalette.ConvertToRGBRange(lowestLuminaceColor.Color.RGBA())
+	} else {
+		rgba = colorPalette.ConvertToRGBRange(color[0].RGBA())
+	}
+
+	var x float64
+	switch place {
+	case "start":
+		x = padding
+	case "center":
+		x = padding + (totalSize.Width-textWidth)/2
+	case "end":
+		x = padding + (totalSize.Width - textWidth)
+	}
+	pdf.SetTextColor(int(rgba[0]), int(rgba[1]), int(rgba[2]))
+	pdf.Text(x, padding, text) // 한글 텍스트
 
 }
