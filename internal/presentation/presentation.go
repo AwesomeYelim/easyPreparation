@@ -11,6 +11,7 @@ import (
 
 type PDF struct {
 	*gofpdf.Fpdf
+	BoxSize
 }
 
 type BoxSize struct {
@@ -26,7 +27,7 @@ func New(size gofpdf.SizeType) PDF {
 		Size:           size,
 	})
 
-	return PDF{pdf}
+	return PDF{Fpdf: pdf}
 }
 
 func CreatePresentation(slidesData *lyrics.SlideData, filePath string) {
@@ -118,34 +119,60 @@ func (pdf *PDF) DrawLine(length, x, y float64, color ...color.Color) {
 	pdf.Line(x, y, x+length, y)
 }
 
-// 글씨 쓰는 함수
-func (pdf *PDF) WriteText(totalSize BoxSize, text string, padding float64, place string, color ...color.Color) {
-	fontPath := "./public/font/NotoSansKR-Bold.ttf" // 폰트 파일 경로 지정
+func (pdf *PDF) WriteText(side string, boxSize BoxSize, text string, padding float64, alignment string, fontSize float64, textColor ...color.Color) {
+	const fontPath = "./public/font/NotoSansKR-Bold.ttf"
 
-	pdf.AddUTF8Font("NotoSansKR-Bold", "", fontPath) // UTF-8 폰트 등록
-	pdf.SetFont("NotoSansKR-Bold", "", 16)           // UTF-8 폰트를 기본 폰트로 설정
+	// 폰트 설정
+	pdf.AddUTF8Font("NotoSansKR-Bold", "", fontPath)
+	pdf.SetFont("NotoSansKR-Bold", "", fontSize)
 	textWidth := pdf.GetStringWidth(text)
 
-	colorList := colorPalette.GetColorWithSortByLuminance()
-	lowestLuminaceColor := colorList[0] // 채도 가장 높은 색상 - background
+	// 텍스트 색상 설정
+	rgba := pdf.getColorRGB(textColor)
 
-	var rgba []uint32
-	if len(color) <= 0 {
-		rgba = colorPalette.ConvertToRGBRange(lowestLuminaceColor.Color.RGBA())
-	} else {
-		rgba = colorPalette.ConvertToRGBRange(color[0].RGBA())
-	}
+	// 텍스트 위치 계산
+	x := pdf.calculateTextPosition(side, alignment, padding, boxSize.Width, textWidth)
 
-	var x float64
-	switch place {
-	case "start":
-		x = padding
-	case "center":
-		x = padding + (totalSize.Width-textWidth)/2
-	case "end":
-		x = padding + (totalSize.Width - textWidth)
-	}
+	// 텍스트 출력
 	pdf.SetTextColor(int(rgba[0]), int(rgba[1]), int(rgba[2]))
-	pdf.Text(x, padding, text) // 한글 텍스트
+	pdf.Text(x, padding, text)
+}
 
+// 텍스트 색상 설정 함수
+func (pdf *PDF) getColorRGB(textColor []color.Color) []uint32 {
+	var rgba []uint32
+	if len(textColor) == 0 {
+		// 기본 색상 사용
+		colorList := colorPalette.GetColorWithSortByLuminance()
+		lowestLuminanceColor := colorList[0]
+		rgba = colorPalette.ConvertToRGBRange(lowestLuminanceColor.Color.RGBA())
+	} else {
+		rgba = colorPalette.ConvertToRGBRange(textColor[0].RGBA())
+	}
+	return rgba
+}
+
+// 텍스트 위치 계산 함수
+func (pdf *PDF) calculateTextPosition(side, alignment string, padding, boxWidth, textWidth float64) float64 {
+	var x float64
+	rightOffset := 148.0
+
+	// 측면 설정
+	if side == "right" {
+		x = rightOffset
+	}
+
+	// 정렬 설정
+	switch alignment {
+	case "start":
+		x += padding
+		break
+	case "center":
+		x += padding + (boxWidth-textWidth)/2
+		break
+	case "end":
+		x += padding + (boxWidth - textWidth)
+		break
+	}
+	return x
 }
