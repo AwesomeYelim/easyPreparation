@@ -1,25 +1,32 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/torie/figma"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
-
-	"github.com/torie/figma"
 )
 
 func main() {
 	at := flag.String("token", "", "personal access token from Figma")
 	key := flag.String("key", "", "key to Figma file")
+	help := flag.Bool("help", false, "Help Info")
+
 	flag.Parse()
 
 	if *at == "" || *key == "" {
 		flag.Usage()
 		os.Exit(-1)
+	}
+
+	if *help {
+		flag.Usage()
+		os.Exit(0)
 	}
 
 	c := figma.New(*at)
@@ -31,11 +38,13 @@ func main() {
 
 	docs := f.Nodes()
 	log.Printf("Got %d documents", len(docs))
+	sample, _ := json.Marshal(docs)
+	_ = os.WriteFile("./skme.txt", sample, 0644)
 
-	fdocs := frames(docs)
-	log.Printf("Got %d frames", len(fdocs))
+	frameDocs := frames(docs)
+	log.Printf("Got %d frames", len(frameDocs))
 
-	images, err := c.Images(*key, 2, figma.ImageFormatPNG, ids(fdocs)...)
+	images, err := c.Images(*key, 2, figma.ImageFormatPNG, ids(frameDocs)...)
 	if err != nil {
 		log.Println(err)
 	}
@@ -43,8 +52,6 @@ func main() {
 	log.Printf("Downloading %d images\n", len(images))
 	//os.MkdirAll(*key, os.ModePerm)
 	for i, img := range images {
-		fmt.Println(img)
-
 		rc, err := download(img)
 		if err != nil {
 			log.Fatal(err)

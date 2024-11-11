@@ -5,6 +5,8 @@ GO_FILES=(
   "전체 선택"   # 전체 선택 항목 추가
   "./executor/ppt/lyrics/lyrics.go"
   "./executor/ppt/history/history.go"
+  "./executor/bulletin/bulletin.go"
+  "./figma/figma_api.go"
 )
 
 # 바이너리 파일을 저장할 디렉토리 설정

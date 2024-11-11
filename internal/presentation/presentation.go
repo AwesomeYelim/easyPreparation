@@ -51,7 +51,7 @@ func CreatePresentation(slidesData *lyrics.SlideData, filePath string) {
 		objPdf.AddPage()
 		// 배경 이미지 추가 (배경 이미지를 추가하려면 파일이 필요합니다)
 		backgroundImage := "./public/images/ppt_background.png"
-		objPdf.CheckImgPlaced(pdfSize, backgroundImage, 1)
+		objPdf.CheckImgPlaced(pdfSize, backgroundImage, 0)
 
 		var textW float64 = 250
 		var textH float64 = 20
