@@ -1,9 +1,11 @@
 package contents
 
 import (
+	"easyPreparation_1.0/figma"
 	"easyPreparation_1.0/internal/presentation"
 	"easyPreparation_1.0/pkg"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
 	"image/color"
@@ -23,6 +25,13 @@ type Config struct {
 }
 
 func CreateContents() {
+	at := flag.String("token", "", "personal access token from Figma")
+	key := flag.String("key", "", "key to Figma file")
+	help := flag.Bool("help", false, "Help Info")
+	flag.Parse()
+
+	figma.GetFigmaImage(at, key, help)
+
 	configPath := "./config/custom.json"
 	var config Config
 	custom, err := os.ReadFile(configPath)
@@ -67,6 +76,7 @@ func CreateContents() {
 		}
 
 	}
+
 	err = objPdf.OutputFileAndClose(filepath.Join(outputDir, "sample.pdf"))
 	if err != nil {
 		log.Fatalf("PDF 저장 중 에러 발생: %v", err)

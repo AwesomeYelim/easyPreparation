@@ -6,7 +6,6 @@ GO_FILES=(
   "./executor/ppt/lyrics/lyrics.go"
   "./executor/ppt/history/history.go"
   "./executor/bulletin/bulletin.go"
-  "./figma/figma_api.go"
 )
 
 # 바이너리 파일을 저장할 디렉토리 설정

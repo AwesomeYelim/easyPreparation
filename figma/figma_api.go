@@ -1,4 +1,4 @@
-package main
+package figma
 
 import (
 	"encoding/json"
@@ -10,14 +10,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
-func main() {
-	at := flag.String("token", "", "personal access token from Figma")
-	key := flag.String("key", "", "key to Figma file")
-	help := flag.Bool("help", false, "Help Info")
-
-	flag.Parse()
+func GetFigmaImage(at *string, key *string, help *bool) {
+	var mainContent []map[string]interface{}
 
 	if *at == "" || *key == "" {
 		flag.Usage()
@@ -38,8 +35,16 @@ func main() {
 
 	docs := f.Nodes()
 	log.Printf("Got %d documents", len(docs))
-	sample, _ := json.Marshal(docs)
-	_ = os.WriteFile("./skme.txt", sample, 0644)
+	sample, _ := json.MarshalIndent(docs, "", "")
+	err = json.Unmarshal(sample, &mainContent)
+	if err != nil {
+		log.Print("err : ", err)
+	}
+
+	result := orgJson(mainContent)
+
+	sample, _ = json.MarshalIndent(result, "", "")
+	_ = os.WriteFile("./schema.json", sample, 0644)
 
 	frameDocs := frames(docs)
 	log.Printf("Got %d frames", len(frameDocs))
@@ -93,4 +98,28 @@ func download(i figma.Image) (io.ReadCloser, error) {
 	}
 
 	return resp.Body, nil
+}
+
+func orgJson(argResult []map[string]interface{}) (result []map[string]interface{}) {
+	for _, contentResult := range argResult {
+		if name, ok := contentResult["name"].(string); ok && strings.HasPrefix(name, "sub_") {
+			result = append(result, contentResult)
+		}
+
+		if children, ok := contentResult["children"].([]interface{}); ok {
+			childResults := orgJson(convertToMapSlice(children))
+			result = append(result, childResults...)
+		}
+	}
+	return result
+}
+
+func convertToMapSlice(data []interface{}) []map[string]interface{} {
+	var result []map[string]interface{}
+	for _, item := range data {
+		if m, ok := item.(map[string]interface{}); ok {
+			result = append(result, m)
+		}
+	}
+	return result
 }
