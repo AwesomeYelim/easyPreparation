@@ -37,16 +37,18 @@ func GetFigmaImage(at *string, key *string, help *bool) {
 
 	docs := f.Nodes()
 	log.Printf("Got %d documents", len(docs))
+
 	sample, _ := json.MarshalIndent(docs, "", "")
 	err = json.Unmarshal(sample, &mainContent)
+
 	if err != nil {
 		log.Print("err : ", err)
 	}
 
-	result := orgJson(mainContent)
+	_ = orgJson(mainContent)
 
-	sample, _ = json.MarshalIndent(result, "", "")
-	_ = os.WriteFile("./schema.json", sample, 0644)
+	//sample, _ = json.MarshalIndent(result, "", "")
+	//_ = os.WriteFile("./schema.json", sample, 0644)
 
 	frameDocs := frames(docs)
 	log.Printf("Got %d frames", len(frameDocs))
@@ -102,32 +104,15 @@ func download(i figma.Image) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
-func orgJson(argResult []map[string]interface{}) (result []map[string]interface{}) {
-	groupedResults := groupResults(argResult)
-	sortedKeys := sortKeys(groupedResults)
-
-	for _, name := range sortedKeys {
-		children := groupedResults[name]
-		result = append(result, map[string]interface{}{
-			"name":     name,
-			"children": children,
-		})
-	}
-
-	return result
-}
-
-// 그룹화된 결과를 생성
-func groupResults(argResult []map[string]interface{}) map[string][]map[string]string {
+// orgJson은 그룹화된 JSON 결과를 반환
+func orgJson(argResult []map[string]interface{}) map[string][]map[string]string {
 	grouped := make(map[string][]map[string]string)
 
 	for _, contentResult := range argResult {
 		if name, ok := contentResult["name"].(string); ok {
 			switch {
-			case name == "content_1":
-				if children, ok := contentResult["children"].([]interface{}); ok {
-					return groupResults(convertToMapSlice(children))
-				}
+			case name == "content_1", name == "content_2", name == "content_3":
+				processContent(name, contentResult)
 			case strings.HasPrefix(name, "sub_"):
 				grouped[name] = extractChildren(contentResult)
 			}
@@ -135,6 +120,30 @@ func groupResults(argResult []map[string]interface{}) map[string][]map[string]st
 	}
 
 	return grouped
+}
+
+// 특정 content 이름에 따라 그룹화된 결과를 파일로 저장
+func processContent(name string, contentResult map[string]interface{}) {
+	if children, ok := contentResult["children"].([]interface{}); ok {
+		result := orgJson(convertToMapSlice(children))
+		final := createSortedResult(result)
+
+		sample, _ := json.MarshalIndent(final, "", "  ")
+		_ = os.WriteFile(filepath.Join("config", name+".json"), sample, 0644)
+	}
+}
+
+// 그룹화된 결과를 정렬하여 리스트 형식으로 반환
+func createSortedResult(groupedResults map[string][]map[string]string) []map[string]interface{} {
+	sortedKeys := sortKeys(groupedResults)
+	final := make([]map[string]interface{}, 0, len(sortedKeys))
+	for _, name := range sortedKeys {
+		final = append(final, map[string]interface{}{
+			"name":     name,
+			"children": groupedResults[name],
+		})
+	}
+	return final
 }
 
 // sub_ 항목에서 자식 요소 추출

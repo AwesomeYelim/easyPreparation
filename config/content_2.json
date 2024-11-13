@@ -1,0 +1,67 @@
+[
+  {
+    "children": [
+      {
+        "characters": "찬양의 시간",
+        "type": "찬양의 시간"
+      },
+      {
+        "characters": "함께",
+        "type": "함께"
+      }
+    ],
+    "name": "sub_1"
+  },
+  {
+    "children": [
+      {
+        "characters": "통성기도",
+        "type": "통성기도"
+      },
+      {
+        "characters": "함께",
+        "type": "함께"
+      }
+    ],
+    "name": "sub_2"
+  },
+  {
+    "children": [
+      {
+        "characters": "말씀",
+        "type": "말씀"
+      },
+      {
+        "characters": "인도자",
+        "type": "인도자"
+      }
+    ],
+    "name": "sub_3"
+  },
+  {
+    "children": [
+      {
+        "characters": "찬양",
+        "type": "찬양"
+      },
+      {
+        "characters": "함께",
+        "type": "함께"
+      }
+    ],
+    "name": "sub_4"
+  },
+  {
+    "children": [
+      {
+        "characters": "마치는 기도",
+        "type": "마치는 기도"
+      },
+      {
+        "characters": "홍은익 목사",
+        "type": "홍은익 목사"
+      }
+    ],
+    "name": "sub_5"
+  }
+]
