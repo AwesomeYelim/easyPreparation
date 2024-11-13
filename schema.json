@@ -3,11 +3,11 @@
     "children": [
       {
         "characters": "전주",
-        "name": "전주"
+        "type": "전주"
       },
       {
         "characters": "반주자",
-        "name": "반주자"
+        "type": "반주자"
       }
     ],
     "name": "sub_1"
@@ -16,15 +16,15 @@
     "children": [
       {
         "characters": "예배의부름",
-        "name": "예배의부름"
+        "type": "예배의부름"
       },
       {
         "characters": "인도자",
-        "name": "인도자"
+        "type": "인도자"
       },
       {
         "characters": "사 55 : 7 - 9",
-        "name": "edit"
+        "type": "edit"
       }
     ],
     "name": "sub_2"
@@ -33,11 +33,11 @@
     "children": [
       {
         "characters": "개회기도",
-        "name": "개회기도"
+        "type": "개회기도"
       },
       {
         "characters": "인도자",
-        "name": "인도자"
+        "type": "인도자"
       }
     ],
     "name": "sub_3"
@@ -46,15 +46,15 @@
     "children": [
       {
         "characters": "38 장",
-        "name": "edit"
+        "type": "edit"
       },
       {
         "characters": "찬송",
-        "name": "찬송"
+        "type": "찬송"
       },
       {
         "characters": "인도자",
-        "name": "인도자"
+        "type": "인도자"
       }
     ],
     "name": "sub_4"
@@ -63,15 +63,15 @@
     "children": [
       {
         "characters": "시편 99편",
-        "name": "edit"
+        "type": "edit"
       },
       {
         "characters": "성시교독",
-        "name": "성시교독"
+        "type": "성시교독"
       },
       {
         "characters": "일어서서",
-        "name": "일어서서"
+        "type": "일어서서"
       }
     ],
     "name": "sub_5"
@@ -80,15 +80,15 @@
     "children": [
       {
         "characters": "사도신경",
-        "name": "사도신경"
+        "type": "사도신경"
       },
       {
         "characters": "일어서서",
-        "name": "일어서서"
+        "type": "일어서서"
       },
       {
         "characters": "신앙고백",
-        "name": "신앙고백"
+        "type": "신앙고백"
       }
     ],
     "name": "sub_6"
@@ -97,15 +97,15 @@
     "children": [
       {
         "characters": "260장",
-        "name": "edit"
+        "type": "edit"
       },
       {
         "characters": "찬송",
-        "name": "찬송"
+        "type": "찬송"
       },
       {
         "characters": "함께",
-        "name": "함께"
+        "type": "함께"
       }
     ],
     "name": "sub_7"
@@ -114,11 +114,11 @@
     "children": [
       {
         "characters": "기도",
-        "name": "기도"
+        "type": "기도"
       },
       {
         "characters": "송다혜 집사",
-        "name": "edit"
+        "type": "edit"
       }
     ],
     "name": "sub_8"
@@ -127,15 +127,15 @@
     "children": [
       {
         "characters": "롬 8: 26 - 30",
-        "name": "edit"
+        "type": "edit"
       },
       {
         "characters": "성경봉독",
-        "name": "성경봉독"
+        "type": "성경봉독"
       },
       {
         "characters": "일어서서",
-        "name": "일어서서"
+        "type": "일어서서"
       }
     ],
     "name": "sub_9"
@@ -144,11 +144,11 @@
     "children": [
       {
         "characters": "찬양",
-        "name": "찬양"
+        "type": "찬양"
       },
       {
         "characters": "할렐루야성가대",
-        "name": "할렐루야성가대"
+        "type": "할렐루야성가대"
       }
     ],
     "name": "sub_10"
@@ -157,11 +157,11 @@
     "children": [
       {
         "characters": "참회의 기도",
-        "name": "참회의 기도"
+        "type": "참회의 기도"
       },
       {
         "characters": "함께",
-        "name": "함께"
+        "type": "함께"
       }
     ],
     "name": "sub_11"
@@ -170,15 +170,15 @@
     "children": [
       {
         "characters": "이후에는 알리라",
-        "name": "edit"
+        "type": "edit"
       },
       {
         "characters": "말씀",
-        "name": "말씀"
+        "type": "말씀"
       },
       {
         "characters": "홍은익 목사",
-        "name": "홍은익 목사"
+        "type": "홍은익 목사"
       }
     ],
     "name": "sub_12"
@@ -187,11 +187,11 @@
     "children": [
       {
         "characters": "기도",
-        "name": "기도"
+        "type": "기도"
       },
       {
         "characters": "인도자",
-        "name": "인도자"
+        "type": "인도자"
       }
     ],
     "name": "sub_13"
@@ -200,15 +200,15 @@
     "children": [
       {
         "characters": "620장",
-        "name": "edit"
+        "type": "edit"
       },
       {
         "characters": "찬송",
-        "name": "찬송"
+        "type": "찬송"
       },
       {
         "characters": "함께",
-        "name": "함께"
+        "type": "함께"
       }
     ],
     "name": "sub_14"
@@ -217,11 +217,11 @@
     "children": [
       {
         "characters": "헌금봉헌",
-        "name": "헌금봉헌"
+        "type": "헌금봉헌"
       },
       {
         "characters": "함께",
-        "name": "함께"
+        "type": "함께"
       }
     ],
     "name": "sub_15"
@@ -230,11 +230,11 @@
     "children": [
       {
         "characters": "봉헌기도",
-        "name": "봉헌기도"
+        "type": "봉헌기도"
       },
       {
         "characters": "인도자",
-        "name": "인도자"
+        "type": "인도자"
       }
     ],
     "name": "sub_16"
@@ -243,11 +243,11 @@
     "children": [
       {
         "characters": "교회소식",
-        "name": "교회소식"
+        "type": "교회소식"
       },
       {
         "characters": "인도자",
-        "name": "인도자"
+        "type": "인도자"
       }
     ],
     "name": "sub_17"
@@ -256,15 +256,15 @@
     "children": [
       {
         "characters": "635장",
-        "name": "edit"
+        "type": "edit"
       },
       {
         "characters": "찬송",
-        "name": "찬송"
+        "type": "찬송"
       },
       {
         "characters": "일어서서",
-        "name": "일어서서"
+        "type": "일어서서"
       }
     ],
     "name": "sub_18"
@@ -273,13 +273,52 @@
     "children": [
       {
         "characters": "축도",
-        "name": "축도"
+        "type": "축도"
       },
       {
         "characters": "홍은익 목사",
-        "name": "홍은익 목사"
+        "type": "홍은익 목사"
       }
     ],
     "name": "sub_19"
+  },
+  {
+    "children": [
+      {
+        "characters": "내주기도 : ",
+        "type": "내주기도 :"
+      },
+      {
+        "characters": "오남이 권사님",
+        "type": "edit"
+      }
+    ],
+    "name": "sub_20"
+  },
+  {
+    "children": [
+      {
+        "characters": "헌금, 안내 : ",
+        "type": "헌금, 안내 :"
+      },
+      {
+        "characters": "2 여전도회",
+        "type": "edit"
+      }
+    ],
+    "name": "sub_21"
+  },
+  {
+    "children": [
+      {
+        "characters": "수고하고 무거운 짐진 자들아 다 내게로 오라 \n내가 너희를 쉬게 하리라 나는 마음이 온유하고 겸손하니 \n나의 멍에를 메고 내게 배우라 그러면 너희 마음이 쉼을 얻으리니 \n이는 내 멍에는 쉽고 내 짐은 가벼움이라 하시니라\n\n마태복음 11:28~30",
+        "type": "edit"
+      },
+      {
+        "characters": "오늘의 \n말씀",
+        "type": "오늘의 말씀"
+      }
+    ],
+    "name": "sub_22"
   }
 ]
