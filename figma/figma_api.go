@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -101,19 +103,56 @@ func download(i figma.Image) (io.ReadCloser, error) {
 }
 
 func orgJson(argResult []map[string]interface{}) (result []map[string]interface{}) {
-	for _, contentResult := range argResult {
-		if name, ok := contentResult["name"].(string); ok && strings.HasPrefix(name, "sub_") {
-			result = append(result, contentResult)
-		}
+	groupedResults := make(map[string][]map[string]string)
 
-		if children, ok := contentResult["children"].([]interface{}); ok {
-			childResults := orgJson(convertToMapSlice(children))
-			result = append(result, childResults...)
+	for _, contentResult := range argResult {
+		if name, ok := contentResult["name"].(string); ok {
+			if name == "content_1" {
+				if children, ok := contentResult["children"].([]interface{}); ok {
+					return orgJson(convertToMapSlice(children))
+				}
+			} else if strings.HasPrefix(name, "sub_") {
+				if children, ok := contentResult["children"].([]interface{}); ok {
+					for _, child := range children {
+						if childMap, ok := child.(map[string]interface{}); ok {
+							characters, cOk := childMap["characters"].(string)
+							cName, nOk := childMap["name"].(string)
+							if cOk && nOk {
+								groupedResults[name] = append(groupedResults[name], map[string]string{
+									"name":       cName,
+									"characters": characters,
+								})
+							}
+						}
+					}
+				}
+			}
 		}
 	}
+
+	keys := make([]string, 0, len(groupedResults))
+	for name := range groupedResults {
+		keys = append(keys, name)
+	}
+
+	sort.Slice(keys, func(i, j int) bool {
+		numI, _ := strconv.Atoi(strings.TrimPrefix(keys[i], "sub_"))
+		numJ, _ := strconv.Atoi(strings.TrimPrefix(keys[j], "sub_"))
+		return numI < numJ
+	})
+
+	for _, name := range keys {
+		children := groupedResults[name]
+		result = append(result, map[string]interface{}{
+			"name":     name,
+			"children": children,
+		})
+	}
+
 	return result
 }
 
+// []interface{} => []map[string]interface{}
 func convertToMapSlice(data []interface{}) []map[string]interface{} {
 	var result []map[string]interface{}
 	for _, item := range data {
