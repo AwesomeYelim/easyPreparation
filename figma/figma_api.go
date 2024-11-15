@@ -1,6 +1,7 @@
 package figma
 
 import (
+	"easyPreparation_1.0/pkg"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -14,6 +15,16 @@ import (
 	"strconv"
 	"strings"
 )
+
+type Element struct {
+	Name     string     `json:"name"`
+	Children []Children `json:"children"`
+}
+
+type Children struct {
+	ChildType  string `json:"childType"`
+	Characters string `json:"characters"`
+}
 
 func GetFigmaImage(at *string, key *string, help *bool) {
 	var mainContent []map[string]interface{}
@@ -46,9 +57,6 @@ func GetFigmaImage(at *string, key *string, help *bool) {
 	}
 
 	_ = orgJson(mainContent)
-
-	//sample, _ = json.MarshalIndent(result, "", "")
-	//_ = os.WriteFile("./schema.json", sample, 0644)
 
 	frameDocs := frames(docs)
 	log.Printf("Got %d frames", len(frameDocs))
@@ -105,8 +113,8 @@ func download(i figma.Image) (io.ReadCloser, error) {
 }
 
 // orgJson은 그룹화된 JSON 결과를 반환
-func orgJson(argResult []map[string]interface{}) map[string][]map[string]string {
-	grouped := make(map[string][]map[string]string)
+func orgJson(argResult []map[string]interface{}) map[string][]Children {
+	grouped := make(map[string][]Children)
 
 	for _, contentResult := range argResult {
 		if name, ok := contentResult["name"].(string); ok {
@@ -129,35 +137,36 @@ func processContent(name string, contentResult map[string]interface{}) {
 		final := createSortedResult(result)
 
 		sample, _ := json.MarshalIndent(final, "", "  ")
+		_ = pkg.CheckDirIs("config")
 		_ = os.WriteFile(filepath.Join("config", name+".json"), sample, 0644)
 	}
 }
 
 // 그룹화된 결과를 정렬하여 리스트 형식으로 반환
-func createSortedResult(groupedResults map[string][]map[string]string) []map[string]interface{} {
+func createSortedResult(groupedResults map[string][]Children) []Element {
 	sortedKeys := sortKeys(groupedResults)
-	final := make([]map[string]interface{}, 0, len(sortedKeys))
+	final := make([]Element, 0, len(sortedKeys))
 	for _, name := range sortedKeys {
-		final = append(final, map[string]interface{}{
-			"name":     name,
-			"children": groupedResults[name],
+		final = append(final, Element{
+			Name:     name,
+			Children: groupedResults[name],
 		})
 	}
 	return final
 }
 
 // sub_ 항목에서 자식 요소 추출
-func extractChildren(contentResult map[string]interface{}) []map[string]string {
-	var children []map[string]string
+func extractChildren(contentResult map[string]interface{}) []Children {
+	var children []Children
 
 	if childItems, ok := contentResult["children"].([]interface{}); ok {
 		for _, child := range childItems {
 			if childMap, ok := child.(map[string]interface{}); ok {
 				if cName, cOk := childMap["name"].(string); cOk {
 					if characters, ok := childMap["characters"].(string); ok {
-						children = append(children, map[string]string{
-							"type":       cName,
-							"characters": characters,
+						children = append(children, Children{
+							ChildType:  cName,
+							Characters: characters,
 						})
 					}
 				}
@@ -169,7 +178,7 @@ func extractChildren(contentResult map[string]interface{}) []map[string]string {
 }
 
 // sub_ 이름의 숫자 순서로 정렬
-func sortKeys(groupedResults map[string][]map[string]string) []string {
+func sortKeys(groupedResults map[string][]Children) []string {
 	keys := make([]string, 0, len(groupedResults))
 	for name := range groupedResults {
 		keys = append(keys, name)

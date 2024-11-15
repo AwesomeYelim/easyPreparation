@@ -52,10 +52,22 @@ func CreateContents() {
 
 	outputDir := "./output/bulletin"
 
-	pkg.CheckDirIs(outputDir)
+	_ = pkg.CheckDirIs(outputDir)
 
 	files, _ := os.ReadDir("./output/bulletin")
 	objPdf := presentation.New(bulletinSize)
+
+	// 현재 날짜와 주차 정보를 계산
+	currentDate := time.Now()
+	firstDayOfMonth := time.Date(currentDate.Year(), currentDate.Month(), 1, 0, 0, 0, 0, currentDate.Location())
+	_, firstWeek := firstDayOfMonth.ISOWeek()
+	_, currentWeek := currentDate.ISOWeek()
+	weekInMonth := currentWeek - firstWeek + 1
+	yearMonth := currentDate.Format("200601")
+	weekFormatted := fmt.Sprintf("%d", weekInMonth)
+
+	// 파일명 생성: "202411_3.pdf"
+	outputFilename := fmt.Sprintf("%s_%s.pdf", yearMonth, weekFormatted)
 
 	for i, file := range files {
 		imgPath := fmt.Sprintf("./output/bulletin/%s", file.Name())
@@ -66,7 +78,6 @@ func CreateContents() {
 
 		if i == 0 {
 			// 이번주 주일 날짜 계산
-			currentDate := time.Now()
 			daysUntilSunday := (7 - int(currentDate.Weekday())) % 7
 			thisSunday := currentDate.AddDate(0, 0, daysUntilSunday)
 
@@ -77,7 +88,7 @@ func CreateContents() {
 
 	}
 
-	err = objPdf.OutputFileAndClose(filepath.Join(outputDir, "sample.pdf"))
+	err = objPdf.OutputFileAndClose(filepath.Join(outputDir, outputFilename))
 	if err != nil {
 		log.Fatalf("PDF 저장 중 에러 발생: %v", err)
 	}
