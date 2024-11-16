@@ -2,10 +2,10 @@ package contents
 
 import (
 	"easyPreparation_1.0/figma"
+	"easyPreparation_1.0/internal/gui"
 	"easyPreparation_1.0/internal/presentation"
 	"easyPreparation_1.0/pkg"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
 	"image/color"
@@ -25,12 +25,12 @@ type Config struct {
 }
 
 func CreateContents() {
-	at := flag.String("token", "", "personal access token from Figma")
-	key := flag.String("key", "", "key to Figma file")
-	help := flag.Bool("help", false, "Help Info")
-	flag.Parse()
+	//at := flag.String("token", "", "personal access token from Figma")
+	//key := flag.String("key", "", "key to Figma file")
 
-	figma.GetFigmaImage(at, key, help)
+	token, key := gui.Connector()
+
+	figma.GetFigmaImage(&token, &key)
 
 	configPath := "./config/custom.json"
 	var config Config

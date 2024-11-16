@@ -1,12 +1,15 @@
-package main
+package gui
 
 import (
+	"fmt"
 	"github.com/zserge/lorca"
 	"log"
+	"os"
+	"os/signal"
 	"path/filepath"
 )
 
-func main() {
+func Connector() (token string, key string) {
 	// HTML 파일 경로
 	htmlFilePath, _ := filepath.Abs("./gui/index.html")
 
@@ -17,5 +20,25 @@ func main() {
 	}
 	defer ui.Close()
 
-	<-ui.Done()
+	_ = ui.Bind("sendTokenAndKey", func(argToken string, argKey string) {
+
+		token = argToken
+		key = argKey
+
+		fmt.Printf("Received Token: %s, Key: %s\n", token, key)
+
+		// Go에서 js 로 메시지 전달
+		ui.Eval(`document.getElementById("responseMessage").textContent = "Data received successfully!"`)
+
+		_ = ui.Close()
+	})
+
+	sigc := make(chan os.Signal)
+	signal.Notify(sigc, os.Interrupt)
+	select {
+	case <-sigc:
+	case <-ui.Done():
+	}
+
+	return token, key
 }
