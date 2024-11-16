@@ -10,3 +10,5 @@
 * Required Elements:
     - Church-specific cover image
     - Bulletin content, etc.
+
+![img.png](img.png)

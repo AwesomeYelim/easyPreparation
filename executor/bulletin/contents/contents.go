@@ -38,7 +38,6 @@ func CreateContents() {
 	_ = json.Unmarshal(custom, &config)
 
 	highestLuminaceColor := hexToRGBA(config.Color.BoxColor) // 옅은색상
-	//lowestLuminaceColor := hexToRGBA(config.Color.FontColor) // 진한색상
 
 	// A4 기준
 	bulletinSize := gofpdf.SizeType{
@@ -92,13 +91,6 @@ func CreateContents() {
 	if err != nil {
 		log.Fatalf("PDF 저장 중 에러 발생: %v", err)
 	}
-	//text := "교회 소식"
-
-	//yPadding := bulletinSize.Ht - (padding + rectangle.Height)
-
-	//objPdf.DrawBox(rectangle, padding, yPadding, highestLuminaceColor)
-	//objPdf.WriteText("left", rectangle, text, padding, "center", 16, lowestLuminaceColor)
-	//objPdf.DrawLine(rectangle.Width, padding, padding+3, lowestLuminaceColor)
 
 }
 
