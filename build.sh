@@ -82,11 +82,6 @@ build_file() {
   local bin_name=$(basename "${file}" .go)
   local output_file="${BIN_DIR}/${bin_name}_${CURRENT_OS}_${CURRENT_ARCH}"
 
-  # bulletin.go일 경우 bin 디렉토리 대신 외부 경로에 저장
-  if [ "$file" == "./executor/bulletin/bulletin.go" ]; then
-    output_file="./${bin_name}_${CURRENT_OS}_${CURRENT_ARCH}"
-  fi
-
   # 운영체제에 따라 다르게 빌드
   if [ "$CURRENT_OS" == "windows" ]; then
     output_file="${output_file}.exe"

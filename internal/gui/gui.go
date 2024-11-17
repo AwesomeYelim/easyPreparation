@@ -1,42 +1,66 @@
 package gui
 
 import (
+	"embed"
 	"fmt"
 	"github.com/zserge/lorca"
 	"log"
 	"os"
 	"os/signal"
-	"path/filepath"
 )
 
-func Connector() (token string, key string) {
-	// HTML 파일 경로
-	htmlFilePath, _ := filepath.Abs("./gui/index.html")
+// Embed the HTML file
+//
+//go:embed index.html
+var htmlFile embed.FS
 
-	// 해당 gui 이슈 https://github.com/zserge/lorca/issues/183 참조
-	ui, err := lorca.New("file://"+htmlFilePath, "", 480, 320, "--remote-allow-origins=*", "--browser=/path/to/chrome")
+func Connector() (token string, key string) {
+	// 임시 파일 생성 (임베드된 HTML 사용)
+	tempFile, err := os.CreateTemp("", "index-*.html")
+	if err != nil {
+		log.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer func() {
+		_ = os.Remove(tempFile.Name())
+	}()
+
+	// 임베드된 HTML 파일 내용 => 임시 파일에 기록
+	htmlContent, err := htmlFile.ReadFile("index.html")
+	if err != nil {
+		log.Fatalf("Failed to read embedded HTML: %v", err)
+	}
+
+	_, err = tempFile.Write(htmlContent)
+	if err != nil {
+		log.Fatalf("Failed to write to temp file: %v", err)
+	}
+
+	defer func() {
+		_ = tempFile.Close()
+	}()
+
+	// local 경로로 UI 실행
+	ui, err := lorca.New("file://"+tempFile.Name(), "", 480, 320, "--remote-allow-origins=*", "--browser=/path/to/chrome")
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer ui.Close()
+	defer func() {
+		_ = ui.Close()
+	}()
 
 	_ = ui.Bind("sendTokenAndKey", func(argToken string, argKey string) {
-
 		token = argToken
 		key = argKey
-
 		fmt.Printf("Received Token: %s, Key: %s\n", token, key)
-
-		// Go에서 js 로 메시지 전달
 		ui.Eval(`document.getElementById("responseMessage").textContent = "Data received successfully!"`)
-
 		_ = ui.Close()
 	})
 
-	sigc := make(chan os.Signal)
-	signal.Notify(sigc, os.Interrupt)
+	// 종료 신호 처리
+	sigC := make(chan os.Signal)
+	signal.Notify(sigC, os.Interrupt)
 	select {
-	case <-sigc:
+	case <-sigC:
 	case <-ui.Done():
 	}
 

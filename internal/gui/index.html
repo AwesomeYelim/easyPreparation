@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Figma Token Input</title>
+</head>
+<body>
+<h1>Figma Token and Key</h1>
+<input type="text" id="token" placeholder="Enter your token">
+<input type="text" id="key" placeholder="Enter your key">
+<button id="submitButton">Submit</button>
+<p id="responseMessage"></p>
+<script>
+    const submitBtn = document.querySelector("#submitButton")
+
+    submitBtn.addEventListener("click", async () => {
+        const token = document.getElementById("token").value;
+        const key = document.getElementById("key").value;
+        if (!token || !key) {
+            alert("Both token and key must be provided.");
+            return;
+        }
+
+        try {
+            // Go로 값을 전달 (Go에서 바인딩한 sendTokenAndKey 호출)
+            await window.sendTokenAndKey(token, key);  // Go로 전달된 값
+
+            const responseMessage = document.getElementById("responseMessage");
+            responseMessage.textContent = "Success! Data sent to Go.";
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    });
+
+</script>
+
+</body>
+</html>
+
