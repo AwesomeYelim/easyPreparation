@@ -28,14 +28,22 @@ func CreateContents() {
 	//at := flag.String("token", "", "personal access token from Figma")
 	//key := flag.String("key", "", "key to Figma file")
 
-	token, key := gui.Connector()
+	token, key, ui := gui.Connector()
+	defer func() {
+		_ = ui.Close()
+	}()
 
-	figma.GetFigmaImage(&token, &key)
+	figmaInfo := figma.New(&token, &key)
+	figmaInfo.GetNodes()
+	figmaInfo.GetContents()
+	figmaInfo.GetFigmaImage()
+
+	ui.Eval(`document.getElementById("responseMessage").textContent = "Setting up data ~"`)
 
 	configPath := "./config/custom.json"
 	var config Config
 	custom, err := os.ReadFile(configPath)
-	_ = json.Unmarshal(custom, &config)
+	err = json.Unmarshal(custom, &config)
 
 	highestLuminaceColor := hexToRGBA(config.Color.BoxColor) // 옅은색상
 
@@ -91,7 +99,6 @@ func CreateContents() {
 	if err != nil {
 		log.Fatalf("PDF 저장 중 에러 발생: %v", err)
 	}
-
 }
 
 func hexToRGBA(hex string) color.RGBA {

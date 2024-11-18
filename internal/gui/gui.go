@@ -14,7 +14,7 @@ import (
 //go:embed index.html
 var htmlFile embed.FS
 
-func Connector() (token string, key string) {
+func Connector() (token string, key string, ui lorca.UI) {
 	// 임시 파일 생성 (임베드된 HTML 사용)
 	tempFile, err := os.CreateTemp("", "index-*.html")
 	if err != nil {
@@ -40,7 +40,7 @@ func Connector() (token string, key string) {
 	}()
 
 	// local 경로로 UI 실행
-	ui, err := lorca.New("file://"+tempFile.Name(), "", 480, 320, "--remote-allow-origins=*", "--browser=/path/to/chrome")
+	ui, err = lorca.New("file://"+tempFile.Name(), "", 480, 320, "--remote-allow-origins=*", "--browser=/path/to/chrome")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -64,5 +64,5 @@ func Connector() (token string, key string) {
 	case <-ui.Done():
 	}
 
-	return token, key
+	return token, key, ui
 }
