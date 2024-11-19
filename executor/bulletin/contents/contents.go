@@ -15,13 +15,21 @@ import (
 	"time"
 )
 
+type Color struct {
+	BoxColor  string `json:"boxColor"`
+	LineColor string `json:"lineColor"`
+	FontColor string `json:"fontColor"`
+	DateColor string `json:"dateColor"`
+}
+
+type Size struct {
+	Background     gofpdf.SizeType      `json:"background"`
+	InnerRectangle presentation.BoxSize `json:"innerRectangle"`
+}
+
 type Config struct {
-	Color struct {
-		BoxColor  string `json:"boxColor"`
-		LineColor string `json:"lineColor"`
-		FontColor string `json:"fontColor"`
-		DateColor string `json:"dateColor"`
-	} `json:"color"`
+	Color Color `json:"color"`
+	Size  Size  `json:"size"`
 }
 
 func CreateContents() {
@@ -32,33 +40,45 @@ func CreateContents() {
 	}()
 
 	ui.Eval(`document.getElementById("responseMessage").textContent = "Setting up data ~"`)
+
 	figmaInfo := figma.New(&token, &key)
+
+	outputDir := "./output/bulletin/tmp"
+	_ = pkg.CheckDirIs(outputDir)
+
+	defer func() {
+		_ = os.RemoveAll(outputDir)
+	}()
+
 	figmaInfo.GetNodes()
 	figmaInfo.GetContents()
-	figmaInfo.GetFigmaImage()
+	figmaInfo.GetFigmaImage(outputDir)
+
+	execPath, _ := os.Getwd()
+	log.Println(execPath)
 
 	configPath := "./config/custom.json"
 	var config Config
 	custom, err := os.ReadFile(configPath)
-	err = json.Unmarshal(custom, &config)
+
+	if err != nil {
+		err = json.Unmarshal(custom, &config)
+	} else {
+		config.Color.BoxColor = "#FFFFFF"
+	}
 
 	highestLuminaceColor := hexToRGBA(config.Color.BoxColor) // 옅은색상
 
 	// A4 기준
 	bulletinSize := gofpdf.SizeType{
-		Wd: 297.0,
-		Ht: 210.0,
+		Wd: config.Size.Background.Wd,
+		Ht: config.Size.Background.Ht,
 	}
 	rectangle := presentation.BoxSize{
-		Width:  132,
-		Height: 71,
+		Width:  config.Size.InnerRectangle.Width,
+		Height: config.Size.InnerRectangle.Height,
 	}
-
-	outputDir := "./output/bulletin"
-
-	_ = pkg.CheckDirIs(outputDir)
-
-	files, _ := os.ReadDir("./output/bulletin")
+	files, _ := os.ReadDir(outputDir)
 	objPdf := presentation.New(bulletinSize)
 
 	// 현재 날짜와 주차 정보를 계산
@@ -74,7 +94,7 @@ func CreateContents() {
 	outputFilename := fmt.Sprintf("%s_%s.pdf", yearMonth, weekFormatted)
 
 	for i, file := range files {
-		imgPath := fmt.Sprintf("./output/bulletin/%s", file.Name())
+		imgPath := fmt.Sprintf(outputDir+"/%s", file.Name())
 
 		objPdf.AddPage()
 		objPdf.CheckImgPlaced(bulletinSize, imgPath, 0)
@@ -91,10 +111,14 @@ func CreateContents() {
 		}
 
 	}
+	outputBtPath := "./output/bulletin"
 
-	err = objPdf.OutputFileAndClose(filepath.Join(outputDir, outputFilename))
+	_ = pkg.CheckDirIs(outputBtPath)
+
+	err = objPdf.OutputFileAndClose(filepath.Join(outputBtPath, outputFilename))
 	if err != nil {
-		log.Fatalf("PDF 저장 중 에러 발생: %v", err)
+		msg := fmt.Sprintf(`document.getElementById("responseMessage").textContent = "PDF 저장 중 에러 발생: %v"`, err)
+		ui.Eval(msg)
 	}
 }
 

@@ -49,7 +49,7 @@ func (i *Info) GetNodes() {
 	log.Printf("Got %d documents", len(i.Nodes))
 }
 
-func (i *Info) GetFigmaImage() {
+func (i *Info) GetFigmaImage(path string) {
 	i.Nodes = i.GetFrames()
 	ids := i.GetIds()
 
@@ -69,7 +69,7 @@ func (i *Info) GetFigmaImage() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		path := filepath.Join("./output/bulletin", fmt.Sprintf("%d.png", index+1))
+		path := filepath.Join(path, fmt.Sprintf("%d.png", index+1))
 		if err := os.WriteFile(path, data, 0666); err != nil {
 			log.Fatal(err)
 		}

@@ -4,5 +4,15 @@
     "lineColor": "#BEA07C",
     "fontColor": "#BEA07C",
     "dateColor": "#FFFFFF"
+  },
+  "size" : {
+    "background" : {
+      "width" : 297.0,
+      "height": 210.0
+    },
+    "innerRectangle" :  {
+      "width" : 132,
+      "height": 71
+    }
   }
 }
