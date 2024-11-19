@@ -6,7 +6,6 @@ import (
 	"github.com/zserge/lorca"
 	"log"
 	"os"
-	"os/signal"
 )
 
 // Embed the HTML file
@@ -44,25 +43,22 @@ func Connector() (token string, key string, ui lorca.UI) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer func() {
-		_ = ui.Close()
-	}()
+
+	dataReceived := make(chan struct{}) // 데이터 수신 신호를 위한 채널
 
 	_ = ui.Bind("sendTokenAndKey", func(argToken string, argKey string) {
 		token = argToken
 		key = argKey
 		fmt.Printf("Received Token: %s, Key: %s\n", token, key)
 		ui.Eval(`document.getElementById("responseMessage").textContent = "Data received successfully!"`)
-		_ = ui.Close()
+		dataReceived <- struct{}{}
 	})
 
-	// 종료 신호 처리
-	sigC := make(chan os.Signal)
-	signal.Notify(sigC, os.Interrupt)
+	// FIXME: 기존 ui 블로킹 버그 채널 통신 ui 창 닫지 않고 리턴되도록..
 	select {
-	case <-sigC:
+	case <-dataReceived:
+		return token, key, ui
 	case <-ui.Done():
+		return token, key, ui
 	}
-
-	return token, key, ui
 }

@@ -25,20 +25,17 @@ type Config struct {
 }
 
 func CreateContents() {
-	//at := flag.String("token", "", "personal access token from Figma")
-	//key := flag.String("key", "", "key to Figma file")
-
 	token, key, ui := gui.Connector()
+
 	defer func() {
 		_ = ui.Close()
 	}()
 
+	ui.Eval(`document.getElementById("responseMessage").textContent = "Setting up data ~"`)
 	figmaInfo := figma.New(&token, &key)
 	figmaInfo.GetNodes()
 	figmaInfo.GetContents()
 	figmaInfo.GetFigmaImage()
-
-	ui.Eval(`document.getElementById("responseMessage").textContent = "Setting up data ~"`)
 
 	configPath := "./config/custom.json"
 	var config Config
