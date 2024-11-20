@@ -9,6 +9,9 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
 )
 
 type Element struct {
@@ -49,10 +52,9 @@ func (i *Info) GetNodes() {
 	log.Printf("Got %d documents", len(i.Nodes))
 }
 
-func (i *Info) GetFigmaImage(path string) {
-	i.Nodes = i.GetFrames()
+func (i *Info) GetFigmaImage(path string, frameName string) {
+	i.Nodes = i.GetFrames(frameName)
 	ids := i.GetIds()
-
 	images, err := i.Client.Images(*i.Key, 2, figma.ImageFormatPNG, ids...)
 	if err != nil {
 		log.Println(err)
@@ -84,17 +86,40 @@ func (i *Info) GetIds() []string {
 	return res
 }
 
-func (i *Info) GetFrames() []figma.Node {
+func (i *Info) GetFrames(frameName string) []figma.Node {
 	var res []figma.Node
+
 	for index := range i.Nodes {
 		if i.Nodes[index].Type == figma.NodeTypeFrame {
-			res = append(res, i.Nodes[index])
+			if i.Nodes[index].Name == frameName {
+				childrenFrames := (&Info{Nodes: i.Nodes[index].Children}).GetFrames("children")
+				res = append(res, childrenFrames...)
+			} else if frameName == "children" {
+				res = append(res, i.Nodes[index])
+			}
 		}
 	}
+
+	// 정렬
+	sort.Slice(res, func(a, b int) bool {
+		numA := extractLeadingNumber(res[a].Name)
+		numB := extractLeadingNumber(res[b].Name)
+		return numA < numB
+	})
+
 	log.Printf("Got %d frames", len(res))
 	return res
 }
 
+func extractLeadingNumber(name string) int {
+	parts := strings.SplitN(name, "_", 2)
+	if len(parts) > 0 {
+		if num, err := strconv.Atoi(parts[0]); err == nil {
+			return num
+		}
+	}
+	return 0
+}
 func (i *Info) GetContents() {
 	var mainContent []map[string]interface{}
 

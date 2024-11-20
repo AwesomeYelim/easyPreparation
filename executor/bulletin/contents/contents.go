@@ -21,10 +21,14 @@ type Color struct {
 	FontColor string `json:"fontColor"`
 	DateColor string `json:"dateColor"`
 }
+type Box struct {
+	Width  float64 `json:"width"`
+	Height float64 `json:"height"`
+}
 
 type Size struct {
-	Background     gofpdf.SizeType      `json:"background"`
-	InnerRectangle presentation.BoxSize `json:"innerRectangle"`
+	Background     Box `json:"background"`
+	InnerRectangle Box `json:"innerRectangle"`
 }
 
 type Config struct {
@@ -52,7 +56,7 @@ func CreateContents() {
 
 	figmaInfo.GetNodes()
 	figmaInfo.GetContents()
-	figmaInfo.GetFigmaImage(outputDir)
+	figmaInfo.GetFigmaImage(outputDir, "forPrint")
 
 	execPath, _ := os.Getwd()
 	log.Println(execPath)
@@ -60,10 +64,10 @@ func CreateContents() {
 	configPath := "./config/custom.json"
 	var config Config
 	custom, err := os.ReadFile(configPath)
+	err = json.Unmarshal(custom, &config)
 
 	if err != nil {
-		err = json.Unmarshal(custom, &config)
-	} else {
+		log.Printf("%s Error :%s", configPath, err)
 		config.Color.BoxColor = "#FFFFFF"
 	}
 
@@ -71,8 +75,8 @@ func CreateContents() {
 
 	// A4 기준
 	bulletinSize := gofpdf.SizeType{
-		Wd: config.Size.Background.Wd,
-		Ht: config.Size.Background.Ht,
+		Wd: config.Size.Background.Width,
+		Ht: config.Size.Background.Height,
 	}
 	rectangle := presentation.BoxSize{
 		Width:  config.Size.InnerRectangle.Width,
