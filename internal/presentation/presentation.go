@@ -7,6 +7,7 @@ import (
 	"image/color"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 type PDF struct {
@@ -119,8 +120,8 @@ func (pdf *PDF) DrawLine(length, x, y float64, color ...color.Color) {
 	pdf.Line(x, y, x+length, y)
 }
 
-func (pdf *PDF) WriteText(side string, boxSize BoxSize, text string, padding float64, alignment string, fontSize float64, textColor ...color.Color) {
-	const fontPath = "./public/font/NotoSansKR-Bold.ttf"
+func (pdf *PDF) WriteText(side string, boxSize BoxSize, text string, padding float64, alignment string, fontSize float64, execPath string, textColor ...color.Color) {
+	fontPath := filepath.Join(execPath, "public/font/NotoSansKR-Bold.ttf")
 
 	// 폰트 설정
 	pdf.AddUTF8Font("NotoSansKR-Bold", "", fontPath)

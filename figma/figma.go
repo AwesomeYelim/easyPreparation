@@ -25,21 +25,23 @@ type Children struct {
 }
 
 type Info struct {
-	Client *figma.Client
-	Nodes  []figma.Node
-	Token  *string
-	Key    *string
+	Client   *figma.Client
+	Nodes    []figma.Node
+	Token    *string
+	Key      *string
+	ExecPath string
 }
 
-func New(token *string, key *string) (node *Info) {
+func New(token *string, key *string, execPath string) (node *Info) {
 	if *token == "" || *key == "" {
 		flag.Usage()
 		os.Exit(-1)
 	}
 	return &Info{
-		Client: figma.New(*token),
-		Token:  token,
-		Key:    key,
+		Client:   figma.New(*token),
+		Token:    token,
+		Key:      key,
+		ExecPath: execPath,
 	}
 }
 
@@ -128,5 +130,5 @@ func (i *Info) GetContents() {
 	if err != nil {
 		log.Print("err : ", err)
 	}
-	_ = orgJson(mainContent)
+	_ = orgJson(mainContent, i.ExecPath)
 }

@@ -12,42 +12,26 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
-type Color struct {
-	BoxColor  string `json:"boxColor"`
-	LineColor string `json:"lineColor"`
-	FontColor string `json:"fontColor"`
-	DateColor string `json:"dateColor"`
-}
-type Box struct {
-	Width  float64 `json:"width"`
-	Height float64 `json:"height"`
-}
-
-type Size struct {
-	Background     Box `json:"background"`
-	InnerRectangle Box `json:"innerRectangle"`
-}
-
-type Config struct {
-	Color Color `json:"color"`
-	Size  Size  `json:"size"`
-}
-
 func CreateContents() {
+
+	execPath, _ := os.Getwd()
+	if strings.HasSuffix(execPath, "bin") {
+		execPath = strings.TrimSuffix(execPath, "bin")
+	}
+
 	token, key, ui := gui.Connector()
 
 	defer func() {
 		_ = ui.Close()
 	}()
 
-	ui.Eval(`document.getElementById("responseMessage").textContent = "Setting up data ~"`)
+	figmaInfo := figma.New(&token, &key, execPath)
 
-	figmaInfo := figma.New(&token, &key)
-
-	outputDir := "./output/bulletin/tmp"
+	outputDir := filepath.Join(execPath, "output/bulletin/tmp")
 	_ = pkg.CheckDirIs(outputDir)
 
 	defer func() {
@@ -58,10 +42,8 @@ func CreateContents() {
 	figmaInfo.GetContents()
 	figmaInfo.GetFigmaImage(outputDir, "forPrint")
 
-	execPath, _ := os.Getwd()
-	log.Println(execPath)
+	configPath := filepath.Join(execPath, "config/custom.json")
 
-	configPath := "./config/custom.json"
 	var config Config
 	custom, err := os.ReadFile(configPath)
 	err = json.Unmarshal(custom, &config)
@@ -98,7 +80,7 @@ func CreateContents() {
 	outputFilename := fmt.Sprintf("%s_%s.pdf", yearMonth, weekFormatted)
 
 	for i, file := range files {
-		imgPath := fmt.Sprintf(outputDir+"/%s", file.Name())
+		imgPath := filepath.Join(outputDir, file.Name())
 
 		objPdf.AddPage()
 		objPdf.CheckImgPlaced(bulletinSize, imgPath, 0)
@@ -111,15 +93,15 @@ func CreateContents() {
 
 			// PDF에 날짜 추가
 			dateText := thisSunday.Format("2006년 01월 02일")
-			objPdf.WriteText("right", rectangle, dateText, padding, "end", 10, highestLuminaceColor)
+			objPdf.WriteText("right", rectangle, dateText, padding, "end", 10, execPath, highestLuminaceColor)
 		}
 
 	}
-	outputBtPath := "./output/bulletin"
+	outputBtPath := filepath.Join(execPath, "output/bulletin")
 
 	_ = pkg.CheckDirIs(outputBtPath)
-
-	err = objPdf.OutputFileAndClose(filepath.Join(outputBtPath, outputFilename))
+	bulletinPath := filepath.Join(outputBtPath, outputFilename)
+	err = objPdf.OutputFileAndClose(bulletinPath)
 	if err != nil {
 		msg := fmt.Sprintf(`document.getElementById("responseMessage").textContent = "PDF 저장 중 에러 발생: %v"`, err)
 		ui.Eval(msg)

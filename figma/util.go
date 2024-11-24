@@ -23,14 +23,14 @@ func download(i figma.Image) (io.ReadCloser, error) {
 }
 
 // orgJson은 그룹화된 JSON 결과를 반환
-func orgJson(argResult []map[string]interface{}) map[string][]Children {
+func orgJson(argResult []map[string]interface{}, execPath string) map[string][]Children {
 	grouped := make(map[string][]Children)
 
 	for _, contentResult := range argResult {
 		if name, ok := contentResult["name"].(string); ok {
 			switch {
 			case name == "content_1", name == "content_2", name == "content_3":
-				processContent(name, contentResult)
+				processContent(name, contentResult, execPath)
 			case strings.HasPrefix(name, "sub_"):
 				grouped[name] = extractChildren(contentResult)
 			}
@@ -41,14 +41,14 @@ func orgJson(argResult []map[string]interface{}) map[string][]Children {
 }
 
 // 특정 content 이름에 따라 그룹화된 결과를 파일로 저장
-func processContent(name string, contentResult map[string]interface{}) {
+func processContent(name string, contentResult map[string]interface{}, execPath string) {
 	if children, ok := contentResult["children"].([]interface{}); ok {
-		result := orgJson(convertToMapSlice(children))
+		result := orgJson(convertToMapSlice(children), execPath)
 		final := createSortedResult(result)
 
 		sample, _ := json.MarshalIndent(final, "", "  ")
-		_ = pkg.CheckDirIs("config")
-		_ = os.WriteFile(filepath.Join("config", name+".json"), sample, 0644)
+		_ = pkg.CheckDirIs(filepath.Join(execPath, "config"))
+		_ = os.WriteFile(filepath.Join(execPath, "config", name+".json"), sample, 0644)
 	}
 }
 
