@@ -21,7 +21,7 @@ func (i *Info) GetNodes() {
 }
 
 func (i *Info) GetFigmaImage(path string, frameName string) {
-	i.Nodes = i.GetFrames(frameName)
+	i.GetFrames(frameName)
 	ids := i.GetIds()
 	images, err := i.Client.Images(*i.Key, 2, figma.ImageFormatPNG, ids...)
 	if err != nil {

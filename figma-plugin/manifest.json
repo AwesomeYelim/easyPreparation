@@ -1,0 +1,12 @@
+{
+  "name": "MyPlugin",
+  "id": "1442838401896368897",
+  "api": "1.0.0",
+  "editorType": ["figma", "figjam"],
+  "main": "main.js",
+  "ui": "ui.html",
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["none"]
+  }
+}
