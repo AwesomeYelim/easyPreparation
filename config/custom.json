@@ -14,5 +14,9 @@
       "width" : 132,
       "height": 71
     }
+  },
+  "outputPath" : {
+    "bulletin" : "output/bulletin",
+    "lyrics" : "output/lyrics"
   }
 }

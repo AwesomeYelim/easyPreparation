@@ -21,7 +21,7 @@ func (i *Info) GetNodes() {
 }
 
 func (i *Info) GetFigmaImage(path string, frameName string) {
-	i.GetFrames(frameName)
+	i.Nodes = i.GetFrames(frameName)
 	ids := i.GetIds()
 	images, err := i.Client.Images(*i.Key, 2, figma.ImageFormatPNG, ids...)
 	if err != nil {
@@ -30,7 +30,6 @@ func (i *Info) GetFigmaImage(path string, frameName string) {
 	log.Printf("Downloading %d images\n", len(images))
 
 	for index, img := range images {
-
 		rc, err := download(img)
 		if err != nil {
 			log.Fatal(err)

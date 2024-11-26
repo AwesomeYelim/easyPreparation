@@ -122,7 +122,6 @@ func (pdf *PDF) DrawLine(length, x, y float64, color ...color.Color) {
 
 func (pdf *PDF) WriteText(side string, boxSize BoxSize, text string, padding float64, alignment string, fontSize float64, execPath string, textColor ...color.Color) {
 	fontPath := filepath.Join(execPath, "public/font/NotoSansKR-Bold.ttf")
-
 	// 폰트 설정
 	pdf.AddUTF8Font("NotoSansKR-Bold", "", fontPath)
 	pdf.SetFont("NotoSansKR-Bold", "", fontSize)

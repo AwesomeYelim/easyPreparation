@@ -19,7 +19,6 @@ func CreateContents() {
 	execPath, _ := os.Getwd()
 	execPath = path.ExecutePath(execPath, "easyPreparation")
 	token, key, ui := gui.Connector()
-
 	configPath := filepath.Join(execPath, "config/custom.json")
 	config := extract.ExtCustomOption(configPath)
 
