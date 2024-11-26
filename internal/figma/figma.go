@@ -1,7 +1,7 @@
 package figma
 
 import (
-	"easyPreparation_1.0/figma/get"
+	"easyPreparation_1.0/internal/figma/get"
 	"flag"
 	"github.com/torie/figma"
 	"os"

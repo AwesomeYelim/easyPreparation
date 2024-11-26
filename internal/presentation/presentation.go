@@ -1,7 +1,7 @@
 package presentation
 
 import (
-	"easyPreparation_1.0/executor/bulletin/cover/colorPalette"
+	"easyPreparation_1.0/internal/colorPalette"
 	"easyPreparation_1.0/internal/lyrics"
 	"github.com/jung-kurt/gofpdf/v2"
 	"image/color"
