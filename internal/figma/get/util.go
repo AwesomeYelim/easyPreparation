@@ -113,13 +113,3 @@ func convertToMapSlice(data []interface{}) []map[string]interface{} {
 	}
 	return result
 }
-
-func extractLeadingNumber(name string) int {
-	parts := strings.SplitN(name, "_", 2)
-	if len(parts) > 0 {
-		if num, err := strconv.Atoi(parts[0]); err == nil {
-			return num
-		}
-	}
-	return 0
-}

@@ -1,4 +1,4 @@
-package contents
+package forPrint
 
 type Color struct {
 	BoxColor  string `json:"boxColor"`

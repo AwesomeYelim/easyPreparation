@@ -1,12 +1,10 @@
-package contents
+package forPrint
 
 import (
 	"easyPreparation_1.0/internal/colorPalette"
 	"easyPreparation_1.0/internal/date"
 	"easyPreparation_1.0/internal/extract"
-	"easyPreparation_1.0/internal/figma"
-	"easyPreparation_1.0/internal/gui"
-	"easyPreparation_1.0/internal/path"
+	"easyPreparation_1.0/internal/figma/get"
 	"easyPreparation_1.0/internal/presentation"
 	"easyPreparation_1.0/pkg"
 	"fmt"
@@ -15,19 +13,8 @@ import (
 	"path/filepath"
 )
 
-func CreateContents() {
-	execPath, _ := os.Getwd()
-	execPath = path.ExecutePath(execPath, "easyPreparation")
-	token, key, ui := gui.Connector()
-	configPath := filepath.Join(execPath, "config/custom.json")
-	config := extract.ExtCustomOption(configPath)
-
-	defer func() {
-		_ = ui.Close()
-	}()
-	figmaInfo := figma.New(&token, &key, execPath)
-
-	outputDir := filepath.Join(execPath, config.OutputPath.Bulletin, "tmp")
+func CreatePrint(figmaInfo *get.Info, execPath string, config extract.Config) {
+	outputDir := filepath.Join(execPath, config.OutputPath.Bulletin, "print", "tmp")
 	_ = pkg.CheckDirIs(outputDir)
 
 	defer func() {
@@ -62,14 +49,13 @@ func CreateContents() {
 		}
 
 	}
-	outputBtPath := filepath.Join(execPath, config.OutputPath.Bulletin)
+	outputBtPath := filepath.Join(execPath, config.OutputPath.Bulletin, "print")
 
 	_ = pkg.CheckDirIs(outputBtPath)
 	bulletinPath := filepath.Join(outputBtPath, outputFilename)
 	err := objPdf.OutputFileAndClose(bulletinPath)
 	if err != nil {
-		msg := fmt.Sprintf(`document.getElementById("responseMessage").textContent = "PDF 저장 중 에러 발생: %v"`, err)
-		ui.Eval(msg)
+		fmt.Printf("PDF 저장 중 에러 발생: %v", err)
 	}
 }
 

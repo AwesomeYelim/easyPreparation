@@ -13,7 +13,7 @@ import (
 //go:embed index.html
 var htmlFile embed.FS
 
-func Connector() (token string, key string, ui lorca.UI) {
+func Connector() (token string, key string) {
 	// 임시 파일 생성 (임베드된 HTML 사용)
 	tempFile, err := os.CreateTemp("", "index-*.html")
 	if err != nil {
@@ -39,7 +39,7 @@ func Connector() (token string, key string, ui lorca.UI) {
 	}()
 
 	// local 경로로 UI 실행
-	ui, err = lorca.New("file://"+tempFile.Name(), "", 480, 320, "--remote-allow-origins=*", "--browser=/path/to/chrome")
+	ui, err := lorca.New("file://"+tempFile.Name(), "", 480, 320, "--remote-allow-origins=*", "--browser=/path/to/chrome")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -57,8 +57,8 @@ func Connector() (token string, key string, ui lorca.UI) {
 	// FIXME: 기존 ui 블로킹 버그 채널 통신 ui 창 닫지 않고 리턴되도록..
 	select {
 	case <-dataReceived:
-		return token, key, ui
+		return token, key
 	case <-ui.Done():
-		return token, key, ui
+		return token, key
 	}
 }

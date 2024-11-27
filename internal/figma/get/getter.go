@@ -8,7 +8,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"sort"
 )
 
 func (i *Info) GetNodes() {
@@ -68,17 +67,11 @@ func (i *Info) GetFrames(frameName string) []figma.Node {
 		}
 	}
 
-	// 정렬
-	sort.Slice(res, func(a, b int) bool {
-		numA := extractLeadingNumber(res[a].Name)
-		numB := extractLeadingNumber(res[b].Name)
-		return numA < numB
-	})
-
 	log.Printf("Got %d frames", len(res))
 	return res
 }
 
+// ppt 만들 resource
 func (i *Info) GetContents() {
 	var mainContent []map[string]interface{}
 
