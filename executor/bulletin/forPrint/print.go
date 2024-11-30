@@ -21,7 +21,6 @@ func CreatePrint(figmaInfo *get.Info, execPath string, config extract.Config) {
 		_ = os.RemoveAll(outputDir)
 	}()
 
-	figmaInfo.GetNodes()
 	figmaInfo.GetContents()
 	figmaInfo.GetFigmaImage(outputDir, "forPrint")
 

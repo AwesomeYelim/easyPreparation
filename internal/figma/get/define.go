@@ -13,9 +13,10 @@ type Children struct {
 }
 
 type Info struct {
-	Client   *figma.Client
-	Nodes    []figma.Node
-	Token    *string
-	Key      *string
-	ExecPath string
+	Client         *figma.Client
+	Nodes          []figma.Node
+	AssembledNodes []figma.Node
+	Token          *string
+	Key            *string
+	ExecPath       string
 }

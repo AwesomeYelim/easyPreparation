@@ -20,7 +20,6 @@ func CreatePresentation(figmaInfo *get.Info, execPath string, config extract.Con
 		_ = os.RemoveAll(outputDir)
 	}()
 
-	figmaInfo.GetNodes()
 	figmaInfo.GetFigmaImage(outputDir, "forShowing")
 
 	bulletinSize := gofpdf.SizeType{

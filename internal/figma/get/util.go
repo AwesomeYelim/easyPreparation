@@ -80,6 +80,14 @@ func extractChildren(contentResult map[string]interface{}) []Children {
 						})
 					}
 				}
+
+				// children 존재할 경우 재귀
+				if nestedChildren, ok := childMap["children"].([]interface{}); ok {
+					nestedResult := extractChildren(map[string]interface{}{
+						"children": nestedChildren,
+					})
+					children = append(children, nestedResult...)
+				}
 			}
 		}
 	}

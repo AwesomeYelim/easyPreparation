@@ -20,6 +20,7 @@ func main() {
 	config := extract.ExtCustomOption(configPath)
 
 	figmaInfo := figma.New(&token, &key, execPath)
+	figmaInfo.GetNodes()
 
 	forPrint.CreatePrint(figmaInfo, execPath, config)
 	forPresentation.CreatePresentation(figmaInfo, execPath, config)

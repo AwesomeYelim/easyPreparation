@@ -20,7 +20,7 @@ func (i *Info) GetNodes() {
 }
 
 func (i *Info) GetFigmaImage(path string, frameName string) {
-	i.Nodes = i.GetFrames(frameName)
+	i.AssembledNodes = i.GetFrames(frameName)
 	ids := i.GetIds()
 	images, err := i.Client.Images(*i.Key, 2, figma.ImageFormatPNG, ids...)
 	if err != nil {
@@ -47,8 +47,8 @@ func (i *Info) GetFigmaImage(path string, frameName string) {
 
 func (i *Info) GetIds() []string {
 	var res []string
-	for index := range i.Nodes {
-		res = append(res, i.Nodes[index].ID)
+	for index := range i.AssembledNodes {
+		res = append(res, i.AssembledNodes[index].ID)
 	}
 	return res
 }
