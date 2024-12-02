@@ -6,6 +6,7 @@ import (
 	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/figma/get"
 	"easyPreparation_1.0/internal/presentation"
+	"easyPreparation_1.0/internal/sorted"
 	"easyPreparation_1.0/pkg"
 	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
@@ -34,6 +35,8 @@ func CreatePrint(figmaInfo *get.Info, execPath string, config extract.Config) {
 
 	// 파일명 생성: "202411_3.pdf"
 	outputFilename := fmt.Sprintf("%s_%s.pdf", yearMonth, weekFormatted)
+
+	sorted.ToIntSort(files, "- ", ".png")
 
 	for i, file := range files {
 		imgPath := filepath.Join(outputDir, file.Name())

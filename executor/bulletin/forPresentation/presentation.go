@@ -5,6 +5,7 @@ import (
 	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/figma/get"
 	"easyPreparation_1.0/internal/presentation"
+	"easyPreparation_1.0/internal/sorted"
 	"easyPreparation_1.0/pkg"
 	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
@@ -32,6 +33,8 @@ func CreatePresentation(figmaInfo *get.Info, execPath string, config extract.Con
 	objPdf := presentation.New(bulletinSize)
 
 	outputFilename := fmt.Sprintf("%s_%s.pdf", yearMonth, weekFormatted)
+
+	sorted.ToIntSort(files, "- ", ".png")
 
 	for _, file := range files {
 		imgPath := filepath.Join(outputDir, file.Name())

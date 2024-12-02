@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func (i *Info) GetNodes() {
@@ -21,36 +22,35 @@ func (i *Info) GetNodes() {
 
 func (i *Info) GetFigmaImage(path string, frameName string) {
 	i.AssembledNodes = i.GetFrames(frameName)
-	ids := i.GetIds()
-	images, err := i.Client.Images(*i.Key, 2, figma.ImageFormatPNG, ids...)
-	if err != nil {
-		log.Println(err)
-	}
-	log.Printf("Downloading %d images\n", len(images))
-
-	for index, img := range images {
-		rc, err := download(img)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		data, err := io.ReadAll(rc)
-		if err != nil {
-			log.Fatal(err)
-		}
-		path := filepath.Join(path, fmt.Sprintf("%d.png", index+1))
-		if err := os.WriteFile(path, data, 0666); err != nil {
-			log.Fatal(err)
-		}
+	for index := range i.AssembledNodes {
+		id := i.AssembledNodes[index].ID
+		name := i.AssembledNodes[index].Name
+		i.GetImage(path, id, name)
 	}
 }
 
-func (i *Info) GetIds() []string {
-	var res []string
-	for index := range i.AssembledNodes {
-		res = append(res, i.AssembledNodes[index].ID)
+func (i *Info) GetImage(exePath string, id string, name string) {
+	img, err := i.Client.Images(*i.Key, 2, figma.ImageFormatPNG, id)
+	if err != nil {
+		log.Println(err)
 	}
-	return res
+	log.Printf("Downloading %s images\n", name)
+
+	rc, err := download(img[0])
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	data, err := io.ReadAll(rc)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	path := filepath.Join(exePath, fmt.Sprintf("%s.png", strings.SplitN(name, "_", 2)[0]))
+	if err := os.WriteFile(path, data, 0666); err != nil {
+		log.Fatal(err)
+	}
+
 }
 
 func (i *Info) GetFrames(frameName string) []figma.Node {
