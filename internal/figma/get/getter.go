@@ -71,14 +71,28 @@ func (i *Info) GetFrames(frameName string) []figma.Node {
 	return res
 }
 
+//// ppt 만들 resource
+//func (i *Info) GetContents() {
+//	var mainContent []map[string]interface{}
+//
+//	sample, _ := json.MarshalIndent(i.Nodes, "", "")
+//	err := json.Unmarshal(sample, &mainContent)
+//	if err != nil {
+//		log.Print("err : ", err)
+//	}
+//	_ = orgJson(mainContent, i.ExecPath)
+//}
+
 // ppt 만들 resource
-func (i *Info) GetContents() {
+func (i *Info) GetResource(target string) {
 	var mainContent []map[string]interface{}
 
-	sample, _ := json.MarshalIndent(i.Nodes, "", "")
-	err := json.Unmarshal(sample, &mainContent)
-	if err != nil {
-		log.Print("err : ", err)
-	}
-	_ = orgJson(mainContent, i.ExecPath)
+	sample, _ := json.MarshalIndent(i.AssembledNodes, "", "")
+	//err := json.Unmarshal(sample, &mainContent)
+	_ = os.WriteFile(filepath.Join(i.ExecPath, "config", "test.json"), sample, 0644)
+
+	//if err != nil {
+	//	log.Print("err : ", err)
+	//}
+	_ = orgJson(mainContent, i.ExecPath, target)
 }

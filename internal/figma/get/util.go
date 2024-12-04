@@ -1,13 +1,9 @@
 package get
 
 import (
-	"easyPreparation_1.0/pkg"
-	"encoding/json"
 	"github.com/torie/figma"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -23,34 +19,46 @@ func download(i figma.Image) (io.ReadCloser, error) {
 }
 
 // orgJson은 그룹화된 JSON 결과를 반환
-func orgJson(argResult []map[string]interface{}, execPath string) map[string][]Children {
-	grouped := make(map[string][]Children)
+//func orgJson(argResult []map[string]interface{}, execPath string) map[string][]Children {
+//	grouped := make(map[string][]Children)
+//
+//	for _, contentResult := range argResult {
+//		if name, ok := contentResult["name"].(string); ok {
+//			switch {
+//			case name == "content_1", name == "content_2", name == "content_3":
+//				processContent(name, contentResult, execPath)
+//			case strings.HasPrefix(name, "sub_"):
+//				grouped[name] = extractChildren(contentResult)
+//			}
+//		}
+//	}
+//
+//	return grouped
+//}
 
-	for _, contentResult := range argResult {
-		if name, ok := contentResult["name"].(string); ok {
-			switch {
-			case name == "content_1", name == "content_2", name == "content_3":
-				processContent(name, contentResult, execPath)
-			case strings.HasPrefix(name, "sub_"):
-				grouped[name] = extractChildren(contentResult)
+func orgJson(argResult []map[string]interface{}, execPath string, target string) (g map[string][]Children) {
+	for _, con := range argResult {
+		if which, ok := con["name"].(string); ok && which == target {
+			if _, cok := con["children"].([]interface{}) {
+
 			}
+
 		}
 	}
-
-	return grouped
+	return g
 }
 
-// 특정 content 이름에 따라 그룹화된 결과를 파일로 저장
-func processContent(name string, contentResult map[string]interface{}, execPath string) {
-	if children, ok := contentResult["children"].([]interface{}); ok {
-		result := orgJson(convertToMapSlice(children), execPath)
-		final := createSortedResult(result)
-
-		sample, _ := json.MarshalIndent(final, "", "  ")
-		_ = pkg.CheckDirIs(filepath.Join(execPath, "config"))
-		_ = os.WriteFile(filepath.Join(execPath, "config", name+".json"), sample, 0644)
-	}
-}
+//// 특정 content 이름에 따라 그룹화된 결과를 파일로 저장
+//func processContent(name string, contentResult map[string]interface{}, execPath string) {
+//	if children, ok := contentResult["children"].([]interface{}); ok {
+//		result := orgJson(convertToMapSlice(children), execPath)
+//		final := createSortedResult(result)
+//
+//		sample, _ := json.MarshalIndent(final, "", "  ")
+//		_ = pkg.CheckDirIs(filepath.Join(execPath, "config"))
+//		_ = os.WriteFile(filepath.Join(execPath, "config", name+".json"), sample, 0644)
+//	}
+//}
 
 // 그룹화된 결과를 정렬하여 리스트 형식으로 반환
 func createSortedResult(groupedResults map[string][]Children) []Element {

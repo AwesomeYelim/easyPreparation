@@ -22,7 +22,6 @@ func CreatePrint(figmaInfo *get.Info, execPath string, config extract.Config) {
 		_ = os.RemoveAll(outputDir)
 	}()
 
-	figmaInfo.GetContents()
 	figmaInfo.GetFigmaImage(outputDir, "forPrint")
 
 	highestLuminaceColor := colorPalette.HexToRGBA(config.Color.BoxColor)
