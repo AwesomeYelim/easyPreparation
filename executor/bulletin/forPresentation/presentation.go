@@ -36,7 +36,7 @@ func CreatePresentation(figmaInfo *get.Info, execPath string, config extract.Con
 
 	outputFilename := fmt.Sprintf("%s_%s.pdf", yearMonth, weekFormatted)
 
-	sorted.ToIntSort(files, "- ", ".png")
+	sorted.ToIntSort(files, "- ", ".png", 0)
 
 	var contents []map[string]interface{}
 	custom, err := os.ReadFile(filepath.Join(execPath, "config", "content_1.json"))

@@ -7,19 +7,25 @@ import (
 	"strings"
 )
 
-func ToIntSort[T []os.DirEntry | []string](files T, trimPrefix string, trimSuffix string) {
+func ToIntSort[T []os.DirEntry | []string](files T, trimPrefix string, trimSuffix string, flag int) {
 	sort.Slice(files, func(a, b int) bool {
-		extractNumber := func(name string) int {
+		extractNumber := func(name string) float64 {
 			parts := strings.TrimPrefix(name, trimPrefix)
-			parts = strings.TrimSuffix(name, trimSuffix)
-			num, err := strconv.Atoi(parts)
+			if flag == 1 {
+				if strings.Contains(name, trimSuffix) {
+					parts = strings.Split(name, trimSuffix)[0]
+				}
+			} else {
+				parts = strings.TrimSuffix(name, trimSuffix)
+			}
+			num, err := strconv.ParseFloat(parts, 64)
 			if err == nil {
 				return num
 			}
 			return 0
 		}
 
-		var aN, bN int
+		var aN, bN float64
 
 		switch fileTyped := any(files).(type) {
 		case []os.DirEntry:

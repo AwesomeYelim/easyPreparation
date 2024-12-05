@@ -7,5 +7,4 @@ import (
 func CreateScheme(figmaInfo *get.Info) {
 	figmaInfo.AssembledNodes = figmaInfo.GetFrames("forEdit")
 	figmaInfo.GetResource("main_worship")
-
 }

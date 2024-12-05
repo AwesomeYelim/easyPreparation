@@ -1,6 +1,8 @@
 package get
 
 import (
+	"easyPreparation_1.0/internal/sorted"
+	"easyPreparation_1.0/pkg"
 	"encoding/json"
 	"fmt"
 	"github.com/torie/figma"
@@ -71,28 +73,34 @@ func (i *Info) GetFrames(frameName string) []figma.Node {
 	return res
 }
 
-//// ppt 만들 resource
-//func (i *Info) GetContents() {
-//	var mainContent []map[string]interface{}
-//
-//	sample, _ := json.MarshalIndent(i.Nodes, "", "")
-//	err := json.Unmarshal(sample, &mainContent)
-//	if err != nil {
-//		log.Print("err : ", err)
-//	}
-//	_ = orgJson(mainContent, i.ExecPath)
-//}
-
 // ppt 만들 resource
 func (i *Info) GetResource(target string) {
 	var mainContent []map[string]interface{}
 
 	sample, _ := json.MarshalIndent(i.AssembledNodes, "", "")
-	//err := json.Unmarshal(sample, &mainContent)
-	_ = os.WriteFile(filepath.Join(i.ExecPath, "config", "test.json"), sample, 0644)
+	err := json.Unmarshal(sample, &mainContent)
 
-	//if err != nil {
-	//	log.Print("err : ", err)
-	//}
-	_ = orgJson(mainContent, i.ExecPath, target)
+	if err != nil {
+		log.Print("err : ", err)
+	}
+	var newG []Children
+	grouped := orgJson(mainContent, i.ExecPath, target)
+
+	var keys []string
+	for key, _ := range grouped {
+		keys = append(keys, key)
+	}
+	sorted.ToIntSort(keys, "", "_", 1)
+
+	for _, key := range keys {
+		temp := grouped[key]
+		newG = append(newG, Children{
+			Title: key,
+			Info:  temp[0].Info,
+		})
+	}
+
+	sample, _ = json.MarshalIndent(newG, "", "  ")
+	_ = pkg.CheckDirIs(filepath.Join(i.ExecPath, "config"))
+	_ = os.WriteFile(filepath.Join(i.ExecPath, "config", target+".json"), sample, 0644)
 }

@@ -35,7 +35,7 @@ func CreatePrint(figmaInfo *get.Info, execPath string, config extract.Config) {
 	// 파일명 생성: "202411_3.pdf"
 	outputFilename := fmt.Sprintf("%s_%s.pdf", yearMonth, weekFormatted)
 
-	sorted.ToIntSort(files, "- ", ".png")
+	sorted.ToIntSort(files, "- ", ".png", 0)
 
 	for i, file := range files {
 		imgPath := filepath.Join(outputDir, file.Name())
