@@ -5,7 +5,6 @@ import (
 	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/figma/get"
 	"easyPreparation_1.0/internal/presentation"
-	"easyPreparation_1.0/internal/sorted"
 	"easyPreparation_1.0/pkg"
 	"encoding/json"
 	"fmt"
@@ -13,6 +12,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func CreatePresentation(figmaInfo *get.Info, execPath string, config extract.Config) {
@@ -31,31 +31,34 @@ func CreatePresentation(figmaInfo *get.Info, execPath string, config extract.Con
 	}
 	yearMonth, weekFormatted := date.SetDateTitle()
 
-	files, _ := os.ReadDir(outputDir)
+	//files, _ := os.ReadDir(outputDir)
 	objPdf := presentation.New(bulletinSize)
 
 	outputFilename := fmt.Sprintf("%s_%s.pdf", yearMonth, weekFormatted)
 
-	sorted.ToIntSort(files, "- ", ".png", 0)
+	//sorted.ToIntSort(files, "- ", ".png", 0)
 
-	var contents []map[string]interface{}
-	custom, err := os.ReadFile(filepath.Join(execPath, "config", "content_1.json"))
+	var contents []map[string]string
+	custom, err := os.ReadFile(filepath.Join(execPath, "config", "main_worship.json"))
 	err = json.Unmarshal(custom, &contents)
 
-	log.Print(contents)
+	for _, con := range contents {
+		title := strings.Split(con["title"], "_")[1]
+		log.Print("title ", title, " ", figmaInfo.PathInfo)
 
-	//for _, con := range contents {
-	//	for _, child := range con["children"].([]map[string]string) {
-	//		log.Print(child["characters"])
-	//	}
-	//}
-	for _, file := range files {
-		imgPath := filepath.Join(outputDir, file.Name())
-
-		objPdf.AddPage()
-		objPdf.CheckImgPlaced(bulletinSize, imgPath, 0)
-
+		if path, ok := figmaInfo.PathInfo[title]; ok {
+			imgPath := filepath.Join(outputDir, filepath.Base(path))
+			objPdf.AddPage()
+			objPdf.CheckImgPlaced(bulletinSize, imgPath, 0)
+		}
 	}
+	//for _, file := range files {
+	//	imgPath := filepath.Join(outputDir, file.Name())
+	//
+	//	objPdf.AddPage()
+	//	objPdf.CheckImgPlaced(bulletinSize, imgPath, 0)
+	//
+	//}
 	outputBtPath := filepath.Join(execPath, config.OutputPath.Bulletin, "presentation")
 	_ = pkg.CheckDirIs(outputBtPath)
 	bulletinPath := filepath.Join(outputBtPath, outputFilename)

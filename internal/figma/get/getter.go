@@ -48,11 +48,12 @@ func (i *Info) GetImage(exePath string, id string, name string) {
 		log.Fatal(err)
 	}
 
-	path := filepath.Join(exePath, fmt.Sprintf("%s.png", strings.SplitN(name, "_", 2)[0]))
+	name = strings.Split(name, "_")[1]
+	path := filepath.Join(exePath, fmt.Sprintf("%s.png", name))
+	i.PathInfo[name] = path
 	if err := os.WriteFile(path, data, 0666); err != nil {
 		log.Fatal(err)
 	}
-
 }
 
 func (i *Info) GetFrames(frameName string) []figma.Node {

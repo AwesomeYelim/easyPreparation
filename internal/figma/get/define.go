@@ -14,4 +14,5 @@ type Info struct {
 	Token          *string
 	Key            *string
 	ExecPath       string
+	PathInfo       map[string]string
 }

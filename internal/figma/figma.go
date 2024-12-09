@@ -17,5 +17,6 @@ func New(token *string, key *string, execPath string) (node *get.Info) {
 		Token:    token,
 		Key:      key,
 		ExecPath: execPath,
+		PathInfo: make(map[string]string),
 	}
 }
