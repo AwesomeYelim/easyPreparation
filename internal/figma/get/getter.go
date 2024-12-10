@@ -48,7 +48,15 @@ func (i *Info) GetImage(exePath string, id string, name string) {
 		log.Fatal(err)
 	}
 
-	name = strings.Split(name, "_")[1]
+	switch i.FrameName {
+	case "forShowing":
+		name = strings.Split(name, "_")[1] // 이름만
+	case "forPrint":
+		name = strings.Split(name, "_")[0] // 숫자만
+	default:
+		name = strings.Split(name, "_")[1]
+	}
+
 	path := filepath.Join(exePath, fmt.Sprintf("%s.png", name))
 	i.PathInfo[name] = path
 	if err := os.WriteFile(path, data, 0666); err != nil {
@@ -62,6 +70,7 @@ func (i *Info) GetFrames(frameName string) []figma.Node {
 	for index := range i.Nodes {
 		if i.Nodes[index].Type == figma.NodeTypeFrame {
 			if i.Nodes[index].Name == frameName {
+				i.FrameName = frameName
 				childrenFrames := (&Info{Nodes: i.Nodes[index].Children}).GetFrames("children")
 				res = append(res, childrenFrames...)
 			} else if frameName == "children" {

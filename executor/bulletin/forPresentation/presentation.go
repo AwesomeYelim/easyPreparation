@@ -1,6 +1,7 @@
 package forPresentation
 
 import (
+	"easyPreparation_1.0/internal/colorPalette"
 	"easyPreparation_1.0/internal/date"
 	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/figma/get"
@@ -9,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,6 +24,7 @@ func CreatePresentation(figmaInfo *get.Info, execPath string, config extract.Con
 	}()
 
 	figmaInfo.GetFigmaImage(outputDir, "forShowing")
+	highestLuminaceColor := colorPalette.HexToRGBA(config.Color.BoxColor)
 
 	bulletinSize := gofpdf.SizeType{
 		Wd: config.Size.Background.Width,
@@ -44,12 +45,13 @@ func CreatePresentation(figmaInfo *get.Info, execPath string, config extract.Con
 
 	for _, con := range contents {
 		title := strings.Split(con["title"], "_")[1]
-		log.Print("title ", title, " ", figmaInfo.PathInfo)
+		//log.Print("title ", title, " ", figmaInfo.PathInfo)
 
 		if path, ok := figmaInfo.PathInfo[title]; ok {
 			imgPath := filepath.Join(outputDir, filepath.Base(path))
 			objPdf.AddPage()
 			objPdf.CheckImgPlaced(bulletinSize, imgPath, 0)
+			objPdf.WriteText(148.5, 110, 27, con["info"], highestLuminaceColor)
 		}
 	}
 	//for _, file := range files {
@@ -67,4 +69,18 @@ func CreatePresentation(figmaInfo *get.Info, execPath string, config extract.Con
 		fmt.Printf("PDF 저장 중 에러 발생: %v", err)
 	}
 
+}
+
+// A4 기준
+func getSize(config extract.Config) (gofpdf.SizeType, presentation.BoxSize) {
+	bulletinSize := gofpdf.SizeType{
+		Wd: config.Size.Background.Width,
+		Ht: config.Size.Background.Height,
+	}
+	rectangle := presentation.BoxSize{
+		Width:  config.Size.InnerRectangle.Width,
+		Height: config.Size.InnerRectangle.Height,
+	}
+
+	return bulletinSize, rectangle
 }

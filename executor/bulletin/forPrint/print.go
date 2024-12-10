@@ -46,7 +46,7 @@ func CreatePrint(figmaInfo *get.Info, execPath string, config extract.Config) {
 
 		if i == 0 {
 			sunDatText := date.SetThisSunDay()
-			objPdf.WriteText("right", rectangle, sunDatText, padding, "end", 10, execPath, highestLuminaceColor)
+			objPdf.WriteText(bulletinSize.Wd-padding, padding, 10, sunDatText, highestLuminaceColor)
 		}
 
 	}

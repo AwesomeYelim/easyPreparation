@@ -119,7 +119,7 @@ func (pdf *PDF) DrawLine(length, x, y float64, color ...color.Color) {
 	pdf.Line(x, y, x+length, y)
 }
 
-func (pdf *PDF) WriteText(side string, boxSize BoxSize, text string, padding float64, alignment string, fontSize float64, execPath string, textColor ...color.Color) {
+func (pdf *PDF) WriteText(x, y, fontSize float64, text string, textColor ...color.Color) {
 	fontPath := "./public/font/NotoSansKR-Bold.ttf"
 	// 폰트 설정
 	pdf.AddUTF8Font("NotoSansKR-Bold", "", fontPath)
@@ -129,12 +129,13 @@ func (pdf *PDF) WriteText(side string, boxSize BoxSize, text string, padding flo
 	// 텍스트 색상 설정
 	rgba := pdf.getColorRGB(textColor)
 
-	// 텍스트 위치 계산
-	x := pdf.calculateTextPosition(side, alignment, padding, boxSize.Width, textWidth)
-
 	// 텍스트 출력
 	pdf.SetTextColor(int(rgba[0]), int(rgba[1]), int(rgba[2]))
-	pdf.Text(x, padding, text)
+	if x > 10 {
+		x = x - (textWidth / 2)
+	}
+	pdf.Text(x, y, text)
+
 }
 
 // 텍스트 색상 설정 함수
@@ -152,26 +153,49 @@ func (pdf *PDF) getColorRGB(textColor []color.Color) []uint32 {
 }
 
 // 텍스트 위치 계산 함수
-func (pdf *PDF) calculateTextPosition(side, alignment string, padding, boxWidth, textWidth float64) float64 {
+func (pdf *PDF) calculateTextPosition(side, xAlignment, yAlignment string, padding, boxWidth, textWidth float64) (float64, float64) {
 	var x float64
-	rightOffset := 148.0
+	var y float64
 
-	// 측면 설정
-	if side == "right" {
+	leftOffset, centerOffset, rightOffset := 0.0, 99.0, 148.0
+
+	switch side {
+	case "right":
 		x = rightOffset
+		break
+	case "left":
+		x = leftOffset
+		break
+	case "center":
+		x = centerOffset + (textWidth / 2)
+		break
+	}
+
+	switch yAlignment {
+	case "top":
+		y = padding
+		break
+	case "center":
+		y = 105.0
+		break
+	case "bottom":
+		y = 210 - padding
+		break
 	}
 
 	// 정렬 설정
-	switch alignment {
+	switch xAlignment {
 	case "start":
 		x += padding
 		break
 	case "center":
-		x += padding + (boxWidth-textWidth)/2
+		if side != "center" {
+			x += padding + (boxWidth-textWidth)/2
+		}
 		break
 	case "end":
 		x += padding + (boxWidth - textWidth)
 		break
 	}
-	return x
+	return x, y
 }
