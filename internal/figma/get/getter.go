@@ -105,8 +105,9 @@ func (i *Info) GetResource(target string) {
 	for _, key := range keys {
 		temp := grouped[key]
 		newG = append(newG, Children{
-			Title: key,
-			Info:  temp[0].Info,
+			Title:   key,
+			Content: temp[0].Content,
+			Info:    temp[0].Info,
 		})
 	}
 

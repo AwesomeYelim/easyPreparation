@@ -55,22 +55,23 @@ func extractChildren(contentResult map[string]interface{}) []Children {
 	if childItems, ok := contentResult["children"].([]interface{}); ok {
 		for _, child := range childItems {
 			if childMap, ok := child.(map[string]interface{}); ok {
-				if cName, cOk := childMap["name"].(string); cOk {
-					if characters, ok := childMap["characters"].(string); ok {
-						children = append(children, Children{
-							Title: cName,
-							Info:  characters,
-						})
-					}
+				cName, nOk := childMap["name"].(string)
+				characters, cOk := childMap["characters"].(string)
+
+				if nOk && cOk {
+					children = append(children, Children{
+						Content: characters,
+						Info:    cName,
+					})
 				}
 
 				// children 존재할 경우 재귀
-				if nestedChildren, ok := childMap["children"].([]interface{}); ok {
-					nestedResult := extractChildren(map[string]interface{}{
-						"children": nestedChildren,
-					})
-					children = append(children, nestedResult...)
-				}
+				//if nestedChildren, ok := childMap["children"].([]interface{}); ok {
+				//	nestedResult := extractChildren(map[string]interface{}{
+				//		"children": nestedChildren,
+				//	})
+				//	children = append(children, nestedResult...)
+				//}
 			}
 		}
 	}
