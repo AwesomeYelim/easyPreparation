@@ -1,9 +1,15 @@
 package get
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/torie/figma"
 	"io"
+	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"unicode"
 )
 
@@ -27,7 +33,7 @@ func orgJson(argResult []map[string]interface{}, execPath string, target string)
 					grouped = orgJson(convertToMapSlice(children), execPath, target)
 				}
 			case isValidPattern(name):
-				grouped[name] = extractChildren(contentResult)
+				grouped[name] = extractChildren(contentResult, name)
 			}
 		}
 	}
@@ -49,7 +55,7 @@ func isValidPattern(name string) bool {
 }
 
 // 하위 항목에서 자식 요소 추출
-func extractChildren(contentResult map[string]interface{}) []Children {
+func extractChildren(contentResult map[string]interface{}, name string) []Children {
 	var children []Children
 
 	if childItems, ok := contentResult["children"].([]interface{}); ok {
@@ -59,24 +65,115 @@ func extractChildren(contentResult map[string]interface{}) []Children {
 				characters, cOk := childMap["characters"].(string)
 
 				if nOk && cOk {
-					children = append(children, Children{
-						Content: characters,
-						Info:    cName,
-					})
+					if strings.HasSuffix(name, "부름") || strings.HasSuffix(name, "봉독") {
+						children = append(children, Children{
+							Content: characters,
+							Info:    cName,
+							Obj:     displayQuote(characters),
+						})
+
+					} else {
+						children = append(children, Children{
+							Content: characters,
+							Info:    cName,
+						})
+					}
+
 				}
 
-				// children 존재할 경우 재귀
-				//if nestedChildren, ok := childMap["children"].([]interface{}); ok {
-				//	nestedResult := extractChildren(map[string]interface{}{
-				//		"children": nestedChildren,
-				//	})
-				//	children = append(children, nestedResult...)
-				//}
 			}
 		}
 	}
 
 	return children
+}
+
+func StripTags(html string) string {
+	html = strings.ReplaceAll(html, "\u003c", "<")
+	html = strings.ReplaceAll(html, "\u003e", ">")
+	html = strings.ReplaceAll(html, "&nbsp;", " ")
+	html = strings.ReplaceAll(html, "\r\n", "\n")
+
+	lines := strings.Split(html, "\n")
+	var result []string
+
+	for _, line := range lines {
+		line = removeTags(line)
+
+		if strings.TrimSpace(line) != "" {
+			result = append(result, strings.TrimSpace(line))
+		}
+	}
+
+	return strings.Join(result, "\n")
+}
+
+func removeTags(input string) string {
+	var output strings.Builder
+	inTag := false
+	for _, char := range input {
+		if char == '<' {
+			inTag = true
+		} else if char == '>' {
+			inTag = false
+		} else if !inTag {
+			output.WriteRune(char)
+		}
+	}
+	return output.String()
+}
+
+func displayQuote(characters string) string {
+
+	var dictB map[string]struct {
+		Eng string `json:"eng"`
+		Kor string `json:"kor"`
+	}
+
+	dict, err := os.ReadFile(filepath.Join("./config", "bible_dict.json"))
+	err = json.Unmarshal(dict, &dictB)
+	char := strings.Split(characters, " ")
+	cover := ExpandRange(char[1])
+
+	url := fmt.Sprintf("http://ibibles.net/quote.php?kor-%s/%s", dictB[char[0]].Eng, cover)
+
+	// HTTP GET 요청 생성
+	resp, err := http.Get(url)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return ""
+	}
+	defer resp.Body.Close() // 응답이 끝난 후 자원 해제
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("Failed to fetch data. Status code:", resp.StatusCode)
+		return ""
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("Error reading response body:", err)
+		return ""
+	}
+
+	return StripTags(string(body))
+}
+
+func ExpandRange(input string) string {
+	parts := strings.Split(input, ":")
+	if len(parts) != 2 {
+		return input
+	}
+
+	prefix := parts[0]
+	rangePart := parts[1]
+
+	rangeNumbers := strings.Split(rangePart, "-")
+	if len(rangeNumbers) != 2 {
+		return input
+	}
+
+	return fmt.Sprintf("%s:%s-%s:%s", prefix, rangeNumbers[0], prefix, rangeNumbers[1])
 }
 
 // []interface{} => []map[string]interface{}

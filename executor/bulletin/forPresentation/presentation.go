@@ -48,7 +48,11 @@ func CreatePresentation(figmaInfo *get.Info, execPath string, config extract.Con
 			objPdf.AddPage()
 			objPdf.CheckImgPlaced(bulletinSize, imgPath, 0)
 			if strings.Contains(con.Info, "edit") {
-				objPdf.WriteText(148.5, 110, 27, con.Content, highestLuminaceColor)
+				if strings.HasPrefix(con.Title, "2_") {
+					objPdf.WriteText(148.5, 110, 27, con.Obj, highestLuminaceColor)
+				} else {
+					objPdf.WriteText(148.5, 110, 27, con.Content, highestLuminaceColor)
+				}
 			}
 		}
 	}
