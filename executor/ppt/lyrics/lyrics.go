@@ -7,6 +7,8 @@ import (
 	"easyPreparation_1.0/internal/presentation"
 	"easyPreparation_1.0/pkg"
 	"fmt"
+	"github.com/jung-kurt/gofpdf/v2"
+	"image/color"
 	"log"
 	"os"
 	"path/filepath"
@@ -61,12 +63,34 @@ func createPresentationForSongs(songTitles []string) {
 
 		fileName := filepath.Join(outPutDir, sanitizeFileName(title)+".pdf")
 
-		// PDF 프레젠테이션 생성
-		presentation.CreatePresentation(song, fileName)
+		pdfSize := gofpdf.SizeType{
+			Wd: 297.0,
+			Ht: 167.0,
+		}
+		objPdf := presentation.New(pdfSize)
+		objPdf.SetText(40, color.RGBA{R: 255, G: 255, B: 255})
+
+		for _, content := range song.Content {
+			objPdf.AddPage()
+			// 배경 이미지 추가 (배경 이미지를 추가하려면 파일이 필요합니다)
+			backgroundImage := "./public/images/ppt_background.png"
+			objPdf.CheckImgPlaced(pdfSize, backgroundImage, 0)
+
+			var textW float64 = 250
+			var textH float64 = 20
+			// 텍스트 추가 (내용 설정)
+			objPdf.SetXY((pdfSize.Wd-textW)/2, (pdfSize.Ht-textH)/2)
+			objPdf.MultiCell(textW, textH, content, "", "C", false)
+		}
+		err := objPdf.OutputFileAndClose(fileName)
+		if err != nil {
+			log.Fatalf("PDF 저장 중 에러 발생: %v", err)
+		}
+
 		fmt.Printf("프레젠테이션이 '%s'에 저장되었습니다.\n", fileName)
 
 		path := "data/local.db"
-		err := pkg.CheckDirIs(filepath.Dir(path)) // 경로가 없다면 생성
+		err = pkg.CheckDirIs(filepath.Dir(path)) // 경로가 없다면 생성
 		if err != nil {
 			fmt.Printf("디렉토리 생성 중 오류 발생: %v\n", err)
 			return

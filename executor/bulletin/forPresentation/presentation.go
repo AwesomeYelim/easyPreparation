@@ -47,11 +47,43 @@ func CreatePresentation(figmaInfo *get.Info, execPath string, config extract.Con
 			imgPath := filepath.Join(outputDir, filepath.Base(path))
 			objPdf.AddPage()
 			objPdf.CheckImgPlaced(bulletinSize, imgPath, 0)
+
 			if strings.Contains(con.Info, "edit") {
 				if strings.HasPrefix(con.Title, "2_") {
-					objPdf.WriteText(148.5, 110, 27, con.Obj, highestLuminaceColor)
+					objPdf.SetText(20, highestLuminaceColor)
+					var subContents []string
+					// 공백 제거
+					trimmedText := pkg.RemoveEmptyLines(con.Obj)
+					lines := strings.Split(trimmedText, "\n")
+					for i := 0; i < len(lines); i++ {
+						if strings.HasPrefix(lines[i], "Bible Quote") {
+							lines[i] = strings.TrimPrefix(lines[i], "Bible Quote")
+						}
+						lines[i] = removeLineNumberPattern(lines[i])
+						subContents = append(subContents, lines[i])
+					}
+					for i := 0; i < len(subContents); i += 4 {
+						if i > 0 {
+							objPdf.AddPage()
+							objPdf.CheckImgPlaced(bulletinSize, imgPath, 0)
+						}
+
+						if i+4 < len(lines) {
+							subContents = append(subContents, lines[i]+"\n"+lines[i+1]+"\n"+lines[i+2]+"\n"+lines[i+3])
+						} else {
+							subContents = append(subContents, lines[i])
+						}
+
+						var textW float64 = 250
+						var textH float64 = 20
+						// 텍스트 추가 (내용 설정)
+						objPdf.SetXY((bulletinSize.Wd-textW)/2, (bulletinSize.Ht-textH)/2)
+						objPdf.MultiCell(textW, textH, subContents[i], "", "C", false)
+					}
+
 				} else {
-					objPdf.WriteText(148.5, 110, 27, con.Content, highestLuminaceColor)
+					objPdf.SetText(27, highestLuminaceColor)
+					objPdf.WriteText(148.5, 110, con.Content)
 				}
 			}
 		}
@@ -65,4 +97,12 @@ func CreatePresentation(figmaInfo *get.Info, execPath string, config extract.Con
 		fmt.Printf("PDF 저장 중 에러 발생: %v", err)
 	}
 
+}
+func removeLineNumberPattern(text string) string {
+	// 앞에서부터 숫자와 콜론(:)이 나오면 이를 제거
+	i := 0
+	for i < len(text) && (text[i] >= '0' && text[i] <= '9' || text[i] == ':') {
+		i++
+	}
+	return strings.TrimSpace(text[i:])
 }
