@@ -62,12 +62,12 @@ func CreatePrint(figmaInfo *get.Info, execPath string, config extract.Config) {
 }
 
 // A4 기준
-func getSize(config extract.Config) (gofpdf.SizeType, presentation.BoxSize) {
+func getSize(config extract.Config) (gofpdf.SizeType, presentation.Size) {
 	bulletinSize := gofpdf.SizeType{
 		Wd: config.Size.Background.Width,
 		Ht: config.Size.Background.Height,
 	}
-	rectangle := presentation.BoxSize{
+	rectangle := presentation.Size{
 		Width:  config.Size.InnerRectangle.Width,
 		Height: config.Size.InnerRectangle.Height,
 	}

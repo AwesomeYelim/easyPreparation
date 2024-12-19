@@ -2,18 +2,29 @@ package presentation
 
 import (
 	"easyPreparation_1.0/internal/colorPalette"
+	"easyPreparation_1.0/internal/extract"
+	"easyPreparation_1.0/internal/figma/get"
+	"easyPreparation_1.0/internal/parser"
+	"easyPreparation_1.0/pkg"
+	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
 	"image/color"
 	"log"
 	"os"
+	"strings"
 )
 
 type PDF struct {
 	*gofpdf.Fpdf
-	BoxSize
+	Title      string
+	FullSize   gofpdf.SizeType
+	BoxSize    Size
+	Contents   []string
+	Path       string
+	CommonPath string
 }
 
-type BoxSize struct {
+type Size struct {
 	Width  float64
 	Height float64
 }
@@ -47,7 +58,7 @@ func (pdf *PDF) CheckImgPlaced(pdfSize gofpdf.SizeType, path string, place float
 }
 
 // 박스 그려주는 함수
-func (pdf *PDF) DrawBox(boxSize BoxSize, x, y float64, color ...color.Color) {
+func (pdf *PDF) DrawBox(boxSize Size, x, y float64, color ...color.Color) {
 	colorList := colorPalette.GetColorWithSortByLuminance()
 	highestLuminaceColor := colorList[len(colorList)-1] // 채도 가장 낮은 색상 - background
 
@@ -115,4 +126,49 @@ func (pdf *PDF) getColorRGB(textColor []color.Color) []uint32 {
 		rgba = colorPalette.ConvertToRGBRange(textColor[0].RGBA())
 	}
 	return rgba
+}
+
+func (pdf *PDF) ForEdit(con get.Children, config extract.Config) {
+	highestLuminaceColor := colorPalette.HexToRGBA(config.Color.BoxColor)
+	if strings.HasPrefix(con.Title, "2_") {
+		var textSize float64 = 25
+		var tmpEl string
+
+		pdf.SetText(textSize, highestLuminaceColor)
+		// 공백 제거
+		trimmedText := pkg.RemoveEmptyLines(con.Obj)
+		lines := strings.Split(trimmedText, "\n")
+
+		for i, el := range lines {
+			if strings.HasPrefix(el, "Bible Quote") {
+				lines[i] = strings.TrimPrefix(el, "Bible Quote")
+			}
+			lines[i] = parser.RemoveLineNumberPattern(lines[i])
+			if i == 0 {
+				// 앞에 말씀 범위 표시하기
+				lines[i] = fmt.Sprintf("%s\n%s", con.Content, lines[i])
+			}
+			// 4개씩 묶기
+			if i != 0 && i%4 == 0 {
+				// FIXME: 위에 한번 추가 해줘서
+				if i/4 != 1 {
+					pdf.AddPage()
+					pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
+				}
+
+				tmpEl += lines[i] + "\n"
+
+				var textW float64 = 230
+				// 텍스트 추가 (내용 설정)
+				pdf.SetXY((pdf.FullSize.Wd-textW)/2, textSize*3)
+				pdf.MultiCell(textW, textSize/2, tmpEl, "", "C", false)
+				tmpEl = ""
+			} else {
+				tmpEl += lines[i] + "\n"
+			}
+		}
+	} else {
+		pdf.SetText(27, highestLuminaceColor)
+		pdf.WriteText(148.5, 110, con.Content)
+	}
 }
