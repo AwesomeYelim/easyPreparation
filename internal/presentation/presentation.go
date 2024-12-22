@@ -130,7 +130,8 @@ func (pdf *PDF) getColorRGB(textColor []color.Color) []uint32 {
 
 func (pdf *PDF) ForEdit(con get.Children, config extract.Config) {
 	highestLuminaceColor := colorPalette.HexToRGBA(config.Color.BoxColor)
-	if strings.HasPrefix(con.Title, "2_") {
+	switch pdf.Title {
+	case "예배의 부름":
 		var textSize float64 = 25
 		var tmpEl string
 
@@ -167,8 +168,11 @@ func (pdf *PDF) ForEdit(con get.Children, config extract.Config) {
 				tmpEl += lines[i] + "\n"
 			}
 		}
-	} else {
+	case "성경봉독":
+
+	default:
 		pdf.SetText(27, highestLuminaceColor)
 		pdf.WriteText(148.5, 110, con.Content)
 	}
+
 }

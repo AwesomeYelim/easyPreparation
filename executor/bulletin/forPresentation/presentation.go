@@ -43,9 +43,18 @@ func CreatePresentation(figmaInfo *get.Info, execPath string, config extract.Con
 		splitTitle := strings.Split(con.Title, "_")
 		objPdf.Title = splitTitle[1]
 
-		//if strconv.Atoi(strings.Split(splitTitle[0], ".")[0]) == strconv.Atoi(strings.Split(contents[i-1].Title, "_")[0]) {
-		//	objPdf.CommonPath = objPdf.Title
+		//var subT int
+		//var target int
+		//if strings.Contains(splitTitle[0], ".") {
+		//	subT, _ = strconv.Atoi(strings.Split(splitTitle[0], ".")[0])
+		//	if i+1 < len(contents) {
+		//		target, _ = strconv.Atoi(strings.Split(contents[i-1].Title, "_")[0])
+		//		if subT == target {
+		//			objPdf.CommonPath = objPdf.Title
+		//		}
+		//	}
 		//}
+		//log.Print("objPdf.CommonPath", objPdf.CommonPath)
 
 		if path, ok := figmaInfo.PathInfo[objPdf.Title]; ok {
 			objPdf.Path = filepath.Join(outputDir, filepath.Base(path))
