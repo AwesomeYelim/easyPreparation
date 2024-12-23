@@ -169,6 +169,39 @@ func (pdf *PDF) ForEdit(con get.Children, config extract.Config) {
 			}
 		}
 	case "성경봉독":
+		var textSize float64 = 25
+		var tmpEl string
+
+		pdf.SetText(textSize, highestLuminaceColor)
+
+		// 공백 제거
+		trimmedText := pkg.RemoveEmptyLines(con.Obj)
+		lines := strings.Split(trimmedText, "\n")
+
+		for i, el := range lines {
+			if strings.HasPrefix(el, "Bible Quote") {
+				lines[i] = strings.TrimPrefix(el, "Bible Quote")
+			}
+
+			// 3개씩 묶기
+			if i != 0 && i%3 == 0 {
+				// FIXME: 위에 한번 추가 해줘서
+				if i/3 != 1 {
+					pdf.AddPage()
+					pdf.CheckImgPlaced(pdf.FullSize, pdf.CommonPath, 0)
+				}
+
+				tmpEl += lines[i] + "\n"
+
+				var textW float64 = 230
+				// 텍스트 추가 (내용 설정)
+				pdf.SetXY((pdf.FullSize.Wd-textW)/2, textSize*3)
+				pdf.MultiCell(textW, textSize/2, tmpEl, "", "L", false)
+				tmpEl = ""
+			} else {
+				tmpEl += lines[i] + "\n"
+			}
+		}
 
 	default:
 		pdf.SetText(27, highestLuminaceColor)
