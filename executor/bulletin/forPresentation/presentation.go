@@ -9,10 +9,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
-	"log"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
 
@@ -41,28 +39,14 @@ func CreatePresentation(figmaInfo *get.Info, execPath string, config extract.Con
 	custom, err := os.ReadFile(filepath.Join(execPath, "config", "main_worship.json"))
 	err = json.Unmarshal(custom, &contents)
 
-	for i, con := range contents {
+	for _, con := range contents {
 		splitTitle := strings.Split(con.Title, "_")
 		objPdf.Title = splitTitle[1]
-
-		var subT int
-		var target int
-		if strings.Contains(splitTitle[0], ".") {
-			subT, _ = strconv.Atoi(strings.Split(splitTitle[0], ".")[0])
-			if i+1 < len(contents) {
-				target, _ = strconv.Atoi(strings.Split(contents[i-1].Title, "_")[0])
-				if subT == target {
-					objPdf.CommonPath = objPdf.Title
-				}
-			}
-		}
-		log.Print("objPdf.CommonPath", objPdf.CommonPath)
 
 		if path, ok := figmaInfo.PathInfo[objPdf.Title]; ok {
 			objPdf.Path = filepath.Join(outputDir, filepath.Base(path))
 			objPdf.AddPage()
 			objPdf.CheckImgPlaced(objPdf.FullSize, objPdf.Path, 0)
-
 			if strings.Contains(con.Info, "edit") {
 				objPdf.ForEdit(con, config)
 			}

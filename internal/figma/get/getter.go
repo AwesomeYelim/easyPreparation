@@ -105,13 +105,19 @@ func (i *Info) GetResource(target string) {
 	}
 	sorted.ToIntSort(keys, "", "_", 1)
 
-	for _, key := range keys {
-		temp := grouped[key]
+	for ind, key := range keys {
+		var temp Children
+		temp = grouped[key][0]
+
+		// 하위 정렬인 경우 이전 obj 내용을 갖고 옴
+		if strings.Contains(key, ".") && ind < len(keys) {
+			temp.Obj = grouped[keys[ind-1]][0].Obj
+		}
 		newG = append(newG, Children{
 			Title:   key,
-			Content: temp[0].Content,
-			Info:    temp[0].Info,
-			Obj:     temp[0].Obj,
+			Content: temp.Content,
+			Info:    temp.Info,
+			Obj:     temp.Obj,
 		})
 	}
 
