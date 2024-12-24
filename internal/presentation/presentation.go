@@ -16,12 +16,11 @@ import (
 
 type PDF struct {
 	*gofpdf.Fpdf
-	Title      string
-	FullSize   gofpdf.SizeType
-	BoxSize    Size
-	Contents   []string
-	Path       string
-	CommonPath string
+	Title    string
+	FullSize gofpdf.SizeType
+	BoxSize  Size
+	Contents []string
+	Path     string
 }
 
 type Size struct {
@@ -127,40 +126,44 @@ func (pdf *PDF) getColorRGB(textColor []color.Color) []uint32 {
 	}
 	return rgba
 }
-
 func (pdf *PDF) ForEdit(con get.Children, config extract.Config) {
 	highestLuminaceColor := colorPalette.HexToRGBA(config.Color.BoxColor)
+
 	switch pdf.Title {
 	case "예배의 부름":
-		var textSize float64 = 25
-		var tmpEl string
+		SetTextForEdit(pdf, con, highestLuminaceColor, true)
+	case "말씀내용":
+		SetTextForEdit(pdf, con, highestLuminaceColor, false)
+	default:
+		pdf.SetText(27, highestLuminaceColor)
+		pdf.WriteText(148.5, 110, con.Content)
+	}
+}
 
-		pdf.SetText(textSize, highestLuminaceColor)
-		// 공백 제거
-		trimmedText := pkg.RemoveEmptyLines(con.Obj)
-		lines := strings.Split(trimmedText, "\n")
+func SetTextForEdit(pdf *PDF, con get.Children, highestLuminaceColor color.RGBA, isCallTypeOne bool) {
+	var textSize float64 = 25
+	var textW float64 = 230
+	var tmpEl string
 
+	pdf.SetText(textSize, highestLuminaceColor)
+	// 공백 제거
+	trimmedText := pkg.RemoveEmptyLines(con.Obj)
+	lines := strings.Split(trimmedText, "\n")
+	if isCallTypeOne {
 		for i, el := range lines {
 			if strings.HasPrefix(el, "Bible Quote") {
 				lines[i] = strings.TrimPrefix(el, "Bible Quote")
 			}
 			lines[i] = parser.RemoveLineNumberPattern(lines[i])
 			if i == 0 {
-				// 앞에 말씀 범위 표시하기
 				lines[i] = fmt.Sprintf("%s\n%s", con.Content, lines[i])
 			}
-			// 4개씩 묶기
 			if i != 0 && i%4 == 0 {
-				// FIXME: 위에 한번 추가 해줘서
 				if i/4 != 1 {
 					pdf.AddPage()
 					pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
 				}
-
 				tmpEl += lines[i] + "\n"
-
-				var textW float64 = 230
-				// 텍스트 추가 (내용 설정)
 				pdf.SetXY((pdf.FullSize.Wd-textW)/2, textSize*3)
 				pdf.MultiCell(textW, textSize/2, tmpEl, "", "C", false)
 				tmpEl = ""
@@ -168,44 +171,29 @@ func (pdf *PDF) ForEdit(con get.Children, config extract.Config) {
 				tmpEl += lines[i] + "\n"
 			}
 		}
-	case "성경봉독":
-		var textSize float64 = 25
-		var tmpEl string
-
-		pdf.SetText(textSize, highestLuminaceColor)
-
-		// 공백 제거
-		trimmedText := pkg.RemoveEmptyLines(con.Obj)
-		lines := strings.Split(trimmedText, "\n")
-
+	} else {
 		for i, el := range lines {
 			if strings.HasPrefix(el, "Bible Quote") {
 				lines[i] = strings.TrimPrefix(el, "Bible Quote")
 			}
-
-			// 3개씩 묶기
 			if i != 0 && i%3 == 0 {
-				// FIXME: 위에 한번 추가 해줘서
 				if i/3 != 1 {
 					pdf.AddPage()
-					pdf.CheckImgPlaced(pdf.FullSize, pdf.CommonPath, 0)
+					pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
 				}
-
-				tmpEl += lines[i] + "\n"
-
-				var textW float64 = 230
-				// 텍스트 추가 (내용 설정)
-				pdf.SetXY((pdf.FullSize.Wd-textW)/2, textSize*3)
+				tmpEl += lines[i] + "\n\n"
+				pdf.SetXY(textSize, textSize)
 				pdf.MultiCell(textW, textSize/2, tmpEl, "", "L", false)
 				tmpEl = ""
+			} else if i == len(lines)-1 {
+				tmpEl += lines[i]
+				pdf.AddPage()
+				pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
+				pdf.SetXY(textSize, textSize)
+				pdf.MultiCell(textW, textSize/2, tmpEl, "", "L", false)
 			} else {
-				tmpEl += lines[i] + "\n"
+				tmpEl += lines[i] + "\n\n"
 			}
 		}
-
-	default:
-		pdf.SetText(27, highestLuminaceColor)
-		pdf.WriteText(148.5, 110, con.Content)
 	}
-
 }
