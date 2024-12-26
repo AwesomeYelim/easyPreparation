@@ -127,72 +127,98 @@ func (pdf *PDF) getColorRGB(textColor []color.Color) []uint32 {
 	return rgba
 }
 func (pdf *PDF) ForEdit(con get.Children, config extract.Config) {
-	highestLuminaceColor := colorPalette.HexToRGBA(config.Color.BoxColor)
+	hLColor := colorPalette.HexToRGBA(config.Color.BoxColor) // 가장 채도가 낮음
+	var textSize float64 = 25
+	var textW float64 = 230
+
+	pdf.SetText(textSize, hLColor)
+	trimmedText := pkg.RemoveEmptyLines(con.Obj)
+	pdf.Contents = strings.Split(trimmedText, "\n")
 
 	switch pdf.Title {
 	case "예배의 부름":
-		SetTextForEdit(pdf, con, highestLuminaceColor, true)
+		pdf.setBegin(con, textW, textSize, 4)
 	case "말씀내용":
-		SetTextForEdit(pdf, con, highestLuminaceColor, false)
+		pdf.setBody(textW, textSize, 3)
 	default:
-		pdf.SetText(27, highestLuminaceColor)
+		pdf.SetText(27, hLColor)
 		pdf.WriteText(148.5, 110, con.Content)
 	}
 }
 
-func SetTextForEdit(pdf *PDF, con get.Children, highestLuminaceColor color.RGBA, isCallTypeOne bool) {
-	var textSize float64 = 25
-	var textW float64 = 230
+func (pdf *PDF) setBegin(con get.Children, textW float64, textSize float64, lines int) {
 	var tmpEl string
-
-	pdf.SetText(textSize, highestLuminaceColor)
-	// 공백 제거
-	trimmedText := pkg.RemoveEmptyLines(con.Obj)
-	lines := strings.Split(trimmedText, "\n")
-	if isCallTypeOne {
-		for i, el := range lines {
-			if strings.HasPrefix(el, "Bible Quote") {
-				lines[i] = strings.TrimPrefix(el, "Bible Quote")
-			}
-			lines[i] = parser.RemoveLineNumberPattern(lines[i])
-			if i == 0 {
-				lines[i] = fmt.Sprintf("%s\n%s", con.Content, lines[i])
-			}
-			if i != 0 && i%4 == 0 {
-				if i/4 != 1 {
-					pdf.AddPage()
-					pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
-				}
-				tmpEl += lines[i] + "\n"
-				pdf.SetXY((pdf.FullSize.Wd-textW)/2, textSize*3)
-				pdf.MultiCell(textW, textSize/2, tmpEl, "", "C", false)
-				tmpEl = ""
-			} else {
-				tmpEl += lines[i] + "\n"
-			}
+	for i, el := range pdf.Contents {
+		// Bible Quote 삭제
+		if strings.HasPrefix(el, "Bible Quote") {
+			pdf.Contents[i] = strings.TrimPrefix(el, "Bible Quote")
 		}
-	} else {
-		for i, el := range lines {
-			if strings.HasPrefix(el, "Bible Quote") {
-				lines[i] = strings.TrimPrefix(el, "Bible Quote")
-			}
-			if i != 0 && i%3 == 0 {
-				if i/3 != 1 {
-					pdf.AddPage()
-					pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
-				}
-				tmpEl += lines[i] + "\n\n"
-				pdf.SetXY(textSize, textSize)
-				pdf.MultiCell(textW, textSize/2, tmpEl, "", "L", false)
-				tmpEl = ""
-			} else if i == len(lines)-1 {
-				tmpEl += lines[i]
+		// 앞에 장 : 절 삭제
+		pdf.Contents[i] = parser.RemoveLineNumberPattern(pdf.Contents[i])
+		if i == 0 {
+			pdf.Contents[i] = fmt.Sprintf("%s\n%s", con.Content, pdf.Contents[i])
+		}
+		// 라인 기준으로 페이지를 생성
+		if i != 0 && i%lines == 0 {
+			if i/lines != 1 {
 				pdf.AddPage()
 				pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
-				pdf.SetXY(textSize, textSize)
-				pdf.MultiCell(textW, textSize/2, tmpEl, "", "L", false)
+			}
+			tmpEl += pdf.Contents[i] + "\n"
+			pdf.SetXY((pdf.FullSize.Wd-textW)/2, textSize*3)
+			pdf.MultiCell(textW, textSize/2, tmpEl, "", "C", false)
+			tmpEl = ""
+			// 잉여 라인이 생기는 경우 마지막 페이지를 추가
+		} else if len(pdf.Contents)%lines < lines && i == len(pdf.Contents)-1 {
+			tmpEl += pdf.Contents[i]
+			pdf.AddPage()
+			pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
+			pdf.SetXY(textSize, textSize)
+			pdf.MultiCell(textW, textSize/2, tmpEl, "", "L", false)
+		} else {
+			tmpEl += pdf.Contents[i] + "\n"
+		}
+	}
+}
+
+func (pdf *PDF) setBody(textW float64, textSize float64, lines int) {
+	var tmpEl string
+
+	for i, el := range pdf.Contents {
+		if strings.HasPrefix(el, "Bible Quote") {
+			pdf.Contents[i] = strings.TrimPrefix(el, "Bible Quote")
+			continue
+		}
+
+		if i != 0 && i%lines == 0 {
+			if i/lines != 1 {
+				pdf.AddPage()
+				pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
+			}
+			if i%2 == 0 {
+				tmpEl += "▶ " + pdf.Contents[i] + "\n\n"
 			} else {
-				tmpEl += lines[i] + "\n\n"
+				tmpEl += pdf.Contents[i] + "\n\n"
+			}
+			pdf.SetXY(textSize, textSize)
+			pdf.MultiCell(textW, textSize/2, tmpEl, "", "L", false)
+			tmpEl = ""
+		} else if len(pdf.Contents)%lines < lines && i == len(pdf.Contents)-1 {
+			if i%2 == 0 {
+				tmpEl += "▶ " + pdf.Contents[i]
+			} else {
+				tmpEl += pdf.Contents[i]
+			}
+
+			pdf.AddPage()
+			pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
+			pdf.SetXY(textSize, textSize)
+			pdf.MultiCell(textW, textSize/2, tmpEl, "", "L", false)
+		} else {
+			if i%2 == 0 {
+				tmpEl += "▶ " + pdf.Contents[i] + "\n\n"
+			} else {
+				tmpEl += pdf.Contents[i] + "\n\n"
 			}
 		}
 	}
