@@ -11,6 +11,8 @@ import (
 	"image/color"
 	"log"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -140,6 +142,8 @@ func (pdf *PDF) ForEdit(con get.Children, config extract.Config) {
 		pdf.setBegin(con, textW, textSize, 4)
 	case "말씀내용":
 		pdf.setBody(textW, textSize, 3)
+	case "성시교독":
+
 	default:
 		pdf.SetText(27, hLColor)
 		pdf.WriteText(148.5, 110, con.Content)
@@ -166,7 +170,7 @@ func (pdf *PDF) setBegin(con get.Children, textW float64, textSize float64, line
 			}
 			tmpEl += pdf.Contents[i] + "\n"
 			pdf.SetXY((pdf.FullSize.Wd-textW)/2, textSize*3)
-			pdf.MultiCell(textW, textSize/2, tmpEl, "", "C", false)
+			pdf.MultiCell(textW, textSize/2, tmpEl, "", "L", false)
 			tmpEl = ""
 			// 잉여 라인이 생기는 경우 마지막 페이지를 추가
 		} else if len(pdf.Contents)%lines < lines && i == len(pdf.Contents)-1 {
@@ -209,7 +213,6 @@ func (pdf *PDF) setBody(textW float64, textSize float64, lines int) {
 			} else {
 				tmpEl += pdf.Contents[i]
 			}
-
 			pdf.AddPage()
 			pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
 			pdf.SetXY(textSize, textSize)
@@ -222,4 +225,56 @@ func (pdf *PDF) setBody(textW float64, textSize float64, lines int) {
 			}
 		}
 	}
+}
+
+func AddImagesToPDF(imageDir string, pdf *gofpdf.Fpdf) error {
+	// 이미지 디렉토리에서 PNG 파일 읽기
+	files, err := os.ReadDir(imageDir)
+	if err != nil {
+		return fmt.Errorf("이미지 디렉토리 읽기 실패: %v", err)
+	}
+
+	// PNG 파일을 PDF에 추가
+	for _, file := range files {
+		if filepath.Ext(file.Name()) == ".png" {
+			imgPath := filepath.Join(imageDir, file.Name())
+			pdf.AddPage()
+			pdf.Image(imgPath, 10, 10, 190, 0, false, "", 0, "")
+		}
+	}
+
+	return nil
+}
+
+func CreatePresentationWithImages(pptxPath, outputDir, pdfOutput string) error {
+	// LibreOffice를 사용해 PPTX 파일을 이미지로 변환
+	cmd := fmt.Sprintf("libreoffice --headless --convert-to png --outdir %s %s", outputDir, pptxPath)
+	err := ExecuteCommand(cmd)
+	if err != nil {
+		return fmt.Errorf("PPTX 변환 실패: %v", err)
+	}
+
+	// PDF 생성 및 이미지 추가
+	pdf := gofpdf.New("P", "mm", "A4", "")
+	err = AddImagesToPDF(outputDir, pdf)
+	if err != nil {
+		return fmt.Errorf("이미지 PDF 추가 실패: %v", err)
+	}
+
+	// PDF 저장
+	err = pdf.OutputFileAndClose(pdfOutput)
+	if err != nil {
+		return fmt.Errorf("PDF 저장 실패: %v", err)
+	}
+
+	return nil
+}
+
+func ExecuteCommand(cmd string) error {
+	// 외부 명령어 실행
+	output, err := exec.Command("bash", "-c", cmd).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("명령어 실행 실패: %s, 에러: %v", string(output), err)
+	}
+	return nil
 }

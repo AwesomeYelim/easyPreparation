@@ -30,6 +30,8 @@ github.com/timshannon/bolthold v0.0.0-20240314194003-30aac6950928 h1:zjNCuOOhh1T
 github.com/timshannon/bolthold v0.0.0-20240314194003-30aac6950928/go.mod h1:PCFYfAEfKT+Nd6zWvUpsXduMR1bXFLf0uGSlEF05MCI=
 github.com/torie/figma v0.0.0-20180414171903-8ac4168aa567 h1:0UqjJOv2R9Ni/h8r1WG20U63jaLFoazvty00wArBNzw=
 github.com/torie/figma v0.0.0-20180414171903-8ac4168aa567/go.mod h1:7J012Fj62Lxru3XDf29ZKxAnbPLqFBXbPig3ZCwYdYk=
+github.com/unidoc/unioffice v1.38.0 h1:JX8cAwlpiM73p1KuOxlrx1F/6q+8CC3Bpp+0td+ijcA=
+github.com/unidoc/unioffice v1.38.0/go.mod h1:VL/S9i/xd2zYqZCUzO6CFPr3kM4iKj/tLcEcthAilgU=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 github.com/zserge/lorca v0.1.10 h1:f/xBJ3D3ipcVRCcvN8XqZnpoKcOXV8I4vwqlFyw7ruc=
 github.com/zserge/lorca v0.1.10/go.mod h1:bVmnIbIRlOcoV285KIRSe4bUABKi7R7384Ycuum6e4A=
