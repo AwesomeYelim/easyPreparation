@@ -229,14 +229,12 @@ func (pdf *PDF) setBody(textW float64, textSize float64, lines int) {
 }
 
 func (pdf *PDF) setResponse(pptxPath, outputDir, pdfOutput string) error {
-	// LibreOffice를 사용해 PPTX 파일을 이미지로 변환
+	// LibreOffice/ soffice 를 사용해 PPTX 파일을 pdf로 변환
 	cmd := fmt.Sprintf("soffice --headless --convert-to pdf %s", pptxPath)
-	//rename 's/(\d+)\s.+\.pps/$1.pps/' *.pps - hymn
-	//rename 's/^교독문\s+//g' *.pptx - responsive_reading
 	//gs -sDEVICE=pngalpha -o slajd-%02d.png -r96 output/bulletin/presentation/202412_5.pdf
-	err := ExecuteCommand(cmd)
+	output, err := exec.Command("bash", "-c", cmd).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("PPTX 변환 실패: %v", err)
+		return fmt.Errorf("명령어 실행 실패: %s, 에러: %v", string(output), err)
 	}
 
 	// PDF 생성 및 이미지 추가
@@ -279,14 +277,5 @@ func AddImagesToPDF(imageDir string, pdf *gofpdf.Fpdf) error {
 		pdf.Image(imgPath, 10, 10, 190, 0, false, "", 0, "")
 	}
 
-	return nil
-}
-
-func ExecuteCommand(cmd string) error {
-	// 외부 명령어 실행
-	output, err := exec.Command("bash", "-c", cmd).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("명령어 실행 실패: %s, 에러: %v", string(output), err)
-	}
 	return nil
 }
