@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -143,7 +144,7 @@ func (pdf *PDF) ForEdit(con get.Children, config extract.Config) {
 	case "말씀내용":
 		pdf.setBody(textW, textSize, 3)
 	case "성시교독":
-
+		//pdf.setResponse("./data/hymn/")
 	default:
 		pdf.SetText(27, hLColor)
 		pdf.WriteText(148.5, 110, con.Content)
@@ -227,36 +228,20 @@ func (pdf *PDF) setBody(textW float64, textSize float64, lines int) {
 	}
 }
 
-func AddImagesToPDF(imageDir string, pdf *gofpdf.Fpdf) error {
-	// 이미지 디렉토리에서 PNG 파일 읽기
-	files, err := os.ReadDir(imageDir)
-	if err != nil {
-		return fmt.Errorf("이미지 디렉토리 읽기 실패: %v", err)
-	}
-
-	// PNG 파일을 PDF에 추가
-	for _, file := range files {
-		if filepath.Ext(file.Name()) == ".png" {
-			imgPath := filepath.Join(imageDir, file.Name())
-			pdf.AddPage()
-			pdf.Image(imgPath, 10, 10, 190, 0, false, "", 0, "")
-		}
-	}
-
-	return nil
-}
-
-func CreatePresentationWithImages(pptxPath, outputDir, pdfOutput string) error {
+func (pdf *PDF) setResponse(pptxPath, outputDir, pdfOutput string) error {
 	// LibreOffice를 사용해 PPTX 파일을 이미지로 변환
-	cmd := fmt.Sprintf("libreoffice --headless --convert-to png --outdir %s %s", outputDir, pptxPath)
+	cmd := fmt.Sprintf("soffice --headless --convert-to pdf %s", pptxPath)
+	//rename 's/(\d+)\s.+\.pps/$1.pps/' *.pps - hymn
+	//rename 's/^교독문\s+//g' *.pptx - responsive_reading
+	//gs -sDEVICE=pngalpha -o slajd-%02d.png -r96 output/bulletin/presentation/202412_5.pdf
 	err := ExecuteCommand(cmd)
 	if err != nil {
 		return fmt.Errorf("PPTX 변환 실패: %v", err)
 	}
 
 	// PDF 생성 및 이미지 추가
-	pdf := gofpdf.New("P", "mm", "A4", "")
-	err = AddImagesToPDF(outputDir, pdf)
+	Npdf := gofpdf.New("P", "mm", "A4", "")
+	err = AddImagesToPDF(outputDir, Npdf)
 	if err != nil {
 		return fmt.Errorf("이미지 PDF 추가 실패: %v", err)
 	}
@@ -265,6 +250,33 @@ func CreatePresentationWithImages(pptxPath, outputDir, pdfOutput string) error {
 	err = pdf.OutputFileAndClose(pdfOutput)
 	if err != nil {
 		return fmt.Errorf("PDF 저장 실패: %v", err)
+	}
+
+	return nil
+}
+
+func AddImagesToPDF(imageDir string, pdf *gofpdf.Fpdf) error {
+	// 이미지 디렉토리에서 PNG 파일 읽기
+	files, err := os.ReadDir(imageDir)
+	if err != nil {
+		return fmt.Errorf("이미지 디렉토리 읽기 실패: %v", err)
+	}
+
+	// PNG 파일을 PDF에 추가
+	var imageFiles []string
+	for _, file := range files {
+		if filepath.Ext(file.Name()) == ".png" {
+			imageFiles = append(imageFiles, filepath.Join(imageDir, file.Name()))
+		}
+	}
+
+	// 파일 이름 기준으로 정렬 (슬라이드 순서대로)
+	sort.Strings(imageFiles)
+
+	// 이미지 파일들을 PDF에 추가
+	for _, imgPath := range imageFiles {
+		pdf.AddPage()
+		pdf.Image(imgPath, 10, 10, 190, 0, false, "", 0, "")
 	}
 
 	return nil
