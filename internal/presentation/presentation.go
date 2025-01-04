@@ -4,7 +4,6 @@ import (
 	"easyPreparation_1.0/internal/colorPalette"
 	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/figma/get"
-	"easyPreparation_1.0/internal/parser"
 	"easyPreparation_1.0/pkg"
 	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
@@ -163,7 +162,7 @@ func (pdf *PDF) setBegin(con get.Children, textW float64, textSize float64, line
 			pdf.Contents[i] = strings.TrimPrefix(el, "Bible Quote")
 		}
 		// 앞에 장 : 절 삭제
-		pdf.Contents[i] = parser.RemoveLineNumberPattern(pdf.Contents[i])
+		//pdf.Contents[i] = parser.RemoveLineNumberPattern(pdf.Contents[i])
 		if i == 0 {
 			pdf.Contents[i] = fmt.Sprintf("%s\n%s", con.Content, pdf.Contents[i])
 		}
@@ -180,9 +179,9 @@ func (pdf *PDF) setBegin(con get.Children, textW float64, textSize float64, line
 			// 잉여 라인이 생기는 경우 마지막 페이지를 추가
 		} else if len(pdf.Contents)%lines < lines && i == len(pdf.Contents)-1 {
 			tmpEl += pdf.Contents[i]
-			pdf.AddPage()
-			pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
-			pdf.SetXY(textSize, textSize)
+			//pdf.AddPage()
+			//pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
+			pdf.SetXY(textSize, textSize*3)
 			pdf.MultiCell(textW, textSize/2, tmpEl, "", "L", false)
 		} else {
 			tmpEl += pdf.Contents[i] + "\n"
