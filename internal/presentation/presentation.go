@@ -143,8 +143,12 @@ func (pdf *PDF) ForEdit(con get.Children, config extract.Config) {
 		pdf.setBegin(con, textW, textSize, 4)
 	case "말씀내용":
 		pdf.setBody(textW, textSize, 3)
+	case "찬송", "헌금봉헌":
+		pdf.SetText(27, hLColor)
+		pdf.WriteText(148.5, 110, con.Content)
+		pdf.setOutDirFiles("./data/hymn", con.Content)
 	case "성시교독":
-		//pdf.setResponse("./data/hymn/")
+		pdf.setOutDirFiles("./data/responsive_reading", con.Content)
 	default:
 		pdf.SetText(27, hLColor)
 		pdf.WriteText(148.5, 110, con.Content)
@@ -228,39 +232,46 @@ func (pdf *PDF) setBody(textW float64, textSize float64, lines int) {
 	}
 }
 
-func (pdf *PDF) setResponse(pptxPath, outputDir, pdfOutput string) error {
-	// LibreOffice/ soffice 를 사용해 PPTX 파일을 pdf로 변환
-	cmd := fmt.Sprintf("soffice --headless --convert-to pdf %s", pptxPath)
-	//gs -sDEVICE=pngalpha -o slajd-%02d.png -r96 output/bulletin/presentation/202412_5.pdf
-	output, err := exec.Command("bash", "-c", cmd).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("명령어 실행 실패: %s, 에러: %v", string(output), err)
-	}
+func (pdf *PDF) setOutDirFiles(pdfPath, target string) {
+	// gs 를 사용해 pdf 파일을 png로 변환
+	//cmd := fmt.Sprintf("soffice --headless --convert-to pdf %s", pdfPath)
+	//gs -sDEVICE=pngalpha -o 56.png -r96 output/bulletin/presentation/202412_5.pdf
 
-	// PDF 생성 및 이미지 추가
-	Npdf := gofpdf.New("P", "mm", "A4", "")
-	err = AddImagesToPDF(outputDir, Npdf)
-	if err != nil {
-		return fmt.Errorf("이미지 PDF 추가 실패: %v", err)
+	var splitNum string
+	if strings.Contains(pdfPath, "hymn") {
+		splitNum = strings.TrimSuffix(target, "장")
+	} else {
+		splitNum = strings.Split(target, ".")[0]
 	}
+	// 캐싱 방지
+	outputPath := filepath.Join(pdfPath, fmt.Sprintf("temp_%s", splitNum))
+	_ = pkg.CheckDirIs(outputPath)
 
-	// PDF 저장
-	err = pdf.OutputFileAndClose(pdfOutput)
+	tempPngPtah := filepath.Join(outputPath, "%d.png")
+
+	targetNum := fmt.Sprintf("%03s.pdf", splitNum)
+
+	cmdStr := fmt.Sprintf("gs -sDEVICE=pngalpha -o %s -r96 %s", tempPngPtah, filepath.Join(pdfPath, targetNum))
+
+	output, err := exec.Command("bash", "-c", cmdStr).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("PDF 저장 실패: %v", err)
+		log.Fatalf("명령어 실행 실패: %s, 에러: %v", string(output), err)
 	}
-
-	return nil
+	defer func() {
+		_ = os.RemoveAll(outputPath)
+	}()
+	err = pdf.AddImagesToPDF(outputPath)
+	if err != nil {
+		log.Fatalf("이미지 PDF 추가 실패: %v", err)
+	}
 }
 
-func AddImagesToPDF(imageDir string, pdf *gofpdf.Fpdf) error {
-	// 이미지 디렉토리에서 PNG 파일 읽기
+func (pdf *PDF) AddImagesToPDF(imageDir string) error {
 	files, err := os.ReadDir(imageDir)
 	if err != nil {
 		return fmt.Errorf("이미지 디렉토리 읽기 실패: %v", err)
 	}
 
-	// PNG 파일을 PDF에 추가
 	var imageFiles []string
 	for _, file := range files {
 		if filepath.Ext(file.Name()) == ".png" {
@@ -268,13 +279,11 @@ func AddImagesToPDF(imageDir string, pdf *gofpdf.Fpdf) error {
 		}
 	}
 
-	// 파일 이름 기준으로 정렬 (슬라이드 순서대로)
 	sort.Strings(imageFiles)
 
-	// 이미지 파일들을 PDF에 추가
 	for _, imgPath := range imageFiles {
 		pdf.AddPage()
-		pdf.Image(imgPath, 10, 10, 190, 0, false, "", 0, "")
+		pdf.CheckImgPlaced(pdf.FullSize, imgPath, 0)
 	}
 
 	return nil
