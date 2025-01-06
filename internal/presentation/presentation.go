@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 )
@@ -128,7 +129,7 @@ func (pdf *PDF) getColorRGB(textColor []color.Color) []uint32 {
 	}
 	return rgba
 }
-func (pdf *PDF) ForEdit(con get.Children, config extract.Config) {
+func (pdf *PDF) ForEdit(con get.Children, config extract.Config, execPath string) {
 	hLColor := colorPalette.HexToRGBA(config.Color.BoxColor) // 가장 채도가 낮음
 	var textSize float64 = 25
 	var textW float64 = 230
@@ -145,9 +146,9 @@ func (pdf *PDF) ForEdit(con get.Children, config extract.Config) {
 	case "찬송", "헌금봉헌":
 		pdf.SetText(27, hLColor)
 		pdf.WriteText(148.5, 110, con.Content)
-		pdf.setOutDirFiles("./data/hymn", con.Content)
+		pdf.setOutDirFiles(filepath.Join(execPath, "data", "hymn"), con.Content)
 	case "성시교독":
-		pdf.setOutDirFiles("./data/responsive_reading", con.Content)
+		pdf.setOutDirFiles(filepath.Join(execPath, "data", "responsive_reading"), con.Content)
 	default:
 		pdf.SetText(27, hLColor)
 		pdf.WriteText(148.5, 110, con.Content)
@@ -156,11 +157,8 @@ func (pdf *PDF) ForEdit(con get.Children, config extract.Config) {
 
 func (pdf *PDF) setBegin(con get.Children, textW float64, textSize float64, lines int) {
 	var tmpEl string
-	for i, el := range pdf.Contents {
-		// Bible Quote 삭제
-		if strings.HasPrefix(el, "Bible Quote") {
-			pdf.Contents[i] = strings.TrimPrefix(el, "Bible Quote")
-		}
+	for i, _ := range pdf.Contents {
+
 		// 앞에 장 : 절 삭제
 		//pdf.Contents[i] = parser.RemoveLineNumberPattern(pdf.Contents[i])
 		if i == 0 {
@@ -192,11 +190,7 @@ func (pdf *PDF) setBegin(con get.Children, textW float64, textSize float64, line
 func (pdf *PDF) setBody(textW float64, textSize float64, lines int) {
 	var tmpEl string
 
-	for i, el := range pdf.Contents {
-		if strings.HasPrefix(el, "Bible Quote") {
-			pdf.Contents[i] = strings.TrimPrefix(el, "Bible Quote")
-			continue
-		}
+	for i, _ := range pdf.Contents {
 
 		if i != 0 && i%lines == 0 {
 			if i/lines != 1 {
@@ -250,9 +244,21 @@ func (pdf *PDF) setOutDirFiles(pdfPath, target string) {
 
 	targetNum := fmt.Sprintf("%03s.pdf", splitNum)
 
-	cmdStr := fmt.Sprintf("gs -sDEVICE=pngalpha -o %s -r96 %s", tempPngPtah, filepath.Join(pdfPath, targetNum))
+	var cmdStr string
+	var cmd *exec.Cmd
+	osType := runtime.GOOS
 
-	output, err := exec.Command("bash", "-c", cmdStr).CombinedOutput()
+	switch osType {
+	case "windows":
+		cmdStr = fmt.Sprintf("gswin64c -sDEVICE=pngalpha -o \"%s\" -r96 \"%s\"", tempPngPtah, filepath.Join(pdfPath, targetNum))
+		cmd = exec.Command("cmd", "/C", cmdStr)
+	default:
+		cmdStr = fmt.Sprintf("gs -sDEVICE=pngalpha -o \"%s\" -r96 \"%s\"", tempPngPtah, filepath.Join(pdfPath, targetNum))
+		cmd = exec.Command("bash", "-c", cmdStr)
+	}
+
+	output, err := cmd.CombinedOutput()
+
 	if err != nil {
 		log.Fatalf("명령어 실행 실패: %s, 에러: %v", string(output), err)
 	}

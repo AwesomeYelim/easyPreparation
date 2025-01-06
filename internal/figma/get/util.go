@@ -100,6 +100,10 @@ func StripTags(html string) string {
 	for _, line := range lines {
 		line = removeTags(line)
 
+		if strings.HasPrefix(line, "Bible Quote") {
+			continue
+		}
+
 		if strings.TrimSpace(line) != "" {
 			result = append(result, strings.TrimSpace(line))
 		}
@@ -143,7 +147,9 @@ func displayQuote(characters string) string {
 		fmt.Println("Error:", err)
 		return ""
 	}
-	defer resp.Body.Close() // 응답이 끝난 후 자원 해제
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		fmt.Println("Failed to fetch data. Status code:", resp.StatusCode)

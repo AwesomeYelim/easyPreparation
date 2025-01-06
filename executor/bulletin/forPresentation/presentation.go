@@ -50,7 +50,7 @@ func CreatePresentation(figmaInfo *get.Info, execPath string, config extract.Con
 				objPdf.CheckImgPlaced(objPdf.FullSize, objPdf.Path, 0)
 			}
 			if strings.Contains(con.Info, "edit") {
-				objPdf.ForEdit(con, config)
+				objPdf.ForEdit(con, config, execPath)
 			}
 		}
 	}
