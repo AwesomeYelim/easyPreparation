@@ -250,8 +250,7 @@ func (pdf *PDF) setOutDirFiles(pdfPath, target string) {
 
 	switch osType {
 	case "windows":
-		cmdStr = fmt.Sprintf("gswin64c -sDEVICE=pngalpha -o \"%s\" -r96 \"%s\"", tempPngPtah, filepath.Join(pdfPath, targetNum))
-		cmd = exec.Command("cmd", "/C", cmdStr)
+		cmd = exec.Command("gswin64c", "-sDEVICE=pngalpha", "-o", tempPngPtah, "-r96", filepath.Join(pdfPath, targetNum))
 	default:
 		cmdStr = fmt.Sprintf("gs -sDEVICE=pngalpha -o \"%s\" -r96 \"%s\"", tempPngPtah, filepath.Join(pdfPath, targetNum))
 		cmd = exec.Command("bash", "-c", cmdStr)
