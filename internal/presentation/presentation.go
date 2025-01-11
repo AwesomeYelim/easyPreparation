@@ -4,6 +4,7 @@ import (
 	"easyPreparation_1.0/internal/colorPalette"
 	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/figma/get"
+	"easyPreparation_1.0/internal/googleCloud"
 	"easyPreparation_1.0/pkg"
 	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
@@ -19,11 +20,12 @@ import (
 
 type PDF struct {
 	*gofpdf.Fpdf
-	Title    string
-	FullSize gofpdf.SizeType
-	BoxSize  Size
-	Contents []string
-	Path     string
+	Title       string
+	FullSize    gofpdf.SizeType
+	BoxSize     Size
+	Contents    []string
+	Path        string
+	ExecutePath string
 }
 
 type Size struct {
@@ -146,9 +148,9 @@ func (pdf *PDF) ForEdit(con get.Children, config extract.Config, execPath string
 	case "찬송", "헌금봉헌":
 		pdf.SetText(27, hLColor)
 		pdf.WriteText(148.5, 110, con.Content)
-		pdf.setOutDirFiles(filepath.Join(execPath, "data", "hymn"), con.Content)
+		pdf.setOutDirFiles("hymn", con.Content)
 	case "성시교독":
-		pdf.setOutDirFiles(filepath.Join(execPath, "data", "responsive_reading"), con.Content)
+		pdf.setOutDirFiles("responsive_reading", con.Content)
 	default:
 		pdf.SetText(27, hLColor)
 		pdf.WriteText(148.5, 110, con.Content)
@@ -225,24 +227,32 @@ func (pdf *PDF) setBody(textW float64, textSize float64, lines int) {
 	}
 }
 
-func (pdf *PDF) setOutDirFiles(pdfPath, target string) {
+func (pdf *PDF) setOutDirFiles(category, target string) {
 	// gs 를 사용해 pdf 파일을 png로 변환
 	//cmd := fmt.Sprintf("soffice --headless --convert-to pdf %s", pdfPath)
 	//gs -sDEVICE=pngalpha -o 56.png -r96 output/bulletin/presentation/202412_5.pdf
 
 	var splitNum string
-	if strings.Contains(pdfPath, "hymn") {
+	switch category {
+	case "hymn":
 		splitNum = strings.TrimSuffix(target, "장")
-	} else {
+	case "responsive_reading":
 		splitNum = strings.Split(target, ".")[0]
 	}
-	// 캐싱 방지
-	outputPath := filepath.Join(pdfPath, fmt.Sprintf("temp_%s", splitNum))
-	_ = pkg.CheckDirIs(outputPath)
+	outputPath := filepath.Join(pdf.ExecutePath, "data", category)
 
-	tempPngPtah := filepath.Join(outputPath, "%d.png")
+	_ = pkg.CheckDirIs(outputPath)
+	defer func() {
+		_ = os.RemoveAll(outputPath)
+	}()
 
 	targetNum := fmt.Sprintf("%03s.pdf", splitNum)
+
+	googleCloud.GetGoogleCloudInfo(category, targetNum, outputPath)
+	// 캐싱 방지
+	tempPath := filepath.Join(outputPath, fmt.Sprintf("temp_%s", splitNum))
+	_ = pkg.CheckDirIs(tempPath)
+	tempPngPtah := filepath.Join(tempPath, "%d.png")
 
 	var cmdStr string
 	var cmd *exec.Cmd
@@ -250,9 +260,9 @@ func (pdf *PDF) setOutDirFiles(pdfPath, target string) {
 
 	switch osType {
 	case "windows":
-		cmd = exec.Command("gswin64c", "-sDEVICE=pngalpha", "-o", tempPngPtah, "-r96", filepath.Join(pdfPath, targetNum))
+		cmd = exec.Command("gswin64c", "-sDEVICE=pngalpha", "-o", tempPngPtah, "-r96", filepath.Join(outputPath, targetNum))
 	default:
-		cmdStr = fmt.Sprintf("gs -sDEVICE=pngalpha -o \"%s\" -r96 \"%s\"", tempPngPtah, filepath.Join(pdfPath, targetNum))
+		cmdStr = fmt.Sprintf("gs -sDEVICE=pngalpha -o \"%s\" -r96 \"%s\"", tempPngPtah, filepath.Join(outputPath, targetNum))
 		cmd = exec.Command("bash", "-c", cmdStr)
 	}
 
@@ -262,9 +272,9 @@ func (pdf *PDF) setOutDirFiles(pdfPath, target string) {
 		log.Fatalf("명령어 실행 실패: %s, 에러: %v", string(output), err)
 	}
 	defer func() {
-		_ = os.RemoveAll(outputPath)
+		_ = os.RemoveAll(tempPath)
 	}()
-	err = pdf.AddImagesToPDF(outputPath)
+	err = pdf.AddImagesToPDF(tempPath)
 	if err != nil {
 		log.Fatalf("이미지 PDF 추가 실패: %v", err)
 	}

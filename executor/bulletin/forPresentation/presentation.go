@@ -32,6 +32,7 @@ func CreatePresentation(figmaInfo *get.Info, execPath string, config extract.Con
 
 	objPdf := presentation.New(bulletinSize)
 	objPdf.FullSize = bulletinSize
+	objPdf.ExecutePath = execPath
 
 	outputFilename := fmt.Sprintf("%s_%s.pdf", yearMonth, weekFormatted)
 
