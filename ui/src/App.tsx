@@ -139,7 +139,10 @@ const FigmaTokenInput: React.FC = () => {
 
     try {
       // 실제 Go와 연동 시 사용될 함수 호출
-      // await window.sendTokenAndKey(token, key);
+        // Go로 데이터를 보내기 위해 window.sendTokenAndKey 사용
+        if (window.sendTokenAndKey) {
+            await window.sendTokenAndKey(token, key);  // Go로 데이터 전달
+        }
       setResponseMessage("Success! Data sent to Go.");
     } catch (error) {
       console.error('Error:', error);

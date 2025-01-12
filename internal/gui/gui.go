@@ -1,51 +1,51 @@
 package gui
 
 import (
-	"embed"
+	"easyPreparation_1.0/internal/path"
 	"fmt"
 	"github.com/zserge/lorca"
 	"log"
+	"net/http"
 	"os"
+	"path/filepath"
 )
 
-// Embed the HTML file
-//
-//go:embed index.html
-var htmlFile embed.FS
+// 로컬 웹 서버로 빌드된 React 파일들을 제공하는 함수
+func startLocalServer(buildFolder string) {
+	http.Handle("/", http.FileServer(http.Dir(buildFolder)))
+	go func() {
+		log.Fatal(http.ListenAndServe(":8081", nil))
+	}()
+}
 
+// FigmaConnector 함수에서 build/index.html 파일을 로컬 서버로 제공하고 Lorca로 띄우는 방식으로 수정
 func FigmaConnector() (token string, key string) {
-	// 임시 파일 생성 (임베드된 HTML 사용)
-	tempFile, err := os.CreateTemp("", "index-*.html")
-	if err != nil {
-		log.Fatalf("Failed to create temp file: %v", err)
-	}
-	defer func() {
-		_ = os.Remove(tempFile.Name())
-	}()
+	// 빌드된 React 프로젝트의 경로
+	execPath, _ := os.Getwd()
+	execPath = path.ExecutePath(execPath, "easyPreparation")
+	buildFolder := filepath.Join(execPath, "ui", "build")
 
-	// 임베드된 HTML 파일 내용 => 임시 파일에 기록
-	htmlContent, err := htmlFile.ReadFile("index.html")
-	if err != nil {
-		log.Fatalf("Failed to read embedded HTML: %v", err)
+	// build 폴더 내의 index.html 경로 설정
+	htmlFilePath := filepath.Join(buildFolder, "index.html")
+
+	// 파일이 존재하는지 확인
+	if _, err := os.Stat(htmlFilePath); os.IsNotExist(err) {
+		log.Fatalf("Failed to find the HTML file at: %v", htmlFilePath)
 	}
 
-	_, err = tempFile.Write(htmlContent)
-	if err != nil {
-		log.Fatalf("Failed to write to temp file: %v", err)
-	}
+	// 로컬 서버로 빌드된 React 파일들을 제공
+	startLocalServer(buildFolder)
 
-	defer func() {
-		_ = tempFile.Close()
-	}()
-
-	// local 경로로 UI 실행
-	ui, err := lorca.New("file://"+tempFile.Name(), "", 600, 600, "--remote-allow-origins=*", "--browser=/path/to/chrome")
+	// 로컬 서버의 URL로 UI 실행
+	ui, err := lorca.New("http://localhost:8081", "", 600, 600, "--remote-allow-origins=*")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	dataReceived := make(chan struct{}) // 데이터 수신 신호를 위한 채널
+	// 데이터 수신 신호를 위한 채널
+	dataReceived := make(chan struct{})
 
+	// sendTokenAndKey 함수 바인딩
 	_ = ui.Bind("sendTokenAndKey", func(argToken string, argKey string) {
 		token = argToken
 		key = argKey
