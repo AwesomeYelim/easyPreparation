@@ -15,7 +15,7 @@ import (
 func GetGoogleCloudInfo(folder, target, outputPath string) {
 	srv := Login()
 	// 상위 폴더 ID와 하위 폴더 이름 설정
-	parentFolderID := "16gLC6lcmxfQRTbHVlhSQwqYhR-kijuEm" // 상위 폴더 ID
+	parentFolderID := "16gLC6lcmxfQRTbHVlhSQwqYhR-kijuEm" // 교회 이름 폴더 ID
 
 	// 1. 하위 폴더 ID 검색
 	subFolderID := getSubFolderID(srv, parentFolderID, folder)
@@ -46,19 +46,28 @@ func Login() (srv *drive.Service) {
 }
 
 func getSubFolderID(srv *drive.Service, parentFolderID, subFolderName string) string {
-	query := fmt.Sprintf("'%s' in parents and name = '%s' and mimeType = 'application/vnd.google-apps.folder' and trashed = false", parentFolderID, subFolderName)
+	// 현재 폴더에서 하위 폴더를 검색
+	query := fmt.Sprintf("'%s' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false", parentFolderID)
 	foldersListCall := srv.Files.List().Q(query).Fields("files(id, name)")
-	folderList, err := foldersListCall.Do()
-	if err != nil {
-		log.Fatalf("하위 폴더 검색 실패: %v", err)
+	folderList, _ := foldersListCall.Do()
+
+	// 현재 폴더의 하위 폴더 중 이름이 일치하는 폴더를 찾음
+	for _, folder := range folderList.Files {
+		if folder.Name == subFolderName {
+			return folder.Id
+		}
 	}
 
-	if len(folderList.Files) == 0 {
-		return ""
+	// 일치하는 폴더가 없으면 하위 폴더를 재귀적으로 탐색
+	for _, folder := range folderList.Files {
+		foundID := getSubFolderID(srv, folder.Id, subFolderName)
+		if foundID != "" {
+			return foundID
+		}
 	}
 
-	// 첫 번째 폴더의 ID 반환
-	return folderList.Files[0].Id
+	// 폴더를 찾을 수 없는 경우 빈 문자열 반환
+	return ""
 }
 
 func getFileInFolder(srv *drive.Service, folderID, fileName string) *drive.File {

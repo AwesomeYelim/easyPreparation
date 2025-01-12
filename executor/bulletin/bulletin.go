@@ -8,13 +8,14 @@ import (
 	"easyPreparation_1.0/internal/figma"
 	"easyPreparation_1.0/internal/gui"
 	"easyPreparation_1.0/internal/path"
+	"fmt"
 	"os"
 	"path/filepath"
 )
 
 func main() {
-	token, key := gui.Connector()
-
+	token, key := gui.FigmaConnector()
+	fmt.Println(token, key)
 	execPath, _ := os.Getwd()
 	execPath = path.ExecutePath(execPath, "easyPreparation")
 	configPath := filepath.Join(execPath, "config/custom.json")

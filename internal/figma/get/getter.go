@@ -95,8 +95,6 @@ func (i *Info) GetResource(target string) {
 	}
 	var newG []Children
 
-	_ = os.WriteFile(filepath.Join(i.ExecPath, "config", "test.json"), sample, 0644)
-
 	grouped := orgJson(mainContent, i.ExecPath, target)
 
 	var keys []string

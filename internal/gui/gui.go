@@ -13,7 +13,7 @@ import (
 //go:embed index.html
 var htmlFile embed.FS
 
-func Connector() (token string, key string) {
+func FigmaConnector() (token string, key string) {
 	// 임시 파일 생성 (임베드된 HTML 사용)
 	tempFile, err := os.CreateTemp("", "index-*.html")
 	if err != nil {
@@ -39,7 +39,7 @@ func Connector() (token string, key string) {
 	}()
 
 	// local 경로로 UI 실행
-	ui, err := lorca.New("file://"+tempFile.Name(), "", 480, 320, "--remote-allow-origins=*", "--browser=/path/to/chrome")
+	ui, err := lorca.New("file://"+tempFile.Name(), "", 600, 600, "--remote-allow-origins=*", "--browser=/path/to/chrome")
 	if err != nil {
 		log.Fatal(err)
 	}
