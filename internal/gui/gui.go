@@ -1,6 +1,8 @@
 package gui
 
 import (
+	"easyPreparation_1.0/internal/figma"
+	"easyPreparation_1.0/internal/figma/get"
 	"easyPreparation_1.0/internal/path"
 	"fmt"
 	"github.com/zserge/lorca"
@@ -19,7 +21,7 @@ func startLocalServer(buildFolder string) {
 }
 
 // FigmaConnector 함수에서 build/index.html 파일을 로컬 서버로 제공하고 Lorca로 띄우는 방식으로 수정
-func FigmaConnector() (token string, key string) {
+func FigmaConnector() (figmaInfo *get.Info) {
 	// 빌드된 React 프로젝트의 경로
 	execPath, _ := os.Getwd()
 	execPath = path.ExecutePath(execPath, "easyPreparation")
@@ -46,19 +48,29 @@ func FigmaConnector() (token string, key string) {
 	dataReceived := make(chan struct{})
 
 	// sendTokenAndKey 함수 바인딩
-	_ = ui.Bind("sendTokenAndKey", func(argToken string, argKey string) {
-		token = argToken
-		key = argKey
+	_ = ui.Bind("sendTokenAndKey", func(arg map[string]string) {
+		token := arg["token"]
+		key := arg["key"]
 		fmt.Printf("Received Token: %s, Key: %s\n", token, key)
-		ui.Eval(`document.getElementById("responseMessage").textContent = "Data received successfully!"`)
+		ui.Eval(`document.getElementById("responseMessage").textContent = "Login Data received successfully!"`)
+
+		figmaInfo = figma.New(&token, &key, execPath)
+		figmaInfo.GetNodes()
+	})
+
+	// sendContentsDate 함수 바인딩
+	_ = ui.Bind("sendContentsDate", func(arg []map[string]string) {
+		fmt.Printf("Received ContentsDate: %s", arg)
+		ui.Eval(`document.getElementById("responseMessage").textContent = "Contents Data received successfully!"`)
+
 		dataReceived <- struct{}{}
 	})
 
 	// FIXME: 기존 ui 블로킹 버그 채널 통신 ui 창 닫지 않고 리턴되도록..
 	select {
 	case <-dataReceived:
-		return token, key
+		return figmaInfo
 	case <-ui.Done():
-		return token, key
+		return figmaInfo
 	}
 }
