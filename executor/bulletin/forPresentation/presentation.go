@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-func CreatePresentation(figmaInfo *get.Info, execPath string, config extract.Config) {
+func CreatePresentation(figmaInfo *get.Info, config extract.Config, target, execPath string) {
 	outputDir := filepath.Join(execPath, config.OutputPath.Bulletin, "presentation", "tmp")
 	_ = pkg.CheckDirIs(outputDir)
 
@@ -37,8 +37,9 @@ func CreatePresentation(figmaInfo *get.Info, execPath string, config extract.Con
 	outputFilename := fmt.Sprintf("%s_%s.pdf", yearMonth, weekFormatted)
 
 	var contents []get.Children
-	custom, err := os.ReadFile(filepath.Join(execPath, "config", "main_worship.json"))
-	err = json.Unmarshal(custom, &contents)
+
+	worshipContents, err := os.ReadFile(filepath.Join(execPath, "config", target+".json"))
+	err = json.Unmarshal(worshipContents, &contents)
 
 	for _, con := range contents {
 		splitTitle := strings.Split(con.Title, "_")

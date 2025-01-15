@@ -5,6 +5,7 @@ import (
 	"easyPreparation_1.0/pkg"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/torie/figma"
 	"io"
 	"log"
@@ -13,13 +14,16 @@ import (
 	"strings"
 )
 
-func (i *Info) GetNodes() {
+func (i *Info) GetNodes() (err error) {
 	f, err := i.Client.File(*i.Key)
-	if err != nil {
-		log.Println(err)
-	}
+
 	i.Nodes = f.Nodes()
-	log.Printf("Got %d documents", len(i.Nodes))
+	if len(i.Nodes) > 0 {
+		log.Printf("Got %d documents", len(i.Nodes))
+	} else {
+		return errors.Wrap(err, "Nothing documents")
+	}
+	return nil
 }
 
 func (i *Info) GetFigmaImage(path string, frameName string) {

@@ -137,9 +137,9 @@ func (pdf *PDF) ForEdit(con get.Children, config extract.Config, execPath string
 	var textW float64 = 230
 
 	pdf.SetText(textSize, hLColor)
-	trimmedText := pkg.RemoveEmptyLines(con.Obj)
-	pdf.Contents = strings.Split(trimmedText, "\n")
-
+	//trimmedText := pkg.RemoveEmptyLines(con.Obj)
+	pdf.Contents = strings.Split(con.Obj, "\n")
+	fmt.Println("pdf.Contents : ", pdf.Contents)
 	switch pdf.Title {
 	case "예배의 부름":
 		pdf.setBegin(con, textW, textSize, 4)
@@ -161,8 +161,6 @@ func (pdf *PDF) setBegin(con get.Children, textW float64, textSize float64, line
 	var tmpEl string
 	for i, _ := range pdf.Contents {
 
-		// 앞에 장 : 절 삭제
-		//pdf.Contents[i] = parser.RemoveLineNumberPattern(pdf.Contents[i])
 		if i == 0 {
 			pdf.Contents[i] = fmt.Sprintf("%s\n%s", con.Content, pdf.Contents[i])
 		}
@@ -192,37 +190,24 @@ func (pdf *PDF) setBegin(con get.Children, textW float64, textSize float64, line
 func (pdf *PDF) setBody(textW float64, textSize float64, lines int) {
 	var tmpEl string
 
-	for i, _ := range pdf.Contents {
-
+	for i, content := range pdf.Contents {
 		if i != 0 && i%lines == 0 {
 			if i/lines != 1 {
 				pdf.AddPage()
 				pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
 			}
-			if i%2 == 0 {
-				tmpEl += "▶ " + pdf.Contents[i] + "\n\n"
-			} else {
-				tmpEl += pdf.Contents[i] + "\n\n"
-			}
+			tmpEl += content + "\n\n"
 			pdf.SetXY(textSize, textSize)
 			pdf.MultiCell(textW, textSize/2, tmpEl, "", "L", false)
-			tmpEl = ""
+			//tmpEl = ""
 		} else if len(pdf.Contents)%lines < lines && i == len(pdf.Contents)-1 {
-			if i%2 == 0 {
-				tmpEl += "▶ " + pdf.Contents[i]
-			} else {
-				tmpEl += pdf.Contents[i]
-			}
+			tmpEl += content
 			pdf.AddPage()
 			pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
 			pdf.SetXY(textSize, textSize)
 			pdf.MultiCell(textW, textSize/2, tmpEl, "", "L", false)
 		} else {
-			if i%2 == 0 {
-				tmpEl += "▶ " + pdf.Contents[i] + "\n\n"
-			} else {
-				tmpEl += pdf.Contents[i] + "\n\n"
-			}
+			tmpEl += content + "\n\n"
 		}
 	}
 }
