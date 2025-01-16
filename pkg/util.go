@@ -6,7 +6,7 @@ import (
 )
 
 // RemoveEmptyLines 함수는 중간 공백을 제거합니다.
-func RemoveEmptyLines(text string) string {
+func RemoveEmptyLines(text string) []string {
 	lines := strings.Split(text, "\n")
 	var result []string
 	for _, line := range lines {
@@ -14,7 +14,7 @@ func RemoveEmptyLines(text string) string {
 			result = append(result, strings.TrimSpace(line))
 		}
 	}
-	return strings.Join(result, "\n")
+	return result
 }
 
 func CheckDirIs(dirPath string) (err error) {

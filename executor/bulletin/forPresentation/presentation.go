@@ -25,8 +25,8 @@ func CreatePresentation(figmaInfo *get.Info, config extract.Config, target, exec
 	figmaInfo.GetFigmaImage(outputDir, "forShowing")
 
 	bulletinSize := gofpdf.SizeType{
-		Wd: config.Size.Background.Width,
-		Ht: config.Size.Background.Height,
+		Wd: config.Size.Background.Presentation.Width,
+		Ht: config.Size.Background.Presentation.Height,
 	}
 	yearMonth, weekFormatted := date.SetDateTitle()
 

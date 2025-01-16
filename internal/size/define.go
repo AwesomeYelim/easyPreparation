@@ -6,6 +6,9 @@ type Box struct {
 }
 
 type Size struct {
-	Background     Box `json:"background"`
+	Background struct {
+		Print        Box `json:"print"`
+		Presentation Box `json:"presentation"`
+	} `json:"background"`
 	InnerRectangle Box `json:"innerRectangle"`
 }

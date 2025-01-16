@@ -112,7 +112,7 @@ func (i *Info) GetResource(target string) {
 		temp = grouped[key][0]
 
 		// 하위 정렬인 경우 이전 obj 내용을 갖고 옴
-		if strings.Contains(key, ".") && ind < len(keys) {
+		if strings.Contains(key, ".") && ind < len(keys)-1 {
 			temp.Obj = grouped[keys[ind-1]][0].Obj
 		}
 		newG = append(newG, Children{

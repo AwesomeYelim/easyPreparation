@@ -19,8 +19,8 @@ func TestSetBody(t *testing.T) {
 	config := extract.ExtCustomOption(configPath)
 
 	bulletinSize := gofpdf.SizeType{
-		Wd: config.Size.Background.Width,
-		Ht: config.Size.Background.Height,
+		Wd: config.Size.Background.Presentation.Width,
+		Ht: config.Size.Background.Presentation.Height,
 	}
 	var textSize float64 = 25
 	var textW float64 = 230

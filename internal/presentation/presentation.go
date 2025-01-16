@@ -96,12 +96,23 @@ func (pdf *PDF) DrawLine(length, x, y float64, color ...color.Color) {
 	pdf.Line(x, y, x+length, y)
 }
 
-func (pdf *PDF) WriteText(x, y float64, text string) {
+func (pdf *PDF) WriteText(text, position string) {
 	textWidth := pdf.GetStringWidth(text)
 
-	if x > 10 {
-		x = x - (textWidth / 2)
+	var x, y float64
+	switch position {
+	case "center":
+		x = pdf.FullSize.Wd / 2
+		y = pdf.FullSize.Ht/2 + 5
+		if x > 10 {
+			x = x - (textWidth / 2)
+		}
+	case "right":
+		padding := (pdf.FullSize.Wd/2 - pdf.BoxSize.Width) / 2
+		x = pdf.FullSize.Wd - (textWidth + padding)
+		y = padding
 	}
+
 	pdf.Text(x, y, text)
 }
 
@@ -137,9 +148,8 @@ func (pdf *PDF) ForEdit(con get.Children, config extract.Config, execPath string
 	var textW float64 = 230
 
 	pdf.SetText(textSize, hLColor)
-	//trimmedText := pkg.RemoveEmptyLines(con.Obj)
-	pdf.Contents = strings.Split(con.Obj, "\n")
-	fmt.Println("pdf.Contents : ", pdf.Contents)
+	trimmedText := pkg.RemoveEmptyLines(con.Obj)
+	pdf.Contents = trimmedText
 	switch pdf.Title {
 	case "예배의 부름":
 		pdf.setBegin(con, textW, textSize, 4)
@@ -147,13 +157,13 @@ func (pdf *PDF) ForEdit(con get.Children, config extract.Config, execPath string
 		pdf.setBody(textW, textSize, 3)
 	case "찬송", "헌금봉헌":
 		pdf.SetText(27, hLColor)
-		pdf.WriteText(148.5, 110, con.Content)
+		pdf.WriteText(con.Content, "center")
 		pdf.setOutDirFiles("hymn", con.Content)
 	case "성시교독":
 		pdf.setOutDirFiles("responsive_reading", con.Content)
 	default:
 		pdf.SetText(27, hLColor)
-		pdf.WriteText(148.5, 110, con.Content)
+		pdf.WriteText(con.Content, "center")
 	}
 }
 
@@ -199,7 +209,7 @@ func (pdf *PDF) setBody(textW float64, textSize float64, lines int) {
 			tmpEl += content + "\n\n"
 			pdf.SetXY(textSize, textSize)
 			pdf.MultiCell(textW, textSize/2, tmpEl, "", "L", false)
-			//tmpEl = ""
+			tmpEl = ""
 		} else if len(pdf.Contents)%lines < lines && i == len(pdf.Contents)-1 {
 			tmpEl += content
 			pdf.AddPage()

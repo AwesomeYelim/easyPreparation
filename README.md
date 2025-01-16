@@ -13,7 +13,7 @@
 
 ![img.png](img.png)
 
-## 3. Befor Start
+## 3. Before Start
 
   ```shell
   apt update && apt install libreoffice && apt install Ghostscript
@@ -21,3 +21,19 @@
   ln -s /Applications/LibreOffice.app/Contents/MacOS/soffice /usr/local/bin/libreoffice
 
   ```
+
+## 4. Info size
+
+* If you want to change the pdf ratio, you can control the pdf size.
+
+```
+# 16:9
+  width : 323.33,
+  height : 210.0
+  
+# A4 size
+  width : 297.0,
+  height : 210.0
+  
+  
+```

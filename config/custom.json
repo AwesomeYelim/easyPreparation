@@ -5,18 +5,24 @@
     "fontColor": "#BEA07C",
     "dateColor": "#FFFFFF"
   },
-  "size" : {
-    "background" : {
-      "width" : 297.0,
-      "height": 210.0
+  "size": {
+    "background": {
+      "print": {
+        "width": 297.0,
+        "height": 210.0
+      },
+      "presentation": {
+        "width": 323.33,
+        "height": 210.0
+      }
     },
-    "innerRectangle" :  {
-      "width" : 132,
+    "innerRectangle": {
+      "width": 132,
       "height": 71
     }
   },
-  "outputPath" : {
-    "bulletin" : "output/bulletin",
-    "lyrics" : "output/lyrics"
+  "outputPath": {
+    "bulletin": "output/bulletin",
+    "lyrics": "output/lyrics"
   }
 }

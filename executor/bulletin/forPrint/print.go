@@ -29,7 +29,9 @@ func CreatePrint(figmaInfo *get.Info, execPath string, config extract.Config) {
 
 	files, _ := os.ReadDir(outputDir)
 	objPdf := presentation.New(bulletinSize)
-
+	objPdf.FullSize = bulletinSize
+	objPdf.BoxSize = rectangle
+	
 	yearMonth, weekFormatted := date.SetDateTitle()
 
 	// 파일명 생성: "202411_3.pdf"
@@ -42,12 +44,11 @@ func CreatePrint(figmaInfo *get.Info, execPath string, config extract.Config) {
 
 		objPdf.AddPage()
 		objPdf.CheckImgPlaced(bulletinSize, imgPath, 0)
-		padding := (bulletinSize.Wd/2 - rectangle.Width) / 2
 
 		if i == 0 {
 			sunDatText := date.SetThisSunDay()
 			objPdf.SetText(10, highestLuminaceColor)
-			objPdf.WriteText(bulletinSize.Wd-(padding*3), padding, sunDatText)
+			objPdf.WriteText(sunDatText, "right")
 		}
 
 	}
@@ -64,8 +65,8 @@ func CreatePrint(figmaInfo *get.Info, execPath string, config extract.Config) {
 // A4 기준
 func getSize(config extract.Config) (gofpdf.SizeType, presentation.Size) {
 	bulletinSize := gofpdf.SizeType{
-		Wd: config.Size.Background.Width,
-		Ht: config.Size.Background.Height,
+		Wd: config.Size.Background.Print.Width,
+		Ht: config.Size.Background.Print.Height,
 	}
 	rectangle := presentation.Size{
 		Width:  config.Size.InnerRectangle.Width,

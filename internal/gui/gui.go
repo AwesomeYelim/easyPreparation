@@ -71,11 +71,14 @@ func FigmaConnector() (target string, figmaInfo *get.Info) {
 		fmt.Printf("Received ContentsDate: %s", arg)
 		ui.Eval(`document.getElementById("responseMessage").textContent = "[RECEIVED] : Contents Data received successfully!"`)
 
-		for _, el := range arg {
+		for i, el := range arg {
 			title := el["title"]
 			content := el["content"]
 			if strings.HasSuffix(title, "부름") || strings.HasSuffix(title, "봉독") {
 				el["obj"] = quote.GetQuote(content)
+			}
+			if strings.HasSuffix(title, "말씀내용") {
+				arg[i]["obj"] = arg[i-1]["obj"]
 			}
 		}
 		target = argTarget
