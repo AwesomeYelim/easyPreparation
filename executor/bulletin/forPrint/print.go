@@ -31,7 +31,7 @@ func CreatePrint(figmaInfo *get.Info, execPath string, config extract.Config) {
 	objPdf := presentation.New(bulletinSize)
 	objPdf.FullSize = bulletinSize
 	objPdf.BoxSize = rectangle
-	
+
 	yearMonth, weekFormatted := date.SetDateTitle()
 
 	// 파일명 생성: "202411_3.pdf"
@@ -47,7 +47,7 @@ func CreatePrint(figmaInfo *get.Info, execPath string, config extract.Config) {
 
 		if i == 0 {
 			sunDatText := date.SetThisSunDay()
-			objPdf.SetText(10, highestLuminaceColor)
+			objPdf.SetText(10, true, highestLuminaceColor)
 			objPdf.WriteText(sunDatText, "right")
 		}
 

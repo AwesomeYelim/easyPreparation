@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -24,12 +25,38 @@ func startLocalServer(buildFolder string) {
 	}()
 }
 
+// runPnpmBuild 실행 함수
+func runPnpmBuild(projectPath string) error {
+	fmt.Println("Building UI with pnpm...")
+
+	// pnpm build 명령어 실행
+	cmd := exec.Command("pnpm", "build")
+	cmd.Dir = projectPath
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to run pnpm build: %w", err)
+	}
+
+	fmt.Println("UI build completed successfully.")
+	return nil
+}
+
 // FigmaConnector 함수에서 build/index.html 파일을 로컬 서버로 제공하고 Lorca로 띄우는 방식으로 수정
 func FigmaConnector() (target string, figmaInfo *get.Info) {
-	// 빌드된 React 프로젝트의 경로
 	execPath, _ := os.Getwd()
 	execPath = path.ExecutePath(execPath, "easyPreparation")
-	buildFolder := filepath.Join(execPath, "ui", "build")
+
+	// UI 빌드 실행
+	uiBuildPath := filepath.Join(execPath, "ui")
+	if err := runPnpmBuild(uiBuildPath); err != nil {
+		fmt.Printf("Error running pnpm build: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 빌드된 React 프로젝트의 경로
+	buildFolder := filepath.Join(uiBuildPath, "build")
 
 	// build 폴더 내의 index.html 경로 설정
 	htmlFilePath := filepath.Join(buildFolder, "index.html")
@@ -67,19 +94,24 @@ func FigmaConnector() (target string, figmaInfo *get.Info) {
 	})
 
 	// sendContentsDate 함수 바인딩
-	_ = ui.Bind("sendContentsDate", func(argTarget string, arg []map[string]string) {
+	_ = ui.Bind("sendContentsDate", func(argTarget string, arg []map[string]interface{}) {
 		fmt.Printf("Received ContentsDate: %s", arg)
 		ui.Eval(`document.getElementById("responseMessage").textContent = "[RECEIVED] : Contents Data received successfully!"`)
 
 		for i, el := range arg {
-			title := el["title"]
-			content := el["content"]
+			title, tIs := el["title"].(string)
+			obj, bIs := el["obj"].(string)
+			if !tIs || !bIs {
+				continue
+			}
+
 			if strings.HasSuffix(title, "부름") || strings.HasSuffix(title, "봉독") {
-				el["obj"] = quote.GetQuote(content)
+				el["contents"] = quote.GetQuote(obj)
 			}
 			if strings.HasSuffix(title, "말씀내용") {
-				arg[i]["obj"] = arg[i-1]["obj"]
+				arg[i]["contents"] = arg[i-1]["contents"]
 			}
+
 		}
 		target = argTarget
 		sample, _ := json.MarshalIndent(arg, "", "  ")

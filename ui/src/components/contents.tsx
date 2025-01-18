@@ -1,139 +1,181 @@
 import React, { useState } from "react";
 
+interface Info {
+  title: string;
+  obj: string;
+  info: string;
+  children?: Info[]; // children 속성을 추가
+}
+
 const worshipTitle = "main_worship";
-const initialData = [
+const initialData: Info[] = [
   {
     title: "1_전주",
-    content: "전주",
+    obj: "전주",
     info: "l_전주",
   },
   {
     title: "2_예배의 부름",
-    content: "하 2:20",
+    obj: "하 2:20",
     info: "c_edit",
   },
   {
     title: "3_찬송",
-    content: "5장",
+    obj: "5장",
     info: "c_edit",
   },
   {
     title: "4_성시교독",
-    content: "56. 시편 128편",
+    obj: "56. 시편 128편",
     info: "c_edit",
   },
   {
     title: "5_신앙고백",
-    content: "사도신경",
+    obj: "사도신경",
     info: "c_사도신경",
   },
   {
     title: "6_찬송",
-    content: "257장",
+    obj: "257장",
     info: "c_edit",
   },
   {
     title: "7_기도",
-    content: "홍영란권사",
+    obj: "홍영란권사",
     info: "r_edit",
   },
   {
     title: "8_성경봉독",
-    content: "시 84:1-12",
+    obj: "시 84:1-12",
     info: "c_edit",
   },
   {
     title: "8.1_말씀내용",
-    content: "말씀내용",
+    obj: "말씀내용",
     info: "c_edit",
   },
   {
     title: "9_찬양",
-    content: "찬양",
+    obj: "찬양",
     info: "l_찬양",
   },
   {
     title: "10_참회의 기도",
-    content: "참회의 기도",
+    obj: "참회의 기도",
     info: "l_참회의 기도",
   },
   {
     title: "11_말씀",
-    content: "시온의 대로가 있는 자",
+    obj: "시온의 대로가 있는 자",
     info: "c_edit",
   },
   {
     title: "12_헌금봉헌",
-    content: "208장",
+    obj: "208장",
     info: "c_edit",
   },
   {
     title: "13_교회소식",
-    content: "교회소식",
-    info: "l_교회소식",
+    obj: "교회소식",
+    info: "edit",
+    children: [
+      {
+        title: "1_예배 참여 안내",
+        obj: "매주 금요일 나라와 민족을 위하여 기도 하고 있습니다. \n많은 참여바랍니다. (아래 예배시간 참고)",
+        info: "c_edit",
+      },
+      {
+        title: "2_교회절기 및 행사",
+        obj: "",
+        info: "",
+        children: [
+          {
+            title: "1_새벽기도",
+            obj: "특별새벽기도회를 은혜가운데 잘 마쳤습니다. (기도로 2025년도 승리합시다.)",
+            info: "c_edit",
+          },
+          {
+            title: "2_예배 후",
+            obj: "예. 결산 공동의회: 12/19(주일) 예배 후에",
+            info: "c_edit",
+          },
+        ],
+      },
+      {
+        title: "3_담임 목사 활동",
+        obj: "정치부 모임: 1/23(목) 오전 11시, 노회 사무실",
+        info: "c_edit",
+      },
+      {
+        title: "4_선교회 소식",
+        obj: "연말정산용 기부금 납부 증명서 신청받습니다. - 재정부장님께",
+        info: "c_edit",
+      },
+      {
+        title: "5_노회 소식",
+        obj: "신년 하례회 - 1/7(화) 오전 11시, 영광교회",
+        info: "c_edit",
+      },
+    ],
   },
   {
     title: "14_찬송",
-    content: "635장",
+    obj: "635장",
     info: "c_edit",
   },
   {
     title: "15_내주기도",
-    content: "이경아 권사님",
+    obj: "이경아 사모님",
     info: "edit",
   },
   {
     title: "16_헌금, 안내",
-    content: "남선교회",
+    obj: "남선교회",
     info: "edit",
   },
   {
     title: "17_오늘의 말씀",
-    content:
-      "세월이 지난 후에 가인은 땅의 소산으로 제물을 삼아 여호와께 드렸고 아벨은 자기도 양의 첫 새끼와 그 기름으로 드렸더니 여호와께서 아벨과 그의 제물은 받으셨으나\n\r\n창 4:3-4",
+    obj: "창 4:3-4",
     info: "edit",
   },
-  {
-    title: "18.1_예배 참여 안내",
-    content: "매주 금요일 나라와 민족을 위하여 기도 하고 있습니다. \n많은 참여바랍니다. (아래 예배시간 참고)",
-    info: "c_edit",
-  },
-  {
-    title: "18.2_교회절기 및 행사",
-    content: "2) 예. 결산 공동의회: 12/19(주일) 예배 후에",
-    info: "c_2_edit",
-  },
-  {
-    title: "18.3_담임 목사 활동",
-    content: "정치부 모임: 1/23(목) 오전 11시, 노회 사무실",
-    info: "c_edit",
-  },
-  {
-    title: "18.4_선교회 소식",
-    content: "연말정산용 기부금 납부 증명서 신청받습니다. - 재정부장님께",
-    info: "c_edit",
-  },
-  {
-    title: "18.5_노회 소식",
-    content: "신년 하례회 - 1/7(화) 오전 11시, 영광교회",
-    info: "c_edit",
-  },
 ];
+
 
 const EditableData: React.FC = () => {
   const [title, setTitle] = useState(worshipTitle);
   const [data, setData] = useState(initialData);
 
-  const handleInputChange = (index: number, newContent: string) => {
-    const updatedData = [...data];
-    updatedData[index].content = newContent;
-    setData(updatedData);
+  const handleInputChange = (key: string, newObj: string) => {
+    const updateData = (items: Info[], keyParts: string[]): Info[] => {
+      const [currentIndex, ...restKeyParts] = keyParts;
+  
+      if (!currentIndex) return items;
+  
+      return items.map((item, index) => {
+        if (index === parseInt(currentIndex)) {
+          if (restKeyParts.length === 0) {
+            // 최종 obj 업데이트
+            return { ...item, obj: newObj };
+          }
+          if (item.children) {
+            // children 업데이트
+            return {
+              ...item,
+              children: updateData(item.children, restKeyParts),
+            };
+          }
+        }
+        return item;
+      });
+    };
+  
+    const keyParts = key.split("-");
+    setData((prevData) => updateData(prevData, keyParts));
   };
 
   const handleSubmit = async () => {
     try {
       // 실제 Go와 연동 시 사용될 함수 호출
-      // Go로 데이터를 보내기 위해 window.sendContentsDate 사용
       if (window.sendContentsDate) {
         await window.sendContentsDate(title, data);
       }
@@ -142,6 +184,38 @@ const EditableData: React.FC = () => {
     }
   };
 
+  // 재귀적으로 요소를 렌더링하는 함수
+  const renderItems = (items: Info[], parentIndex: string = "") => {
+    return items.map((item, index) => {
+      const key = parentIndex ? `${parentIndex}-${index}` : `${index}`;
+  
+      return (
+        <div key={key} style={{ marginBottom: "15px" }}>
+          <label>{item.title}</label>
+          {item.info.includes("edit") && (
+            <input
+              type="text"
+              onChange={(e) => handleInputChange(key, e.target.value)}
+              placeholder={item.obj}
+              style={{
+                display: "block",
+                marginTop: "10px",
+                padding: "10px",
+                width: "100%",
+                maxWidth: "400px",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+              }}
+            />
+          )}
+          {/* children이 있으면 재귀 호출 */}
+          {item.children && (
+            <div style={{ marginLeft: "20px" }}>{renderItems(item.children, key)}</div>
+          )}
+        </div>
+      );
+    });
+  };
   return (
     <div>
       <div style={{ marginBottom: "15px" }}>
@@ -152,7 +226,7 @@ const EditableData: React.FC = () => {
           placeholder={worshipTitle}
           style={{
             display: "block",
-            marginTop: "5px",
+            marginTop: "10px",
             padding: "10px",
             width: "100%",
             maxWidth: "400px",
@@ -161,35 +235,9 @@ const EditableData: React.FC = () => {
           }}
         />
       </div>
-      {data.map((item, index) => {
-        if (item.info.includes("edit")) {
-          return (
-            <div key={index} style={{ marginBottom: "15px" }}>
-              <label>{item.title}</label>
-              <input
-                type="text"
-                onChange={(e) => handleInputChange(index, e.target.value)}
-                placeholder={item.content}
-                style={{
-                  display: "block",
-                  marginTop: "5px",
-                  padding: "10px",
-                  width: "100%",
-                  maxWidth: "400px",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                }}
-              />
-            </div>
-          );
-        } else {
-          return (
-            <div key={index} style={{ marginBottom: "15px" }}>
-              <label style={{ color: "#ccc" }}>{item.title}</label>
-            </div>
-          );
-        }
-      })}
+
+      {/* 재귀적으로 데이터를 렌더링 */}
+      {renderItems(data)}
 
       <button
         onClick={handleSubmit}
@@ -200,7 +248,8 @@ const EditableData: React.FC = () => {
           border: "none",
           borderRadius: "4px",
           cursor: "pointer",
-        }}>
+        }}
+      >
         Submit
       </button>
     </div>

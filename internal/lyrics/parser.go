@@ -3,11 +3,9 @@ package lyrics
 import (
 	"easyPreparation_1.0/pkg"
 	"fmt"
+	"github.com/PuerkitoBio/goquery"
 	"log"
 	"strconv"
-	"strings"
-
-	"github.com/PuerkitoBio/goquery"
 )
 
 // SlideData 구조체는 슬라이드에 포함될 데이터를 나타냅니다.
@@ -38,9 +36,8 @@ func (si *SlideData) parseTrackList(doc *goquery.Document) {
 func (si *SlideData) parseLyrics(doc *goquery.Document) {
 	doc.Find(".lyricsContainer xmp").Each(func(i int, s *goquery.Selection) {
 		// 공백 제거
-		trimmedText := pkg.RemoveEmptyLines(s.Text())
+		lines := pkg.RemoveEmptyLines(s.Text())
 		// 두 줄씩 자르기
-		lines := strings.Split(trimmedText, "\n")
 		for i := 0; i < len(lines); i += 2 {
 			if i+1 < len(lines) {
 				si.Content = append(si.Content, lines[i]+"\n"+lines[i+1])

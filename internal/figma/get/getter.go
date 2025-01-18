@@ -1,9 +1,6 @@
 package get
 
 import (
-	"easyPreparation_1.0/internal/sorted"
-	"easyPreparation_1.0/pkg"
-	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/torie/figma"
@@ -85,45 +82,4 @@ func (i *Info) GetFrames(frameName string) []figma.Node {
 
 	log.Printf("Got %d frames", len(res))
 	return res
-}
-
-// ppt 만들 resource
-func (i *Info) GetResource(target string) {
-	var mainContent []map[string]interface{}
-
-	sample, _ := json.MarshalIndent(i.AssembledNodes, "", "")
-	err := json.Unmarshal(sample, &mainContent)
-
-	if err != nil {
-		log.Print("err : ", err)
-	}
-	var newG []Children
-
-	grouped := orgJson(mainContent, i.ExecPath, target)
-
-	var keys []string
-	for key, _ := range grouped {
-		keys = append(keys, key)
-	}
-	sorted.ToIntSort(keys, "", "_", 1)
-
-	for ind, key := range keys {
-		var temp Children
-		temp = grouped[key][0]
-
-		// 하위 정렬인 경우 이전 obj 내용을 갖고 옴
-		if strings.Contains(key, ".") && ind < len(keys)-1 {
-			temp.Obj = grouped[keys[ind-1]][0].Obj
-		}
-		newG = append(newG, Children{
-			Title:   key,
-			Content: temp.Content,
-			Info:    temp.Info,
-			Obj:     temp.Obj,
-		})
-	}
-
-	sample, _ = json.MarshalIndent(newG, "", "  ")
-	_ = pkg.CheckDirIs(filepath.Join(i.ExecPath, "config"))
-	_ = os.WriteFile(filepath.Join(i.ExecPath, "config", target+".json"), sample, 0644)
 }

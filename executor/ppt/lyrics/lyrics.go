@@ -68,7 +68,7 @@ func createPresentationForSongs(songTitles []string) {
 			Ht: 167.0,
 		}
 		objPdf := presentation.New(pdfSize)
-		objPdf.SetText(40, color.RGBA{R: 255, G: 255, B: 255})
+		objPdf.SetText(40, true, color.RGBA{R: 255, G: 255, B: 255})
 
 		for _, content := range song.Content {
 			objPdf.AddPage()

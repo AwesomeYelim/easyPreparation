@@ -4,6 +4,7 @@ import (
 	"easyPreparation_1.0/internal/date"
 	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/figma/get"
+	"easyPreparation_1.0/internal/gui"
 	"easyPreparation_1.0/internal/presentation"
 	"easyPreparation_1.0/pkg"
 	"encoding/json"
@@ -36,7 +37,7 @@ func CreatePresentation(figmaInfo *get.Info, config extract.Config, target, exec
 
 	outputFilename := fmt.Sprintf("%s_%s.pdf", yearMonth, weekFormatted)
 
-	var contents []get.Children
+	var contents []gui.WorshipInfo
 
 	worshipContents, err := os.ReadFile(filepath.Join(execPath, "config", target+".json"))
 	err = json.Unmarshal(worshipContents, &contents)

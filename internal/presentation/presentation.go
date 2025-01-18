@@ -3,8 +3,8 @@ package presentation
 import (
 	"easyPreparation_1.0/internal/colorPalette"
 	"easyPreparation_1.0/internal/extract"
-	"easyPreparation_1.0/internal/figma/get"
 	"easyPreparation_1.0/internal/googleCloud"
+	"easyPreparation_1.0/internal/gui"
 	"easyPreparation_1.0/pkg"
 	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
@@ -96,7 +96,7 @@ func (pdf *PDF) DrawLine(length, x, y float64, color ...color.Color) {
 	pdf.Line(x, y, x+length, y)
 }
 
-func (pdf *PDF) WriteText(text, position string) {
+func (pdf *PDF) WriteText(text, position string, custom ...float64) {
 	textWidth := pdf.GetStringWidth(text)
 
 	var x, y float64
@@ -111,22 +111,30 @@ func (pdf *PDF) WriteText(text, position string) {
 		padding := (pdf.FullSize.Wd/2 - pdf.BoxSize.Width) / 2
 		x = pdf.FullSize.Wd - (textWidth + padding)
 		y = padding
+	case "custom":
+		x = custom[0]
+		y = custom[1]
 	}
 
 	pdf.Text(x, y, text)
 }
 
-func (pdf *PDF) SetText(fontSize float64, textColor ...color.Color) {
-	fontPath := "./public/font/NotoSansKR-Bold.ttf"
-	// 폰트 설정
-	pdf.AddUTF8Font("NotoSansKR-Bold", "", fontPath)
-	pdf.SetFont("NotoSansKR-Bold", "", fontSize)
+func (pdf *PDF) SetText(fontSize float64, isB bool, textColor ...color.Color) {
+	fontBPath := "./public/font/NanumGothic-ExtraBold.ttf"
+	fontPath := "./public/font/NanumGothic-Regular.ttf"
+
+	if isB {
+		pdf.AddUTF8Font("NanumGothic-ExtraBold", "B", fontBPath)
+		pdf.SetFont("NanumGothic-ExtraBold", "B", fontSize)
+	} else {
+		pdf.AddUTF8Font("NanumGothic-Regular", "", fontPath)
+		pdf.SetFont("NanumGothic-Regular", "", fontSize)
+	}
 
 	// 텍스트 색상 설정
 	rgba := pdf.getColorRGB(textColor)
-
-	// 텍스트 출력
 	pdf.SetTextColor(int(rgba[0]), int(rgba[1]), int(rgba[2]))
+
 }
 
 // 텍스트 색상 설정 함수
@@ -142,37 +150,74 @@ func (pdf *PDF) getColorRGB(textColor []color.Color) []uint32 {
 	}
 	return rgba
 }
-func (pdf *PDF) ForEdit(con get.Children, config extract.Config, execPath string) {
-	hLColor := colorPalette.HexToRGBA(config.Color.BoxColor) // 가장 채도가 낮음
+func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config, execPath string) {
+	hLColor := colorPalette.HexToRGBA(config.Color.BoxColor) // 박스 색상 설정
 	var textSize float64 = 25
 	var textW float64 = 230
 
-	pdf.SetText(textSize, hLColor)
-	trimmedText := pkg.RemoveEmptyLines(con.Obj)
+	pdf.SetText(textSize, true, hLColor)
+	trimmedText := pkg.RemoveEmptyLines(con.Contents)
 	pdf.Contents = trimmedText
+
 	switch pdf.Title {
 	case "예배의 부름":
 		pdf.setBegin(con, textW, textSize, 4)
 	case "말씀내용":
 		pdf.setBody(textW, textSize, 3)
 	case "찬송", "헌금봉헌":
-		pdf.SetText(27, hLColor)
-		pdf.WriteText(con.Content, "center")
-		pdf.setOutDirFiles("hymn", con.Content)
+		pdf.SetText(27, true, hLColor)
+		pdf.WriteText(con.Obj, "center")
+		pdf.setOutDirFiles("hymn", con.Obj)
 	case "성시교독":
-		pdf.setOutDirFiles("responsive_reading", con.Content)
+		pdf.setOutDirFiles("responsive_reading", con.Obj)
+	case "교회소식":
+		pdf.DrawChurchNews(con, hLColor)
 	default:
-		pdf.SetText(27, hLColor)
-		pdf.WriteText(con.Content, "center")
+		pdf.WriteText(con.Obj, "center")
 	}
 }
 
-func (pdf *PDF) setBegin(con get.Children, textW float64, textSize float64, lines int) {
+func (pdf *PDF) DrawChurchNews(con gui.WorshipInfo, hLColor color.RGBA) {
+	// 재귀적으로 교회소식과 그 내부 children 데이터를 처리하는 함수
+	var draw func(items []gui.WorshipInfo, depth int)
+
+	x, y := 10.0, 40.0
+	fontSize := 27.0
+	var tmpData string
+	pdf.SetText(fontSize, false, hLColor)
+
+	draw = func(items []gui.WorshipInfo, depth int) {
+		for _, item := range items {
+			var tab string
+			for i := 1; i < depth; i++ {
+				tab += "\t"
+			}
+			tmpData += tab + fmt.Sprintf("%s: %s", strings.Replace(item.Title, "_", ". ", 1), item.Obj) + "\n"
+			// children이 있는 경우 재귀 호출
+			if len(item.Children) > 0 {
+				depth += 1
+				draw(item.Children, depth) // 재귀 호출
+			} else {
+				pdf.SetXY(x, y)
+				pdf.MultiCell(pdf.BoxSize.Width, fontSize/2, tmpData, "", "L", false)
+			}
+		}
+	}
+
+	if con.Title == "13_교회소식" {
+		// children 처리
+		if len(con.Children) > 0 {
+			draw(con.Children, 1)
+		}
+	}
+}
+
+func (pdf *PDF) setBegin(con gui.WorshipInfo, textW float64, textSize float64, lines int) {
 	var tmpEl string
 	for i, _ := range pdf.Contents {
 
 		if i == 0 {
-			pdf.Contents[i] = fmt.Sprintf("%s\n%s", con.Content, pdf.Contents[i])
+			pdf.Contents[i] = fmt.Sprintf("%s\n%s", con.Obj, pdf.Contents[i])
 		}
 		// 라인 기준으로 페이지를 생성
 		if i != 0 && i%lines == 0 {

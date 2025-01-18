@@ -17,7 +17,6 @@ func main() {
 	configPath := filepath.Join(execPath, "config/custom.json")
 	config := extract.ExtCustomOption(configPath)
 
-	//scheme.CreateScheme(figmaInfo)
 	forPrint.CreatePrint(figmaInfo, execPath, config)
 	forPresentation.CreatePresentation(figmaInfo, config, target, execPath)
 }
