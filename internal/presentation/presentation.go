@@ -181,25 +181,20 @@ func (pdf *PDF) DrawChurchNews(con gui.WorshipInfo, hLColor color.RGBA) {
 	// 재귀적으로 교회소식과 그 내부 children 데이터를 처리하는 함수
 	var draw func(items []gui.WorshipInfo, depth int)
 
-	x, y := 10.0, 40.0
+	x, y := 10.0, 50.0
 	fontSize := 27.0
 	var tmpData string
 	pdf.SetText(fontSize, false, hLColor)
 
 	draw = func(items []gui.WorshipInfo, depth int) {
 		for _, item := range items {
-			var tab string
-			for i := 1; i < depth; i++ {
-				tab += "\t"
-			}
+			tab := strings.Repeat("\t", depth-1)
+			// 데이터 추가
 			tmpData += tab + fmt.Sprintf("%s: %s", strings.Replace(item.Title, "_", ". ", 1), item.Obj) + "\n"
+
 			// children이 있는 경우 재귀 호출
 			if len(item.Children) > 0 {
-				depth += 1
-				draw(item.Children, depth) // 재귀 호출
-			} else {
-				pdf.SetXY(x, y)
-				pdf.MultiCell(pdf.BoxSize.Width, fontSize/2, tmpData, "", "L", false)
+				draw(item.Children, depth+1) // depth 증가
 			}
 		}
 	}
@@ -210,6 +205,10 @@ func (pdf *PDF) DrawChurchNews(con gui.WorshipInfo, hLColor color.RGBA) {
 			draw(con.Children, 1)
 		}
 	}
+
+	// 최종 출력
+	pdf.SetXY(x, y)
+	pdf.MultiCell(pdf.BoxSize.Width, fontSize/2, tmpData, "", "L", false)
 }
 
 func (pdf *PDF) setBegin(con gui.WorshipInfo, textW float64, textSize float64, lines int) {
