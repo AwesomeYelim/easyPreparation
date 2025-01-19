@@ -187,10 +187,10 @@ func (pdf *PDF) DrawChurchNews(con gui.WorshipInfo, hLColor color.RGBA) {
 	pdf.SetText(fontSize, false, hLColor)
 
 	draw = func(items []gui.WorshipInfo, depth int) {
-		for _, item := range items {
+		for i, item := range items {
 			tab := strings.Repeat("\t", depth-1)
 			// 데이터 추가
-			tmpData += tab + fmt.Sprintf("%s: %s", strings.Replace(item.Title, "_", ". ", 1), item.Obj) + "\n"
+			tmpData += tab + fmt.Sprintf("%d. %s: %s", i+1, item.Title, item.Obj) + "\n"
 
 			// children이 있는 경우 재귀 호출
 			if len(item.Children) > 0 {

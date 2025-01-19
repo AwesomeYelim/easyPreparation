@@ -80,39 +80,39 @@ const initialData: Info[] = [
     info: "edit",
     children: [
       {
-        title: "1_예배 참여 안내",
+        title: "예배 참여 안내",
         obj: "매주 금요일 나라와 민족을 위하여 기도 하고 있습니다. \n많은 참여바랍니다. (아래 예배시간 참고)",
         info: "c_edit",
       },
       {
-        title: "2_교회절기 및 행사",
+        title: "교회절기 및 행사",
         obj: "",
         info: "",
         children: [
           {
-            title: "1_새벽기도",
+            title: "새벽기도",
             obj: "특별새벽기도회를 은혜가운데 잘 마쳤습니다. (기도로 2025년도 승리합시다.)",
             info: "c_edit",
           },
           {
-            title: "2_예배 후",
+            title: "예배 후",
             obj: "예. 결산 공동의회: 12/19(주일) 예배 후에",
             info: "c_edit",
           },
         ],
       },
       {
-        title: "3_담임 목사 활동",
+        title: "담임 목사 활동",
         obj: "정치부 모임: 1/23(목) 오전 11시, 노회 사무실",
         info: "c_edit",
       },
       {
-        title: "4_선교회 소식",
+        title: "선교회 소식",
         obj: "연말정산용 기부금 납부 증명서 신청받습니다. - 재정부장님께",
         info: "c_edit",
       },
       {
-        title: "5_노회 소식",
+        title: "노회 소식",
         obj: "신년 하례회 - 1/7(화) 오전 11시, 영광교회",
         info: "c_edit",
       },
