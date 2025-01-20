@@ -16,17 +16,17 @@ const initialData: Info[] = [
   },
   {
     title: "2_예배의 부름",
-    obj: "하 2:20",
+    obj: "렘 33:2-3",
     info: "c_edit",
   },
   {
     title: "3_찬송",
-    obj: "5장",
+    obj: "8장",
     info: "c_edit",
   },
   {
     title: "4_성시교독",
-    obj: "56. 시편 128편",
+    obj: "3. 시편 4편",
     info: "c_edit",
   },
   {
@@ -36,17 +36,17 @@ const initialData: Info[] = [
   },
   {
     title: "6_찬송",
-    obj: "257장",
+    obj: "259장",
     info: "c_edit",
   },
   {
     title: "7_기도",
-    obj: "홍영란권사",
+    obj: "이경아 사모",
     info: "r_edit",
   },
   {
     title: "8_성경봉독",
-    obj: "시 84:1-12",
+    obj: "고후 1:11",
     info: "c_edit",
   },
   {
@@ -66,12 +66,12 @@ const initialData: Info[] = [
   },
   {
     title: "11_말씀",
-    obj: "시온의 대로가 있는 자",
+    obj: "감사의 감사를 낳는 기도",
     info: "c_edit",
   },
   {
     title: "12_헌금봉헌",
-    obj: "208장",
+    obj: "365장",
     info: "c_edit",
   },
   {
@@ -96,14 +96,14 @@ const initialData: Info[] = [
           },
           {
             title: "예배 후",
-            obj: "예. 결산 공동의회: 12/19(주일) 예배 후에",
+            obj: "예. 결산 공동의회: 1/19(주일) 예배 후에 - 다음주",
             info: "c_edit",
           },
         ],
       },
       {
         title: "담임 목사 활동",
-        obj: "정치부 모임: 1/23(목) 오전 11시, 노회 사무실",
+        obj: "목사합창단 모임 : 1/21(화) 오전 11시, 동산교회당",
         info: "c_edit",
       },
       {
@@ -113,7 +113,7 @@ const initialData: Info[] = [
       },
       {
         title: "노회 소식",
-        obj: "신년 하례회 - 1/7(화) 오전 11시, 영광교회",
+        obj: "노회임원 정치부 연석모임 : 1/23(목) 오전 11시, 노회 사무실",
         info: "c_edit",
       },
     ],
@@ -125,7 +125,7 @@ const initialData: Info[] = [
   },
   {
     title: "15_내주기도",
-    obj: "이경아 사모님",
+    obj: "이병용 집사",
     info: "edit",
   },
   {
@@ -140,7 +140,6 @@ const initialData: Info[] = [
   },
 ];
 
-
 const EditableData: React.FC = () => {
   const [title, setTitle] = useState(worshipTitle);
   const [data, setData] = useState(initialData);
@@ -148,9 +147,9 @@ const EditableData: React.FC = () => {
   const handleInputChange = (key: string, newObj: string) => {
     const updateData = (items: Info[], keyParts: string[]): Info[] => {
       const [currentIndex, ...restKeyParts] = keyParts;
-  
+
       if (!currentIndex) return items;
-  
+
       return items.map((item, index) => {
         if (index === parseInt(currentIndex)) {
           if (restKeyParts.length === 0) {
@@ -168,7 +167,7 @@ const EditableData: React.FC = () => {
         return item;
       });
     };
-  
+
     const keyParts = key.split("-");
     setData((prevData) => updateData(prevData, keyParts));
   };
@@ -188,18 +187,25 @@ const EditableData: React.FC = () => {
   const renderItems = (items: Info[], parentIndex: string = "") => {
     return items.map((item, index) => {
       const key = parentIndex ? `${parentIndex}-${index}` : `${index}`;
-  
+
       return (
         <div key={key} style={{ marginBottom: "15px" }}>
-          <label>{item.title}</label>
+          <label
+            style={{
+              marginTop: "10px",
+              color: item.info.includes("edit") ? "#000000" : "#ccc",
+            }}
+          >
+            {item.title}
+          </label>
           {item.info.includes("edit") && (
             <input
               type="text"
               onChange={(e) => handleInputChange(key, e.target.value)}
               placeholder={item.obj}
               style={{
+                marginTop: "5px",
                 display: "block",
-                marginTop: "10px",
                 padding: "10px",
                 width: "100%",
                 maxWidth: "400px",
@@ -210,7 +216,9 @@ const EditableData: React.FC = () => {
           )}
           {/* children이 있으면 재귀 호출 */}
           {item.children && (
-            <div style={{ marginLeft: "20px" }}>{renderItems(item.children, key)}</div>
+            <div style={{ marginLeft: "20px", marginTop: "10px" }}>
+              {renderItems(item.children, key)}
+            </div>
           )}
         </div>
       );

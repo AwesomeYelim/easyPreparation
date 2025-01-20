@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -320,6 +321,7 @@ func (pdf *PDF) setOutDirFiles(category, target string) {
 }
 
 func (pdf *PDF) AddImagesToPDF(imageDir string) error {
+	extStandard := ".png"
 	files, err := os.ReadDir(imageDir)
 	if err != nil {
 		return fmt.Errorf("이미지 디렉토리 읽기 실패: %v", err)
@@ -327,12 +329,21 @@ func (pdf *PDF) AddImagesToPDF(imageDir string) error {
 
 	var imageFiles []string
 	for _, file := range files {
-		if filepath.Ext(file.Name()) == ".png" {
+		if filepath.Ext(file.Name()) == extStandard {
 			imageFiles = append(imageFiles, filepath.Join(imageDir, file.Name()))
 		}
 	}
 
-	sort.Strings(imageFiles)
+	// 숫자 기준 정렬
+	sort.Slice(imageFiles, func(i, j int) bool {
+		baseName1 := strings.TrimSuffix(filepath.Base(imageFiles[i]), extStandard)
+		baseName2 := strings.TrimSuffix(filepath.Base(imageFiles[j]), extStandard)
+
+		num1, _ := strconv.Atoi(baseName1)
+		num2, _ := strconv.Atoi(baseName2)
+
+		return num1 < num2
+	})
 
 	for _, imgPath := range imageFiles {
 		pdf.AddPage()
