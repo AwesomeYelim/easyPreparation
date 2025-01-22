@@ -1,8 +1,7 @@
 // EditableData.tsx
 import React, { useState } from "react";
-import BibleSelect from "./bible.tsx";
+import BibleSelect from "./bibleSelect.tsx";
 import initialData from "../data.json"; // JSON 파일 import
-
 
 interface Info {
   title: string;
@@ -15,11 +14,10 @@ const EditableData: React.FC = () => {
   const [title, setTitle] = useState("main_worship");
   const [data, setData] = useState(initialData);
 
-  const handleInputChange = (key: string, newObj: string) => {
+  const handleValueChange = (key: string, newObj: string) => {
     const updateData = (items: Info[], keyParts: string[]): Info[] => {
       const [currentIndex, ...restKeyParts] = keyParts;
       if (!currentIndex) return items;
-
       return items.map((item, index) => {
         if (index === parseInt(currentIndex)) {
           if (restKeyParts.length === 0) {
@@ -51,23 +49,36 @@ const EditableData: React.FC = () => {
       const key = parentIndex ? `${parentIndex}-${index}` : `${index}`;
 
       return (
-        <div key={key} style={{ marginBottom: "15px" }}>
-          <label style={{ marginTop: "10px", color: item.info.includes("edit") ? "#000" : "#ccc" }}>
-            {item.title}
-          </label>
+        <div
+          key={key}
+          style={{
+            marginBottom: "15px",
+            display: item.info.includes("edit") && !item.info.includes("edit") ? "flex" : "block",
+            maxWidth: 400,
+            flexWrap: "wrap",
+            justifyContent: "start",
+          }}>
+          <label style={{ marginTop: "10px", color: item.info.includes("edit") ? "#000" : "#ccc" }}>{item.title}</label>
           {item.info.includes("edit") && !item.info.includes("b_") && (
             <input
               type="text"
-              onChange={(e) => handleInputChange(key, e.target.value)}
+              onChange={(e) => handleValueChange(key, e.target.value)}
               placeholder={item.obj}
-              style={{ marginTop: "5px", padding: "10px", width: "100%", maxWidth: "400px", border: "1px solid #ccc", borderRadius: "4px" }}
+              style={{
+                marginTop: "5px",
+                padding: "10px",
+                width: "100%",
+                maxWidth: "400px",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+              }}
             />
           )}
-          {item.info.includes("edit") && item.info.includes("b_") && <BibleSelect />}
+          {item.info.includes("edit") && item.info.includes("b_") && (
+            <BibleSelect handleValueChange={handleValueChange} parentKey={key} />
+          )}
           {item.children && (
-            <div style={{ marginLeft: "20px", marginTop: "10px" }}>
-              {renderItems(item.children, key)}
-            </div>
+            <div style={{ marginLeft: "20px", marginTop: "10px" }}>{renderItems(item.children, key)}</div>
           )}
         </div>
       );
@@ -103,8 +114,7 @@ const EditableData: React.FC = () => {
           border: "none",
           borderRadius: "4px",
           cursor: "pointer",
-        }}
-      >
+        }}>
         Submit
       </button>
     </div>

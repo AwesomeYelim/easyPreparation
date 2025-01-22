@@ -1,28 +1,15 @@
 package quote
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 )
 
 func GetQuote(characters string) string {
 
-	var dictB map[string]struct {
-		Eng string `json:"eng"`
-		Kor string `json:"kor"`
-	}
-
-	dict, err := os.ReadFile(filepath.Join("./config", "bible_dict.json"))
-	err = json.Unmarshal(dict, &dictB)
-	char := strings.Split(characters, " ")
-	cover := ExpandRange(char[1])
-
-	url := fmt.Sprintf("http://ibibles.net/quote.php?kor-%s/%s", dictB[char[0]].Eng, cover)
+	url := fmt.Sprintf("http://ibibles.net/quote.php?kor-%s", characters)
 
 	// HTTP GET 요청 생성
 	resp, err := http.Get(url)

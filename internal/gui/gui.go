@@ -106,7 +106,11 @@ func FigmaConnector() (target string, figmaInfo *get.Info) {
 			}
 
 			if strings.HasSuffix(title, "부름") || strings.HasSuffix(title, "봉독") {
-				el["contents"] = quote.GetQuote(obj)
+				kor := strings.Split(obj, "_")[0]
+				forUrl := strings.Split(obj, "_")[1]
+
+				el["contents"] = quote.GetQuote(forUrl)
+				el["obj"] = fmt.Sprintf("%s %s", kor, strings.Split(forUrl, "/")[1])
 			}
 			if strings.HasSuffix(title, "말씀내용") {
 				arg[i]["contents"] = arg[i-1]["contents"]
