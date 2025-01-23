@@ -1,7 +1,6 @@
 package main
 
 import (
-	"easyPreparation_1.0/executor/bulletin/forPresentation"
 	"easyPreparation_1.0/executor/bulletin/forPrint"
 	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/gui"
@@ -17,6 +16,6 @@ func main() {
 	configPath := filepath.Join(execPath, "config/custom.json")
 	config := extract.ExtCustomOption(configPath)
 
-	forPrint.CreatePrint(figmaInfo, execPath, config)
-	forPresentation.CreatePresentation(figmaInfo, config, target, execPath)
+	forPrint.CreatePrint(figmaInfo, config, target, execPath)
+	//forPresentation.CreatePresentation(figmaInfo, config, target, execPath)
 }

@@ -8,10 +8,11 @@ import (
 )
 
 type Color struct {
-	BoxColor  string `json:"boxColor"`
-	LineColor string `json:"lineColor"`
-	FontColor string `json:"fontColor"`
-	DateColor string `json:"dateColor"`
+	BoxColor   string `json:"boxColor"`
+	LineColor  string `json:"lineColor"`
+	FontColor  string `json:"fontColor"`
+	DateColor  string `json:"dateColor"`
+	PrintColor string `json:"printColor"`
 }
 type OutputPath struct {
 	Bulletin string `json:"bulletin"`

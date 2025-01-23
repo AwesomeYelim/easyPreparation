@@ -3,7 +3,8 @@
     "boxColor": "#F8F3EA",
     "lineColor": "#BEA07C",
     "fontColor": "#BEA07C",
-    "dateColor": "#FFFFFF"
+    "dateColor": "#FFFFFF",
+    "printColor": "#8B7F71"
   },
   "size": {
     "background": {

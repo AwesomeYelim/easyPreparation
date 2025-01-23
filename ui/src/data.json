@@ -10,62 +10,82 @@
     "info": "b_edit"
   },
   {
-    "title": "3_찬송",
+    "title": "3_개회기도",
+    "obj": "개회기도",
+    "info": ""
+  },
+  {
+    "title": "4_찬송",
     "obj": "8장",
     "info": "c_edit"
   },
   {
-    "title": "4_성시교독",
+    "title": "5_성시교독",
     "obj": "3. 시편 4편",
     "info": "c_edit"
   },
   {
-    "title": "5_신앙고백",
+    "title": "6_신앙고백",
     "obj": "사도신경",
     "info": "c_사도신경"
   },
   {
-    "title": "6_찬송",
+    "title": "7_찬송",
     "obj": "259장",
     "info": "c_edit"
   },
   {
-    "title": "7_기도",
+    "title": "8_기도",
     "obj": "이경아 사모",
     "info": "r_edit"
   },
   {
-    "title": "8_성경봉독",
+    "title": "9_성경봉독",
     "obj": "고후 1:11",
     "info": "b_edit"
   },
   {
-    "title": "8.1_말씀내용",
+    "title": "9.1_말씀내용",
     "obj": "말씀내용",
     "info": "c_edit"
   },
   {
-    "title": "9_찬양",
+    "title": "10_찬양",
     "obj": "찬양",
     "info": "l_찬양"
   },
   {
-    "title": "10_참회의 기도",
+    "title": "11_참회의 기도",
     "obj": "참회의 기도",
     "info": "l_참회의 기도"
   },
   {
-    "title": "11_말씀",
+    "title": "12_말씀",
     "obj": "감사의 감사를 낳는 기도",
     "info": "c_edit"
   },
   {
-    "title": "12_헌금봉헌",
+    "title": "13_말씀후기도",
+    "obj": "말씀후기도",
+    "info": ""
+  },
+  {
+    "title": "14_헌금봉헌",
     "obj": "365장",
     "info": "c_edit"
   },
   {
-    "title": "13_교회소식",
+    "title": "14.1_헌금봉헌",
+    "obj": "",
+    "info": ""
+  },
+  {
+    "title": "15_봉헌기도",
+    "obj": "",
+    "info": ""
+  },
+  {
+    "title": "16_교회소식",
     "obj": "교회소식",
     "info": "edit",
     "children": [
@@ -109,7 +129,7 @@
     ]
   },
   {
-    "title": "14_찬송",
+    "title": "17_찬송",
     "obj": "635장",
     "info": "c_edit"
   },
