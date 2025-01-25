@@ -157,8 +157,8 @@ func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config, execPath str
 	var textW float64 = 230
 
 	pdf.SetText(textSize, true, hLColor)
-	trimmedText := pkg.RemoveEmptyLines(con.Contents)
-	pdf.Contents = trimmedText
+	//trimmedText := pkg.RemoveEmptyLines(con.Contents)
+	pdf.Contents = strings.Split(con.Contents, "\n")
 
 	switch pdf.Title {
 	case "예배의 부름":
@@ -173,8 +173,17 @@ func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config, execPath str
 		pdf.setOutDirFiles("responsive_reading", con.Obj)
 	case "교회소식":
 		pdf.DrawChurchNews(con, hLColor)
+	case "참회의 기도":
+		textSize = 30
+		pdf.SetText(textSize, false, hLColor)
+		pdf.SetXY(pdf.BoxSize.Width+20, 50.00)
+		pdf.MultiCell(pdf.BoxSize.Width, textSize/2, con.Obj, "", "R", false)
 	default:
-		pdf.WriteText(con.Obj, "center")
+		if con.Obj == "-" {
+			pdf.WriteText(con.Lead, "center")
+		} else {
+			pdf.WriteText(con.Obj, "center")
+		}
 	}
 }
 
@@ -200,7 +209,7 @@ func (pdf *PDF) DrawChurchNews(con gui.WorshipInfo, hLColor color.RGBA) {
 		}
 	}
 
-	if con.Title == "13_교회소식" {
+	if strings.Contains(con.Title, "교회소식") {
 		// children 처리
 		if len(con.Children) > 0 {
 			draw(con.Children, 1)
@@ -214,30 +223,27 @@ func (pdf *PDF) DrawChurchNews(con gui.WorshipInfo, hLColor color.RGBA) {
 
 func (pdf *PDF) setBegin(con gui.WorshipInfo, textW float64, textSize float64, lines int) {
 	var tmpEl string
-	for i, _ := range pdf.Contents {
 
-		if i == 0 {
+	for i, _ := range pdf.Contents {
+		// 첫 번째 콘텐츠에 추가 정보 삽입 (중복 방지)
+		if i == 0 && !strings.Contains(pdf.Contents[i], con.Obj) {
 			pdf.Contents[i] = fmt.Sprintf("%s\n%s", con.Obj, pdf.Contents[i])
 		}
-		// 라인 기준으로 페이지를 생성
-		if i != 0 && i%lines == 0 {
-			if i/lines != 1 {
+
+		// 텍스트 추가
+		tmpEl += pdf.Contents[i] + "\n"
+
+		// 페이지 처리 조건
+		if (i+1)%lines == 0 || i == len(pdf.Contents)-1 {
+			pdf.SetXY(textSize, textSize*3)
+			pdf.MultiCell(textW, textSize/2, tmpEl, "", "L", false)
+			tmpEl = ""
+
+			// 다음 페이지 추가
+			if i != len(pdf.Contents)-1 {
 				pdf.AddPage()
 				pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
 			}
-			tmpEl += pdf.Contents[i] + "\n"
-			pdf.SetXY((pdf.FullSize.Wd-textW)/2, textSize*3)
-			pdf.MultiCell(textW, textSize/2, tmpEl, "", "L", false)
-			tmpEl = ""
-			// 잉여 라인이 생기는 경우 마지막 페이지를 추가
-		} else if len(pdf.Contents)%lines < lines && i == len(pdf.Contents)-1 {
-			tmpEl += pdf.Contents[i]
-			//pdf.AddPage()
-			//pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
-			pdf.SetXY(textSize, textSize*3)
-			pdf.MultiCell(textW, textSize/2, tmpEl, "", "L", false)
-		} else {
-			tmpEl += pdf.Contents[i] + "\n"
 		}
 	}
 }
@@ -246,23 +252,19 @@ func (pdf *PDF) setBody(textW float64, textSize float64, lines int) {
 	var tmpEl string
 
 	for i, content := range pdf.Contents {
-		if i != 0 && i%lines == 0 {
-			if i/lines != 1 {
-				pdf.AddPage()
-				pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
-			}
-			tmpEl += content + "\n\n"
+		tmpEl += content + "\n\n"
+
+		// 페이지 처리 조건
+		if (i+1)%lines == 0 || i == len(pdf.Contents)-1 {
 			pdf.SetXY(textSize, textSize)
 			pdf.MultiCell(textW, textSize/2, tmpEl, "", "L", false)
 			tmpEl = ""
-		} else if len(pdf.Contents)%lines < lines && i == len(pdf.Contents)-1 {
-			tmpEl += content
-			pdf.AddPage()
-			pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
-			pdf.SetXY(textSize, textSize)
-			pdf.MultiCell(textW, textSize/2, tmpEl, "", "L", false)
-		} else {
-			tmpEl += content + "\n\n"
+
+			// 마지막 줄이 아니라면 새로운 페이지 추가
+			if i != len(pdf.Contents)-1 {
+				pdf.AddPage()
+				pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
+			}
 		}
 	}
 }

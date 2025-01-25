@@ -7,6 +7,7 @@ interface Info {
   title: string;
   obj: string;
   info: string;
+  lead?: string;
   children?: Info[];
 }
 
@@ -21,10 +22,20 @@ const EditableData: React.FC = () => {
       return items.map((item, index) => {
         if (index === parseInt(currentIndex)) {
           if (restKeyParts.length === 0) {
-            return { ...item, obj: newObj };
+            switch (item.info) {
+              case "b_edit":
+                return { ...item, obj: newObj };
+              case "c_edit":
+                return { ...item, obj: newObj };
+              case "r_edit":
+                return { ...item, lead: newObj };
+            }
           }
           if (item.children) {
-            return { ...item, children: updateData(item.children, restKeyParts) };
+            return {
+              ...item,
+              children: updateData(item.children, restKeyParts),
+            };
           }
         }
         return item;
@@ -47,41 +58,56 @@ const EditableData: React.FC = () => {
   const renderItems = (items: Info[], parentIndex: string = "") => {
     return items.map((item, index) => {
       const key = parentIndex ? `${parentIndex}-${index}` : `${index}`;
-
-      return (
-        <div
-          key={key}
-          style={{
-            marginBottom: "15px",
-            display: item.info.includes("edit") && !item.info.includes("edit") ? "flex" : "block",
-            maxWidth: 400,
-            flexWrap: "wrap",
-            justifyContent: "start",
-          }}>
-          <label style={{ marginTop: "10px", color: item.info.includes("edit") ? "#000" : "#ccc" }}>{item.title}</label>
-          {item.info.includes("edit") && !item.info.includes("b_") && (
-            <input
-              type="text"
-              onChange={(e) => handleValueChange(key, e.target.value)}
-              placeholder={item.obj}
+      if (!item.info.includes("-")) {
+        return (
+          <div
+            key={key}
+            style={{
+              marginBottom: "15px",
+              display: "block",
+              maxWidth: 400,
+              flexWrap: "wrap",
+              justifyContent: "start",
+            }}
+          >
+            <label
               style={{
-                marginTop: "5px",
-                padding: "10px",
-                width: "100%",
-                maxWidth: "400px",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
+                marginTop: "10px",
+                color: item.info.includes("edit") ? "#000" : "#ccc",
               }}
-            />
-          )}
-          {item.info.includes("edit") && item.info.includes("b_") && (
-            <BibleSelect handleValueChange={handleValueChange} parentKey={key} />
-          )}
-          {item.children && (
-            <div style={{ marginLeft: "20px", marginTop: "10px" }}>{renderItems(item.children, key)}</div>
-          )}
-        </div>
-      );
+            >
+              {item.title}
+            </label>
+            {item.info.includes("edit") && !item.info.includes("b_") && (
+              <input
+                type="text"
+                onChange={(e) => handleValueChange(key, e.target.value)}
+                placeholder={item.info == "r_edit" ? item.lead : item.obj}
+                style={{
+                  marginTop: "5px",
+                  padding: "10px",
+                  width: "100%",
+                  maxWidth: "400px",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                }}
+              />
+            )}
+            {item.info.includes("edit") && item.info.includes("b_") && (
+              <BibleSelect
+                handleValueChange={handleValueChange}
+                parentKey={key}
+              />
+            )}
+            {item.children && (
+              <div style={{ marginLeft: "20px", marginTop: "10px" }}>
+                {renderItems(item.children, key)}
+              </div>
+            )}
+          </div>
+        );
+      }
+      return <></>;
     });
   };
 
@@ -114,7 +140,8 @@ const EditableData: React.FC = () => {
           border: "none",
           borderRadius: "4px",
           cursor: "pointer",
-        }}>
+        }}
+      >
         Submit
       </button>
     </div>

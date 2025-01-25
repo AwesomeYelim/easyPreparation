@@ -48,10 +48,8 @@ func CreatePrint(figmaInfo *get.Info, config extract.Config, target, execPath st
 	worshipContents, err := os.ReadFile(filepath.Join(execPath, "config", target+".json"))
 	err = json.Unmarshal(worshipContents, &contents)
 
-	fmt.Println(contents)
-
-	var x float64 = 6
-	var y float64 = 37
+	var x float64 = 7
+	var y float64 = 36
 	var fontSize float64 = 10
 
 	for i, file := range files {
@@ -68,11 +66,19 @@ func CreatePrint(figmaInfo *get.Info, config extract.Config, target, execPath st
 
 			objPdf.SetText(fontSize, false, printColor)
 			for _, order := range contents {
+				// 하위 목록인 경우 skip
+				if strings.Contains(order.Title, ".") {
+					continue
+				}
+				y += 6
+				if strings.Contains(order.Title, "참회의 기도") || order.Obj == "-" {
+					continue
+				}
 				if strings.HasSuffix(order.Info, "edit") {
 					objPdf.SetXY(x, y)
 					objPdf.MultiCell(objPdf.BoxSize.Width, fontSize/2, order.Obj, "", "C", false)
 				}
-				y += 5
+
 			}
 
 		}

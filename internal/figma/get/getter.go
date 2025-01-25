@@ -8,7 +8,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 func (i *Info) GetNodes() (err error) {
@@ -47,15 +46,6 @@ func (i *Info) GetImage(exePath string, id string, name string) {
 	data, err := io.ReadAll(rc)
 	if err != nil {
 		log.Fatal(err)
-	}
-
-	switch i.FrameName {
-	case "forShowing":
-		name = strings.Split(name, "_")[1] // 이름만
-	case "forPrint":
-		name = strings.Split(name, "_")[0] // 숫자만
-	default:
-		name = strings.Split(name, "_")[1]
 	}
 
 	path := filepath.Join(exePath, fmt.Sprintf("%s.png", name))
