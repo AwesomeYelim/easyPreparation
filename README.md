@@ -37,3 +37,14 @@
   
   
 ```
+
+## etc reference
+```
+# about data.info
+
+"-" -> No modification
+"b_edit" -> Bible edit / Modifications related to Bible verses
+"c_edit" -> Obj edit / Modifications to the center information based on the main view
+"r_edit" -> Lead edit / Modifications to the right information based on the main view
+
+```
