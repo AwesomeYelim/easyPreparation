@@ -72,7 +72,7 @@ func createPresentationForSongs(songTitles []string) {
 
 		for _, content := range song.Content {
 			objPdf.AddPage()
-			// 배경 이미지 추가 (배경 이미지를 추가하려면 파일이 필요합니다)
+
 			backgroundImage := "./public/images/ppt_background.png"
 			objPdf.CheckImgPlaced(pdfSize, backgroundImage, 0)
 
