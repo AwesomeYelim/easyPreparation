@@ -43,11 +43,7 @@ func runPnpmBuild(projectPath string) error {
 	return nil
 }
 
-// FigmaConnector 함수에서 build/index.html 파일을 로컬 서버로 제공하고 Lorca로 띄우는 방식으로 수정
-func FigmaConnector() (target string, figmaInfo *get.Info) {
-	execPath, _ := os.Getwd()
-	execPath = path.ExecutePath(execPath, "easyPreparation")
-
+func uiBuild(execPath string) (buildFolder string) {
 	// UI 빌드 실행
 	uiBuildPath := filepath.Join(execPath, "ui")
 	if err := runPnpmBuild(uiBuildPath); err != nil {
@@ -56,7 +52,7 @@ func FigmaConnector() (target string, figmaInfo *get.Info) {
 	}
 
 	// 빌드된 React 프로젝트의 경로
-	buildFolder := filepath.Join(uiBuildPath, "build")
+	buildFolder = filepath.Join(uiBuildPath, "build")
 
 	// build 폴더 내의 index.html 경로 설정
 	htmlFilePath := filepath.Join(buildFolder, "index.html")
@@ -65,6 +61,16 @@ func FigmaConnector() (target string, figmaInfo *get.Info) {
 	if _, err := os.Stat(htmlFilePath); os.IsNotExist(err) {
 		log.Fatalf("Failed to find the HTML file at: %v", htmlFilePath)
 	}
+
+	return buildFolder
+}
+
+// FigmaConnector 함수에서 build/index.html 파일을 로컬 서버로 제공하고 Lorca로 띄우는 방식으로 수정
+func FigmaConnector() (target string, figmaInfo *get.Info) {
+	execPath, _ := os.Getwd()
+	execPath = path.ExecutePath(execPath, "easyPreparation")
+
+	buildFolder := uiBuild(execPath)
 
 	// 로컬 서버로 빌드된 React 파일들을 제공
 	startLocalServer(buildFolder)

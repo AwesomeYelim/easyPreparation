@@ -12,7 +12,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 )
 
@@ -44,11 +43,21 @@ func getSongTitle() string {
 	return strings.TrimSpace(songTitle) // 개행문자 및 공백 제거
 }
 
-// 파일 이름으로 안전하게 변환하는 함수
 func sanitizeFileName(fileName string) string {
-	re := regexp.MustCompile(`[<>:"/\\|?*]+`)      // 파일 이름에 사용할 수 없는 문자 정규 표현식
-	safeName := re.ReplaceAllString(fileName, "_") // 안전한 문자로 대체
-	return strings.TrimSpace(safeName)             // 공백 제거
+	replacer := strings.NewReplacer(
+		"<", "_",
+		">", "_",
+		":", "_",
+		`"`, "_",
+		"/", "_",
+		`\`, "_",
+		"|", "_",
+		"?", "_",
+		"*", "_",
+	)
+
+	safeName := replacer.Replace(fileName)
+	return strings.TrimSpace(safeName)
 }
 
 // 노래 제목에 대한 프레젠테이션 생성 함수
@@ -59,7 +68,7 @@ func createPresentationForSongs(songTitles []string) {
 		song.SearchLyricsList("https://music.bugs.co.kr/search/lyrics?q=%s", title, false)
 
 		outPutDir := "./output/pdf"
-		pkg.CheckDirIs(outPutDir)
+		_ = pkg.CheckDirIs(outPutDir)
 
 		fileName := filepath.Join(outPutDir, sanitizeFileName(title)+".pdf")
 

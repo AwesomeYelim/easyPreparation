@@ -22,7 +22,7 @@
 
   ```
 
-## 4. Info size
+## 4. Info Size
 
 * If you want to change the pdf ratio, you can control the pdf size.
 
@@ -36,6 +36,28 @@
   height : 210.0
   
   
+```
+
+## 5. Reference Repository
+
+```
+* figma(editable design tool):
+      bulletin
+          for print
+              - background image(png)
+          for presentation 
+              - background template(png)
+              
+            
+* Google Drive: 
+      bulletin
+          for presentation 
+              - hymn lylics (pdf)
+              - responsive_reading (pdf) 
+              
+* GitGub Gist(minize pool):
+      web font info
+              - fontinfo (json) 
 ```
 
 ## etc reference

@@ -3,15 +3,14 @@ package presentation
 import (
 	"easyPreparation_1.0/internal/colorPalette"
 	"easyPreparation_1.0/internal/extract"
+	"easyPreparation_1.0/internal/font"
 	"easyPreparation_1.0/internal/googleCloud"
 	"easyPreparation_1.0/internal/gui"
 	"easyPreparation_1.0/pkg"
 	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
 	"image/color"
-	"io"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -121,34 +120,10 @@ func (pdf *PDF) WriteText(text, position string, custom ...float64) {
 
 	pdf.Text(x, y, text)
 }
-func downloadFont(url string) (string, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return "", fmt.Errorf("폰트 다운로드 실패: %w", err)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	tmpFile, err := os.CreateTemp("", "NanumGothic-*.ttf")
-	if err != nil {
-		return "", fmt.Errorf("임시 파일 생성 실패: %w", err)
-	}
-	defer func() {
-		_ = tmpFile.Close()
-	}()
-
-	_, err = io.Copy(tmpFile, resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("폰트 저장 실패: %w", err)
-	}
-	return tmpFile.Name(), nil
-}
 
 func (pdf *PDF) SetText(fontSize float64, isB bool, textColor ...color.Color) {
-	fontURL := "https://fonts.gstatic.com/s/nanumgothic/v26/PN_oRfi-oW3hYwmKDpxS7F_LQv37zg.ttf"
+	fontPath, err := font.GetFont("Nanum Gothic", "700")
 
-	fontPath, err := downloadFont(fontURL)
 	if err != nil {
 		fmt.Println("폰트 다운로드 에러:", err)
 		return
