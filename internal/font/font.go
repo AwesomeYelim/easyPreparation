@@ -1,6 +1,7 @@
 package font
 
 import (
+	"easyPreparation_1.0/pkg"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,6 +9,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 type WebFontItem struct {
@@ -29,6 +32,16 @@ type WebFontList struct {
 func GetFont(name, weight string) (fontPath string, err error) {
 
 	gistURL := "https://gist.github.com/AwesomeYelim/6dc8fbbf1f2db5ad7d84cf95dbadafa7/raw"
+	saveName := strings.Replace(name, " ", "", 1)
+	saveName = fmt.Sprintf("%s-%s.ttf", saveName, weight)
+
+	savePath := filepath.Join("./public", "font", saveName)
+
+	if _, err = os.Stat(savePath); !os.IsNotExist(err) {
+		return savePath, nil
+	}
+
+	_ = pkg.CheckDirIs(filepath.Dir(savePath))
 
 	resp, err := http.Get(gistURL)
 	if err != nil {
@@ -61,12 +74,12 @@ func GetFont(name, weight string) (fontPath string, err error) {
 	}
 
 	targetUrl = fmt.Sprintf("https:%s", targetUrl)
-	fontPath, err = downloadFont(targetUrl)
+	fontPath, err = downloadFont(savePath, targetUrl)
 
 	return fontPath, err
 }
 
-func downloadFont(url string) (string, error) {
+func downloadFont(savePath, url string) (string, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", fmt.Errorf("폰트 다운로드 실패: %w", err)
@@ -75,7 +88,7 @@ func downloadFont(url string) (string, error) {
 		_ = resp.Body.Close()
 	}()
 
-	tmpFile, err := os.CreateTemp("", "NanumGothic-*.ttf")
+	tmpFile, err := os.Create(savePath)
 	if err != nil {
 		return "", fmt.Errorf("임시 파일 생성 실패: %w", err)
 	}

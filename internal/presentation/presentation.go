@@ -128,18 +128,13 @@ func (pdf *PDF) SetText(fontSize float64, isB bool, textColor ...color.Color) {
 		fmt.Println("폰트 다운로드 에러:", err)
 		return
 	}
-	defer func() {
-		_ = os.Remove(fontPath) // 임시 파일 삭제
-	}()
 
-	fontName := "CustomFont"
-
-	pdf.AddUTF8Font(fontName, "B", fontPath)
+	pdf.AddUTF8Font(filepath.Base(fontPath), "B", fontPath)
 	if err != nil {
 		fmt.Println("폰트 추가 실패:", err)
 		return
 	}
-	pdf.SetFont(fontName, "B", fontSize)
+	pdf.SetFont(filepath.Base(fontPath), "B", fontSize)
 
 	// 텍스트 색상 설정
 	if len(textColor) > 0 {
