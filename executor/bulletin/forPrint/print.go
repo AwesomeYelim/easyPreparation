@@ -50,7 +50,7 @@ func CreatePrint(figmaInfo *get.Info, config extract.Config, target, execPath st
 
 	var x float64 = 7
 	var y float64 = 36
-	var fontSize float64 = 10
+	var fontSize float64 = 9
 
 	for i, file := range files {
 		imgPath := filepath.Join(outputDir, file.Name())

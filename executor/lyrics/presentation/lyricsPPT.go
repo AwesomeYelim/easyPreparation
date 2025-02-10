@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"easyPreparation_1.0/internal/db"
+	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/lyrics"
 	"easyPreparation_1.0/internal/presentation"
 	"easyPreparation_1.0/pkg"
@@ -23,11 +24,8 @@ func main() {
 		return
 	}
 
-	// 노래 제목을 쉼표로 구분하여 배열로 변환
-	songTitles := strings.Split(songTitle, ",")
-
 	// 노래 목록에 대한 프레젠테이션 생성 및 DB 저장
-	createPresentationForSongs(songTitles)
+	createPresentationForSongs(songTitle)
 
 }
 
@@ -61,7 +59,10 @@ func sanitizeFileName(fileName string) string {
 }
 
 // 노래 제목에 대한 프레젠테이션 생성 함수
-func createPresentationForSongs(songTitles []string) {
+func createPresentationForSongs(songTitle string) {
+
+	songTitles := strings.Split(songTitle, ",")
+
 	for _, title := range songTitles {
 		// 가사 검색
 		song := &lyrics.SlideData{}
@@ -71,11 +72,14 @@ func createPresentationForSongs(songTitles []string) {
 		_ = pkg.CheckDirIs(outPutDir)
 
 		fileName := filepath.Join(outPutDir, sanitizeFileName(title)+".pdf")
-
+		execPath, _ := os.Getwd()
+		configPath := filepath.Join(execPath, "config/custom.json")
+		config := extract.ExtCustomOption(configPath)
 		pdfSize := gofpdf.SizeType{
-			Wd: 297.0,
-			Ht: 167.0,
+			Wd: config.Size.Background.Presentation.Width,
+			Ht: config.Size.Background.Presentation.Height,
 		}
+
 		objPdf := presentation.New(pdfSize)
 		objPdf.SetText(40, true, color.RGBA{R: 255, G: 255, B: 255})
 

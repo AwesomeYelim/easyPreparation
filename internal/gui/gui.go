@@ -18,10 +18,10 @@ import (
 )
 
 // 로컬 웹 서버로 빌드된 React 파일들을 제공하는 함수
-func startLocalServer(buildFolder string) {
+func startLocalServer(port, buildFolder string) {
 	http.Handle("/", http.FileServer(http.Dir(buildFolder)))
 	go func() {
-		log.Fatal(http.ListenAndServe(":8081", nil))
+		log.Fatal(http.ListenAndServe(port, nil))
 	}()
 }
 
@@ -45,10 +45,17 @@ func runPnpmBuild(projectPath string) error {
 
 func uiBuild(execPath string) (buildFolder string) {
 	// UI 빌드 실행
-	uiBuildPath := filepath.Join(execPath, "ui")
-	if err := runPnpmBuild(uiBuildPath); err != nil {
-		fmt.Printf("Error running pnpm build: %v\n", err)
-		os.Exit(1)
+	uiBuildPath := filepath.Join(execPath, "ui", "bulletin")
+
+	// 환경 변수 확인 -> dev 모드에서만 UI 빌드 실행
+	env := os.Getenv("APP_ENV")
+	if env == "dev" {
+		if err := runPnpmBuild(uiBuildPath); err != nil {
+			fmt.Printf("Error running pnpm build: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		fmt.Println("Skipping UI build (not in dev mode).")
 	}
 
 	// 빌드된 React 프로젝트의 경로
@@ -73,10 +80,12 @@ func FigmaConnector() (target string, figmaInfo *get.Info) {
 	buildFolder := uiBuild(execPath)
 
 	// 로컬 서버로 빌드된 React 파일들을 제공
-	startLocalServer(buildFolder)
+	port := ":8081"
+	startLocalServer(port, buildFolder)
 
+	url := fmt.Sprintf("http://localhost%s", port)
 	// 로컬 서버의 URL로 UI 실행
-	ui, err := lorca.New("http://localhost:8081", "", 600, 600, "--remote-allow-origins=*")
+	ui, err := lorca.New(url, "", 600, 600, "--remote-allow-origins=*")
 	if err != nil {
 		log.Fatal(err)
 	}
