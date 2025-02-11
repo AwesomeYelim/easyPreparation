@@ -1,95 +1,69 @@
 package gui
 
 import (
+	"easyPreparation_1.0/internal/build"
 	"easyPreparation_1.0/internal/figma"
 	"easyPreparation_1.0/internal/figma/get"
-	"easyPreparation_1.0/internal/path"
 	"easyPreparation_1.0/internal/quote"
+	"easyPreparation_1.0/internal/server"
 	"easyPreparation_1.0/pkg"
 	"encoding/json"
 	"fmt"
 	"github.com/zserge/lorca"
 	"log"
-	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
-// 로컬 웹 서버로 빌드된 React 파일들을 제공하는 함수
-func startLocalServer(port, buildFolder string) {
-	http.Handle("/", http.FileServer(http.Dir(buildFolder)))
-	go func() {
-		log.Fatal(http.ListenAndServe(port, nil))
-	}()
-}
+func SetLyricsGui(execPath string) (target string, figmaInfo *get.Info) {
+	uiBuildPath := filepath.Join(execPath, "ui", "lyrics")
+	buildFolder := build.UiBuild(uiBuildPath)
+	port := ":8080"
+	server.StartLocalServer(port, buildFolder)
+	url := setUrl(port)
+	ui, err := setWindowSize(url, 600, 600)
+	dataReceived := make(chan struct{})
 
-// runPnpmBuild 실행 함수
-func runPnpmBuild(projectPath string) error {
-	fmt.Println("Building UI with pnpm...")
+	_ = ui.Bind("sendTokenAndKey", func(arg map[string]string) {
+		token := arg["token"]
+		key := arg["key"]
+		fmt.Printf("Received Token: %s, Key: %s\n", token, key)
 
-	// pnpm build 명령어 실행
-	cmd := exec.Command("pnpm", "build")
-	cmd.Dir = projectPath
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+		figmaInfo = figma.New(&token, &key, execPath)
+		err = figmaInfo.GetNodes()
+		if err != nil {
+			ui.Eval(fmt.Sprintf(`document.getElementById("responseMessage").textContent = "[ERROR] : %s"`, err.Error()))
+		} else {
+			ui.Eval(`document.getElementById("responseMessage").textContent = "[PASS] : The token and key have been verified !"`)
+		}
+	})
 
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to run pnpm build: %w", err)
+	_ = ui.Bind("sendSongTitle", func(arg string) {
+		fmt.Printf("Received Song Title: %s", arg)
+		target = arg
+		dataReceived <- struct{}{}
+	})
+
+	select {
+	case <-dataReceived:
+		return target, figmaInfo
+	case <-ui.Done():
+		return target, figmaInfo
 	}
-
-	fmt.Println("UI build completed successfully.")
-	return nil
 }
 
-func uiBuild(execPath string) (buildFolder string) {
+// build/index.html 파일을 로컬 서버로 제공하고 Lorca로 띄우는 방식
+func SetBulletinGui(execPath string) (target string, figmaInfo *get.Info) {
 	// UI 빌드 실행
 	uiBuildPath := filepath.Join(execPath, "ui", "bulletin")
 
-	// 환경 변수 확인 -> dev 모드에서만 UI 빌드 실행
-	env := os.Getenv("APP_ENV")
-	if env == "dev" {
-		if err := runPnpmBuild(uiBuildPath); err != nil {
-			fmt.Printf("Error running pnpm build: %v\n", err)
-			os.Exit(1)
-		}
-	} else {
-		fmt.Println("Skipping UI build (not in dev mode).")
-	}
+	buildFolder := build.UiBuild(uiBuildPath)
 
-	// 빌드된 React 프로젝트의 경로
-	buildFolder = filepath.Join(uiBuildPath, "build")
-
-	// build 폴더 내의 index.html 경로 설정
-	htmlFilePath := filepath.Join(buildFolder, "index.html")
-
-	// 파일이 존재하는지 확인
-	if _, err := os.Stat(htmlFilePath); os.IsNotExist(err) {
-		log.Fatalf("Failed to find the HTML file at: %v", htmlFilePath)
-	}
-
-	return buildFolder
-}
-
-// FigmaConnector 함수에서 build/index.html 파일을 로컬 서버로 제공하고 Lorca로 띄우는 방식으로 수정
-func FigmaConnector() (target string, figmaInfo *get.Info) {
-	execPath, _ := os.Getwd()
-	execPath = path.ExecutePath(execPath, "easyPreparation")
-
-	buildFolder := uiBuild(execPath)
-
-	// 로컬 서버로 빌드된 React 파일들을 제공
 	port := ":8081"
-	startLocalServer(port, buildFolder)
-
-	url := fmt.Sprintf("http://localhost%s", port)
-	// 로컬 서버의 URL로 UI 실행
-	ui, err := lorca.New(url, "", 600, 600, "--remote-allow-origins=*")
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	server.StartLocalServer(port, buildFolder)
+	url := setUrl(port)
+	ui, err := setWindowSize(url, 600, 600)
 	// 데이터 수신 신호를 위한 채널
 	dataReceived := make(chan struct{})
 
@@ -147,4 +121,18 @@ func FigmaConnector() (target string, figmaInfo *get.Info) {
 	case <-ui.Done():
 		return target, figmaInfo
 	}
+}
+
+func setUrl(port string) (url string) {
+	url = fmt.Sprintf("http://localhost%s", port)
+	return url
+}
+
+func setWindowSize(url string, wSize, HSize int) (ui lorca.UI, err error) {
+	ui, err = lorca.New(url, "", wSize, HSize, "--remote-allow-origins=*")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return ui, nil
 }

@@ -31,7 +31,7 @@ func (i *Info) GetFigmaImage(path string, frameName string) {
 	}
 }
 
-func (i *Info) GetImage(exePath string, id string, name string) {
+func (i *Info) GetImage(createdPath string, id string, name string) {
 	img, err := i.Client.Images(*i.Key, 2, figma.ImageFormatPNG, id)
 	if err != nil {
 		log.Println(err)
@@ -48,7 +48,7 @@ func (i *Info) GetImage(exePath string, id string, name string) {
 		log.Fatal(err)
 	}
 
-	path := filepath.Join(exePath, fmt.Sprintf("%s.png", name))
+	path := filepath.Join(createdPath, fmt.Sprintf("%s.png", name))
 	i.PathInfo[name] = path
 	if err := os.WriteFile(path, data, 0666); err != nil {
 		log.Fatal(err)

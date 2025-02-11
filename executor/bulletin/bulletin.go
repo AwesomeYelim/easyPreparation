@@ -11,9 +11,9 @@ import (
 )
 
 func main() {
-	target, figmaInfo := gui.FigmaConnector()
 	execPath, _ := os.Getwd()
 	execPath = path.ExecutePath(execPath, "easyPreparation")
+	target, figmaInfo := gui.SetBulletinGui(execPath)
 	configPath := filepath.Join(execPath, "config/custom.json")
 	config := extract.ExtCustomOption(configPath)
 
