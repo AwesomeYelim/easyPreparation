@@ -5,10 +5,12 @@ type Box struct {
 	Height float64 `json:"height"`
 }
 
+type Background struct {
+	Print        Box `json:"print"`
+	Presentation Box `json:"presentation"`
+}
+
 type Size struct {
-	Background struct {
-		Print        Box `json:"print"`
-		Presentation Box `json:"presentation"`
-	} `json:"background"`
-	InnerRectangle Box `json:"innerRectangle"`
+	Background     Background `json:"background"`
+	InnerRectangle Box        `json:"innerRectangle"`
 }

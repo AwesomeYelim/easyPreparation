@@ -23,3 +23,10 @@ func CheckDirIs(dirPath string) (err error) {
 	}
 	return err
 }
+
+func ReplaceDirPath(dirPath, replacePath string) (err error) {
+	if _, err = os.Stat(dirPath); os.IsNotExist(err) {
+		err = os.MkdirAll(replacePath, 0700)
+	}
+	return err
+}

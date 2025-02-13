@@ -3,8 +3,8 @@
 # 빌드할 Go 파일 경로 설정
 GO_FILES=(
   "전체 선택"   # 전체 선택 항목 추가
-  "./executor/ppt/lyrics/lyrics.go"
-  "./executor/ppt/history/history.go"
+  "./executor/lyrics/presentation/lyricsPPT.go"
+  "./executor/lyrics/history/history.go"
   "./executor/bulletin/bulletin.go"
 )
 

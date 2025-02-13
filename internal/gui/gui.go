@@ -16,9 +16,14 @@ import (
 	"strings"
 )
 
-func SetLyricsGui(execPath string) (target string, figmaInfo *get.Info) {
-	uiBuildPath := filepath.Join(execPath, "ui", "lyrics")
-	buildFolder := build.UiBuild(uiBuildPath)
+func SetLyricsGui(execPath string) (target map[string]string, figmaInfo *get.Info) {
+	var buildFolder string
+	buildFolder = filepath.Join(execPath, "build")
+
+	if _, err := os.Stat(buildFolder); os.IsNotExist(err) {
+		uiBuildPath := filepath.Join(execPath, "ui", "lyrics")
+		buildFolder = build.UiBuild(uiBuildPath, buildFolder)
+	}
 	port := ":8080"
 	server.StartLocalServer(port, buildFolder)
 	url := setUrl(port)
@@ -39,7 +44,7 @@ func SetLyricsGui(execPath string) (target string, figmaInfo *get.Info) {
 		}
 	})
 
-	_ = ui.Bind("sendSongTitle", func(arg string) {
+	_ = ui.Bind("sendLyrics", func(arg map[string]string) {
 		fmt.Printf("Received Song Title: %s", arg)
 		target = arg
 		dataReceived <- struct{}{}
@@ -55,10 +60,13 @@ func SetLyricsGui(execPath string) (target string, figmaInfo *get.Info) {
 
 // build/index.html 파일을 로컬 서버로 제공하고 Lorca로 띄우는 방식
 func SetBulletinGui(execPath string) (target string, figmaInfo *get.Info) {
-	// UI 빌드 실행
-	uiBuildPath := filepath.Join(execPath, "ui", "bulletin")
+	var buildFolder string
+	buildFolder = filepath.Join(execPath, "build")
 
-	buildFolder := build.UiBuild(uiBuildPath)
+	if _, err := os.Stat(buildFolder); os.IsNotExist(err) {
+		uiBuildPath := filepath.Join(execPath, "ui", "bulletin")
+		buildFolder = build.UiBuild(uiBuildPath, buildFolder)
+	}
 
 	port := ":8081"
 	server.StartLocalServer(port, buildFolder)

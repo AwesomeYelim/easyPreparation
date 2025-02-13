@@ -1,7 +1,10 @@
 import React, { useState } from "react";
 import FigmaTokenForm from "./components/tokenKey.tsx";
 const SongTitleInput: React.FC = () => {
-  const [songTitle, setSongTitle] = useState("");
+  const [aboutLyric, setAboutLyric] = useState({
+    songTitle: "",
+    label: "",
+  });
 
   const handleSubmit = async (secureInfo) => {
     if (!secureInfo.token || !secureInfo.key) {
@@ -9,7 +12,7 @@ const SongTitleInput: React.FC = () => {
       return;
     }
 
-    if (!songTitle) {
+    if (!aboutLyric.songTitle) {
       alert("노래 제목을 입력하세요.");
       return;
     }
@@ -18,8 +21,8 @@ const SongTitleInput: React.FC = () => {
       if (window.sendTokenAndKey) {
         await window.sendTokenAndKey(secureInfo);
       }
-      if (window.sendSongTitle) {
-        await window.sendSongTitle(songTitle);
+      if (window.sendLyrics) {
+        await window.sendLyrics(aboutLyric);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -29,11 +32,21 @@ const SongTitleInput: React.FC = () => {
   return (
     <>
       <div>
+        <h1>교회 이름 입력</h1>
+        <input
+          type="text"
+          value={aboutLyric.label}
+          onChange={(e) => setAboutLyric({ ...aboutLyric, label: e.target.value })}
+          placeholder="교회 이름을 입력하세요. (ppt label 용)"
+          style={{ padding: "10px", width: "300px", marginBottom: "10px" }}
+        />
+      </div>
+      <div>
         <h1>노래 제목 입력</h1>
         <input
           type="text"
-          value={songTitle}
-          onChange={(e) => setSongTitle(e.target.value)}
+          value={aboutLyric.songTitle}
+          onChange={(e) => setAboutLyric({ ...aboutLyric, songTitle: e.target.value })}
           placeholder="노래 제목을 입력하세요"
           style={{ padding: "10px", width: "300px", marginBottom: "10px" }}
         />

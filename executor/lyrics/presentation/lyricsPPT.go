@@ -29,16 +29,17 @@ func main() {
 	lpm := NewLyricsPresentationManager(execPath)
 	defer lpm.Cleanup()
 
-	songTitle, figmaInfo := gui.SetLyricsGui(lpm.execPath)
+	lyricsInfo, figmaInfo := gui.SetLyricsGui(lpm.execPath)
 	figmaInfo.GetFigmaImage(lpm.outputDir, "forLyrics")
 
-	lpm.CreatePresentation(songTitle)
+	lpm.CreatePresentation(lyricsInfo)
 }
 
 func NewLyricsPresentationManager(execPath string) *LyricsPresentationManager {
 	execPath = path.ExecutePath(execPath, "easyPreparation")
 	configPath := filepath.Join(execPath, "config/custom.json")
 	config := extract.ExtCustomOption(configPath)
+
 	outputDir := filepath.Join(execPath, config.OutputPath.Lyrics, "tmp")
 	_ = pkg.CheckDirIs(outputDir)
 
@@ -53,7 +54,9 @@ func (lpm *LyricsPresentationManager) Cleanup() {
 	_ = os.RemoveAll(lpm.outputDir)
 }
 
-func (lpm *LyricsPresentationManager) CreatePresentation(songTitle string) {
+func (lpm *LyricsPresentationManager) CreatePresentation(lyricsInfo map[string]string) {
+	songTitle := lyricsInfo["songTitle"]
+
 	if songTitle == "" {
 		fmt.Println("노래 제목을 입력하지 않았습니다. 프로그램을 종료합니다.")
 		return
@@ -73,14 +76,20 @@ func (lpm *LyricsPresentationManager) CreatePresentation(songTitle string) {
 		fileName := filepath.Join(strings.TrimSuffix(lpm.outputDir, "tmp"), sanitize.FileName(title)+".pdf")
 
 		objPdf := presentation.New(pdfSize)
-		objPdf.SetText(40, true, color.RGBA{R: 255, G: 255, B: 255})
+		//var fontSize float64 = 9
+		//highestLuminaceColor := colorPalette.HexToRGBA("#FFFFF")
+		//objPdf.SetText(fontSize, true, highestLuminaceColor)
 
 		for _, content := range song.Content {
 			objPdf.AddPage()
 			objPdf.CheckImgPlaced(pdfSize, filepath.Join(lpm.outputDir, backgroundImages[0].Name()), 0)
 			objPdf.SetXY((pdfSize.Wd-250)/2, (pdfSize.Ht-20)/2)
+			objPdf.SetText(40, true, color.RGBA{R: 255, G: 255, B: 255})
 			objPdf.MultiCell(250, 20, content, "", "C", false)
+			//objPdf.SetText(30, true, color.RGBA{R: 255, G: 255, B: 255})
+			//objPdf.MultiCell(320, 20, lyricsInfo["label"], "", "R", false)
 		}
+		_ = pkg.ReplaceDirPath(fileName, "./")
 
 		if err := objPdf.OutputFileAndClose(fileName); err != nil {
 			log.Fatalf("PDF 저장 중 에러 발생: %v", err)
