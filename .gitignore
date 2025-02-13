@@ -12,7 +12,7 @@ node_modules/
 coverage
 
 # production
-bin/build/
+build/
 
 # misc
 .DS_Store
