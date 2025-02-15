@@ -122,7 +122,14 @@ func (pdf *PDF) WriteText(text, position string, custom ...float64) {
 }
 
 func (pdf *PDF) SetText(fontSize float64, isB bool, textColor ...color.Color) {
-	fontPath, err := font.GetFont("Nanum Gothic", "700")
+	var fontPath string
+	var err error
+
+	if isB {
+		fontPath, err = font.GetFont("Nanum Gothic", "800")
+	} else {
+		fontPath, err = font.GetFont("Nanum Gothic", "regular")
+	}
 
 	if err != nil {
 		fmt.Println("폰트 다운로드 에러:", err)
@@ -158,8 +165,8 @@ func (pdf *PDF) getColorRGB(textColor []color.Color) []uint32 {
 }
 func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config, execPath string) {
 	hLColor := colorPalette.HexToRGBA(config.Color.BoxColor) // 박스 색상 설정
-	var textSize float64 = 25
-	var textW float64 = 230
+	textSize := config.Size.Background.Presentation.FontSize
+	var textW float64 = 1000
 
 	pdf.SetText(textSize, true, hLColor)
 	//trimmedText := pkg.RemoveEmptyLines(con.Contents)
@@ -171,7 +178,7 @@ func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config, execPath str
 	case "말씀내용":
 		pdf.setBody(textW, textSize, 3)
 	case "찬송", "헌금봉헌":
-		pdf.SetText(27, true, hLColor)
+		pdf.SetText(textSize, true, hLColor)
 		pdf.WriteText(con.Obj, "center")
 		pdf.setOutDirFiles("hymn", con.Obj)
 	case "성시교독":
@@ -179,7 +186,6 @@ func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config, execPath str
 	case "교회소식":
 		pdf.DrawChurchNews(con, hLColor)
 	case "참회의 기도":
-		textSize = 30
 		pdf.SetText(textSize, false, hLColor)
 		pdf.SetXY(pdf.BoxSize.Width+20, 50.00)
 		pdf.MultiCell(pdf.BoxSize.Width, textSize/2, con.Obj, "", "R", false)
@@ -196,8 +202,8 @@ func (pdf *PDF) DrawChurchNews(con gui.WorshipInfo, hLColor color.RGBA) {
 	// 재귀적으로 교회소식과 그 내부 children 데이터를 처리하는 함수
 	var draw func(items []gui.WorshipInfo, depth int)
 
-	x, y := 10.0, 50.0
-	fontSize := 27.0
+	x, y := 80.0, 250.0
+	fontSize := extract.ConfigMem.Size.Background.Presentation.FontSize
 	var tmpData string
 	pdf.SetText(fontSize, false, hLColor)
 

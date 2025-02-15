@@ -17,7 +17,8 @@ import (
 	"strings"
 )
 
-func CreatePrint(figmaInfo *get.Info, config extract.Config, target, execPath string) {
+func CreatePrint(figmaInfo *get.Info, target, execPath string) {
+	config := extract.ConfigMem
 	outputDir := filepath.Join(execPath, config.OutputPath.Bulletin, "print", "tmp")
 	_ = pkg.CheckDirIs(outputDir)
 
@@ -30,12 +31,9 @@ func CreatePrint(figmaInfo *get.Info, config extract.Config, target, execPath st
 	highestLuminaceColor := colorPalette.HexToRGBA(config.Color.BoxColor)
 	printColor := colorPalette.HexToRGBA(config.Color.PrintColor)
 	bulletinSize, rectangle := getSize(config)
-
 	files, _ := os.ReadDir(outputDir)
 	objPdf := presentation.New(bulletinSize)
-	objPdf.FullSize = bulletinSize
 	objPdf.BoxSize = rectangle
-
 	yearMonth, weekFormatted := date.SetDateTitle()
 
 	// 파일명 생성: "202411_3.pdf"
@@ -48,9 +46,9 @@ func CreatePrint(figmaInfo *get.Info, config extract.Config, target, execPath st
 	worshipContents, err := os.ReadFile(filepath.Join(execPath, "config", target+".json"))
 	err = json.Unmarshal(worshipContents, &contents)
 
-	var x float64 = 7
-	var y float64 = 36
-	var fontSize float64 = 9
+	var x float64 = 5
+	var y float64 = 202
+	fontSize := config.Size.Background.Print.FontSize
 
 	for i, file := range files {
 		imgPath := filepath.Join(outputDir, file.Name())

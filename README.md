@@ -24,12 +24,14 @@
 
 ## 4. Info Size
 
-* If you want to change the pdf ratio, you can control the pdf size.
+* You can control the PDF size to change its ratio
+* however, this is determined entirely by the Figma size.
 
 ```
 # 16:9
   width : 323.33,
   height : 210.0
+  - mac always follow 16:10 ratio
   
 # A4 size
   width : 297.0,

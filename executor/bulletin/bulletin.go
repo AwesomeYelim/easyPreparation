@@ -15,8 +15,8 @@ func main() {
 	execPath = path.ExecutePath(execPath, "easyPreparation")
 	target, figmaInfo := gui.SetBulletinGui(execPath)
 	configPath := filepath.Join(execPath, "config/custom.json")
-	config := extract.ExtCustomOption(configPath)
+	extract.ExtCustomOption(configPath)
 
-	forPrint.CreatePrint(figmaInfo, config, target, execPath)
-	forPresentation.CreatePresentation(figmaInfo, config, target, execPath)
+	forPrint.CreatePrint(figmaInfo, target, execPath)
+	forPresentation.CreatePresentation(figmaInfo, target, execPath)
 }

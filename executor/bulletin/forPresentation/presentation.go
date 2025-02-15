@@ -15,7 +15,8 @@ import (
 	"strings"
 )
 
-func CreatePresentation(figmaInfo *get.Info, config extract.Config, target, execPath string) {
+func CreatePresentation(figmaInfo *get.Info, target, execPath string) {
+	config := extract.ConfigMem
 	outputDir := filepath.Join(execPath, config.OutputPath.Bulletin, "presentation", "tmp")
 	_ = pkg.CheckDirIs(outputDir)
 

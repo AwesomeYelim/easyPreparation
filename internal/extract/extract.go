@@ -36,22 +36,21 @@ var defaultConfig = Config{
 		PrintColor: "#8B7F71",
 	},
 	Size: size.Size{
-		Background: struct {
-			Print        size.Box `json:"print"`
-			Presentation size.Box `json:"presentation"`
-		}{
-			Print: size.Box{
-				Width:  297.0,
-				Height: 167.0,
+		Background: size.Background{
+			Print: size.ResultInfo{
+				Width:    1409.0,
+				Height:   996.9,
+				FontSize: 40.0,
 			},
-			Presentation: size.Box{
-				Width:  350.0,
-				Height: 210.0,
+			Presentation: size.ResultInfo{
+				Width:    1409.0,
+				Height:   880.0,
+				FontSize: 100.0,
 			},
 		},
-		InnerRectangle: size.Box{
-			Width:  132,
-			Height: 71,
+		InnerRectangle: size.ResultInfo{
+			Width:  584,
+			Height: 279,
 		},
 	},
 	OutputPath: OutputPath{
@@ -60,67 +59,47 @@ var defaultConfig = Config{
 	},
 }
 
-func validateConfig(config *Config) {
-	// Color 필드 체크
-	if config.Color.BoxColor == "" {
-		config.Color.BoxColor = defaultConfig.Color.BoxColor
-	}
-	if config.Color.LineColor == "" {
-		config.Color.LineColor = defaultConfig.Color.LineColor
-	}
-	if config.Color.FontColor == "" {
-		config.Color.FontColor = defaultConfig.Color.FontColor
-	}
-	if config.Color.DateColor == "" {
-		config.Color.DateColor = defaultConfig.Color.DateColor
-	}
-	if config.Color.PrintColor == "" {
-		config.Color.PrintColor = defaultConfig.Color.PrintColor
-	}
+func fillDefaults(dst, def reflect.Value) {
+	for i := 0; i < dst.NumField(); i++ {
+		field := dst.Field(i)
+		defField := def.Field(i)
 
-	// Size 필드 체크
-	if config.Size.Background.Print.Width == 0 {
-		config.Size.Background.Print.Width = defaultConfig.Size.Background.Print.Width
-	}
-	if config.Size.Background.Print.Height == 0 {
-		config.Size.Background.Print.Height = defaultConfig.Size.Background.Print.Height
-	}
-	if config.Size.Background.Presentation.Width == 0 {
-		config.Size.Background.Presentation.Width = defaultConfig.Size.Background.Presentation.Width
-	}
-	if config.Size.Background.Presentation.Height == 0 {
-		config.Size.Background.Presentation.Height = defaultConfig.Size.Background.Presentation.Height
-	}
+		// 필드를 설정할 수 없는 경우 건너뜀
+		if !field.CanSet() {
+			continue
+		}
 
-	if config.Size.InnerRectangle.Width == 0 {
-		config.Size.InnerRectangle.Width = defaultConfig.Size.InnerRectangle.Width
-	}
-	if config.Size.InnerRectangle.Height == 0 {
-		config.Size.InnerRectangle.Height = defaultConfig.Size.InnerRectangle.Height
-	}
-
-	// OutputPath 필드 체크
-	if config.OutputPath.Bulletin == "" {
-		config.OutputPath.Bulletin = defaultConfig.OutputPath.Bulletin
-	}
-	if config.OutputPath.Lyrics == "" {
-		config.OutputPath.Lyrics = defaultConfig.OutputPath.Lyrics
+		//  또 다른 struct라면 재귀적으로 처리
+		if field.Kind() == reflect.Struct {
+			fillDefaults(field, defField)
+		} else {
+			if field.IsZero() {
+				field.Set(defField)
+			}
+		}
 	}
 }
 
-func ExtCustomOption(path string) (config Config) {
+func validateConfig(config *Config) {
+	fillDefaults(reflect.ValueOf(config).Elem(), reflect.ValueOf(defaultConfig))
+}
+
+func ExtCustomOption(path string) {
 	custom, err := os.ReadFile(path)
-	err = json.Unmarshal(custom, &config)
+	err = json.Unmarshal(custom, &ConfigMem)
 
 	if err != nil {
 		log.Printf("%s Error :%s", path, err)
 	}
 
-	if reflect.DeepEqual(config, Config{}) {
-		fmt.Println("config is empty")
+	if reflect.DeepEqual(ConfigMem, Config{}) {
+		fmt.Println("ConfigMem is empty")
 	}
 	// 유효성 검사 후 기본값 적용
-	validateConfig(&config)
+	validateConfig(&ConfigMem)
 
-	return config
 }
+
+var (
+	ConfigMem Config
+)
