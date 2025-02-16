@@ -38,14 +38,14 @@ func main() {
 func NewLyricsPresentationManager(execPath string) *LyricsPresentationManager {
 	execPath = path.ExecutePath(execPath, "easyPreparation")
 	configPath := filepath.Join(execPath, "config/custom.json")
-	config := extract.ExtCustomOption(configPath)
+	extract.ExtCustomOption(configPath)
 
-	outputDir := filepath.Join(execPath, config.OutputPath.Lyrics, "tmp")
+	outputDir := filepath.Join(execPath, extract.ConfigMem.OutputPath.Lyrics, "tmp")
 	_ = pkg.CheckDirIs(outputDir)
 
 	return &LyricsPresentationManager{
 		execPath:  execPath,
-		config:    config,
+		config:    extract.ConfigMem,
 		outputDir: outputDir,
 	}
 }

@@ -78,7 +78,7 @@ const EditableData: React.FC = () => {
             >
               {item.title}
             </label>
-            {item.info.includes("edit") && !item.info.includes("b_") && (
+            {item.info.includes("edit") && !item.info.includes("b_") && item.obj != "" && (
               <input
                 type="text"
                 onChange={(e) => handleValueChange(key, e.target.value)}

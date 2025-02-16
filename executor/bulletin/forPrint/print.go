@@ -46,7 +46,7 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 	worshipContents, err := os.ReadFile(filepath.Join(execPath, "config", target+".json"))
 	err = json.Unmarshal(worshipContents, &contents)
 
-	var x float64 = 5
+	var x float64 = 55
 	var y float64 = 202
 	fontSize := config.Size.Background.Print.FontSize
 
@@ -61,21 +61,22 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 			objPdf.SetText(fontSize, true, highestLuminaceColor)
 			objPdf.WriteText(sunDatText, "right")
 		} else {
-
 			objPdf.SetText(fontSize, false, printColor)
 			for _, order := range contents {
 				// 하위 목록인 경우 skip
 				if strings.Contains(order.Title, ".") {
 					continue
 				}
-				y += 6
+				objPdf.SetXY(x, y)
+				objPdf.MultiCell(objPdf.BoxSize.Width, fontSize/2, strings.Split(order.Title, "_")[1], "", "L", false)
 				if strings.Contains(order.Title, "참회의 기도") || order.Obj == "-" {
 					continue
 				}
 				if strings.HasSuffix(order.Info, "edit") {
-					objPdf.SetXY(x, y)
 					objPdf.MultiCell(objPdf.BoxSize.Width, fontSize/2, order.Obj, "", "C", false)
 				}
+				objPdf.MultiCell(objPdf.BoxSize.Width, fontSize/2, strings.Split(order.Title, "_")[1], "", "R", false)
+				y += 6
 
 			}
 
@@ -92,15 +93,14 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 	}
 }
 
-// A4 기준
 func getSize(config extract.Config) (gofpdf.SizeType, presentation.Size) {
 	bulletinSize := gofpdf.SizeType{
 		Wd: config.Size.Background.Print.Width,
 		Ht: config.Size.Background.Print.Height,
 	}
 	rectangle := presentation.Size{
-		Width:  config.Size.InnerRectangle.Width,
-		Height: config.Size.InnerRectangle.Height,
+		Width:  config.Size.Background.Print.InnerRectangle.Width,
+		Height: config.Size.Background.Print.InnerRectangle.Height,
 	}
 
 	return bulletinSize, rectangle

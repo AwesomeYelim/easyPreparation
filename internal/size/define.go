@@ -1,9 +1,14 @@
 package size
 
+type Size struct {
+	Width  float64 `json:"width"`
+	Height float64 `json:"height"`
+}
+
 type ResultInfo struct {
-	Width    float64 `json:"width"`
-	Height   float64 `json:"height"`
-	FontSize float64 `json:"fontSize"`
+	Size
+	FontSize       float64 `json:"fontSize"`
+	InnerRectangle Size    `json:"innerRectangle"`
 }
 
 type Background struct {
@@ -11,7 +16,6 @@ type Background struct {
 	Presentation ResultInfo `json:"presentation"`
 }
 
-type Size struct {
-	Background     Background `json:"background"`
-	InnerRectangle ResultInfo `json:"innerRectangle"`
+type BackgroundInfo struct {
+	Background Background `json:"background"`
 }

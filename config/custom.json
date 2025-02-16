@@ -11,17 +11,21 @@
       "print": {
         "width": 1409.0,
         "height": 996.0,
-        "fontSize" : 40
+        "fontSize" : 50,
+        "innerRectangle": {
+          "width": 584,
+          "height": 860
+        }
       },
       "presentation": {
         "width": 1409.0,
         "height": 880.0,
-        "fontSize" : 100
+        "fontSize" : 100,
+        "innerRectangle": {
+          "width": 1165,
+          "height": 740
+        }
       }
-    },
-    "innerRectangle": {
-      "width": 584,
-      "height": 279
     }
   },
   "outputPath": {

@@ -22,9 +22,9 @@ type OutputPath struct {
 }
 
 type Config struct {
-	Color      Color      `json:"color"`
-	Size       size.Size  `json:"size"`
-	OutputPath OutputPath `json:"outputPath"`
+	Color      Color               `json:"color"`
+	Size       size.BackgroundInfo `json:"size"`
+	OutputPath OutputPath          `json:"outputPath"`
 }
 
 var defaultConfig = Config{
@@ -35,22 +35,30 @@ var defaultConfig = Config{
 		DateColor:  "#FFFFFF",
 		PrintColor: "#8B7F71",
 	},
-	Size: size.Size{
+	Size: size.BackgroundInfo{
 		Background: size.Background{
 			Print: size.ResultInfo{
-				Width:    1409.0,
-				Height:   996.9,
-				FontSize: 40.0,
+				Size: size.Size{
+					Width:  1409.0,
+					Height: 996.0,
+				},
+				FontSize: 50.0,
+				InnerRectangle: size.Size{
+					Width:  584,
+					Height: 860,
+				},
 			},
 			Presentation: size.ResultInfo{
-				Width:    1409.0,
-				Height:   880.0,
+				Size: size.Size{
+					Width:  1409.0,
+					Height: 880.0,
+				},
 				FontSize: 100.0,
+				InnerRectangle: size.Size{
+					Width:  1165,
+					Height: 740,
+				},
 			},
-		},
-		InnerRectangle: size.ResultInfo{
-			Width:  584,
-			Height: 279,
 		},
 	},
 	OutputPath: OutputPath{

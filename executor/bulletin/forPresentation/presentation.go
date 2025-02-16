@@ -26,14 +26,13 @@ func CreatePresentation(figmaInfo *get.Info, target, execPath string) {
 
 	figmaInfo.GetFigmaImage(outputDir, "forShowing")
 
-	bulletinSize := gofpdf.SizeType{
-		Wd: config.Size.Background.Presentation.Width,
-		Ht: config.Size.Background.Presentation.Height,
-	}
 	yearMonth, weekFormatted := date.SetDateTitle()
+	bulletinSize, rectangle := getSize(config)
 
 	objPdf := presentation.New(bulletinSize)
 	objPdf.FullSize = bulletinSize
+	objPdf.BoxSize = rectangle
+
 	objPdf.ExecutePath = execPath
 
 	outputFilename := fmt.Sprintf("%s_%s.pdf", yearMonth, weekFormatted)
@@ -67,4 +66,17 @@ func CreatePresentation(figmaInfo *get.Info, target, execPath string) {
 		fmt.Printf("PDF 저장 중 에러 발생: %v", err)
 	}
 
+}
+
+func getSize(config extract.Config) (gofpdf.SizeType, presentation.Size) {
+	bulletinSize := gofpdf.SizeType{
+		Wd: config.Size.Background.Presentation.Width,
+		Ht: config.Size.Background.Presentation.Height,
+	}
+	rectangle := presentation.Size{
+		Width:  config.Size.Background.Presentation.InnerRectangle.Width,
+		Height: config.Size.Background.Presentation.InnerRectangle.Height,
+	}
+
+	return bulletinSize, rectangle
 }

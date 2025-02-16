@@ -186,9 +186,9 @@ func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config, execPath str
 	case "교회소식":
 		pdf.DrawChurchNews(con, hLColor)
 	case "참회의 기도":
-		pdf.SetText(textSize, false, hLColor)
-		pdf.SetXY(pdf.BoxSize.Width+20, 50.00)
-		pdf.MultiCell(pdf.BoxSize.Width, textSize/2, con.Obj, "", "R", false)
+		pdf.SetText(textSize, true, hLColor)
+		pdf.SetXY(120.00, 180.00)
+		pdf.MultiCell(pdf.BoxSize.Width, textSize/1.5, con.Obj, "", "R", false)
 	default:
 		if con.Obj == "-" {
 			pdf.WriteText(con.Lead, "center")
@@ -202,7 +202,7 @@ func (pdf *PDF) DrawChurchNews(con gui.WorshipInfo, hLColor color.RGBA) {
 	// 재귀적으로 교회소식과 그 내부 children 데이터를 처리하는 함수
 	var draw func(items []gui.WorshipInfo, depth int)
 
-	x, y := 80.0, 250.0
+	x, y := 70.0, 250.0
 	fontSize := extract.ConfigMem.Size.Background.Presentation.FontSize
 	var tmpData string
 	pdf.SetText(fontSize, false, hLColor)
