@@ -48,7 +48,8 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 
 	var x float64 = 55
 	var y float64 = 202
-	fontSize := config.Size.Background.Print.FontSize
+	fontSize := config.Size.Bulletin.Print.FontSize
+	fontOption := config.Size.Bulletin.Print.FontOption
 
 	for i, file := range files {
 		imgPath := filepath.Join(outputDir, file.Name())
@@ -58,10 +59,10 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 
 		if i == 0 {
 			sunDatText := date.SetThisSunDay()
-			objPdf.SetText(fontSize, true, highestLuminaceColor)
+			objPdf.SetText(fontOption, fontSize, true, highestLuminaceColor)
 			objPdf.WriteText(sunDatText, "right")
 		} else {
-			objPdf.SetText(fontSize, false, printColor)
+			objPdf.SetText(fontOption, fontSize, false, printColor)
 			for _, order := range contents {
 				// 하위 목록인 경우 skip
 				if strings.Contains(order.Title, ".") {
@@ -95,12 +96,12 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 
 func getSize(config extract.Config) (gofpdf.SizeType, presentation.Size) {
 	bulletinSize := gofpdf.SizeType{
-		Wd: config.Size.Background.Print.Width,
-		Ht: config.Size.Background.Print.Height,
+		Wd: config.Size.Bulletin.Print.Width,
+		Ht: config.Size.Bulletin.Print.Height,
 	}
 	rectangle := presentation.Size{
-		Width:  config.Size.Background.Print.InnerRectangle.Width,
-		Height: config.Size.Background.Print.InnerRectangle.Height,
+		Width:  config.Size.Bulletin.Print.InnerRectangle.Width,
+		Height: config.Size.Bulletin.Print.InnerRectangle.Height,
 	}
 
 	return bulletinSize, rectangle

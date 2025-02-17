@@ -7,11 +7,12 @@
     "printColor": "#8B7F71"
   },
   "size": {
-    "background": {
+    "bulletin": {
       "print": {
         "width": 1409.0,
         "height": 996.0,
-        "fontSize" : 50,
+        "fontSize": 50,
+        "fontOption" : "Nanum Gothic",
         "innerRectangle": {
           "width": 584,
           "height": 860
@@ -19,11 +20,24 @@
       },
       "presentation": {
         "width": 1409.0,
-        "height": 880.0,
-        "fontSize" : 100,
+        "height": 996.0,
+        "fontSize": 100,
+        "fontOption" : "Nanum Gothic",
         "innerRectangle": {
-          "width": 1165,
-          "height": 740
+          "width": 1278,
+          "height": 640
+        }
+      }
+    },
+    "lyrics": {
+      "presentation": {
+        "width": 1409.0,
+        "height": 792.0,
+        "fontSize": 130,
+        "fontOption" : "Nanum Gothic",
+        "innerRectangle": {
+          "width": 1278,
+          "height": 640
         }
       }
     }

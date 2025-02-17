@@ -29,7 +29,7 @@ func CreatePresentation(figmaInfo *get.Info, target, execPath string) {
 	yearMonth, weekFormatted := date.SetDateTitle()
 	bulletinSize, rectangle := getSize(config)
 
-	objPdf := presentation.New(bulletinSize)
+	objPdf := presentation.New(bulletinSize, config)
 	objPdf.FullSize = bulletinSize
 	objPdf.BoxSize = rectangle
 
@@ -70,12 +70,12 @@ func CreatePresentation(figmaInfo *get.Info, target, execPath string) {
 
 func getSize(config extract.Config) (gofpdf.SizeType, presentation.Size) {
 	bulletinSize := gofpdf.SizeType{
-		Wd: config.Size.Background.Presentation.Width,
-		Ht: config.Size.Background.Presentation.Height,
+		Wd: config.Size.Bulletin.Presentation.Width,
+		Ht: config.Size.Bulletin.Presentation.Height,
 	}
 	rectangle := presentation.Size{
-		Width:  config.Size.Background.Presentation.InnerRectangle.Width,
-		Height: config.Size.Background.Presentation.InnerRectangle.Height,
+		Width:  config.Size.Bulletin.Presentation.InnerRectangle.Width,
+		Height: config.Size.Bulletin.Presentation.InnerRectangle.Height,
 	}
 
 	return bulletinSize, rectangle

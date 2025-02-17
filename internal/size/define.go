@@ -5,17 +5,24 @@ type Size struct {
 	Height float64 `json:"height"`
 }
 
+type FontInfo struct {
+	FontSize   float64 `json:"fontSize"`
+	FontOption string  `json:"fontOption"`
+}
 type ResultInfo struct {
 	Size
-	FontSize       float64 `json:"fontSize"`
-	InnerRectangle Size    `json:"innerRectangle"`
+	FontInfo
+	InnerRectangle Size `json:"innerRectangle"`
 }
 
-type Background struct {
+type Bulletin struct {
 	Print        ResultInfo `json:"print"`
 	Presentation ResultInfo `json:"presentation"`
 }
-
+type Lyrics struct {
+	Presentation ResultInfo `json:"presentation"`
+}
 type BackgroundInfo struct {
-	Background Background `json:"background"`
+	Bulletin Bulletin `json:"bulletin"`
+	Lyrics   Lyrics   `json:"lyrics"`
 }

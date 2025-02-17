@@ -42,12 +42,13 @@ const SongTitleInput: React.FC = () => {
         />
       </div>
       <div>
-        <h1>노래 제목 입력</h1>
+        <h1>노래 제목 / 가사 입력</h1>
+        <p style={{ color: "#ccc" }}>여러개 입력시 (,) 로 구분</p>
         <input
           type="text"
           value={aboutLyric.songTitle}
           onChange={(e) => setAboutLyric({ ...aboutLyric, songTitle: e.target.value })}
-          placeholder="노래 제목을 입력하세요"
+          placeholder="노래 제목(또는 가사)을 입력하세요"
           style={{ padding: "10px", width: "300px", marginBottom: "10px" }}
         />
       </div>

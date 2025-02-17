@@ -36,13 +36,16 @@ var defaultConfig = Config{
 		PrintColor: "#8B7F71",
 	},
 	Size: size.BackgroundInfo{
-		Background: size.Background{
+		Bulletin: size.Bulletin{
 			Print: size.ResultInfo{
 				Size: size.Size{
 					Width:  1409.0,
 					Height: 996.0,
 				},
-				FontSize: 50.0,
+				FontInfo: size.FontInfo{
+					FontSize:   50.0,
+					FontOption: "Nanum Gothic",
+				},
 				InnerRectangle: size.Size{
 					Width:  584,
 					Height: 860,
@@ -51,15 +54,32 @@ var defaultConfig = Config{
 			Presentation: size.ResultInfo{
 				Size: size.Size{
 					Width:  1409.0,
-					Height: 880.0,
+					Height: 996.0,
 				},
-				FontSize: 100.0,
+				FontInfo: size.FontInfo{
+					FontSize:   100.0,
+					FontOption: "Nanum Gothic",
+				},
 				InnerRectangle: size.Size{
-					Width:  1165,
-					Height: 740,
+					Width:  1278,
+					Height: 640,
 				},
 			},
 		},
+		Lyrics: size.Lyrics{Presentation: size.ResultInfo{
+			Size: size.Size{
+				Width:  1409.0,
+				Height: 792.0,
+			},
+			FontInfo: size.FontInfo{
+				FontSize:   130.0,
+				FontOption: "Nanum Gothic",
+			},
+			InnerRectangle: size.Size{
+				Width:  1278,
+				Height: 640,
+			},
+		}},
 	},
 	OutputPath: OutputPath{
 		Bulletin: "output/bulletin",
@@ -92,6 +112,29 @@ func validateConfig(config *Config) {
 	fillDefaults(reflect.ValueOf(config).Elem(), reflect.ValueOf(defaultConfig))
 }
 
+func scaleFloats(v reflect.Value) {
+	switch v.Kind() {
+	case reflect.Float64:
+		if v.CanSet() {
+			v.SetFloat(v.Float() / 2)
+		}
+	case reflect.Ptr:
+		if !v.IsNil() {
+			scaleFloats(v.Elem())
+		}
+	case reflect.Struct:
+		for i := 0; i < v.NumField(); i++ {
+			scaleFloats(v.Field(i))
+		}
+	case reflect.Slice:
+		for i := 0; i < v.Len(); i++ {
+			scaleFloats(v.Index(i))
+		}
+	default:
+
+	}
+}
+
 func ExtCustomOption(path string) {
 	custom, err := os.ReadFile(path)
 	err = json.Unmarshal(custom, &ConfigMem)
@@ -105,6 +148,7 @@ func ExtCustomOption(path string) {
 	}
 	// 유효성 검사 후 기본값 적용
 	validateConfig(&ConfigMem)
+	//scaleFloats(reflect.ValueOf(&ConfigMem).Elem()) // 1/2 크기로 사용
 
 }
 

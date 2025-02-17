@@ -30,6 +30,7 @@ func main() {
 	defer lpm.Cleanup()
 
 	lyricsInfo, figmaInfo := gui.SetLyricsGui(lpm.execPath)
+
 	figmaInfo.GetFigmaImage(lpm.outputDir, "forLyrics")
 
 	lpm.CreatePresentation(lyricsInfo)
@@ -56,6 +57,14 @@ func (lpm *LyricsPresentationManager) Cleanup() {
 
 func (lpm *LyricsPresentationManager) CreatePresentation(lyricsInfo map[string]string) {
 	songTitle := lyricsInfo["songTitle"]
+	label := lyricsInfo["label"]
+
+	fontSize := lpm.config.Size.Lyrics.Presentation.FontSize + 30
+	fontOption := lpm.config.Size.Bulletin.Print.FontOption
+
+	labelS, labelH := fontSize/2, 28.00
+	labelWm, labelHm := 13.00, 10.00
+	labelP := 15.00
 
 	if songTitle == "" {
 		fmt.Println("노래 제목을 입력하지 않았습니다. 프로그램을 종료합니다.")
@@ -63,10 +72,9 @@ func (lpm *LyricsPresentationManager) CreatePresentation(lyricsInfo map[string]s
 	}
 
 	songTitles := strings.Split(songTitle, ",")
-	pdfSize := gofpdf.SizeType{
-		Wd: lpm.config.Size.Background.Presentation.Width,
-		Ht: lpm.config.Size.Background.Presentation.Height,
-	}
+
+	pdfSize, rectangle := getSize(extract.ConfigMem)
+
 	backgroundImages, _ := os.ReadDir(lpm.outputDir)
 
 	for _, title := range songTitles {
@@ -76,18 +84,21 @@ func (lpm *LyricsPresentationManager) CreatePresentation(lyricsInfo map[string]s
 		fileName := filepath.Join(strings.TrimSuffix(lpm.outputDir, "tmp"), sanitize.FileName(title)+".pdf")
 
 		objPdf := presentation.New(pdfSize)
-		//var fontSize float64 = 9
-		//highestLuminaceColor := colorPalette.HexToRGBA("#FFFFF")
-		//objPdf.SetText(fontSize, true, highestLuminaceColor)
 
 		for _, content := range song.Content {
 			objPdf.AddPage()
 			objPdf.CheckImgPlaced(pdfSize, filepath.Join(lpm.outputDir, backgroundImages[0].Name()), 0)
-			objPdf.SetXY((pdfSize.Wd-250)/2, (pdfSize.Ht-20)/2)
-			objPdf.SetText(40, true, color.RGBA{R: 255, G: 255, B: 255})
-			objPdf.MultiCell(250, 20, content, "", "C", false)
-			//objPdf.SetText(30, true, color.RGBA{R: 255, G: 255, B: 255})
-			//objPdf.MultiCell(320, 20, lyricsInfo["label"], "", "R", false)
+			// 가운데 배치
+			objPdf.SetXY((pdfSize.Wd-rectangle.Width)/2, (pdfSize.Ht-fontSize)/2)
+			objPdf.SetText(fontOption, fontSize, true, color.RGBA{R: 255, G: 255, B: 255})
+			objPdf.MultiCell(lpm.config.Size.Lyrics.Presentation.InnerRectangle.Width, fontSize/2, content, "", "C", false)
+
+			// label - 400*70
+			// margin - 20, 15
+			textWidth := objPdf.GetStringWidth(label)
+			objPdf.SetXY(pdfSize.Wd-(textWidth+labelWm+labelP), pdfSize.Ht-(labelH+labelHm+labelP))
+			objPdf.SetText("Jacques Francois", labelS, false, color.RGBA{R: 255, G: 255, B: 255})
+			objPdf.MultiCell(textWidth, labelH, label, "", "R", false)
 		}
 		_ = pkg.ReplaceDirPath(fileName, "./")
 
@@ -118,4 +129,17 @@ func (lpm *LyricsPresentationManager) saveToDB(title string, song *lyrics.SlideD
 	} else {
 		fmt.Printf("'%s' 노래가 데이터베이스에 저장되었습니다.\n", title)
 	}
+}
+
+func getSize(config extract.Config) (gofpdf.SizeType, presentation.Size) {
+	bulletinSize := gofpdf.SizeType{
+		Wd: config.Size.Lyrics.Presentation.Width,
+		Ht: config.Size.Lyrics.Presentation.Height,
+	}
+	rectangle := presentation.Size{
+		Width:  config.Size.Lyrics.Presentation.InnerRectangle.Width,
+		Height: config.Size.Lyrics.Presentation.InnerRectangle.Height,
+	}
+
+	return bulletinSize, rectangle
 }
