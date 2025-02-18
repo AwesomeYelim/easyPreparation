@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -29,7 +30,7 @@ type WebFontList struct {
 	Items []WebFontItem `json:"items"`
 }
 
-func GetFont(name, weight string) (fontPath string, err error) {
+func GetFont(name, weight string, isB bool) (fontPath string, err error) {
 
 	gistURL := "https://gist.github.com/AwesomeYelim/6dc8fbbf1f2db5ad7d84cf95dbadafa7/raw"
 	saveName := strings.Replace(name, " ", "", 1)
@@ -64,11 +65,7 @@ func GetFont(name, weight string) (fontPath string, err error) {
 	// JSON 데이터를 출력 (예시)
 	for _, font := range webFontList.Items {
 		if font.Family == name {
-			targetUrl = font.Files[weight]
-			//fmt.Printf("Font Family: %s\n", font.Family)
-			//fmt.Printf("Category: %s\n", font.Category)
-			//fmt.Printf("Variants: %v\n", font.Variants)
-			//fmt.Printf("Files: %v\n", font.Files)
+			targetUrl = findTargetURL(font.Files, weight, isB)
 			break
 		}
 	}
@@ -77,6 +74,26 @@ func GetFont(name, weight string) (fontPath string, err error) {
 	fontPath, err = downloadFont(savePath, targetUrl)
 
 	return fontPath, err
+}
+
+// fontWeight 잘못 넣은 경우
+func findTargetURL(files map[string]string, weight string, isB bool) string {
+	if url, ok := files[weight]; ok && url != "" {
+		return url
+	}
+	w, err := strconv.Atoi(weight)
+	if err != nil || w <= 0 {
+		w = 700
+	}
+
+	var newWeight string
+	if isB {
+		newWeight = strconv.Itoa(w + 100)
+	} else {
+		newWeight = strconv.Itoa(w - 100)
+	}
+
+	return findTargetURL(files, newWeight, isB)
 }
 
 func downloadFont(savePath, url string) (string, error) {

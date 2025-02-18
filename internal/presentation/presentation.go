@@ -83,17 +83,9 @@ func (pdf *PDF) DrawBox(boxSize Size, x, y float64, color ...color.Color) {
 }
 
 // 선 그려주는 함수
-func (pdf *PDF) DrawLine(length, x, y float64, color ...color.Color) {
+func (pdf *PDF) DrawLine(length, x, y float64, color color.Color) {
 
-	colorList := colorPalette.GetColorWithSortByLuminance()
-	lowestLuminaceColor := colorList[0] // 채도 가장 낮은 색상 - background
-
-	var rgba []uint32
-	if len(color) <= 0 {
-		rgba = colorPalette.ConvertToRGBRange(lowestLuminaceColor.Color.RGBA())
-	} else {
-		rgba = colorPalette.ConvertToRGBRange(color[0].RGBA())
-	}
+	rgba := colorPalette.ConvertToRGBRange(color.RGBA())
 
 	pdf.SetDrawColor(int(rgba[0]), int(rgba[1]), int(rgba[2]))
 	pdf.SetLineWidth(0.5)
@@ -128,9 +120,9 @@ func (pdf *PDF) SetText(fontOption string, fontSize float64, isB bool, textColor
 	var err error
 
 	if isB {
-		fontPath, err = font.GetFont(fontOption, "800")
+		fontPath, err = font.GetFont(fontOption, "800", isB)
 	} else {
-		fontPath, err = font.GetFont(fontOption, "regular")
+		fontPath, err = font.GetFont(fontOption, "regular", isB)
 	}
 
 	if err != nil {

@@ -28,8 +28,9 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 
 	figmaInfo.GetFigmaImage(outputDir, "forPrint")
 
-	highestLuminaceColor := colorPalette.HexToRGBA(config.Color.BoxColor)
+	fontColor := colorPalette.HexToRGBA(config.Color.FontColor)
 	printColor := colorPalette.HexToRGBA(config.Color.PrintColor)
+
 	bulletinSize, rectangle := getSize(config)
 	files, _ := os.ReadDir(outputDir)
 	objPdf := presentation.New(bulletinSize)
@@ -46,8 +47,12 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 	worshipContents, err := os.ReadFile(filepath.Join(execPath, "config", target+".json"))
 	err = json.Unmarshal(worshipContents, &contents)
 
-	var x float64 = 55
-	var y float64 = 202
+	// 글씨 시작 margin
+	var xm float64 = 95
+	var ym float64 = 202
+	var line float64 = 272
+	var lineM float64 = 10
+
 	fontSize := config.Size.Bulletin.Print.FontSize
 	fontOption := config.Size.Bulletin.Print.FontOption
 
@@ -59,7 +64,7 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 
 		if i == 0 {
 			sunDatText := date.SetThisSunDay()
-			objPdf.SetText(fontOption, fontSize, true, highestLuminaceColor)
+			objPdf.SetText(fontOption, fontSize, true, fontColor)
 			objPdf.WriteText(sunDatText, "right")
 		} else {
 			objPdf.SetText(fontOption, fontSize, false, printColor)
@@ -68,16 +73,29 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 				if strings.Contains(order.Title, ".") {
 					continue
 				}
-				objPdf.SetXY(x, y)
-				objPdf.MultiCell(objPdf.BoxSize.Width, fontSize/2, strings.Split(order.Title, "_")[1], "", "L", false)
+				objPdf.SetXY(xm, ym)
+				title := strings.Split(order.Title, "_")[1]
+				objPdf.MultiCell(objPdf.BoxSize.Width, fontSize/2, title, "", "L", false)
 				if strings.Contains(order.Title, "참회의 기도") || order.Obj == "-" {
 					continue
 				}
+				linePlace := ym - (fontSize / 2)
+
 				if strings.HasSuffix(order.Info, "edit") {
+					strTW := objPdf.GetStringWidth(title)
+					strOW := objPdf.GetStringWidth(order.Obj)
+					editLine := (line - (strOW + lineM)) / 2
+					firstPlacedLine := xm + strTW + lineM
+					secondPlacedLine := firstPlacedLine + editLine + strOW + (lineM * 2)
+
+					objPdf.DrawLine(editLine, firstPlacedLine, linePlace, printColor)
 					objPdf.MultiCell(objPdf.BoxSize.Width, fontSize/2, order.Obj, "", "C", false)
+					objPdf.DrawLine(editLine, secondPlacedLine, linePlace, printColor)
+				} else {
+					objPdf.DrawLine(line, xm, linePlace, printColor)
 				}
-				objPdf.MultiCell(objPdf.BoxSize.Width, fontSize/2, strings.Split(order.Title, "_")[1], "", "R", false)
-				y += 6
+				objPdf.MultiCell(objPdf.BoxSize.Width, fontSize/2, order.Lead, "", "R", false)
+				ym += fontSize / 2
 
 			}
 

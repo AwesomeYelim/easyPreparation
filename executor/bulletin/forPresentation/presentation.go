@@ -29,7 +29,7 @@ func CreatePresentation(figmaInfo *get.Info, target, execPath string) {
 	yearMonth, weekFormatted := date.SetDateTitle()
 	bulletinSize, rectangle := getSize(config)
 
-	objPdf := presentation.New(bulletinSize, config)
+	objPdf := presentation.New(bulletinSize)
 	objPdf.FullSize = bulletinSize
 	objPdf.BoxSize = rectangle
 
