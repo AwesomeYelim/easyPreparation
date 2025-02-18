@@ -73,29 +73,27 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 				if strings.Contains(order.Title, ".") {
 					continue
 				}
-				objPdf.SetXY(xm, ym)
-				title := strings.Split(order.Title, "_")[1]
-				objPdf.MultiCell(objPdf.BoxSize.Width, fontSize/2, title, "", "L", false)
 				if strings.Contains(order.Title, "참회의 기도") || order.Obj == "-" {
 					continue
 				}
-				linePlace := ym - (fontSize / 2)
+				objPdf.SetXY(xm, ym)
+				title := strings.Split(order.Title, "_")[1]
+				objPdf.MultiCell(objPdf.BoxSize.Width, 0, title, "", "L", false)
+				strTW := objPdf.GetStringWidth(title)
+				strOW := objPdf.GetStringWidth(order.Obj)
+				editLine := (line - (strOW + lineM)) / 2
+				firstPlacedLine := xm + strTW + lineM
+				secondPlacedLine := firstPlacedLine + editLine + strOW + (lineM * 2)
 
-				if strings.HasSuffix(order.Info, "edit") {
-					strTW := objPdf.GetStringWidth(title)
-					strOW := objPdf.GetStringWidth(order.Obj)
-					editLine := (line - (strOW + lineM)) / 2
-					firstPlacedLine := xm + strTW + lineM
-					secondPlacedLine := firstPlacedLine + editLine + strOW + (lineM * 2)
-
-					objPdf.DrawLine(editLine, firstPlacedLine, linePlace, printColor)
-					objPdf.MultiCell(objPdf.BoxSize.Width, fontSize/2, order.Obj, "", "C", false)
-					objPdf.DrawLine(editLine, secondPlacedLine, linePlace, printColor)
+				if strings.HasSuffix(order.Info, "edit") && title != "교회소식" {
+					objPdf.DrawLine(editLine, firstPlacedLine, ym, printColor)
+					objPdf.MultiCell(objPdf.BoxSize.Width, 0, order.Obj, "", "C", false)
+					objPdf.DrawLine(editLine, secondPlacedLine, ym, printColor)
 				} else {
-					objPdf.DrawLine(line, xm, linePlace, printColor)
+					objPdf.DrawLine(line, firstPlacedLine, ym, printColor)
 				}
-				objPdf.MultiCell(objPdf.BoxSize.Width, fontSize/2, order.Lead, "", "R", false)
-				ym += fontSize / 2
+				objPdf.MultiCell(objPdf.BoxSize.Width, 0, order.Lead, "", "R", false)
+				ym += fontSize / 1.5
 
 			}
 
