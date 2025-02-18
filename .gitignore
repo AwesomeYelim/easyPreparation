@@ -3,6 +3,7 @@ bin/
 data/
 output/
 config/*
+lyricsPPT_v*.zip
 
 node_modules/
 .pnp
