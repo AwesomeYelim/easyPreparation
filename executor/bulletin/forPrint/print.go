@@ -52,6 +52,7 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 	var ym float64 = 202
 	var line float64 = 272
 	var lineM float64 = 10
+	var targetWidth float64 = 100
 
 	fontSize := config.Size.Bulletin.Print.FontSize
 	fontOption := config.Size.Bulletin.Print.FontOption
@@ -77,23 +78,37 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 					continue
 				}
 				objPdf.SetXY(xm, ym)
-				title := strings.Split(order.Title, "_")[1]
-				objPdf.MultiCell(objPdf.BoxSize.Width, 0, title, "", "L", false)
-				strTW := objPdf.GetStringWidth(title)
+				title := strings.Split(order.Title, "_")
+				objPdf.MultiCell(objPdf.BoxSize.Width, 0, title[1], "", "L", false)
+				strTW := objPdf.GetStringWidth(title[1])
 				strOW := objPdf.GetStringWidth(order.Obj)
+				//strLW := objPdf.GetStringWidth(order.Lead)
+				//line := objPdf.BoxSize.Width - (strTW + strLW + (lineM * 2))
 				editLine := (line - (strOW + lineM)) / 2
-				firstPlacedLine := xm + strTW + lineM
+				firstPlacedLine := xm + targetWidth + lineM
 				secondPlacedLine := firstPlacedLine + editLine + strOW + (lineM * 2)
 
-				if strings.HasSuffix(order.Info, "edit") && title != "교회소식" {
+				if strings.HasSuffix(order.Info, "edit") && title[1] != "교회소식" {
+					objPdf.SetXY(xm, ym)
 					objPdf.DrawLine(editLine, firstPlacedLine, ym, printColor)
+
+					if len(title[1]) > 1 {
+						charSpacing := (targetWidth - strTW) / float64(len(title[1])-1)
+						fmt.Println(charSpacing)
+						objPdf.SetWordSpacing(charSpacing)
+					}
 					objPdf.MultiCell(objPdf.BoxSize.Width, 0, order.Obj, "", "C", false)
 					objPdf.DrawLine(editLine, secondPlacedLine, ym, printColor)
 				} else {
 					objPdf.DrawLine(line, firstPlacedLine, ym, printColor)
 				}
+				objPdf.SetXY(xm, ym)
 				objPdf.MultiCell(objPdf.BoxSize.Width, 0, order.Lead, "", "R", false)
 				ym += fontSize / 1.5
+				if title[0] == "17" {
+					break
+				}
+				objPdf.SetWordSpacing(0)
 
 			}
 
