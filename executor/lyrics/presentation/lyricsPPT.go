@@ -59,8 +59,8 @@ func (lpm *LyricsPresentationManager) CreatePresentation(lyricsInfo map[string]s
 	songTitle := lyricsInfo["songTitle"]
 	label := lyricsInfo["label"]
 
-	fontSize := lpm.config.Size.Lyrics.Presentation.FontSize + 30
-	fontOption := lpm.config.Size.Bulletin.Print.FontOption
+	fontSize := lpm.config.Classification.Lyrics.Presentation.FontSize + 30
+	fontOption := lpm.config.Classification.Bulletin.Print.FontOption
 
 	labelS, labelH := fontSize/2, 28.00
 	labelWm, labelHm := 13.00, 10.00
@@ -91,7 +91,7 @@ func (lpm *LyricsPresentationManager) CreatePresentation(lyricsInfo map[string]s
 			// 가운데 배치
 			objPdf.SetXY((pdfSize.Wd-rectangle.Width)/2, (pdfSize.Ht-fontSize)/2)
 			objPdf.SetText(fontOption, fontSize, true, color.RGBA{R: 255, G: 255, B: 255})
-			objPdf.MultiCell(lpm.config.Size.Lyrics.Presentation.InnerRectangle.Width, fontSize/2, content, "", "C", false)
+			objPdf.MultiCell(lpm.config.Classification.Lyrics.Presentation.InnerRectangle.Width, fontSize/2, content, "", "C", false)
 
 			// label - 400*70
 			// margin - 20, 15
@@ -133,12 +133,12 @@ func (lpm *LyricsPresentationManager) saveToDB(title string, song *lyrics.SlideD
 
 func getSize(config extract.Config) (gofpdf.SizeType, presentation.Size) {
 	bulletinSize := gofpdf.SizeType{
-		Wd: config.Size.Lyrics.Presentation.Width,
-		Ht: config.Size.Lyrics.Presentation.Height,
+		Wd: config.Classification.Lyrics.Presentation.Width,
+		Ht: config.Classification.Lyrics.Presentation.Height,
 	}
 	rectangle := presentation.Size{
-		Width:  config.Size.Lyrics.Presentation.InnerRectangle.Width,
-		Height: config.Size.Lyrics.Presentation.InnerRectangle.Height,
+		Width:  config.Classification.Lyrics.Presentation.InnerRectangle.Width,
+		Height: config.Classification.Lyrics.Presentation.InnerRectangle.Height,
 	}
 
 	return bulletinSize, rectangle

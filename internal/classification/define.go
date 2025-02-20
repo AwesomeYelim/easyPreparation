@@ -1,4 +1,4 @@
-package size
+package classification
 
 type Size struct {
 	Width  float64 `json:"width"`
@@ -9,12 +9,20 @@ type FontInfo struct {
 	FontSize   float64 `json:"fontSize"`
 	FontOption string  `json:"fontOption"`
 }
+
+type Color struct {
+	BoxColor   string `json:"boxColor"`
+	LineColor  string `json:"lineColor"`
+	FontColor  string `json:"fontColor"`
+	DateColor  string `json:"dateColor"`
+	PrintColor string `json:"printColor"`
+}
 type ResultInfo struct {
 	Size
 	FontInfo
-	InnerRectangle Size `json:"innerRectangle"`
+	InnerRectangle Size  `json:"innerRectangle"`
+	Color          Color `json:"color"`
 }
-
 type Bulletin struct {
 	Print        ResultInfo `json:"print"`
 	Presentation ResultInfo `json:"presentation"`

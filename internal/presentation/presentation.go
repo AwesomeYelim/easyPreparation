@@ -1,12 +1,12 @@
 package presentation
 
 import (
+	"easyPreparation_1.0/internal/classification"
 	"easyPreparation_1.0/internal/colorPalette"
 	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/font"
 	"easyPreparation_1.0/internal/googleCloud"
 	"easyPreparation_1.0/internal/gui"
-	"easyPreparation_1.0/internal/size"
 	"easyPreparation_1.0/pkg"
 	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
@@ -19,6 +19,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 type PDF struct {
@@ -29,7 +30,7 @@ type PDF struct {
 	Contents    []string
 	Path        string
 	ExecutePath string
-	Config      size.ResultInfo
+	Config      classification.ResultInfo
 }
 
 type Size struct {
@@ -157,11 +158,79 @@ func (pdf *PDF) getColorRGB(textColor []color.Color) []uint32 {
 	}
 	return rgba
 }
+
+// 텍스트 간격
+func (pdf *PDF) TextSpacingFormat(text string, targetWidth, x, y float64) {
+	textWidth := pdf.GetStringWidth(text)
+	charCount := utf8.RuneCountInString(text) // 한 문자가 아닌 한 글자씩
+	if charCount > 1 {
+		charSpacing := (targetWidth - textWidth) / float64(charCount-1)
+		currentX := x
+
+		for _, char := range text {
+			charStr := string(char)
+			pdf.SetXY(currentX, y)
+			pdf.CellFormat(pdf.GetStringWidth(charStr), 0, charStr, "", 0, "L", false, 0, "")
+			currentX += pdf.GetStringWidth(charStr) + charSpacing
+		}
+	} else {
+		pdf.SetXY(x, y)
+		pdf.CellFormat(targetWidth, 0, text, "", 0, "L", false, 0, "")
+	}
+}
+
+func (pdf *PDF) ForComposeBuiltin(contents []gui.WorshipInfo, limit string) {
+
+	var xm float64 = 95
+	var ym float64 = 202
+	var line float64 = 272
+	var lineM float64 = 19
+	var targetWidth float64 = 100
+	var fontSize = pdf.Config.FontSize
+
+	printColor := colorPalette.HexToRGBA(pdf.Config.Color.PrintColor)
+	fontOption := pdf.Config.FontOption
+
+	pdf.SetText(fontOption, fontSize, false, printColor)
+
+	for _, order := range contents {
+		// 하위 목록인 경우 skip
+		if strings.Contains(order.Title, ".") {
+			continue
+		}
+		if strings.Contains(order.Title, "참회의 기도") || order.Obj == "-" {
+			continue
+		}
+		pdf.SetXY(xm, ym)
+		title := strings.Split(order.Title, "_")
+		strOW := pdf.GetStringWidth(order.Obj)
+		editLine := (line - (strOW + (lineM * 2))) / 2
+		firstPlacedLine := xm + targetWidth + lineM
+		secondPlacedLine := firstPlacedLine + editLine + strOW + (lineM * 2)
+		pdf.TextSpacingFormat(title[1], targetWidth, xm, ym)
+
+		if strings.HasSuffix(order.Info, "edit") && title[1] != "교회소식" {
+			pdf.SetXY(xm, ym)
+			pdf.DrawLine(editLine, firstPlacedLine, ym, printColor)
+			pdf.MultiCell(pdf.BoxSize.Width, 0, order.Obj, "", "C", false)
+			pdf.DrawLine(editLine, secondPlacedLine, ym, printColor)
+		} else {
+			pdf.DrawLine(line, firstPlacedLine, ym, printColor)
+		}
+		pdf.TextSpacingFormat(order.Lead, targetWidth, secondPlacedLine+editLine+lineM, ym)
+		ym += fontSize / 1.5
+		if title[0] == limit {
+			break
+		}
+
+	}
+}
+
 func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config, execPath string) {
-	hLColor := colorPalette.HexToRGBA(config.Color.BoxColor) // 박스 색상 설정
-	textSize := config.Size.Lyrics.Presentation.FontSize
+	hLColor := colorPalette.HexToRGBA(pdf.Config.Color.BoxColor) // 박스 색상 설정
+	textSize := config.Classification.Lyrics.Presentation.FontSize
 	var textW float64 = 1000
-	fontOption := config.Size.Bulletin.Print.FontOption
+	fontOption := config.Classification.Bulletin.Print.FontOption
 
 	pdf.SetText(fontOption, textSize, true, hLColor)
 	//trimmedText := pkg.RemoveEmptyLines(con.Contents)
@@ -198,7 +267,7 @@ func (pdf *PDF) DrawChurchNews(fontOption string, con gui.WorshipInfo, hLColor c
 	var draw func(items []gui.WorshipInfo, depth int)
 
 	x, y := 70.0, 250.0
-	fontSize := extract.ConfigMem.Size.Lyrics.Presentation.FontSize
+	fontSize := extract.ConfigMem.Classification.Lyrics.Presentation.FontSize
 	var tmpData string
 	pdf.SetText(fontOption, fontSize, false, hLColor)
 

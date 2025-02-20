@@ -1,7 +1,7 @@
 package extract
 
 import (
-	"easyPreparation_1.0/internal/size"
+	"easyPreparation_1.0/internal/classification"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -9,75 +9,81 @@ import (
 	"reflect"
 )
 
-type Color struct {
-	BoxColor   string `json:"boxColor"`
-	LineColor  string `json:"lineColor"`
-	FontColor  string `json:"fontColor"`
-	DateColor  string `json:"dateColor"`
-	PrintColor string `json:"printColor"`
-}
 type OutputPath struct {
 	Bulletin string `json:"bulletin"`
 	Lyrics   string `json:"lyrics"`
 }
 
 type Config struct {
-	Color      Color               `json:"color"`
-	Size       size.BackgroundInfo `json:"size"`
-	OutputPath OutputPath          `json:"outputPath"`
+	Classification classification.BackgroundInfo `json:"classification"`
+	OutputPath     OutputPath                    `json:"outputPath"`
 }
 
 var defaultConfig = Config{
-	Color: Color{
-		BoxColor:   "#F8F3EA",
-		LineColor:  "#BEA07C",
-		FontColor:  "#BEA07C",
-		DateColor:  "#FFFFFF",
-		PrintColor: "#8B7F71",
-	},
-	Size: size.BackgroundInfo{
-		Bulletin: size.Bulletin{
-			Print: size.ResultInfo{
-				Size: size.Size{
+	Classification: classification.BackgroundInfo{
+		Bulletin: classification.Bulletin{
+			Print: classification.ResultInfo{
+				Size: classification.Size{
 					Width:  1409.0,
 					Height: 996.0,
 				},
-				FontInfo: size.FontInfo{
+				FontInfo: classification.FontInfo{
 					FontSize:   50.0,
 					FontOption: "Nanum Gothic",
 				},
-				InnerRectangle: size.Size{
-					Width:  584,
+				InnerRectangle: classification.Size{
+					Width:  510,
 					Height: 860,
 				},
+				Color: classification.Color{
+					BoxColor:   "#F8F3EA",
+					LineColor:  "#BEA07C",
+					FontColor:  "#BEA07C",
+					DateColor:  "#FFFFFF",
+					PrintColor: "#8B7F71",
+				},
 			},
-			Presentation: size.ResultInfo{
-				Size: size.Size{
+			Presentation: classification.ResultInfo{
+				Size: classification.Size{
 					Width:  1409.0,
 					Height: 996.0,
 				},
-				FontInfo: size.FontInfo{
+				FontInfo: classification.FontInfo{
 					FontSize:   100.0,
 					FontOption: "Nanum Gothic",
 				},
-				InnerRectangle: size.Size{
+				InnerRectangle: classification.Size{
 					Width:  1278,
 					Height: 640,
 				},
+				Color: classification.Color{
+					BoxColor:   "#F8F3EA",
+					LineColor:  "#BEA07C",
+					FontColor:  "#BEA07C",
+					DateColor:  "#FFFFFF",
+					PrintColor: "#8B7F71",
+				},
 			},
 		},
-		Lyrics: size.Lyrics{Presentation: size.ResultInfo{
-			Size: size.Size{
+		Lyrics: classification.Lyrics{Presentation: classification.ResultInfo{
+			Size: classification.Size{
 				Width:  1409.0,
 				Height: 792.0,
 			},
-			FontInfo: size.FontInfo{
+			FontInfo: classification.FontInfo{
 				FontSize:   130.0,
 				FontOption: "Nanum Gothic",
 			},
-			InnerRectangle: size.Size{
+			InnerRectangle: classification.Size{
 				Width:  1278,
 				Height: 640,
+			},
+			Color: classification.Color{
+				BoxColor:   "#F8F3EA",
+				LineColor:  "#BEA07C",
+				FontColor:  "#BEA07C",
+				DateColor:  "#FFFFFF",
+				PrintColor: "#8B7F71",
 			},
 		}},
 	},

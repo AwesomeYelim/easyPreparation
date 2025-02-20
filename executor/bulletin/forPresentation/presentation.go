@@ -32,7 +32,7 @@ func CreatePresentation(figmaInfo *get.Info, target, execPath string) {
 	objPdf := presentation.New(bulletinSize)
 	objPdf.FullSize = bulletinSize
 	objPdf.BoxSize = rectangle
-
+	objPdf.Config = config.Classification.Bulletin.Presentation
 	objPdf.ExecutePath = execPath
 
 	outputFilename := fmt.Sprintf("%s_%s.pdf", yearMonth, weekFormatted)
@@ -70,12 +70,12 @@ func CreatePresentation(figmaInfo *get.Info, target, execPath string) {
 
 func getSize(config extract.Config) (gofpdf.SizeType, presentation.Size) {
 	bulletinSize := gofpdf.SizeType{
-		Wd: config.Size.Bulletin.Presentation.Width,
-		Ht: config.Size.Bulletin.Presentation.Height,
+		Wd: config.Classification.Bulletin.Presentation.Width,
+		Ht: config.Classification.Bulletin.Presentation.Height,
 	}
 	rectangle := presentation.Size{
-		Width:  config.Size.Bulletin.Presentation.InnerRectangle.Width,
-		Height: config.Size.Bulletin.Presentation.InnerRectangle.Height,
+		Width:  config.Classification.Bulletin.Presentation.InnerRectangle.Width,
+		Height: config.Classification.Bulletin.Presentation.InnerRectangle.Height,
 	}
 
 	return bulletinSize, rectangle

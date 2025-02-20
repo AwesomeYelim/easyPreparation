@@ -1,31 +1,38 @@
 {
-  "color": {
-    "boxColor": "#F8F3EA",
-    "lineColor": "#BEA07C",
-    "fontColor": "#BEA07C",
-    "dateColor": "#FFFFFF",
-    "printColor": "#8B7F71"
-  },
   "size": {
     "bulletin": {
       "print": {
         "width": 1409.0,
         "height": 996.0,
         "fontSize": 50,
-        "fontOption" : "Nanum Gothic",
+        "fontOption": "Nanum Gothic",
         "innerRectangle": {
           "width": 510,
           "height": 860
+        },
+        "color": {
+          "boxColor": "#F8F3EA",
+          "lineColor": "#BEA07C",
+          "fontColor": "#BEA07C",
+          "dateColor": "#FFFFFF",
+          "printColor": "#8B7F71"
         }
       },
       "presentation": {
         "width": 1409.0,
         "height": 996.0,
         "fontSize": 100,
-        "fontOption" : "Nanum Gothic",
+        "fontOption": "Nanum Gothic",
         "innerRectangle": {
           "width": 1278,
           "height": 640
+        },
+        "color": {
+          "boxColor": "#F8F3EA",
+          "lineColor": "#BEA07C",
+          "fontColor": "#BEA07C",
+          "dateColor": "#FFFFFF",
+          "printColor": "#8B7F71"
         }
       }
     },
@@ -34,11 +41,18 @@
         "width": 1409.0,
         "height": 792.0,
         "fontSize": 130,
-        "fontOption" : "Noto Sans KR",
+        "fontOption": "Noto Sans KR",
         "innerRectangle": {
           "width": 1278,
           "height": 640
         }
+      },
+      "color": {
+        "boxColor": "#F8F3EA",
+        "lineColor": "#BEA07C",
+        "fontColor": "#BEA07C",
+        "dateColor": "#FFFFFF",
+        "printColor": "#8B7F71"
       }
     }
   },
