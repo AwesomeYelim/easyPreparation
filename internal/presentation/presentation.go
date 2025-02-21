@@ -5,6 +5,7 @@ import (
 	"easyPreparation_1.0/internal/colorPalette"
 	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/font"
+	"easyPreparation_1.0/internal/format"
 	"easyPreparation_1.0/internal/googleCloud"
 	"easyPreparation_1.0/internal/gui"
 	"easyPreparation_1.0/pkg"
@@ -180,7 +181,7 @@ func (pdf *PDF) TextSpacingFormat(text string, targetWidth, x, y float64) {
 }
 
 func (pdf *PDF) ForComposeBuiltin(contents []gui.WorshipInfo, limit string) {
-
+	// figma 디자인 기준
 	var xm float64 = 95
 	var ym float64 = 202
 	var line float64 = 272
@@ -198,18 +199,20 @@ func (pdf *PDF) ForComposeBuiltin(contents []gui.WorshipInfo, limit string) {
 		if strings.Contains(order.Title, ".") {
 			continue
 		}
-		if strings.Contains(order.Title, "참회의 기도") || order.Obj == "-" {
-			continue
-		}
+
 		pdf.SetXY(xm, ym)
 		title := strings.Split(order.Title, "_")
 		strOW := pdf.GetStringWidth(order.Obj)
 		editLine := (line - (strOW + (lineM * 2))) / 2
 		firstPlacedLine := xm + targetWidth + lineM
 		secondPlacedLine := firstPlacedLine + editLine + strOW + (lineM * 2)
+
+		if strings.Contains(title[1], "기도") {
+			title[1] = "기도"
+		}
 		pdf.TextSpacingFormat(title[1], targetWidth, xm, ym)
 
-		if strings.HasSuffix(order.Info, "edit") && title[1] != "교회소식" {
+		if strings.HasSuffix(order.Info, "c_edit") || strings.HasSuffix(order.Info, "b_edit") {
 			pdf.SetXY(xm, ym)
 			pdf.DrawLine(editLine, firstPlacedLine, ym, printColor)
 			pdf.MultiCell(pdf.BoxSize.Width, 0, order.Obj, "", "C", false)
@@ -218,7 +221,7 @@ func (pdf *PDF) ForComposeBuiltin(contents []gui.WorshipInfo, limit string) {
 			pdf.DrawLine(line, firstPlacedLine, ym, printColor)
 		}
 		pdf.TextSpacingFormat(order.Lead, targetWidth, secondPlacedLine+editLine+lineM, ym)
-		ym += fontSize / 1.5
+		ym += fontSize / 1.8
 		if title[0] == limit {
 			break
 		}
@@ -267,15 +270,25 @@ func (pdf *PDF) DrawChurchNews(fontOption string, con gui.WorshipInfo, hLColor c
 	var draw func(items []gui.WorshipInfo, depth int)
 
 	x, y := 70.0, 250.0
-	fontSize := extract.ConfigMem.Classification.Lyrics.Presentation.FontSize
+	fontSize := extract.ConfigMem.Classification.Lyrics.Presentation.FontSize * 0.8
 	var tmpData string
 	pdf.SetText(fontOption, fontSize, false, hLColor)
 
 	draw = func(items []gui.WorshipInfo, depth int) {
 		for i, item := range items {
 			tab := strings.Repeat("\t", depth-1)
+
+			if item.Obj == "-" {
+				item.Obj = ""
+			}
+
+			// 인덱스 포맷 적용
+			index := format.IndexFormat(i, depth)
+			if len(item.Children) == 0 {
+				item.Title = fmt.Sprintf("%s:", item.Title)
+			}
 			// 데이터 추가
-			tmpData += tab + fmt.Sprintf("%d. %s: %s", i+1, item.Title, item.Obj) + "\n"
+			tmpData += tab + fmt.Sprintf("%s %s %s", index, item.Title, item.Obj) + "\n"
 
 			// children이 있는 경우 재귀 호출
 			if len(item.Children) > 0 {

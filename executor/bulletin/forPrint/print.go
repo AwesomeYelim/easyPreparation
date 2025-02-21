@@ -60,7 +60,7 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 			objPdf.SetText(fontOption, fontSize, true, fontColor)
 			objPdf.WriteText(sunDatText, "right")
 		} else {
-			objPdf.ForComposeBuiltin(contents, "17")
+			objPdf.ForComposeBuiltin(contents, "18")
 
 		}
 
