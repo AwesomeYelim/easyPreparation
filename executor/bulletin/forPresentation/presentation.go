@@ -27,10 +27,10 @@ func CreatePresentation(figmaInfo *get.Info, target, execPath string) {
 	figmaInfo.GetFigmaImage(outputDir, "forShowing")
 
 	yearMonth, weekFormatted := date.SetDateTitle()
-	bulletinSize, rectangle := getSize(config)
+	bulletinPresentationSize, rectangle := getSize(config)
 
-	objPdf := presentation.New(bulletinSize)
-	objPdf.FullSize = bulletinSize
+	objPdf := presentation.New(bulletinPresentationSize)
+	objPdf.FullSize = bulletinPresentationSize
 	objPdf.BoxSize = rectangle
 	objPdf.Config = config.Classification.Bulletin.Presentation
 	objPdf.ExecutePath = execPath

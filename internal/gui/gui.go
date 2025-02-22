@@ -97,12 +97,13 @@ func SetBulletinGui(execPath string) (target string, figmaInfo *get.Info) {
 
 		for i, el := range arg {
 			title, tIs := el["title"].(string)
+			info, iIs := el["info"].(string)
 			obj, bIs := el["obj"].(string)
 			if !tIs || !bIs {
 				continue
 			}
-
-			if strings.HasSuffix(title, "부름") || strings.HasSuffix(title, "봉독") {
+			// 성경 구절 처리
+			if iIs && strings.HasPrefix(info, "b_") {
 				kor := strings.Split(obj, "_")[0]
 				forUrl := strings.Split(obj, "_")[1]
 

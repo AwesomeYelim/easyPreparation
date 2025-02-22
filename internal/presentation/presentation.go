@@ -8,6 +8,7 @@ import (
 	"easyPreparation_1.0/internal/format"
 	"easyPreparation_1.0/internal/googleCloud"
 	"easyPreparation_1.0/internal/gui"
+	"easyPreparation_1.0/internal/parser"
 	"easyPreparation_1.0/pkg"
 	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
@@ -113,7 +114,6 @@ func (pdf *PDF) WriteText(text, position string, custom ...float64) {
 		x = custom[0]
 		y = custom[1]
 	}
-
 	pdf.Text(x, y, text)
 }
 
@@ -180,10 +180,10 @@ func (pdf *PDF) TextSpacingFormat(text string, targetWidth, x, y float64) {
 	}
 }
 
-func (pdf *PDF) ForComposeBuiltin(contents []gui.WorshipInfo, limit string) {
+func (pdf *PDF) ForComposeBuiltin(elements []gui.WorshipInfo, limit string) (ym float64) {
 	// figma 디자인 기준
 	var xm float64 = 95
-	var ym float64 = 202
+	ym = 202
 	var line float64 = 272
 	var lineM float64 = 19
 	var targetWidth float64 = 100
@@ -194,7 +194,7 @@ func (pdf *PDF) ForComposeBuiltin(contents []gui.WorshipInfo, limit string) {
 
 	pdf.SetText(fontOption, fontSize, false, printColor)
 
-	for _, order := range contents {
+	for _, order := range elements {
 		// 하위 목록인 경우 skip
 		if strings.Contains(order.Title, ".") {
 			continue
@@ -225,8 +225,50 @@ func (pdf *PDF) ForComposeBuiltin(contents []gui.WorshipInfo, limit string) {
 		if title[0] == limit {
 			break
 		}
-
 	}
+	return ym
+}
+
+func (pdf *PDF) ForReferNext(elements []gui.WorshipInfo, strLimit string, nextStart float64) {
+	fontSize := pdf.Config.FontSize * 0.8
+	fontOption := pdf.Config.FontOption
+	printColor := colorPalette.HexToRGBA(pdf.Config.Color.PrintColor)
+	var xm float64 = 427
+	var innerBoxWidth float64 = 180
+
+	for idx, element := range elements {
+		titles := strings.Split(element.Title, "_")
+		conTitle, _ := strconv.Atoi(titles[0])
+		limit, _ := strconv.Atoi(strLimit)
+		if conTitle <= limit {
+			continue
+		}
+		if idx == len(elements)-1 {
+			break
+		}
+		pdf.SetText(fontOption, fontSize, true, printColor)
+		pdf.SetXY(xm, nextStart)
+		pdf.MultiCell(innerBoxWidth, 0, fmt.Sprintf("%s:", titles[1]), "", "L", false)
+		pdf.SetXY(xm, nextStart)
+		pdf.MultiCell(innerBoxWidth, 0, element.Obj, "", "R", false)
+		nextStart += fontSize / 2
+	}
+}
+
+func (pdf *PDF) ForTodayVerse(element gui.WorshipInfo) {
+	fontSize := pdf.Config.FontSize * 0.7
+	fontOption := pdf.Config.FontOption
+	printColor := colorPalette.HexToRGBA(pdf.Config.Color.PrintColor)
+	var xm float64 = 190
+	var ym float64 = 820
+	var innerBoxW float64 = 330
+
+	element.Contents = parser.RemoveLineNumberPattern(element.Contents)
+	element.Contents += "\n\n" + element.Obj
+
+	pdf.SetText(fontOption, fontSize, false, printColor)
+	pdf.SetXY(xm, ym)
+	pdf.MultiCell(innerBoxW, fontSize/2, element.Contents, "", "C", false)
 }
 
 func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config, execPath string) {

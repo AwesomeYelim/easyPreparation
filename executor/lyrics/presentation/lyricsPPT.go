@@ -4,7 +4,7 @@ import (
 	"easyPreparation_1.0/internal/db"
 	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/gui"
-	"easyPreparation_1.0/internal/lyrics"
+	"easyPreparation_1.0/internal/parser"
 	"easyPreparation_1.0/internal/path"
 	"easyPreparation_1.0/internal/presentation"
 	"easyPreparation_1.0/internal/sanitize"
@@ -78,7 +78,7 @@ func (lpm *LyricsPresentationManager) CreatePresentation(lyricsInfo map[string]s
 	backgroundImages, _ := os.ReadDir(lpm.outputDir)
 
 	for _, title := range songTitles {
-		song := &lyrics.SlideData{}
+		song := &parser.SlideData{}
 		song.SearchLyricsList("https://music.bugs.co.kr/search/lyrics?q=%s", title, false)
 
 		fileName := filepath.Join(strings.TrimSuffix(lpm.outputDir, "tmp"), sanitize.FileName(title)+".pdf")
@@ -111,7 +111,7 @@ func (lpm *LyricsPresentationManager) CreatePresentation(lyricsInfo map[string]s
 	}
 }
 
-func (lpm *LyricsPresentationManager) saveToDB(title string, song *lyrics.SlideData) {
+func (lpm *LyricsPresentationManager) saveToDB(title string, song *parser.SlideData) {
 	dbPath := "data/local.db"
 	if err := pkg.CheckDirIs(filepath.Dir(dbPath)); err != nil {
 		fmt.Printf("디렉토리 생성 중 오류 발생: %v\n", err)

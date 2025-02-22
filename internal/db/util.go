@@ -1,7 +1,7 @@
 package db
 
 import (
-	"easyPreparation_1.0/internal/lyrics"
+	"easyPreparation_1.0/internal/parser"
 	"fmt"
 	"github.com/nsf/termbox-go"
 	"github.com/timshannon/bolthold"
@@ -10,13 +10,13 @@ import (
 )
 
 // 터미널에서 항목 선택 함수
-func SelectSong(songs []lyrics.SlideData) int {
+func SelectSong(songs []parser.SlideData) int {
 	if err := termbox.Init(); err != nil {
 		log.Fatal(err)
 	}
 	defer termbox.Close()
 
-	songs = append(songs, lyrics.SlideData{TrackID: 0, Title: "전체 삭제", Content: make([]string, 0)})
+	songs = append(songs, parser.SlideData{TrackID: 0, Title: "전체 삭제", Content: make([]string, 0)})
 	cursor := 0
 	for {
 		termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
@@ -61,8 +61,8 @@ func CleanInput(input string) string {
 }
 
 // 노래 리스트 출력 함수
-func PrintSongList(store *bolthold.Store) []lyrics.SlideData {
-	var songs []lyrics.SlideData
+func PrintSongList(store *bolthold.Store) []parser.SlideData {
+	var songs []parser.SlideData
 	if err := store.Find(&songs, nil); err != nil {
 		log.Printf("노래 리스트 조회 실패: %v\n", err)
 		return nil
@@ -78,8 +78,8 @@ func PrintSongList(store *bolthold.Store) []lyrics.SlideData {
 }
 
 // 노래 데이터 조회 함수
-func GetSongFromDB(store *bolthold.Store, id int) (*lyrics.SlideData, error) {
-	var song lyrics.SlideData
+func GetSongFromDB(store *bolthold.Store, id int) (*parser.SlideData, error) {
+	var song parser.SlideData
 	if err := store.Get(id, &song); err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func GetSongFromDB(store *bolthold.Store, id int) (*lyrics.SlideData, error) {
 }
 
 func DeleteAllSongs(store *bolthold.Store) error {
-	var allSongs []lyrics.SlideData
+	var allSongs []parser.SlideData
 
 	// 모든 항목 조회
 	err := store.Find(&allSongs, nil)
@@ -97,7 +97,7 @@ func DeleteAllSongs(store *bolthold.Store) error {
 
 	// 각 항목 삭제
 	for _, song := range allSongs {
-		err := store.Delete(song.TrackID, &lyrics.SlideData{})
+		err := store.Delete(song.TrackID, &parser.SlideData{})
 		if err != nil {
 			return fmt.Errorf("노래 삭제 실패: %v", err)
 		}

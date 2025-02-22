@@ -1,4 +1,4 @@
-package lyrics
+package parser
 
 import (
 	"fmt"

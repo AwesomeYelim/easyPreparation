@@ -26,13 +26,12 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 
 	figmaInfo.GetFigmaImage(outputDir, "forPrint")
 
-	bulletinSize, rectangle := getSize(config)
+	bulletinPrintSize, rectangle := getSize(config)
 	files, _ := os.ReadDir(outputDir)
-	objPdf := presentation.New(bulletinSize)
+	objPdf := presentation.New(bulletinPrintSize)
+	objPdf.FullSize = bulletinPrintSize
 	objPdf.BoxSize = rectangle
 	objPdf.Config = config.Classification.Bulletin.Print
-
-	fontColor := colorPalette.HexToRGBA(objPdf.Config.Color.FontColor)
 
 	yearMonth, weekFormatted := date.SetDateTitle()
 
@@ -41,27 +40,27 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 
 	sorted.ToIntSort(files, "- ", ".png", 0)
 
-	var contents []gui.WorshipInfo
+	var elements []gui.WorshipInfo
 
 	worshipContents, err := os.ReadFile(filepath.Join(execPath, "config", target+".json"))
-	err = json.Unmarshal(worshipContents, &contents)
+	err = json.Unmarshal(worshipContents, &elements)
 
 	fontSize := config.Classification.Bulletin.Print.FontSize
 	fontOption := config.Classification.Bulletin.Print.FontOption
-
 	for i, file := range files {
 		imgPath := filepath.Join(outputDir, file.Name())
 
 		objPdf.AddPage()
-		objPdf.CheckImgPlaced(bulletinSize, imgPath, 0)
-
+		objPdf.CheckImgPlaced(bulletinPrintSize, imgPath, 0)
+		contentSectionDivision := "18"
 		if i == 0 {
-			sunDatText := date.SetThisSunDay()
-			objPdf.SetText(fontOption, fontSize, true, fontColor)
-			objPdf.WriteText(sunDatText, "right")
+			sunDateText := date.SetThisSunDay()
+			objPdf.SetText(fontOption, fontSize*1.2, true, colorPalette.HexToRGBA(objPdf.Config.Color.DateColor))
+			objPdf.WriteText(sunDateText, "right")
 		} else {
-			objPdf.ForComposeBuiltin(contents, "18")
-
+			ym := objPdf.ForComposeBuiltin(elements, contentSectionDivision)
+			objPdf.ForReferNext(elements, contentSectionDivision, ym)
+			objPdf.ForTodayVerse(elements[len(elements)-1])
 		}
 
 	}

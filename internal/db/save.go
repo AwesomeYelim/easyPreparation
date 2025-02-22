@@ -1,15 +1,15 @@
 package db
 
 import (
-	"easyPreparation_1.0/internal/lyrics"
+	"easyPreparation_1.0/internal/parser"
 	"errors"
 	"fmt"
 	"github.com/timshannon/bolthold"
 )
 
 // Bolthold 데이터베이스에 노래 저장 함수
-func SaveSongToDB(store *bolthold.Store, revSong *lyrics.SlideData) error {
-	var existingSong lyrics.SlideData
+func SaveSongToDB(store *bolthold.Store, revSong *parser.SlideData) error {
+	var existingSong parser.SlideData
 	// 제목으로 기존 노래 조회
 	err := store.FindOne(&existingSong, bolthold.Where("Title").Eq(revSong.Title))
 	if err == nil {
