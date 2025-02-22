@@ -17,7 +17,7 @@ type SlideData struct {
 
 // 트랙 리스트를 파싱
 func (si *SlideData) parseTrackList(doc *goquery.Document) {
-	doc.Find("table.trackList tbody tr[rowtype='parser']").Each(func(i int, s *goquery.Selection) {
+	doc.Find("table.trackList tbody tr[rowtype='lyrics']").Each(func(i int, s *goquery.Selection) {
 		albumID, exists := s.Attr("trackid")
 		if exists {
 			tempNo, err := strconv.ParseInt(albumID, 10, 64)

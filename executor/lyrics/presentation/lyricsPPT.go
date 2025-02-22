@@ -84,7 +84,6 @@ func (lpm *LyricsPresentationManager) CreatePresentation(lyricsInfo map[string]s
 		fileName := filepath.Join(strings.TrimSuffix(lpm.outputDir, "tmp"), sanitize.FileName(title)+".pdf")
 
 		objPdf := presentation.New(pdfSize)
-
 		for _, content := range song.Content {
 			objPdf.AddPage()
 			objPdf.CheckImgPlaced(pdfSize, filepath.Join(lpm.outputDir, backgroundImages[0].Name()), 0)
