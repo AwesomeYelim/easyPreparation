@@ -19,7 +19,11 @@ type Config struct {
 	OutputPath     OutputPath                    `json:"outputPath"`
 }
 
-var defaultConfig = Config{
+var (
+	ConfigMem Config
+)
+
+var initConfig = Config{
 	Classification: classification.BackgroundInfo{
 		Bulletin: classification.Bulletin{
 			Print: classification.ResultInfo{
@@ -114,31 +118,8 @@ func fillDefaults(dst, def reflect.Value) {
 	}
 }
 
-func validateConfig(config *Config) {
-	fillDefaults(reflect.ValueOf(config).Elem(), reflect.ValueOf(defaultConfig))
-}
-
-func scaleFloats(v reflect.Value) {
-	switch v.Kind() {
-	case reflect.Float64:
-		if v.CanSet() {
-			v.SetFloat(v.Float() / 2)
-		}
-	case reflect.Ptr:
-		if !v.IsNil() {
-			scaleFloats(v.Elem())
-		}
-	case reflect.Struct:
-		for i := 0; i < v.NumField(); i++ {
-			scaleFloats(v.Field(i))
-		}
-	case reflect.Slice:
-		for i := 0; i < v.Len(); i++ {
-			scaleFloats(v.Index(i))
-		}
-	default:
-
-	}
+func (config *Config) validateConfig() {
+	fillDefaults(reflect.ValueOf(config).Elem(), reflect.ValueOf(initConfig))
 }
 
 func ExtCustomOption(path string) {
@@ -153,11 +134,7 @@ func ExtCustomOption(path string) {
 		fmt.Println("ConfigMem is empty")
 	}
 	// 유효성 검사 후 기본값 적용
-	validateConfig(&ConfigMem)
+	ConfigMem.validateConfig()
 	//scaleFloats(reflect.ValueOf(&ConfigMem).Elem()) // 1/2 크기로 사용
 
 }
-
-var (
-	ConfigMem Config
-)

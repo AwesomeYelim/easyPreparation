@@ -11,6 +11,7 @@ import (
 	"easyPreparation_1.0/pkg"
 	"encoding/json"
 	"fmt"
+	"github.com/jung-kurt/gofpdf/v2"
 	"os"
 	"path/filepath"
 )
@@ -72,4 +73,17 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 	if err != nil {
 		fmt.Printf("PDF 저장 중 에러 발생: %v", err)
 	}
+}
+
+func getSize(config extract.Config) (gofpdf.SizeType, presentation.Size) {
+	bulletinSize := gofpdf.SizeType{
+		Wd: config.Classification.Bulletin.Print.Width,
+		Ht: config.Classification.Bulletin.Print.Height,
+	}
+	rectangle := presentation.Size{
+		Width:  config.Classification.Bulletin.Print.InnerRectangle.Width,
+		Height: config.Classification.Bulletin.Print.InnerRectangle.Height,
+	}
+
+	return bulletinSize, rectangle
 }
