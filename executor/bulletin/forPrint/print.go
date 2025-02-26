@@ -1,6 +1,7 @@
 package forPrint
 
 import (
+	"easyPreparation_1.0/internal/classification"
 	"easyPreparation_1.0/internal/colorPalette"
 	"easyPreparation_1.0/internal/date"
 	"easyPreparation_1.0/internal/extract"
@@ -14,6 +15,7 @@ import (
 	"github.com/jung-kurt/gofpdf/v2"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func CreatePrint(figmaInfo *get.Info, target, execPath string) {
@@ -27,11 +29,12 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 
 	figmaInfo.GetFigmaImage(outputDir, "forPrint")
 
-	bulletinPrintSize, rectangle := getSize(config)
 	files, _ := os.ReadDir(outputDir)
-	objPdf := presentation.New(bulletinPrintSize)
-	objPdf.FullSize = bulletinPrintSize
-	objPdf.BoxSize = rectangle
+	instanceSize := gofpdf.SizeType{
+		Wd: config.Classification.Bulletin.Print.Width,
+		Ht: config.Classification.Bulletin.Print.Height,
+	}
+	objPdf := presentation.New(instanceSize)
 	objPdf.Config = config.Classification.Bulletin.Print
 
 	yearMonth, weekFormatted := date.SetDateTitle()
@@ -42,22 +45,33 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 	sorted.ToIntSort(files, "- ", ".png", 0)
 
 	var elements []gui.WorshipInfo
+	var newsCon gui.WorshipInfo
 
 	worshipContents, err := os.ReadFile(filepath.Join(execPath, "config", target+".json"))
 	err = json.Unmarshal(worshipContents, &elements)
+	fontInfo := config.Classification.Bulletin.Print.FontInfo
+	hLColor := colorPalette.HexToRGBA(objPdf.Config.Color.LineColor)
 
-	fontSize := config.Classification.Bulletin.Print.FontSize
-	fontOption := config.Classification.Bulletin.Print.FontOption
+	for _, el := range elements {
+		if strings.Contains(el.Title, "교회소식") {
+			newsCon = el
+			break
+		}
+	}
 	for i, file := range files {
 		imgPath := filepath.Join(outputDir, file.Name())
 
 		objPdf.AddPage()
-		objPdf.CheckImgPlaced(bulletinPrintSize, imgPath, 0)
+		objPdf.CheckImgPlaced(imgPath, 0)
 		contentSectionDivision := "18"
 		if i == 0 {
 			sunDateText := date.SetThisSunDay()
-			objPdf.SetText(fontOption, fontSize*1.2, true, colorPalette.HexToRGBA(objPdf.Config.Color.DateColor))
+			objPdf.SetText(classification.FontInfo{
+				FontSize:   fontInfo.FontSize * 1.4,
+				FontFamily: fontInfo.FontFamily,
+			}, false, colorPalette.HexToRGBA(objPdf.Config.Color.DateColor))
 			objPdf.WriteText(sunDateText, "right")
+			objPdf.DrawChurchNews(config.Classification.Bulletin.Print.FontInfo, newsCon, hLColor, 70.0, 200.0)
 		} else {
 			ym := objPdf.ForComposeBuiltin(elements, contentSectionDivision)
 			objPdf.ForReferNext(elements, contentSectionDivision, ym)
@@ -73,17 +87,4 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 	if err != nil {
 		fmt.Printf("PDF 저장 중 에러 발생: %v", err)
 	}
-}
-
-func getSize(config extract.Config) (gofpdf.SizeType, presentation.Size) {
-	bulletinSize := gofpdf.SizeType{
-		Wd: config.Classification.Bulletin.Print.Width,
-		Ht: config.Classification.Bulletin.Print.Height,
-	}
-	rectangle := presentation.Size{
-		Width:  config.Classification.Bulletin.Print.InnerRectangle.Width,
-		Height: config.Classification.Bulletin.Print.InnerRectangle.Height,
-	}
-
-	return bulletinSize, rectangle
 }

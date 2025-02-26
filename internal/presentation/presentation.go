@@ -27,17 +27,16 @@ import (
 type PDF struct {
 	*gofpdf.Fpdf
 	Title       string
-	FullSize    gofpdf.SizeType
-	BoxSize     Size
-	Contents    []string
+	BibleVerse  []string
 	Path        string
 	ExecutePath string
 	Config      classification.ResultInfo
 }
 
-type Size struct {
-	Width  float64
-	Height float64
+type InnerSizeInfo struct {
+	Width   float64
+	Height  float64
+	Padding float64
 }
 
 func New(size gofpdf.SizeType) PDF {
@@ -53,13 +52,13 @@ func New(size gofpdf.SizeType) PDF {
 
 // img 경로 확인 로직
 
-func (pdf *PDF) CheckImgPlaced(pdfSize gofpdf.SizeType, path string, place float32) {
+func (pdf *PDF) CheckImgPlaced(path string, place float32) {
 	if _, err := os.Stat(path); err == nil {
 		switch place {
 		case 0:
-			pdf.ImageOptions(path, 0, 0, pdfSize.Wd, pdfSize.Ht, false, gofpdf.ImageOptions{ImageType: "PNG"}, 0, "")
+			pdf.ImageOptions(path, 0, 0, pdf.Config.Width, pdf.Config.Height, false, gofpdf.ImageOptions{ImageType: "PNG"}, 0, "")
 		case 0.5:
-			pdf.ImageOptions(path, pdfSize.Wd/2, 0, pdfSize.Wd/2, pdfSize.Ht, false, gofpdf.ImageOptions{ImageType: "PNG"}, 0, "")
+			pdf.ImageOptions(path, pdf.Config.Width/2, 0, pdf.Config.Width/2, pdf.Config.Height, false, gofpdf.ImageOptions{ImageType: "PNG"}, 0, "")
 		default:
 			log.Print("해당되지 않은 값")
 		}
@@ -69,7 +68,7 @@ func (pdf *PDF) CheckImgPlaced(pdfSize gofpdf.SizeType, path string, place float
 }
 
 // 박스 그려주는 함수
-func (pdf *PDF) DrawBox(boxSize Size, x, y float64, color ...color.Color) {
+func (pdf *PDF) DrawBox(x, y float64, color ...color.Color) {
 	colorList := colorPalette.GetColorWithSortByLuminance()
 	highestLuminaceColor := colorList[len(colorList)-1] // 채도 가장 낮은 색상 - background
 
@@ -81,7 +80,7 @@ func (pdf *PDF) DrawBox(boxSize Size, x, y float64, color ...color.Color) {
 	}
 
 	pdf.SetFillColor(int(rgba[0]), int(rgba[1]), int(rgba[2]))
-	pdf.Rect(x, y, boxSize.Width, boxSize.Height, "F")
+	pdf.Rect(x, y, pdf.Config.InnerRectangle.Width, pdf.Config.InnerRectangle.Height, "F")
 
 }
 
@@ -101,14 +100,14 @@ func (pdf *PDF) WriteText(text, position string, custom ...float64) {
 	var x, y float64
 	switch position {
 	case "center":
-		x = pdf.FullSize.Wd / 2
-		y = pdf.FullSize.Ht/2 + 5
+		x = pdf.Config.Size.Width / 2
+		y = pdf.Config.Size.Height/2 + 5
 		if x > 10 {
 			x = x - (textWidth / 2)
 		}
 	case "right":
-		padding := (pdf.FullSize.Wd/2 - pdf.BoxSize.Width) / 2
-		x = pdf.FullSize.Wd - (textWidth + padding)
+		padding := (pdf.Config.Size.Width/2 - pdf.Config.InnerRectangle.Width) / 2
+		x = pdf.Config.Size.Width - (textWidth + padding)
 		y = padding
 	case "custom":
 		x = custom[0]
@@ -117,14 +116,14 @@ func (pdf *PDF) WriteText(text, position string, custom ...float64) {
 	pdf.Text(x, y, text)
 }
 
-func (pdf *PDF) SetText(fontOption string, fontSize float64, isB bool, textColor ...color.Color) {
+func (pdf *PDF) SetText(fontInfo classification.FontInfo, isB bool, textColor ...color.Color) {
 	var fontPath string
 	var err error
 
 	if isB {
-		fontPath, err = font.GetFont(fontOption, "800", isB)
+		fontPath, err = font.GetFont(fontInfo.FontFamily, "800", isB)
 	} else {
-		fontPath, err = font.GetFont(fontOption, "regular", isB)
+		fontPath, err = font.GetFont(fontInfo.FontFamily, "regular", isB)
 	}
 
 	if err != nil {
@@ -137,7 +136,7 @@ func (pdf *PDF) SetText(fontOption string, fontSize float64, isB bool, textColor
 		fmt.Println("폰트 추가 실패:", err)
 		return
 	}
-	pdf.SetFont(filepath.Base(fontPath), "B", fontSize)
+	pdf.SetFont(filepath.Base(fontPath), "B", fontInfo.FontSize)
 
 	// 텍스트 색상 설정
 	if len(textColor) > 0 {
@@ -187,12 +186,11 @@ func (pdf *PDF) ForComposeBuiltin(elements []gui.WorshipInfo, limit string) (ym 
 	var line float64 = 272
 	var lineM float64 = 19
 	var targetWidth float64 = 100
-	var fontSize = pdf.Config.FontSize
+	var fontInfo = pdf.Config.FontInfo
 
 	printColor := colorPalette.HexToRGBA(pdf.Config.Color.PrintColor)
-	fontOption := pdf.Config.FontOption
 
-	pdf.SetText(fontOption, fontSize, false, printColor)
+	pdf.SetText(fontInfo, false, printColor)
 
 	for _, order := range elements {
 		// 하위 목록인 경우 skip
@@ -215,13 +213,13 @@ func (pdf *PDF) ForComposeBuiltin(elements []gui.WorshipInfo, limit string) (ym 
 		if strings.HasSuffix(order.Info, "c_edit") || strings.HasSuffix(order.Info, "b_edit") {
 			pdf.SetXY(xm, ym)
 			pdf.DrawLine(editLine, firstPlacedLine, ym, printColor)
-			pdf.MultiCell(pdf.BoxSize.Width, 0, order.Obj, "", "C", false)
+			pdf.MultiCell(pdf.Config.InnerRectangle.Width, 0, order.Obj, "", "C", false)
 			pdf.DrawLine(editLine, secondPlacedLine, ym, printColor)
 		} else {
 			pdf.DrawLine(line, firstPlacedLine, ym, printColor)
 		}
 		pdf.TextSpacingFormat(order.Lead, targetWidth, secondPlacedLine+editLine+lineM, ym)
-		ym += fontSize / 1.8
+		ym += fontInfo.FontSize / 1.8
 		if title[0] == limit {
 			break
 		}
@@ -230,8 +228,9 @@ func (pdf *PDF) ForComposeBuiltin(elements []gui.WorshipInfo, limit string) (ym 
 }
 
 func (pdf *PDF) ForReferNext(elements []gui.WorshipInfo, strLimit string, nextStart float64) {
-	fontSize := pdf.Config.FontSize * 0.8
-	fontOption := pdf.Config.FontOption
+
+	pdf.Config.FontSize *= 0.8
+	fontInfo := pdf.Config.FontInfo
 	printColor := colorPalette.HexToRGBA(pdf.Config.Color.PrintColor)
 	var xm float64 = 427
 	var innerBoxWidth float64 = 180
@@ -246,18 +245,19 @@ func (pdf *PDF) ForReferNext(elements []gui.WorshipInfo, strLimit string, nextSt
 		if idx == len(elements)-1 {
 			break
 		}
-		pdf.SetText(fontOption, fontSize, true, printColor)
+		pdf.SetText(fontInfo, true, printColor)
 		pdf.SetXY(xm, nextStart)
 		pdf.MultiCell(innerBoxWidth, 0, fmt.Sprintf("%s:", titles[1]), "", "L", false)
 		pdf.SetXY(xm, nextStart)
 		pdf.MultiCell(innerBoxWidth, 0, element.Obj, "", "R", false)
-		nextStart += fontSize / 2
+		nextStart += fontInfo.FontSize / 2
 	}
 }
 
 func (pdf *PDF) ForTodayVerse(element gui.WorshipInfo) {
-	fontSize := pdf.Config.FontSize * 0.7
-	fontOption := pdf.Config.FontOption
+	pdf.Config.FontInfo.FontSize = pdf.Config.FontInfo.FontSize * 0.9
+	fontInfo := pdf.Config.FontInfo
+
 	printColor := colorPalette.HexToRGBA(pdf.Config.Color.PrintColor)
 	var xm float64 = 190
 	var ym float64 = 820
@@ -266,38 +266,36 @@ func (pdf *PDF) ForTodayVerse(element gui.WorshipInfo) {
 	element.Contents = parser.RemoveLineNumberPattern(element.Contents)
 	element.Contents += "\n\n" + element.Obj
 
-	pdf.SetText(fontOption, fontSize, false, printColor)
+	pdf.SetText(fontInfo, false, printColor)
 	pdf.SetXY(xm, ym)
-	pdf.MultiCell(innerBoxW, fontSize/2, element.Contents, "", "C", false)
+	pdf.MultiCell(innerBoxW, fontInfo.FontSize/2, element.Contents, "", "C", false)
 }
 
 func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config, execPath string) {
 	hLColor := colorPalette.HexToRGBA(pdf.Config.Color.BoxColor) // 박스 색상 설정
-	textSize := config.Classification.Lyrics.Presentation.FontSize
-	var textW float64 = 1000
-	fontOption := config.Classification.Bulletin.Print.FontOption
+	fontInfo := config.Classification.Bulletin.Presentation.FontInfo
 
-	pdf.SetText(fontOption, textSize, true, hLColor)
-	//trimmedText := pkg.RemoveEmptyLines(con.Contents)
-	pdf.Contents = strings.Split(con.Contents, "\n")
+	pdf.SetText(fontInfo, true, hLColor)
+	//trimmedText := pkg.RemoveEmptyLines(con.BibleVerse)
+	pdf.BibleVerse = strings.Split(con.Contents, "\n")
 
 	switch pdf.Title {
 	case "예배의 부름":
-		pdf.setBegin(con, textW, textSize, 4)
+		pdf.setBegin(con, 4)
 	case "말씀내용":
-		pdf.setBody(textW, textSize, 3)
+		pdf.setBody(3) // 3 줄씩 끊기
 	case "찬송", "헌금봉헌":
-		pdf.SetText(fontOption, textSize, true, hLColor)
+		pdf.SetText(fontInfo, true, hLColor)
 		pdf.WriteText(con.Obj, "center")
 		pdf.setOutDirFiles("hymn", con.Obj)
 	case "성시교독":
 		pdf.setOutDirFiles("responsive_reading", con.Obj)
 	case "교회소식":
-		pdf.DrawChurchNews(fontOption, con, hLColor)
+		pdf.DrawChurchNews(fontInfo, con, hLColor, 70.0, 250.0)
 	case "참회의 기도":
-		pdf.SetText(fontOption, textSize, true, hLColor)
-		pdf.SetXY(120.00, 180.00)
-		pdf.MultiCell(pdf.BoxSize.Width, textSize/1.5, con.Obj, "", "R", false)
+		pdf.SetText(fontInfo, true, hLColor)
+		pdf.SetXY(pdf.Config.Padding, pdf.Config.Padding*4)
+		pdf.MultiCell(pdf.Config.InnerRectangle.Width, pdf.Config.FontSize/1.7, con.Obj, "", "R", false)
 	default:
 		if con.Obj == "-" {
 			pdf.WriteText(con.Lead, "center")
@@ -307,14 +305,12 @@ func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config, execPath str
 	}
 }
 
-func (pdf *PDF) DrawChurchNews(fontOption string, con gui.WorshipInfo, hLColor color.RGBA) {
+func (pdf *PDF) DrawChurchNews(fontInfo classification.FontInfo, con gui.WorshipInfo, hLColor color.RGBA, x, y float64) {
 	// 재귀적으로 교회소식과 그 내부 children 데이터를 처리하는 함수
 	var draw func(items []gui.WorshipInfo, depth int)
 
-	x, y := 70.0, 250.0
-	fontSize := extract.ConfigMem.Classification.Lyrics.Presentation.FontSize * 0.8
 	var tmpData string
-	pdf.SetText(fontOption, fontSize, false, hLColor)
+	pdf.SetText(fontInfo, false, hLColor)
 
 	draw = func(items []gui.WorshipInfo, depth int) {
 		for i, item := range items {
@@ -348,52 +344,52 @@ func (pdf *PDF) DrawChurchNews(fontOption string, con gui.WorshipInfo, hLColor c
 
 	// 최종 출력
 	pdf.SetXY(x, y)
-	pdf.MultiCell(pdf.BoxSize.Width, fontSize/2, tmpData, "", "L", false)
+	pdf.MultiCell(pdf.Config.InnerRectangle.Width, fontInfo.FontSize/1.8, tmpData, "", "L", false)
 }
 
-func (pdf *PDF) setBegin(con gui.WorshipInfo, textW float64, textSize float64, lines int) {
+func (pdf *PDF) setBegin(con gui.WorshipInfo, lines int) {
 	var tmpEl string
 
-	for i, _ := range pdf.Contents {
+	for i, _ := range pdf.BibleVerse {
 		// 첫 번째 콘텐츠에 추가 정보 삽입 (중복 방지)
-		if i == 0 && !strings.Contains(pdf.Contents[i], con.Obj) {
-			pdf.Contents[i] = fmt.Sprintf("%s\n%s", con.Obj, pdf.Contents[i])
+		if i == 0 && !strings.Contains(pdf.BibleVerse[i], con.Obj) {
+			pdf.BibleVerse[i] = fmt.Sprintf("%s\n%s", con.Obj, pdf.BibleVerse[i])
 		}
 
 		// 텍스트 추가
-		tmpEl += pdf.Contents[i] + "\n"
+		tmpEl += pdf.BibleVerse[i] + "\n"
 
 		// 페이지 처리 조건
-		if (i+1)%lines == 0 || i == len(pdf.Contents)-1 {
-			pdf.SetXY(textSize, textSize*3)
-			pdf.MultiCell(textW, textSize/2, tmpEl, "", "L", false)
+		if (i+1)%lines == 0 || i == len(pdf.BibleVerse)-1 {
+			pdf.SetXY(pdf.Config.Padding, pdf.Config.Padding*4)
+			pdf.MultiCell(pdf.Config.InnerRectangle.Width, pdf.Config.FontSize/2, tmpEl, "", "L", false)
 			tmpEl = ""
 
 			// 다음 페이지 추가
-			if i != len(pdf.Contents)-1 {
+			if i != len(pdf.BibleVerse)-1 {
 				pdf.AddPage()
-				pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
+				pdf.CheckImgPlaced(pdf.Path, 0)
 			}
 		}
 	}
 }
 
-func (pdf *PDF) setBody(textW float64, textSize float64, lines int) {
+func (pdf *PDF) setBody(lines int) {
 	var tmpEl string
 
-	for i, content := range pdf.Contents {
+	for i, content := range pdf.BibleVerse {
 		tmpEl += content + "\n\n"
 
 		// 페이지 처리 조건
-		if (i+1)%lines == 0 || i == len(pdf.Contents)-1 {
-			pdf.SetXY(textSize, textSize)
-			pdf.MultiCell(textW, textSize/2, tmpEl, "", "L", false)
+		if (i+1)%lines == 0 || i == len(pdf.BibleVerse)-1 {
+			pdf.SetXY(pdf.Config.Padding, pdf.Config.Padding*4)
+			pdf.MultiCell(pdf.Config.InnerRectangle.Width, pdf.Config.FontSize/2, tmpEl, "", "L", false)
 			tmpEl = ""
 
 			// 마지막 줄이 아니라면 새로운 페이지 추가
-			if i != len(pdf.Contents)-1 {
+			if i != len(pdf.BibleVerse)-1 {
 				pdf.AddPage()
-				pdf.CheckImgPlaced(pdf.FullSize, pdf.Path, 0)
+				pdf.CheckImgPlaced(pdf.Path, 0)
 			}
 		}
 	}
@@ -479,7 +475,7 @@ func (pdf *PDF) AddImagesToPDF(imageDir string) error {
 
 	for _, imgPath := range imageFiles {
 		pdf.AddPage()
-		pdf.CheckImgPlaced(pdf.FullSize, imgPath, 0)
+		pdf.CheckImgPlaced(imgPath, 0)
 	}
 
 	return nil

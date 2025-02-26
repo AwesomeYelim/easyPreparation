@@ -1,13 +1,14 @@
 package classification
 
 type Size struct {
-	Width  float64 `json:"width"`
-	Height float64 `json:"height"`
+	Width   float64 `json:"width"`
+	Height  float64 `json:"height"`
+	Padding float64 `json:"padding"`
 }
 
 type FontInfo struct {
 	FontSize   float64 `json:"fontSize"`
-	FontOption string  `json:"fontOption"`
+	FontFamily string  `json:"fontFamily"`
 }
 
 type Color struct {

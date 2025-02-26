@@ -4,8 +4,8 @@
       "print": {
         "width": 1409.0,
         "height": 996.0,
-        "fontSize": 50,
-        "fontOption": "Nanum Gothic",
+        "fontSize": 45,
+        "fontFamily": "Nanum Gothic",
         "innerRectangle": {
           "width": 510,
           "height": 860
@@ -20,12 +20,12 @@
       },
       "presentation": {
         "width": 1409.0,
-        "height": 996.0,
+        "height": 892.0,
         "fontSize": 100,
-        "fontOption": "Nanum Gothic",
+        "fontFamily": "Nanum Gothic",
         "innerRectangle": {
-          "width": 1278,
-          "height": 640
+          "width": 1300,
+          "height": 635
         },
         "color": {
           "boxColor": "#F8F3EA",
@@ -40,8 +40,8 @@
       "presentation": {
         "width": 1409.0,
         "height": 792.0,
-        "fontSize": 130,
-        "fontOption": "Noto Sans KR",
+        "fontSize": 170,
+        "fontFamily": "Noto Sans KR",
         "innerRectangle": {
           "width": 1278,
           "height": 640

@@ -32,8 +32,8 @@ var initConfig = Config{
 					Height: 996.0,
 				},
 				FontInfo: classification.FontInfo{
-					FontSize:   50.0,
-					FontOption: "Nanum Gothic",
+					FontSize:   45.0,
+					FontFamily: "Nanum Gothic",
 				},
 				InnerRectangle: classification.Size{
 					Width:  510,
@@ -50,11 +50,11 @@ var initConfig = Config{
 			Presentation: classification.ResultInfo{
 				Size: classification.Size{
 					Width:  1409.0,
-					Height: 996.0,
+					Height: 892.0,
 				},
 				FontInfo: classification.FontInfo{
 					FontSize:   100.0,
-					FontOption: "Nanum Gothic",
+					FontFamily: "Nanum Gothic",
 				},
 				InnerRectangle: classification.Size{
 					Width:  1278,
@@ -76,7 +76,7 @@ var initConfig = Config{
 			},
 			FontInfo: classification.FontInfo{
 				FontSize:   130.0,
-				FontOption: "Nanum Gothic",
+				FontFamily: "Nanum Gothic",
 			},
 			InnerRectangle: classification.Size{
 				Width:  1278,
@@ -120,6 +120,10 @@ func fillDefaults(dst, def reflect.Value) {
 
 func (config *Config) validateConfig() {
 	fillDefaults(reflect.ValueOf(config).Elem(), reflect.ValueOf(initConfig))
+
+	config.Classification.Bulletin.Print.Size.Padding = (config.Classification.Bulletin.Print.Size.Width - config.Classification.Bulletin.Print.InnerRectangle.Width) / 2
+	config.Classification.Bulletin.Presentation.Size.Padding = (config.Classification.Bulletin.Presentation.Size.Width - config.Classification.Bulletin.Presentation.InnerRectangle.Width) / 2
+	config.Classification.Lyrics.Presentation.Size.Padding = (config.Classification.Lyrics.Presentation.Size.Width - config.Classification.Lyrics.Presentation.InnerRectangle.Width) / 2
 }
 
 func ExtCustomOption(path string) {
@@ -135,6 +139,4 @@ func ExtCustomOption(path string) {
 	}
 	// 유효성 검사 후 기본값 적용
 	ConfigMem.validateConfig()
-	//scaleFloats(reflect.ValueOf(&ConfigMem).Elem()) // 1/2 크기로 사용
-
 }
