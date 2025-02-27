@@ -93,7 +93,7 @@ func (lpm *LyricsPresentationManager) CreatePresentation(lyricsInfo map[string]s
 			// 가운데 배치
 			objPdf.SetXY((objPdf.Config.Width-objPdf.Config.InnerRectangle.Width)/2, (objPdf.Config.Height-fontInfo.FontSize)/2)
 			objPdf.SetText(fontInfo, true, color.RGBA{R: 255, G: 255, B: 255})
-			objPdf.MultiCell(objPdf.Config.Width-objPdf.Config.InnerRectangle.Width, fontInfo.FontSize/2, content, "", "C", false)
+			objPdf.MultiCell(objPdf.Config.InnerRectangle.Width, fontInfo.FontSize/2, content, "", "C", false)
 
 			// label - 400*70
 			// margin - 20, 15

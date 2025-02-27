@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
 
@@ -66,6 +65,9 @@ func GetFont(name, weight string, isB bool) (fontPath string, err error) {
 	for _, font := range webFontList.Items {
 		if font.Family == name {
 			targetUrl = findTargetURL(font.Files, weight, isB)
+			if targetUrl == "" {
+				log.Fatalf("Can not find the weight: %v", weight)
+			}
 			break
 		}
 	}
@@ -81,16 +83,16 @@ func findTargetURL(files map[string]string, weight string, isB bool) string {
 	if url, ok := files[weight]; ok && url != "" {
 		return url
 	}
-	w, err := strconv.Atoi(weight)
-	if err != nil || w <= 0 {
-		w = 700
-	}
 
+	var lsFile []string
+	for k, _ := range files {
+		lsFile = append(lsFile, k)
+	}
 	var newWeight string
 	if isB {
-		newWeight = strconv.Itoa(w + 100)
+		newWeight = lsFile[len(lsFile)-1]
 	} else {
-		newWeight = strconv.Itoa(w - 100)
+		newWeight = lsFile[0]
 	}
 
 	return findTargetURL(files, newWeight, isB)

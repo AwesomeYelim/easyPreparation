@@ -1,38 +1,31 @@
 {
-  "classification": {
+  "color": {
+    "boxColor": "#F8F3EA",
+    "lineColor": "#BEA07C",
+    "fontColor": "#BEA07C",
+    "dateColor": "#FFFFFF",
+    "printColor": "#8B7F71"
+  },
+  "size": {
     "bulletin": {
       "print": {
         "width": 1409.0,
         "height": 996.0,
-        "fontSize": 45,
-        "fontFamily": "Nanum Gothic",
+        "fontSize": 50,
+        "fontOption" : "Nanum Gothic",
         "innerRectangle": {
-          "width": 510,
+          "width": 584,
           "height": 860
-        },
-        "color": {
-          "boxColor": "#F8F3EA",
-          "lineColor": "#BEA07C",
-          "fontColor": "#BEA07C",
-          "dateColor": "#FFFFFF",
-          "printColor": "#8B7F71"
         }
       },
       "presentation": {
         "width": 1409.0,
-        "height": 892.0,
+        "height": 996.0,
         "fontSize": 100,
-        "fontFamily": "Nanum Gothic",
+        "fontOption" : "Nanum Gothic",
         "innerRectangle": {
-          "width": 1300,
-          "height": 635
-        },
-        "color": {
-          "boxColor": "#F8F3EA",
-          "lineColor": "#BEA07C",
-          "fontColor": "#BEA07C",
-          "dateColor": "#FFFFFF",
-          "printColor": "#8B7F71"
+          "width": 1278,
+          "height": 640
         }
       }
     },
@@ -40,19 +33,12 @@
       "presentation": {
         "width": 1409.0,
         "height": 792.0,
-        "fontSize": 170,
-        "fontFamily": "Nanum Gothic",
+        "fontSize": 130,
+        "fontOption" : "Nanum Gothic",
         "innerRectangle": {
           "width": 1278,
           "height": 640
         }
-      },
-      "color": {
-        "boxColor": "#F8F3EA",
-        "lineColor": "#BEA07C",
-        "fontColor": "#BEA07C",
-        "dateColor": "#FFFFFF",
-        "printColor": "#8B7F71"
       }
     }
   },
