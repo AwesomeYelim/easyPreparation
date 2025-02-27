@@ -84,7 +84,6 @@ func (lpm *LyricsPresentationManager) CreatePresentation(lyricsInfo map[string]s
 			Wd: extract.ConfigMem.Classification.Lyrics.Presentation.Width,
 			Ht: extract.ConfigMem.Classification.Lyrics.Presentation.Height,
 		}
-		fmt.Println(instanceSize)
 		objPdf := presentation.New(instanceSize)
 		objPdf.Config = extract.ConfigMem.Classification.Lyrics.Presentation
 

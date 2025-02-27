@@ -88,15 +88,18 @@ build_file() {
     echo "Building for Windows: $file..."
     if [ "$file" == "./executor/bulletin/bulletin.go" ]; then
       echo "Building Windows GUI for: $file..."
+      echo GOOS=windows GOARCH=amd64 go build -ldflags="-H=windowsgui" -o "$output_file" "$file"
       GOOS=windows GOARCH=amd64 go build -ldflags="-H=windowsgui" -o "$output_file" "$file"
     else
       GOOS=windows GOARCH=amd64 go build -o "$output_file" "$file"
     fi
   elif [ "$CURRENT_OS" == "darwin" ]; then
     echo "Building for macOS: $file..."
+    echo GOOS=darwin GOARCH=amd64 go build -a -trimpath -o "$output_file" "$file"
     GOOS=darwin GOARCH=amd64 go build -a -trimpath -o "$output_file" "$file"
   elif [ "$CURRENT_OS" == "linux" ]; then
     echo "Building for Linux: $file..."
+    echo GOOS=linux GOARCH=amd64 go build -a -trimpath -o "$output_file" "$file"
     GOOS=linux GOARCH=amd64 go build -a -trimpath -o "$output_file" "$file"
   else
     echo "Unsupported OS: $CURRENT_OS"
