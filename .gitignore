@@ -4,6 +4,7 @@ data/
 output/
 config/*
 lyricsPPT_v*.zip
+public
 
 node_modules/
 .pnp

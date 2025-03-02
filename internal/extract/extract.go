@@ -50,15 +50,15 @@ var initConfig = Config{
 			Presentation: classification.ResultInfo{
 				Size: classification.Size{
 					Width:  1409.0,
-					Height: 892.0,
+					Height: 880.6,
 				},
 				FontInfo: classification.FontInfo{
 					FontSize:   100.0,
 					FontFamily: "Nanum Gothic",
 				},
 				InnerRectangle: classification.Size{
-					Width:  1278,
-					Height: 640,
+					Width:  1210,
+					Height: 590,
 				},
 				Color: classification.Color{
 					BoxColor:   "#F8F3EA",
@@ -72,10 +72,10 @@ var initConfig = Config{
 		Lyrics: classification.Lyrics{Presentation: classification.ResultInfo{
 			Size: classification.Size{
 				Width:  1409.0,
-				Height: 792.0,
+				Height: 880.0,
 			},
 			FontInfo: classification.FontInfo{
-				FontSize:   130.0,
+				FontSize:   170.0,
 				FontFamily: "Nanum Gothic",
 			},
 			InnerRectangle: classification.Size{
