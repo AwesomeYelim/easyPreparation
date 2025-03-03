@@ -26,19 +26,15 @@ type LyricsPresentationManager struct {
 }
 
 func main() {
-	execPath, _ := os.Getwd()
-	lpm := NewLyricsPresentationManager(execPath)
+	lpm := NewLyricsPresentationManager()
 	defer lpm.Cleanup()
-
 	lyricsInfo, figmaInfo := gui.SetLyricsGui(lpm.execPath)
-
 	figmaInfo.GetFigmaImage(lpm.outputDir, "forLyrics")
-
 	lpm.CreatePresentation(lyricsInfo)
 }
 
-func NewLyricsPresentationManager(execPath string) *LyricsPresentationManager {
-	execPath = path.ExecutePath(execPath, "easyPreparation")
+func NewLyricsPresentationManager() *LyricsPresentationManager {
+	execPath := path.ExecutePath("easyPreparation")
 	configPath := filepath.Join(execPath, "config/custom.json")
 	extract.ExtCustomOption(configPath)
 

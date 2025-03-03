@@ -14,27 +14,29 @@ func UiBuild(uiBuildPath, destPath string) (buildFolder string) {
 	// 환경 변수 확인 -> dev 모드에서만 UI 빌드 실행
 	env := os.Getenv("APP_ENV")
 	if env == "dev" {
-		if err := runPnpmBuild(uiBuildPath); err != nil {
+		err := runPnpmBuild(uiBuildPath)
+		if err != nil {
 			fmt.Printf("Error running pnpm build: %v\n", err)
 			os.Exit(1)
 		}
+
+		buildFolder = filepath.Join(uiBuildPath, "build")
+		if err = copyDirectory(buildFolder, destPath); err != nil {
+			log.Fatalf("Failed to copy build folder: %v", err)
+		}
+
+		// build 폴더 내의 index.html 경로 설정
+		htmlFilePath := filepath.Join(buildFolder, "index.html")
+
+		// 파일이 존재하는지 확인
+		if _, err := os.Stat(htmlFilePath); os.IsNotExist(err) {
+			log.Fatalf("Failed to find the HTML file at: %v", htmlFilePath)
+		}
 	} else {
 		fmt.Println("Skipping UI build (not in dev mode).")
+		return
 	}
 	// 빌드된 React 프로젝트의 경로
-	buildFolder = filepath.Join(uiBuildPath, "build")
-
-	if err := copyDirectory(buildFolder, destPath); err != nil {
-		log.Fatalf("Failed to copy build folder: %v", err)
-	}
-
-	// build 폴더 내의 index.html 경로 설정
-	htmlFilePath := filepath.Join(buildFolder, "index.html")
-
-	// 파일이 존재하는지 확인
-	if _, err := os.Stat(htmlFilePath); os.IsNotExist(err) {
-		log.Fatalf("Failed to find the HTML file at: %v", htmlFilePath)
-	}
 
 	return buildFolder
 }
