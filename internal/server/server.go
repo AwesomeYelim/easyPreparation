@@ -24,9 +24,6 @@ func StartLocalServer(port, buildFolder string) {
 			http.ServeFile(w, r, filePath)
 			return
 		}
-		// 404 발생 시 index.html 반환 (React 라우팅 지원)
-		log.Println("404 발생: ", r.URL.Path, "→ index.html로 리디렉트")
-		// 파일이 없으면 index.html 반환 (React 라우팅 지원)
 		http.ServeFile(w, r, filepath.Join(buildFolder, "index.html"))
 	})
 
