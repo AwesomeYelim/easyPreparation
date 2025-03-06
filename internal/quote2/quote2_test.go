@@ -9,7 +9,8 @@ import (
 func TestGetQuote(t *testing.T) {
 	// 📌 실제 사용할 forUrl 예제
 	testCases := []string{
-		"1/1:1-1:3", // 창세기 1장 1~3절\
+		"1/1:1",
+		"4/3:4",
 	}
 
 	for _, forUrl := range testCases {

@@ -25,14 +25,14 @@ const FigmaTokenInput: React.FC = () => {
 
   return (
     <div style={{ margin: "20px", fontFamily: "Arial, sans-serif" }}>
-      {/* {!isSubmitted ? (
+      {!isSubmitted ? (
         <FigmaTokenForm onSubmit={handleSubmit} />
-      ) : ( */}
+      ) : (
       <div>
         <h1>Editable Data</h1>
         <EditableData />
       </div>
-      {/* )} */}
+       )} 
     </div>
   );
 };

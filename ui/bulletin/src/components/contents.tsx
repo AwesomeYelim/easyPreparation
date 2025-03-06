@@ -125,7 +125,7 @@ const EditableData: React.FC = () => {
         />
       </div>
       {renderItems(data)}
-      <EventEl />
+      {/* <EventEl /> */}
       <button
         onClick={handleSubmit}
         style={{

@@ -1,6 +1,7 @@
 package quote2
 
 import (
+	"easyPreparation_1.0/internal/parser"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,9 +11,8 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-// 성경 구절 크롤링 함수 (특정 장 크롤링)
+// **성경 구절 크롤링 함수 (특정 장 크롤링)**
 func getChapterVerses(bookIdx string, chapter int) (map[int]string, error) {
-
 	url := fmt.Sprintf("https://goodtvbible.goodtv.co.kr/bible.asp?bible_idx=%s&jang_idx=%d&bible_version_1=2", bookIdx, chapter)
 	fmt.Println("크롤링 대상 URL:", url)
 
@@ -60,14 +60,10 @@ func getChapterVerses(bookIdx string, chapter int) (map[int]string, error) {
 				_, err := fmt.Sscanf(prefix, "%d.", &verseNum)
 				if err == nil {
 					// 절 번호가 존재하면 텍스트 저장
-					text := v[endIdx+4:] // "</b>" 이후부터가 구절 내용
-					text = strings.TrimSpace(text)
-
-					// HTML 태그 제거
-					textDoc, _ := goquery.NewDocumentFromReader(strings.NewReader(text))
-					cleanText := textDoc.Text()
-					cleanText = strings.ReplaceAll(text, "\u00A0", " ")
-					versesMap[verseNum] = strings.TrimSpace(cleanText)
+					text := v[endIdx+4:]                // "</b>" 이후부터가 구절 내용
+					text = parser.RemoveTags(text)      // ✅ HTML 태그 제거
+					text = parser.NormalizeSpaces(text) // ✅ 공백 정리
+					versesMap[verseNum] = text
 				}
 			}
 		}
@@ -76,12 +72,11 @@ func getChapterVerses(bookIdx string, chapter int) (map[int]string, error) {
 	return versesMap, nil
 }
 
+// **구절 크롤링 함수**
 func getBibleVerses(bookIdx string, startChapter, startVerse, endChapter, endVerse int) (string, error) {
 	var result []string
 
-	// 현재 장부터 끝 장까지 루프 실행
 	for chapter := startChapter; chapter <= endChapter; chapter++ {
-		// 해당 장의 모든 절을 가져오기
 		versesMap, err := getChapterVerses(bookIdx, chapter)
 		if err != nil {
 			continue // 에러가 발생하면 넘어감
@@ -99,7 +94,7 @@ func getBibleVerses(bookIdx string, startChapter, startVerse, endChapter, endVer
 		// 해당 범위의 절 가져오기
 		for i := minVerse; i <= maxVerse; i++ {
 			if verseText, exists := versesMap[i]; exists {
-				result = append(result, fmt.Sprintf("%d장 %d절: %s", chapter, i, verseText))
+				result = append(result, fmt.Sprintf("%d:%d %s", chapter, i, verseText))
 			}
 		}
 	}
@@ -111,16 +106,17 @@ func getBibleVerses(bookIdx string, startChapter, startVerse, endChapter, endVer
 	return strings.Join(result, "\n"), nil
 }
 
-func GetQuote(forUrl string) {
-	var startChapter int
-	var startVerse int
-	var endChapter int
-	var endVerse int
+func GetQuote(forUrl string) string {
+	var startChapter, startVerse, endChapter, endVerse int
 
 	referBible := strings.Split(forUrl, "/")
-	// 예제: 창세기 1장 2절 ~ 2장 10절 크롤링
+	if len(referBible) < 2 {
+		log.Fatalf("잘못된 입력 형식입니다: %s (예: 1/1:2-3)", forUrl)
+	}
+
 	bookIdx := referBible[0]
 	quoteRange := referBible[1]
+
 	if strings.Contains(quoteRange, "-") {
 		qCVs := strings.Split(quoteRange, "-")
 		start := strings.Split(qCVs[0], ":")
@@ -134,14 +130,14 @@ func GetQuote(forUrl string) {
 		start := strings.Split(quoteRange, ":")
 		startChapter, _ = strconv.Atoi(start[0])
 		startVerse, _ = strconv.Atoi(start[1])
+		endChapter, endVerse = startChapter, startVerse
 	}
 
-	// 성경 구절 가져오기
 	versesText, err := getBibleVerses(bookIdx, startChapter, startVerse, endChapter, endVerse)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// 결과 출력
-	fmt.Printf("%s %d:%d ~ %d:%d:\n%s\n", bookIdx, startChapter, startVerse, endChapter, endVerse, versesText)
+	fmt.Printf("\n📖 최종 결과:\n%s\n", versesText)
+	return versesText
 }
