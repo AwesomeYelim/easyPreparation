@@ -45,14 +45,16 @@ const BibleSelect: React.FC<BibleSelectProps> = ({ handleValueChange, parentKey 
           if (updatedRanges.length > 1) {
             handleValueChange(
               parentKey,
-              `${bibleData[selectedBook.book].kor}_${bibleData[selectedBook.book].eng}/${first.chapter}:${
+              `${bibleData[selectedBook.book].kor}_${bibleData[selectedBook.book].index}/${first.chapter}:${
                 first.verse
               }-${last.chapter}:${last.verse}`
             );
           } else {
             handleValueChange(
               parentKey,
-              `${bibleData[selectedBook.book].kor}_${bibleData[selectedBook.book].eng}/${first.chapter}:${first.verse}`
+              `${bibleData[selectedBook.book].kor}_${bibleData[selectedBook.book].index}/${first.chapter}:${
+                first.verse
+              }`
             );
           }
 
