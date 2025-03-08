@@ -211,7 +211,7 @@ func (pdf *PDF) ForComposeBuiltin(elements []gui.WorshipInfo, limit string) (ym 
 		pdf.TextSpacingFormat(title[1], targetWidth, xm, ym)
 
 		if strings.HasSuffix(order.Info, "c_edit") || strings.HasSuffix(order.Info, "b_edit") {
-			pdf.SetXY(xm, ym)
+			pdf.SetXY((pdf.Config.Width/2-pdf.Config.InnerRectangle.Width)/2, ym)
 			pdf.DrawLine(editLine, firstPlacedLine, ym, printColor)
 			pdf.MultiCell(pdf.Config.InnerRectangle.Width, 0, order.Obj, "", "C", false)
 			pdf.DrawLine(editLine, secondPlacedLine, ym, printColor)

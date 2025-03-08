@@ -12,7 +12,7 @@ import (
 func main() {
 	execPath := path.ExecutePath("easyPreparation")
 	target, figmaInfo := gui.SetBulletinGui(execPath)
-	configPath := filepath.Join(execPath, "config/custom.json")
+	configPath := filepath.Join(execPath, "config", "custom.json")
 	extract.ExtCustomOption(configPath)
 
 	forPrint.CreatePrint(figmaInfo, target, execPath)

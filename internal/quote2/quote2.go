@@ -83,7 +83,7 @@ func getBibleVerses(bookIdx string, startChapter, startVerse, endChapter, endVer
 		}
 
 		// 시작 절과 끝 절 결정
-		minVerse, maxVerse := 1, 150 // 최대절은 큰 값으로 설정
+		minVerse, maxVerse := 1, len(versesMap) // 최대절은 큰 값으로 설정
 		if chapter == startChapter {
 			minVerse = startVerse
 		}

@@ -36,7 +36,7 @@ var initConfig = Config{
 					FontFamily: "Nanum Gothic",
 				},
 				InnerRectangle: classification.Size{
-					Width:  510,
+					Width:  584,
 					Height: 860,
 				},
 				Color: classification.Color{
