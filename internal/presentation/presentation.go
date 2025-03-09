@@ -344,7 +344,7 @@ func (pdf *PDF) DrawChurchNews(fontInfo classification.FontInfo, con gui.Worship
 
 	// 최종 출력
 	pdf.SetXY(x, y)
-	pdf.MultiCell(pdf.Config.InnerRectangle.Width, fontInfo.FontSize/1.8, tmpData, "", "L", false)
+	pdf.MultiCell(pdf.Config.InnerRectangle.Width, fontInfo.FontSize/2, tmpData, "", "L", false)
 }
 
 func (pdf *PDF) setBegin(con gui.WorshipInfo, lines int) {

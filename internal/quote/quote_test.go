@@ -1,4 +1,4 @@
-package quote2
+package quote
 
 import (
 	"fmt"
