@@ -1,4 +1,5 @@
-import "./styles.css";
+import "@/styles.scss";
+import RecoilProvider from "@/components/RecoilProvider";
 
 export default function RootLayout({
   children,
@@ -7,7 +8,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body>
+        <RecoilProvider>{children}</RecoilProvider>
+      </body>
     </html>
   );
 }

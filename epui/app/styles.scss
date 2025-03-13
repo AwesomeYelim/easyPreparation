@@ -7,11 +7,21 @@ body {
 }
 
 /* 제목 스타일 */
-h1 {
-  text-align: center;
-  font-size: 24px;
-  font-weight: bold;
-  margin: 20px 0;
+.title {
+  display: flex;
+
+  h1 {
+    text-align: center;
+    font-size: 24px;
+    font-weight: bold;
+    margin: 20px 10px;
+    padding-bottom: 10px;
+    &.selected {
+      color: #1f3f62;
+      border-bottom: 4px solid #1f3f62;
+      border-radius: 4px;
+    }
+  }
 }
 
 /* 카드 스타일 */
