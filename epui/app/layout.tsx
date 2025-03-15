@@ -1,5 +1,7 @@
+import RecoilProvider from "@/components/recoil-provider.tsx";
+import NavBar from "@/components/nav-bar";
+import "@/globals.css";
 import "@/styles.scss";
-import RecoilProvider from "@/components/RecoilProvider";
 
 export default function RootLayout({
   children,
@@ -9,7 +11,10 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body>
-        <RecoilProvider>{children}</RecoilProvider>
+        <div className="entire-wrap">
+          <NavBar />
+          <RecoilProvider>{children}</RecoilProvider>
+        </div>
       </body>
     </html>
   );

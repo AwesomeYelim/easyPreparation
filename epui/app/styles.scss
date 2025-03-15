@@ -1,25 +1,42 @@
-/* app/styles.css */
+/* styles.css */
 body {
   font-family: Arial, sans-serif;
   background-color: #f8f9fa;
   margin: 0;
   padding: 0;
 }
+.entire-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding-left: 20px;
+}
 
 /* 제목 스타일 */
-.title {
+.nav_wrapper {
   display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  width: 100%;
+  padding-left: 20px;
+  nav {
+    display: flex;
+    gap: 10px;
 
-  h1 {
-    text-align: center;
-    font-size: 24px;
-    font-weight: bold;
-    margin: 20px 10px;
-    padding-bottom: 10px;
-    &.selected {
-      color: #1f3f62;
-      border-bottom: 4px solid #1f3f62;
-      border-radius: 4px;
+    a {
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+      margin: 20px 10px;
+      padding-bottom: 10px;
+      text-decoration: none;
+      color: #888888;
+      &.active {
+        color: #1f3f62;
+        border-bottom: 4px solid #1f3f62;
+        border-radius: 4px;
+      }
     }
   }
 }

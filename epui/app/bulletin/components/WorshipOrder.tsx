@@ -1,5 +1,5 @@
 import { useRecoilState } from "recoil";
-import { worshipOrderState } from "../recoilState";
+import { worshipOrderState } from "../../recoilState";
 
 export default function WorshipOrder() {
   const [worshipOrder, setWorshipOrder] = useRecoilState(worshipOrderState);
