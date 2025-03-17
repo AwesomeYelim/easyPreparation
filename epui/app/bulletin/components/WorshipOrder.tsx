@@ -1,5 +1,5 @@
 import { useRecoilState } from "recoil";
-import { worshipOrderState } from "../../recoilState";
+import { worshipOrderState } from "@/recoilState";
 
 export type WorshipOrderItem = {
   title: string;

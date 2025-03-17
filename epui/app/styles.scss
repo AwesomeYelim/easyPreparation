@@ -10,7 +10,7 @@ body {
   flex-direction: column;
   align-items: flex-start;
   width: 100%;
-  padding-left: 20px;
+  padding: 20px;
 }
 
 /* 제목 스타일 */
@@ -41,15 +41,60 @@ body {
   }
 }
 
-/* 카드 스타일 */
-.card {
-  background-color: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  margin: 20px auto;
-  width: 90%;
-  max-width: 800px;
+.bulletin_wrap {
+  display: flex;
+  gap: 30px;
+  width: 100%;
+  .card {
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 3px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 800px;
+    h2 {
+      font-size: 22px;
+    }
+    .detail-card {
+      margin-top: 10px;
+    }
+  }
+  .editable,
+  .result {
+    flex: 1;
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 3px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin: 20px 0;
+    min-width: 0;
+    .contents {
+      padding: 20px 10px;
+      .row {
+        display: flex;
+        // gap: 20px;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 5px;
+        > div {
+          flex: 1;
+          max-width: 100px;
+          text-align: center;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          &.title {
+            text-align: left;
+          }
+          &.lead {
+            text-align: right;
+          }
+        }
+      }
+    }
+  }
 }
 
 /* 버튼 스타일 */
