@@ -1,15 +1,22 @@
 import { useSetRecoilState, useRecoilState } from "recoil";
 import { worshipOrderState, selectedDetailState } from "@/recoilState";
 import React from "react";
+import { WorshipOrderItem } from "./WorshipOrder";
 
-export default function SelectedOrder({ selectedItems, setSelectedItems }) {
+export default function SelectedOrder({
+  selectedItems,
+  setSelectedItems,
+}: {
+  selectedItems: WorshipOrderItem[];
+  setSelectedItems: React.Dispatch<React.SetStateAction<WorshipOrderItem[]>>;
+}) {
   // setWorshipOrder를 useSetRecoilState로 변경하여 setter만 사용합니다.
   const setWorshipOrder = useSetRecoilState(worshipOrderState);
   const setSelectedDetail = useSetRecoilState(selectedDetailState);
 
-  const handleDeleteItem = (item) => {
+  const handleDeleteItem = (item?: WorshipOrderItem) => {
     setSelectedItems((prevItems) => prevItems.filter((el) => el !== item));
-    setWorshipOrder((prevOrder) => [...prevOrder, item]);
+    setWorshipOrder((prevOrder: WorshipOrderItem[]) => [...prevOrder, item]);
   };
 
   return (
@@ -25,15 +32,13 @@ export default function SelectedOrder({ selectedItems, setSelectedItems }) {
                 onClick={(e) => {
                   e.stopPropagation();
                   setSelectedDetail(item);
-                }}
-              >
+                }}>
                 {item.title.split("_")[1]}
                 <button
                   className="delete-btn"
                   onClick={(e) => {
                     handleDeleteItem(item);
-                  }}
-                >
+                  }}>
                   ❌
                 </button>
               </span>

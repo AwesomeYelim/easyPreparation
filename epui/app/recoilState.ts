@@ -1,4 +1,5 @@
 import { atom } from "recoil";
+import { WorshipOrderItem } from "./bulletin/components/WorshipOrder";
 
 // 예배 순서 상태
 export const worshipOrderState = atom({
@@ -197,11 +198,10 @@ export const worshipOrderState = atom({
   ],
 });
 
-export const selectedDetailState = atom({
+export const selectedDetailState = atom<WorshipOrderItem | null>({
   key: "selectedDetailState",
-  default: {}, // 선택한 항목의 상세 정보를 저장
+  default: null,
 });
-
 // 교회 소식 상태
 export const churchNewsState = atom({
   key: "churchNewsState",
