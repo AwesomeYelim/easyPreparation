@@ -3,9 +3,9 @@ import { worshipOrderState } from "@/recoilState";
 
 export type WorshipOrderItem = {
   title: string;
-  obj?: string;
-  info?: string;
-  lead?: string;
+  obj: string;
+  info: string;
+  lead: string;
 };
 
 type WorshipOrderProps = {

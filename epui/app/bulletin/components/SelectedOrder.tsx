@@ -14,7 +14,7 @@ export default function SelectedOrder({
   const setWorshipOrder = useSetRecoilState(worshipOrderState);
   const setSelectedDetail = useSetRecoilState(selectedDetailState);
 
-  const handleDeleteItem = (item?: WorshipOrderItem) => {
+  const handleDeleteItem = (item: WorshipOrderItem) => {
     setSelectedItems((prevItems) => prevItems.filter((el) => el !== item));
     setWorshipOrder((prevOrder: WorshipOrderItem[]) => [...prevOrder, item]);
   };

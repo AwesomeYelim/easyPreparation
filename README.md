@@ -13,7 +13,9 @@
 
 ![img.png](img.png)
 
-## 3. Before Start
+## 3. Before Start 
+
+### 3.1 Library Install
 
   ```shell
   apt update && apt install libreoffice && apt install Ghostscript
@@ -22,20 +24,46 @@
 
   ```
 
+### 3.2 Set Environment Variable(for ui build)
+
+```shell
+APP_ENV=dev
+```
+
+
 ## 4. Info Size
 
 * You can control the PDF size to change its ratio
 * however, this is determined entirely by the Figma size.
 
 ```
+- mac always follow 16:10 ratio
+
 # 16:9
   width : 323.33,
-  height : 210.0
-  - mac always follow 16:10 ratio
+  height : 181.0
+  
+# apply 16:9 size -> current size
+  width : 1409.0,
+  height : 792.5
+  
+# 16:10
+  width : 323.33,
+  height : 202.0
+  
+# apply 16:10 size -> current size
+  width : 1409.0,
+  height : 880.6
   
 # A4 size
   width : 297.0,
   height : 210.0
+ 
+# apply A4 size -> current size
+  width : 1409.0,
+  height : 996.0
+ 
+  
   
   
 ```

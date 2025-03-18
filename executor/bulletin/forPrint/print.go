@@ -36,9 +36,8 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 	}
 	objPdf := presentation.New(instanceSize)
 	objPdf.Config = config.Classification.Bulletin.Print
-
 	yearMonth, weekFormatted := date.SetDateTitle()
-
+	objPdf.GetConversionRatio()
 	// 파일명 생성: "202411_3.pdf"
 	outputFilename := fmt.Sprintf("%s_%s.pdf", yearMonth, weekFormatted)
 
