@@ -4,14 +4,21 @@ import { WorshipOrder, WorshipOrderItem } from "./components/WorshipOrder";
 import SelectedOrder from "./components/SelectedOrder";
 import Detail from "./components/Detail";
 import { useState } from "react";
+import { worshipOrderState } from "../recoilState";
+import { useRecoilValue } from "recoil";
 
 export default function Bulletin() {
-  const [selectedItems, setSelectedItems] = useState<WorshipOrderItem[]>([]);
+  const worshipOrder = useRecoilValue(worshipOrderState);
+  const [selectedItems, setSelectedItems] =
+    useState<WorshipOrderItem[]>(worshipOrder);
 
   return (
     <div className="bulletin_wrap">
       <div className="editable">
-        <WorshipOrder setSelectedItems={setSelectedItems} />
+        <WorshipOrder
+          selectedItems={selectedItems}
+          setSelectedItems={setSelectedItems}
+        />
         <SelectedOrder
           selectedItems={selectedItems}
           setSelectedItems={setSelectedItems}

@@ -5,18 +5,20 @@ export type WorshipOrderItem = {
   title: string;
   obj: string;
   info: string;
-  lead: string;
+  lead?: string;
+  children?: WorshipOrderItem[];
 };
-
-type WorshipOrderProps = {
+export function WorshipOrder({
+  selectedItems,
+  setSelectedItems,
+}: {
+  selectedItems: WorshipOrderItem[];
   setSelectedItems: React.Dispatch<React.SetStateAction<WorshipOrderItem[]>>;
-};
-
-export function WorshipOrder({ setSelectedItems }: WorshipOrderProps) {
+}) {
   const [worshipOrder, setWorshipOrder] = useRecoilState(worshipOrderState);
 
   const handleSelectItem = (item: WorshipOrderItem) => {
-    setWorshipOrder(worshipOrder.filter((i) => i.title !== item.title));
+    // setWorshipOrder(worshipOrder.filter((i) => i.title !== item.title));
     setSelectedItems((prevItems) => [...prevItems, item]);
   };
 
@@ -24,15 +26,19 @@ export function WorshipOrder({ setSelectedItems }: WorshipOrderProps) {
     <div className="card">
       <h2>예배 순서 선택하기</h2>
       <div>
-        {worshipOrder.map((item) => (
-          <span
-            key={item.title}
-            className="tag"
-            onClick={() => handleSelectItem(item)} // Handle item click
-          >
-            {item.title.split("_")[1]}
-          </span>
-        ))}
+        {worshipOrder
+          .filter(
+            (el) => !selectedItems.map((el) => el.title).includes(el.title)
+          )
+          .map((item) => (
+            <span
+              key={item.title}
+              className="tag"
+              onClick={() => handleSelectItem(item)}
+            >
+              {item.title.split("_")[1]}
+            </span>
+          ))}
       </div>
     </div>
   );
