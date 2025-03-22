@@ -62,7 +62,6 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 
 		objPdf.AddPage()
 		objPdf.CheckImgPlaced(imgPath, 0)
-		contentSectionDivision := "18"
 		if i == 0 {
 			sunDateText := date.SetThisSunDay()
 			objPdf.SetText(classification.FontInfo{
@@ -72,8 +71,8 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 			objPdf.WriteText(sunDateText, "right")
 			objPdf.DrawChurchNews(config.Classification.Bulletin.Print.FontInfo, newsCon, hLColor, 70.0, 200.0)
 		} else {
-			ym := objPdf.ForComposeBuiltin(elements, contentSectionDivision)
-			objPdf.ForReferNext(elements, contentSectionDivision, ym)
+			ym := objPdf.ForComposeBuiltin(elements)
+			objPdf.ForReferNext(elements, ym)
 			objPdf.ForTodayVerse(elements[len(elements)-1])
 		}
 

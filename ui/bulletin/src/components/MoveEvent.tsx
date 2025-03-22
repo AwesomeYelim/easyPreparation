@@ -142,7 +142,13 @@ const WorshipElement = ({
           {el.lead && <p>lead: {el.lead}</p>}
         </div>
       )}
-      <button className="delete_btn" onClick={(e) => { e.stopPropagation(); handleRemove(el); }}>
+      <button
+        className="delete_btn"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleRemove(el);
+        }}
+      >
         삭제
       </button>
     </div>
@@ -178,8 +184,12 @@ export default function MoveEvent() {
       <h3>선택 목록</h3>
       <StaticList>
         {staticList.map((el) => (
-          <div key={el.title} className="static_el" onClick={() => handleSelect(el)}>
-            {el.title.split("_")[1]}
+          <div
+            key={el.title}
+            className="static_el"
+            onClick={() => handleSelect(el)}
+          >
+            {el.title}
           </div>
         ))}
       </StaticList>

@@ -107,7 +107,6 @@ func SetBulletinGui(execPath string) (target string, figmaInfo *get.Info) {
 				kor := strings.Split(obj, "_")[0]
 				forUrl := strings.Split(obj, "_")[1]
 
-				//el["contents"] = quote.GetQuote(forUrl)
 				el["contents"] = quote.GetQuote(forUrl)
 
 				el["obj"] = fmt.Sprintf("%s %s", kor, strings.Split(forUrl, "/")[1])

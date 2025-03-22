@@ -1,43 +1,44 @@
 "use client";
 
-import { WorshipOrder, WorshipOrderItem } from "./components/WorshipOrder";
+import { WorshipOrder } from "./components/WorshipOrder";
 import SelectedOrder from "./components/SelectedOrder";
 import Detail from "./components/Detail";
 import { useState } from "react";
 import { worshipOrderState } from "../recoilState";
 import { useRecoilValue } from "recoil";
+import { ResultPart } from "./components/ResultPage";
+
+export type WorshipOrderItem = {
+  key: number;
+  title: string;
+  obj: string;
+  info: string;
+  lead?: string;
+  children?: WorshipOrderItem[];
+};
 
 export default function Bulletin() {
   const worshipOrder = useRecoilValue(worshipOrderState);
-  const [selectedItems, setSelectedItems] =
+  const [selectedInfo, setSelectedInfo] =
     useState<WorshipOrderItem[]>(worshipOrder);
-
   return (
     <div className="bulletin_wrap">
       <div className="editable">
         <WorshipOrder
-          selectedItems={selectedItems}
-          setSelectedItems={setSelectedItems}
+          selectedItems={selectedInfo}
+          setSelectedItems={setSelectedInfo}
         />
         <SelectedOrder
-          selectedItems={selectedItems}
-          setSelectedItems={setSelectedItems}
+          selectedItems={selectedInfo}
+          setSelectedItems={setSelectedInfo}
         />
-        <Detail />
+        <Detail setSelectedItems={setSelectedInfo} />
       </div>
       <div className="result">
-        <h2>생성된 예배 내용</h2>
-        <div className="contents">
-          {selectedItems.map((el) => {
-            return (
-              <div className="row">
-                <div className="title">{el.title.split("_")[1]}</div>
-                <div className="obj">{el.obj}</div>
-                <div className="lead">{el.lead}</div>
-              </div>
-            );
-          })}
-        </div>
+        <ResultPart
+          selectedItems={selectedInfo}
+          setSelectedItems={setSelectedInfo}
+        />
       </div>
     </div>
   );

@@ -43,8 +43,7 @@ func CreatePresentation(figmaInfo *get.Info, target, execPath string) {
 	err = json.Unmarshal(worshipContents, &contents)
 
 	for _, con := range contents {
-		splitTitle := strings.Split(con.Title, "_")
-		objPdf.Title = splitTitle[1]
+		objPdf.Title = con.Title
 
 		if path, ok := figmaInfo.PathInfo[objPdf.Title]; ok {
 			objPdf.Path = filepath.Join(outputDir, filepath.Base(path))

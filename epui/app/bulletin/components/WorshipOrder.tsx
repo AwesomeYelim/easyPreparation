@@ -1,13 +1,7 @@
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import { worshipOrderState } from "@/recoilState";
+import { WorshipOrderItem } from "../page";
 
-export type WorshipOrderItem = {
-  title: string;
-  obj: string;
-  info: string;
-  lead?: string;
-  children?: WorshipOrderItem[];
-};
 export function WorshipOrder({
   selectedItems,
   setSelectedItems,
@@ -35,7 +29,7 @@ export function WorshipOrder({
               className="tag"
               onClick={() => handleSelectItem(item)}
             >
-              {item.title.split("_")[1]}
+              {item.title}
             </span>
           ))}
       </div>

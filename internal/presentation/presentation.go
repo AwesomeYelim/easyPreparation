@@ -179,7 +179,7 @@ func (pdf *PDF) TextSpacingFormat(text string, targetWidth, x, y float64) {
 	}
 }
 
-func (pdf *PDF) ForComposeBuiltin(elements []gui.WorshipInfo, limit string) (ym float64) {
+func (pdf *PDF) ForComposeBuiltin(elements []gui.WorshipInfo) (ym float64) {
 	// figma 디자인 기준
 	var xm float64 = 95
 	ym = 202
@@ -194,21 +194,20 @@ func (pdf *PDF) ForComposeBuiltin(elements []gui.WorshipInfo, limit string) (ym 
 
 	for _, order := range elements {
 		// 하위 목록인 경우 skip
-		if strings.Contains(order.Title, ".") {
+		if strings.Contains(order.Key, ".") {
 			continue
 		}
 
 		pdf.SetXY(xm, ym)
-		title := strings.Split(order.Title, "_")
 		strOW := pdf.GetStringWidth(order.Obj)
 		editLine := (line - (strOW + (lineM * 2))) / 2
 		firstPlacedLine := xm + targetWidth + lineM
 		secondPlacedLine := firstPlacedLine + editLine + strOW + (lineM * 2)
 
-		if strings.Contains(title[1], "기도") {
-			title[1] = "기도"
+		if strings.Contains(order.Title, "기도") {
+			order.Title = "기도"
 		}
-		pdf.TextSpacingFormat(title[1], targetWidth, xm, ym)
+		pdf.TextSpacingFormat(order.Title, targetWidth, xm, ym)
 
 		if strings.HasSuffix(order.Info, "c_edit") || strings.HasSuffix(order.Info, "b_edit") {
 			pdf.SetXY((pdf.Config.Width/2-pdf.Config.InnerRectangle.Width)/2, ym)
@@ -220,26 +219,28 @@ func (pdf *PDF) ForComposeBuiltin(elements []gui.WorshipInfo, limit string) (ym 
 		}
 		pdf.TextSpacingFormat(order.Lead, targetWidth, secondPlacedLine+editLine+lineM, ym)
 		ym += fontInfo.FontSize / 1.8
-		if title[0] == limit {
+		if order.Title == "축도" {
 			break
 		}
 	}
 	return ym
 }
 
-func (pdf *PDF) ForReferNext(elements []gui.WorshipInfo, strLimit string, nextStart float64) {
+func (pdf *PDF) ForReferNext(elements []gui.WorshipInfo, nextStart float64) {
 
 	pdf.Config.FontSize *= 0.8
 	fontInfo := pdf.Config.FontInfo
 	printColor := colorPalette.HexToRGBA(pdf.Config.Color.PrintColor)
 	var xm float64 = 427
 	var innerBoxWidth float64 = 180
+	var isIteratorRange bool
 
 	for idx, element := range elements {
-		titles := strings.Split(element.Title, "_")
-		conTitle, _ := strconv.Atoi(titles[0])
-		limit, _ := strconv.Atoi(strLimit)
-		if conTitle <= limit {
+		if element.Title == "축도" {
+			isIteratorRange = true
+			continue
+		}
+		if !isIteratorRange {
 			continue
 		}
 		if idx == len(elements)-1 {
@@ -247,7 +248,7 @@ func (pdf *PDF) ForReferNext(elements []gui.WorshipInfo, strLimit string, nextSt
 		}
 		pdf.SetText(fontInfo, true, printColor)
 		pdf.SetXY(xm, nextStart)
-		pdf.MultiCell(innerBoxWidth, 0, fmt.Sprintf("%s:", titles[1]), "", "L", false)
+		pdf.MultiCell(innerBoxWidth, 0, fmt.Sprintf("%s:", element.Title), "", "L", false)
 		pdf.SetXY(xm, nextStart)
 		pdf.MultiCell(innerBoxWidth, 0, element.Obj, "", "R", false)
 		nextStart += fontInfo.FontSize / 2
