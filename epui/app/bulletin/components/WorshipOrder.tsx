@@ -1,4 +1,4 @@
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { worshipOrderState } from "@/recoilState";
 
 export type WorshipOrderItem = {
@@ -15,10 +15,9 @@ export function WorshipOrder({
   selectedItems: WorshipOrderItem[];
   setSelectedItems: React.Dispatch<React.SetStateAction<WorshipOrderItem[]>>;
 }) {
-  const [worshipOrder, setWorshipOrder] = useRecoilState(worshipOrderState);
+  const worshipOrder = useRecoilValue(worshipOrderState);
 
   const handleSelectItem = (item: WorshipOrderItem) => {
-    // setWorshipOrder(worshipOrder.filter((i) => i.title !== item.title));
     setSelectedItems((prevItems) => [...prevItems, item]);
   };
 

@@ -21,22 +21,24 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
   const selectedDetail = useRecoilValue(selectedDetailState);
   const [book, chapterverse] = selectedDetail.obj.split(" ");
   let [chapter, verse] = chapterverse.split(":");
+  const isRanged = verse.includes("-");
 
-  if (verse.includes("-")) {
-    verse = verse.split("-")[0];
-  }
   const [selectedBook, setSelectedBook] = useState<Selection>({
     book,
     chapter,
-    verse,
+    verse: isRanged ? verse.split("-")[0] : verse,
   });
-  const [selectedRanges, setSelectedRanges] = useState<[Selection, Selection]>([
-    selectedBook,
-    {
-      ...selectedBook,
-      verse: verse.includes("-") ? verse.split("-")[1] : verse,
-    },
-  ]);
+  const selectedInit = isRanged
+    ? [
+        selectedBook,
+        {
+          ...selectedBook,
+          verse: verse.split("-")[1],
+        },
+      ]
+    : [selectedBook];
+  const [selectedRanges, setSelectedRanges] =
+    useState<[Selection, Selection]>(selectedInit);
 
   const handler = {
     bookChange: (event: React.ChangeEvent<HTMLSelectElement>) => {

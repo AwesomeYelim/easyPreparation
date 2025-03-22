@@ -45,21 +45,42 @@ export default function Detail() {
       <h2>{selectedDetail?.title?.split("_")[1]}</h2>
       <div key={selectedDetail?.title} className="detail-card">
         <p>
-          <strong>Obj</strong>
+          <strong>
+            Object<span>left</span>
+          </strong>
           {(selectedDetail?.info.includes("edit") &&
             selectedDetail.info.includes("b_") && (
               <BibleSelect
                 handleValueChange={handleValueChange}
                 parentKey={selectedDetail?.title || ""}
               />
-            )) ||
-            selectedDetail?.title}
+            )) || (
+            <input
+              type="text"
+              onChange={(e) => handleValueChange(key, e.target.value)}
+              placeholder={selectedDetail?.title}
+            />
+          )}
         </p>
         <p>
-          <strong>Info</strong> {selectedDetail?.info}
+          <strong>
+            Information <span>center</span>
+          </strong>
+          <input
+            type="text"
+            onChange={(e) => handleValueChange(key, e.target.value)}
+            placeholder={selectedDetail?.info}
+          />
         </p>
         <p>
-          <strong>Lead</strong> {selectedDetail?.lead}
+          <strong>
+            Lead<span>right</span>
+          </strong>
+          <input
+            type="text"
+            onChange={(e) => handleValueChange(key, e.target.value)}
+            placeholder={selectedDetail?.lead || "새로 입력하세요"}
+          />
         </p>
       </div>
     </section>

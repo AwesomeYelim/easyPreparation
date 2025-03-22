@@ -1,6 +1,6 @@
 import React from "react";
-import { useSetRecoilState, useRecoilState } from "recoil";
-import { worshipOrderState, selectedDetailState } from "@/recoilState";
+import { useSetRecoilState } from "recoil";
+import { selectedDetailState } from "@/recoilState";
 import { WorshipOrderItem } from "./WorshipOrder";
 
 export default function SelectedOrder({
@@ -34,11 +34,11 @@ export default function SelectedOrder({
                 {item.title.split("_")[1]}
                 <button
                   className="delete-btn"
-                  onClick={(e) => {
+                  onClick={() => {
                     handleDeleteItem(item);
                   }}
                 >
-                  ❌
+                  x
                 </button>
               </span>
             </>

@@ -69,12 +69,14 @@ const EditableData: React.FC = () => {
               maxWidth: 400,
               flexWrap: "wrap",
               justifyContent: "start",
-            }}>
+            }}
+          >
             <label
               style={{
                 marginTop: "10px",
                 color: item.info.includes("edit") ? "#000" : "#ccc",
-              }}>
+              }}
+            >
               {item.title}
             </label>
             {item.info.includes("edit") && !item.info.includes("b_") && (
@@ -93,10 +95,15 @@ const EditableData: React.FC = () => {
               />
             )}
             {item.info.includes("edit") && item.info.includes("b_") && (
-              <BibleSelect handleValueChange={handleValueChange} parentKey={key} />
+              <BibleSelect
+                handleValueChange={handleValueChange}
+                parentKey={key}
+              />
             )}
             {item.children && (
-              <div style={{ marginLeft: "20px", marginTop: "10px" }}>{renderItems(item.children, key)}</div>
+              <div style={{ marginLeft: "20px", marginTop: "10px" }}>
+                {renderItems(item.children, key)}
+              </div>
             )}
           </div>
         );
@@ -125,7 +132,6 @@ const EditableData: React.FC = () => {
         />
       </div>
       {renderItems(data)}
-      {/* <EventEl /> */}
       <button
         onClick={handleSubmit}
         style={{
@@ -135,7 +141,8 @@ const EditableData: React.FC = () => {
           border: "none",
           borderRadius: "4px",
           cursor: "pointer",
-        }}>
+        }}
+      >
         Submit
       </button>
     </div>
