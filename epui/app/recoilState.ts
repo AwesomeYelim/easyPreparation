@@ -12,8 +12,3 @@ export const selectedDetailState = atom<WorshipOrderItem | null>({
   key: "selectedDetailState",
   default: null,
 });
-
-export const churchNewsState = atom({
-  key: "churchNewsState",
-  default: worshipData.find((el) => el.title === "교회소식"),
-});

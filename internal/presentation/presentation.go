@@ -292,7 +292,7 @@ func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config, execPath str
 	case "성시교독":
 		pdf.setOutDirFiles("responsive_reading", con.Obj)
 	case "교회소식":
-		pdf.DrawChurchNews(fontInfo, con, hLColor, pdf.Config.Padding, pdf.Config.Padding*2)
+		pdf.DrawChurchNews(fontInfo, con, hLColor, pdf.Config.Padding, pdf.Config.Padding*1.9)
 	case "참회의 기도":
 		pdf.SetText(fontInfo, true, hLColor)
 		pdf.SetXY(pdf.Config.Padding, pdf.Config.Padding*2)
@@ -311,6 +311,7 @@ func (pdf *PDF) DrawChurchNews(fontInfo classification.FontInfo, con gui.Worship
 	var draw func(items []gui.WorshipInfo, depth int)
 
 	var tmpData string
+	fontInfo.FontSize = fontInfo.FontSize / 1.9
 	pdf.SetText(fontInfo, false, hLColor)
 
 	draw = func(items []gui.WorshipInfo, depth int) {

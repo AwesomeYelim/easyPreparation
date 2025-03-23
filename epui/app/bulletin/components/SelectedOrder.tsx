@@ -21,7 +21,6 @@ export default function SelectedOrder({
       <h2>선택된 예배 순서</h2>
       <div>
         {selectedItems.map((item) => {
-          // 각 항목에 대한 상세 정보를 selectedDetail 객체에서 key로 접근
           return (
             <>
               <span

@@ -1,120 +1,67 @@
-import { selectedDetailState, churchNewsState } from "@/recoilState";
-import { useRecoilValue } from "recoil";
-import { useState } from "react";
-import BibleSelect from "./BibleSelect";
+import React from "react";
+import { useRecoilState } from "recoil";
+import { selectedDetailState } from "@/recoilState";
 import { WorshipOrderItem } from "../page";
+import BibleSelect from "./BibleSelect";
+import ChurchNews from "./ChurchNews";
 
 export default function Detail({
   setSelectedItems,
 }: {
   setSelectedItems: React.Dispatch<React.SetStateAction<WorshipOrderItem[]>>;
 }) {
-  const selectedDetail = useRecoilValue(selectedDetailState);
-  const churchNews = useRecoilValue(churchNewsState);
+  const [selectedDetail, setSelectedDetail] =
+    useRecoilState(selectedDetailState);
 
-  const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
-
-  const toggleExpand = (key: string) => {
-    setExpandedKeys((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
-    );
-  };
-
-  // 트리 노드 수정 핸들러
-  const handleEdit = (key: string, newValue: string) => {
-    setSelectedItems((prev) =>
-      prev.map((item) => (item.key === key ? { ...item, obj: newValue } : item))
-    );
-  };
-
-  // 트리 노드 삭제 핸들러
-  const handleDelete = (key: string) => {
-    const deleteItem = (items: WorshipOrderItem[]): WorshipOrderItem[] => {
-      return items
-        .filter((item) => item.key !== key) // 현재 요소 삭제
-        .map((item) => ({
-          ...item,
-          children: item.children ? deleteItem(item.children) : [], // 자식 요소 재귀적으로 삭제
-        }));
+  const handleValueChange = (key: number, newObj: string) => {
+    const updateData = (items: WorshipOrderItem[]): WorshipOrderItem[] => {
+      return items.map((item) => {
+        if (item.children) {
+          return {
+            ...item,
+            children: updateData(item.children),
+          };
+        }
+        if (item.key === key) {
+          switch (item.info) {
+            case "b_edit":
+            case "c_edit":
+            case "r_edit":
+            case "edit":
+              return { ...item, obj: newObj };
+          }
+        }
+        return item;
+      });
     };
 
-    setSelectedItems((prev) => deleteItem(prev));
-  };
+    setSelectedItems((prevData) => updateData(prevData));
 
-  const renderTree = (items: WorshipOrderItem[]) => {
-    return (
-      <ul className="tree-list">
-        {items.map((item) => {
-          const hasChildren = item.children && item.children.length > 0;
-          const isExpanded = expandedKeys.includes(item.key);
-
-          return (
-            <li key={item.key} className="tree-item">
-              {hasChildren && (
-                <button
-                  onClick={() => toggleExpand(item.key)}
-                  className="toggle-btn"
-                >
-                  {isExpanded ? "▼" : "▶️"}
-                </button>
-              )}
-              <strong>{item.title}</strong> -{/* 🔽 편집 가능한 input 추가 */}
-              <input
-                type="text"
-                value={item.obj}
-                onChange={(e) => handleEdit(item.key, e.target.value)}
-                className="edit-input"
-              />
-              {/* 삭제 버튼 추가 */}
-              <button
-                onClick={() => handleDelete(item.key)}
-                className="delete-btn"
-              >
-                ❌
-              </button>
-              {hasChildren && isExpanded && (
-                <div className="children">{renderTree(item.children)}</div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    );
+    setSelectedDetail((prevDetail) => ({
+      ...prevDetail,
+      obj: newObj,
+    }));
   };
 
   return (
     <section className="card">
       <h2>{selectedDetail?.title}</h2>
-
-      {/* 편집 가능한 경우 */}
       {selectedDetail?.info.includes("edit") && (
         <div key={selectedDetail?.key} className="detail-card">
           <p>
             <strong>
               Object<span>center</span>
             </strong>
-            {selectedDetail.info.includes("b_") ? (
+            {(selectedDetail.info.includes("b_") && (
               <BibleSelect
-                handleValueChange={(key, newObj) =>
-                  setSelectedItems((prev) =>
-                    prev.map((item) =>
-                      item.key === key ? { ...item, obj: newObj } : item
-                    )
-                  )
-                }
+                handleValueChange={handleValueChange}
                 parentKey={selectedDetail?.key || ""}
               />
-            ) : (
+            )) || (
               <input
                 type="text"
                 onChange={(e) =>
-                  setSelectedItems((prev) =>
-                    prev.map((item) =>
-                      item.key === selectedDetail.key
-                        ? { ...item, obj: e.target.value }
-                        : item
-                    )
-                  )
+                  handleValueChange(selectedDetail.key, e.target.value)
                 }
                 placeholder={selectedDetail?.title}
               />
@@ -127,25 +74,21 @@ export default function Detail({
             <input
               type="text"
               onChange={(e) =>
-                setSelectedItems((prev) =>
-                  prev.map((item) =>
-                    item.key === selectedDetail.key
-                      ? { ...item, lead: e.target.value }
-                      : item
-                  )
-                )
+                handleValueChange(selectedDetail.key, e.target.value)
               }
               placeholder={selectedDetail?.lead || "새로 입력하세요"}
             />
           </p>
         </div>
       )}
-
-      {/* 교회 소식 (트리 구조 편집 가능 + 삭제 기능) */}
       {selectedDetail?.info.includes("notice") && (
-        <div className="church-news">{renderTree(churchNews.children)}</div>
+        <ChurchNews
+          handleValueChange={handleValueChange}
+          selectedDetail={selectedDetail}
+          setSelectedDetail={setSelectedDetail}
+          setSelectedItems={setSelectedItems}
+        />
       )}
-
       {!selectedDetail?.info.includes("edit") &&
         !selectedDetail?.info.includes("notice") && <>is not editable</>}
     </section>

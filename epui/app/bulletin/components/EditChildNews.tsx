@@ -1,0 +1,28 @@
+import React from "react";
+
+export default function EditChildNews({
+  selectedChild,
+  setSelectedChild,
+  handleValueChange, // handleValueChange를 부모에서 전달받음
+}) {
+  return (
+    <div className="form-group">
+      <label htmlFor="obj" className="form-label">
+        Content
+      </label>
+      <textarea
+        id="obj"
+        className="form-textarea"
+        value={selectedChild.obj}
+        onChange={(e) => {
+          const newObj = e.target.value;
+          setSelectedChild((prev) => ({ ...prev, obj: newObj }));
+          if (handleValueChange) {
+            handleValueChange(selectedChild.key, newObj); // 부모에서 받은 handleValueChange 호출
+          }
+        }}
+        placeholder="Enter news content"
+      />
+    </div>
+  );
+}
