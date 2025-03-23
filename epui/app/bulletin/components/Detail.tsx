@@ -20,6 +20,27 @@ export default function Detail({
     );
   };
 
+  // 트리 노드 수정 핸들러
+  const handleEdit = (key: string, newValue: string) => {
+    setSelectedItems((prev) =>
+      prev.map((item) => (item.key === key ? { ...item, obj: newValue } : item))
+    );
+  };
+
+  // 트리 노드 삭제 핸들러
+  const handleDelete = (key: string) => {
+    const deleteItem = (items: WorshipOrderItem[]): WorshipOrderItem[] => {
+      return items
+        .filter((item) => item.key !== key) // 현재 요소 삭제
+        .map((item) => ({
+          ...item,
+          children: item.children ? deleteItem(item.children) : [], // 자식 요소 재귀적으로 삭제
+        }));
+    };
+
+    setSelectedItems((prev) => deleteItem(prev));
+  };
+
   const renderTree = (items: WorshipOrderItem[]) => {
     return (
       <ul className="tree-list">
@@ -37,7 +58,20 @@ export default function Detail({
                   {isExpanded ? "▼" : "▶️"}
                 </button>
               )}
-              <strong>{item.title}</strong> - {item.obj}
+              <strong>{item.title}</strong> -{/* 🔽 편집 가능한 input 추가 */}
+              <input
+                type="text"
+                value={item.obj}
+                onChange={(e) => handleEdit(item.key, e.target.value)}
+                className="edit-input"
+              />
+              {/* 삭제 버튼 추가 */}
+              <button
+                onClick={() => handleDelete(item.key)}
+                className="delete-btn"
+              >
+                ❌
+              </button>
               {hasChildren && isExpanded && (
                 <div className="children">{renderTree(item.children)}</div>
               )}
@@ -107,7 +141,7 @@ export default function Detail({
         </div>
       )}
 
-      {/* 교회 소식 (트리 구조 적용) */}
+      {/* 교회 소식 (트리 구조 편집 가능 + 삭제 기능) */}
       {selectedDetail?.info.includes("notice") && (
         <div className="church-news">{renderTree(churchNews.children)}</div>
       )}
