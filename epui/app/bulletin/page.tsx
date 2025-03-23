@@ -21,6 +21,8 @@ export default function Bulletin() {
   const worshipOrder = useRecoilValue(worshipOrderState);
   const [selectedInfo, setSelectedInfo] =
     useState<WorshipOrderItem[]>(worshipOrder);
+
+  console.log(selectedInfo);
   return (
     <div className="bulletin_wrap">
       <div className="editable">

@@ -205,3 +205,27 @@ h2 {
   max-width: 600px;
   margin: 10px 0;
 }
+
+.tree-list {
+  list-style: none;
+  padding-left: 1rem;
+}
+
+.tree-item {
+  margin: 4px 0;
+  // display: flex;
+  // align-items: center;
+}
+
+.toggle-btn {
+  margin-right: 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.children {
+  padding-left: 15px;
+  // border-left: 2px solid #ddd;
+}
