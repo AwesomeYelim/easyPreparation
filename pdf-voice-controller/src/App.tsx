@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import SpeechRecognitionComponent from "./SpeechRecognition";
 import PdfViewer from "./PdfViewer";
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const pdfUrl = "../주만바라 볼찌라.pdf";
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
 
   const handleVoiceCommand = (transcript: string) => {
     console.log("Recognized Transcript: ", transcript);
@@ -17,10 +17,17 @@ const App: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentPage((prev) => prev + 1);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
     <div>
       <h1>Voice Controlled PDF Viewer</h1>
-      <PdfViewer pdfUrl={pdfUrl} currentPage={currentPage} />
+      <PdfViewer currentPage={currentPage} pdfFile={pdfFile} />
       <SpeechRecognitionComponent onRecognized={handleVoiceCommand} />
     </div>
   );
