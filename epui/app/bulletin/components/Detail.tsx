@@ -10,10 +10,9 @@ export default function Detail({
 }: {
   setSelectedItems: React.Dispatch<React.SetStateAction<WorshipOrderItem[]>>;
 }) {
-  const [selectedDetail, setSelectedDetail] =
-    useRecoilState(selectedDetailState);
+  const [selectedDetail, setSelectedDetail] = useRecoilState(selectedDetailState);
 
-  const handleValueChange = (key: number, newObj: string) => {
+  const handleValueChange = (key: string, newObj: string) => {
     const updateData = (items: WorshipOrderItem[]): WorshipOrderItem[] => {
       return items.map((item) => {
         if (item.children) {
@@ -37,7 +36,7 @@ export default function Detail({
 
     setSelectedItems((prevData) => updateData(prevData));
 
-    setSelectedDetail((prevDetail) => ({
+    setSelectedDetail((prevDetail: WorshipOrderItem) => ({
       ...prevDetail,
       obj: newObj,
     }));
@@ -53,16 +52,11 @@ export default function Detail({
               Object<span>center</span>
             </strong>
             {(selectedDetail.info.includes("b_") && (
-              <BibleSelect
-                handleValueChange={handleValueChange}
-                parentKey={selectedDetail?.key || ""}
-              />
+              <BibleSelect handleValueChange={handleValueChange} parentKey={selectedDetail?.key || ""} />
             )) || (
               <input
                 type="text"
-                onChange={(e) =>
-                  handleValueChange(selectedDetail.key, e.target.value)
-                }
+                onChange={(e) => handleValueChange(selectedDetail.key, e.target.value)}
                 placeholder={selectedDetail?.title}
               />
             )}
@@ -73,9 +67,7 @@ export default function Detail({
             </strong>
             <input
               type="text"
-              onChange={(e) =>
-                handleValueChange(selectedDetail.key, e.target.value)
-              }
+              onChange={(e) => handleValueChange(selectedDetail.key, e.target.value)}
               placeholder={selectedDetail?.lead || "새로 입력하세요"}
             />
           </p>
@@ -89,8 +81,7 @@ export default function Detail({
           setSelectedItems={setSelectedItems}
         />
       )}
-      {!selectedDetail?.info.includes("edit") &&
-        !selectedDetail?.info.includes("notice") && <>is not editable</>}
+      {!selectedDetail?.info.includes("edit") && !selectedDetail?.info.includes("notice") && <>is not editable</>}
     </section>
   );
 }

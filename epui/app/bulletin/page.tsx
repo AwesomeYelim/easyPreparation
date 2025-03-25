@@ -9,7 +9,7 @@ import { useRecoilValue } from "recoil";
 import { ResultPart } from "./components/ResultPage";
 
 export type WorshipOrderItem = {
-  key: number;
+  key: string;
   title: string;
   obj: string;
   info: string;
@@ -19,28 +19,18 @@ export type WorshipOrderItem = {
 
 export default function Bulletin() {
   const worshipOrder = useRecoilValue(worshipOrderState);
-  const [selectedInfo, setSelectedInfo] =
-    useState<WorshipOrderItem[]>(worshipOrder);
+  const [selectedInfo, setSelectedInfo] = useState<WorshipOrderItem[]>(worshipOrder);
 
   console.log(selectedInfo);
   return (
     <div className="bulletin_wrap">
       <div className="editable">
-        <WorshipOrder
-          selectedItems={selectedInfo}
-          setSelectedItems={setSelectedInfo}
-        />
-        <SelectedOrder
-          selectedItems={selectedInfo}
-          setSelectedItems={setSelectedInfo}
-        />
+        <WorshipOrder selectedItems={selectedInfo} setSelectedItems={setSelectedInfo} />
+        <SelectedOrder selectedItems={selectedInfo} setSelectedItems={setSelectedInfo} />
         <Detail setSelectedItems={setSelectedInfo} />
       </div>
       <div className="result">
-        <ResultPart
-          selectedItems={selectedInfo}
-          setSelectedItems={setSelectedInfo}
-        />
+        <ResultPart selectedItems={selectedInfo} setSelectedItems={setSelectedInfo} />
       </div>
     </div>
   );

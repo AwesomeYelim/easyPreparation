@@ -2,25 +2,18 @@ import React, { useState } from "react";
 import { WorshipOrderItem } from "../page";
 import EditChildNews from "./EditChildNews";
 
-interface ChurchNewsProps {
-  handleValueChange: (key: number, newObj: string) => void;
+export interface ChurchNewsProps {
+  handleValueChange: (key: string, newObj: string) => void;
   selectedDetail: WorshipOrderItem;
   setSelectedDetail: React.Dispatch<React.SetStateAction<WorshipOrderItem>>;
   setSelectedItems: React.Dispatch<React.SetStateAction<WorshipOrderItem[]>>;
 }
 
-const ChurchNews = ({
-  handleValueChange,
-  selectedDetail,
-  setSelectedDetail,
-  setSelectedItems,
-}: ChurchNewsProps) => {
-  const [selectedChild, setSelectedChild] = useState<WorshipOrderItem | null>(
-    null
-  );
-  const [expandedKeys, setExpandedKeys] = useState(new Set<number>());
+const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setSelectedItems }: ChurchNewsProps) => {
+  const [selectedChild, setSelectedChild] = useState<WorshipOrderItem>(selectedDetail);
+  const [expandedKeys, setExpandedKeys] = useState(new Set<string>());
 
-  const handleDeleteChild = (childKey: number) => {
+  const handleDeleteChild = (childKey: string) => {
     // selectedDetail 업데이트
     setSelectedDetail((prev) => {
       if (!prev) return prev;
@@ -43,9 +36,7 @@ const ChurchNews = ({
 
     // selectedItems에서 삭제
     setSelectedItems((prevItems) => {
-      const deleteItemRecursive = (
-        items: WorshipOrderItem[]
-      ): WorshipOrderItem[] =>
+      const deleteItemRecursive = (items: WorshipOrderItem[]): WorshipOrderItem[] =>
         items
           .map((item) => {
             const newItem = { ...item };
@@ -60,17 +51,13 @@ const ChurchNews = ({
 
       return deleteItemRecursive(prevItems);
     });
-
-    if (selectedChild?.key === childKey) {
-      setSelectedChild(null);
-    }
   };
 
   const handleSelectChild = (child: WorshipOrderItem) => {
     setSelectedChild(child);
   };
 
-  const toggleExpand = (key: number) => {
+  const toggleExpand = (key: string) => {
     setExpandedKeys((prev) => {
       const newKeys = new Set(prev);
       newKeys.has(key) ? newKeys.delete(key) : newKeys.add(key);
@@ -87,8 +74,7 @@ const ChurchNews = ({
           onClick={(e) => {
             e.stopPropagation();
             handleDeleteChild(news.key);
-          }}
-        >
+          }}>
           x
         </button>
       </span>
@@ -99,9 +85,8 @@ const ChurchNews = ({
           onClick={(e) => {
             e.stopPropagation();
             toggleExpand(news.key);
-          }}
-        >
-          {expandedKeys.has(news.key) ? "▼" : "◀︎"}
+          }}>
+          {expandedKeys.has(news.key) ? "▼" : "◀"}
         </button>
       )}
 
@@ -116,8 +101,7 @@ const ChurchNews = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDeleteChild(child.key);
-                  }}
-                >
+                  }}>
                   x
                 </button>
               </span>
@@ -130,9 +114,7 @@ const ChurchNews = ({
 
   return (
     <>
-      <div className="church-news-container">
-        {selectedDetail?.children?.map(renderNewsItem)}
-      </div>
+      <div className="church-news-container">{selectedDetail?.children?.map(renderNewsItem)}</div>
 
       {selectedChild && (
         <EditChildNews

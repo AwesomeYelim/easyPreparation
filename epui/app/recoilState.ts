@@ -1,6 +1,6 @@
 import { atom } from "recoil";
 import worshipData from "@/data/data.json";
-import { WorshipOrderItem } from "./bulletin/components/WorshipOrder";
+import { WorshipOrderItem } from "./bulletin/page";
 
 // 예배 순서 상태
 export const worshipOrderState = atom({
@@ -8,7 +8,7 @@ export const worshipOrderState = atom({
   default: worshipData,
 });
 
-export const selectedDetailState = atom<WorshipOrderItem | null>({
+export const selectedDetailState = atom<WorshipOrderItem>({
   key: "selectedDetailState",
-  default: null,
+  default: worshipData[0],
 });

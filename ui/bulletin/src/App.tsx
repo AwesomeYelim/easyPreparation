@@ -28,11 +28,11 @@ const FigmaTokenInput: React.FC = () => {
       {!isSubmitted ? (
         <FigmaTokenForm onSubmit={handleSubmit} />
       ) : (
-      <div>
-        <h1>Editable Data</h1>
-        <EditableData />
-      </div>
-       )} 
+        <div>
+          <h1>Editable Data</h1>
+          <EditableData />
+        </div>
+      )}
     </div>
   );
 };
