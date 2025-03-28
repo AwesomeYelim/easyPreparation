@@ -6,12 +6,38 @@ interface SpeechRecognitionEvent extends Event {
   resultIndex: number;
 }
 
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
+
+const songLyrics = [
+  "의지했던 모든 것 변해가고\n억울한 마음은 커져가네",
+  "부끄럼 없이 살고 싶은 맘\n주님 아시네",
+  "모든 일을 선으로 이겨내고\n죄의 유혹을 따르지 않네",
+  "나를 구원하신 영원한 그 사랑\n크신 그 은혜 날 붙드시네",
+  "주어진 내 삶이 작게만 보여도\n선하신 주 나를 이끄심 보네",
+  "중심을 보시는 주님만 따르네\n날 택하신 주만 의지해",
+  "보이는 상황에 무너질지라도\n예수 능력이 나를 붙드네",
+  "보이지 않아도 주님만 따르네\n내 평생 주님을 노래하리라",
+  "모든 일을 선으로 이겨내고\n죄의 유혹을 따르지 않네",
+  "나를 구원하신 영원한 그 사랑\n크신 그 은혜 날 붙드시네",
+  "주어진 내 삶이 작게만 보여도\n선하신 주 나를 이끄심 보네",
+  "중심을 보시는 주님만 따르네\n날 택하신 주만 의지해",
+  "보이는 상황에 무너질지라도\n예수 능력이 나를 붙드네",
+  "보이지 않아도 주님만 따르네\n내 평생 주님을 노래하리라",
+];
+
 const AudioVisualizer: React.FC = () => {
   const mountRef = useRef<HTMLDivElement>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const meshRef = useRef<THREE.Mesh | null>(null);
   const [isAudioReady, setIsAudioReady] = useState(false);
+  const [lyrics, setLyrics] = useState<string[]>([]);
+  const [currentLine, setCurrentLine] = useState<number>(0);
   let renderer: THREE.WebGLRenderer | null = null;
 
   useEffect(() => {
@@ -95,7 +121,7 @@ const AudioVisualizer: React.FC = () => {
         const volume =
           dataArrayRef.current.reduce((a, b) => a + b, 0) /
           dataArrayRef.current.length;
-        const scale = 1 + volume / 50;
+        const scale = 1 + volume / 100;
         meshRef.current.scale.set(scale, scale, scale);
 
         const bass =
@@ -132,6 +158,37 @@ const AudioVisualizer: React.FC = () => {
     };
     window.addEventListener("resize", onResize);
 
+    // 음성 인식 설정 (SpeechRecognition 또는 webkitSpeechRecognition 사용)
+    const recognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!recognition) {
+      console.error("SpeechRecognition API is not supported in this browser.");
+      return;
+    }
+
+    const recognitionInstance = new recognition();
+    recognitionInstance.lang = "ko-KR"; // 한국어로 설정
+    recognitionInstance.continuous = true;
+    recognitionInstance.interimResults = true; // 중간 결과 허용
+
+    recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
+      const transcript = event.results[event.resultIndex][0].transcript;
+      console.log("Recognized speech:", transcript);
+
+      // transcript와 매칭되는 가사 줄을 찾기
+      const matchedLine = songLyrics.findIndex((line) =>
+        line.includes(transcript)
+      );
+
+      if (matchedLine !== -1) {
+        // 해당 줄을 찾았으면, 그 줄로 이동
+        setLyrics([songLyrics[matchedLine]]);
+        setCurrentLine(matchedLine); // 매칭된 줄로 currentLine 설정
+      }
+    };
+
+    recognitionInstance.start(); // 음성 인식 시작
+
     return () => {
       console.log("Cleaning up...");
       window.removeEventListener("resize", onResize);
@@ -143,11 +200,30 @@ const AudioVisualizer: React.FC = () => {
         mountRef.current.removeChild(renderer.domElement);
       }
     };
-  }, []);
+  }, [currentLine]);
 
   return (
     <div ref={mountRef} style={{ width: "100vw", height: "100vh" }}>
       {!isAudioReady && <p>Loading Audio...</p>}
+      <div
+        style={{
+          position: "absolute",
+          width: "70%",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          color: "white",
+          fontSize: "5rem",
+          fontWeight: "bold",
+          fontFamily: "Nanum, sans-serif",
+          textAlign: "center",
+          lineHeight: "1.5",
+        }}
+      >
+        {lyrics.map((line, index) => (
+          <p key={index}>{line}</p>
+        ))}
+      </div>
     </div>
   );
 };
