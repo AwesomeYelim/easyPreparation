@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import SpeechRecognitionComponent from "./SpeechRecognition";
-import PdfViewer from "./PdfViewer";
+import AudioVisualizer from "./AudioVisualizer";
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -26,9 +25,7 @@ const App: React.FC = () => {
 
   return (
     <div>
-      <h1>Voice Controlled PDF Viewer</h1>
-      <PdfViewer currentPage={currentPage} pdfFile={pdfFile} />
-      <SpeechRecognitionComponent onRecognized={handleVoiceCommand} />
+      <AudioVisualizer />
     </div>
   );
 };
