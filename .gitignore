@@ -4,6 +4,9 @@ output/
 config/*
 lyricsPPT_v*.zip
 public
+.next/
+next-env.d.ts
+pnpm-lock.yaml
 
 node_modules/
 .pnp

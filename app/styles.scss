@@ -149,20 +149,29 @@ h2 {
   margin: 5px;
   font-size: 14px;
   cursor: pointer;
-  .delete-btn {
+  button {
     width: 13px;
     height: 13px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-left: 5px;
     font-weight: 700;
     border: none;
-    background-color: #fff;
     border-radius: 50%;
-    color: #1f3f62;
     cursor: pointer;
     font-size: 9px;
+    &.delete-btn {
+      color: #1f3f62;
+      margin-left: 5px;
+      background-color: #fff;
+    }
+    &.plus-btn {
+      font-size: 0.8rem;
+      color: #fff;
+      margin-right: 5px;
+      background-color: #444444;
+      border: 1px solid #fff;
+    }
   }
 }
 
@@ -251,15 +260,6 @@ h2 {
 
 .expand-btn:hover {
   color: #0056b3;
-}
-
-.sub-item .delete-btn {
-  width: 12px;
-  height: 12px;
-  font-size: 8px;
-  margin-left: 5px;
-  background-color: #fff;
-  color: #1f3f62;
 }
 
 .delete-btn:hover {
