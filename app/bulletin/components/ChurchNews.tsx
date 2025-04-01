@@ -21,81 +21,85 @@ const ChurchNews = ({
   const [addContent, setAddContent] = useState<WorshipOrderItem | null>(null);
 
   const handleModifyChild = (action: "DELETE" | "PLUS", childKey: string) => {
-    if (action === "DELETE") {
-      // 삭제 로직
-      setSelectedDetail((prev) => {
-        if (!prev) return prev;
+    switch (action) {
+      case "DELETE":
+        setSelectedDetail((prev) => {
+          if (!prev) return prev;
 
-        const deleteRecursive = (
-          items: WorshipOrderItem[]
-        ): WorshipOrderItem[] =>
-          items
-            .map((child) => {
-              if (child.key === childKey) return null;
-              return child.children
-                ? { ...child, children: deleteRecursive(child.children) }
-                : child;
-            })
-            .filter(Boolean) as WorshipOrderItem[];
+          const deleteRecursive = (
+            items: WorshipOrderItem[]
+          ): WorshipOrderItem[] =>
+            items
+              .map((child) => {
+                if (child.key === childKey) return null;
+                return child.children
+                  ? { ...child, children: deleteRecursive(child.children) }
+                  : child;
+              })
+              .filter(Boolean) as WorshipOrderItem[];
 
-        return { ...prev, children: deleteRecursive(prev.children || []) };
-      });
+          return { ...prev, children: deleteRecursive(prev.children || []) };
+        });
 
-      setSelectedItems((prevItems) => {
-        const deleteItemRecursive = (
-          items: WorshipOrderItem[]
-        ): WorshipOrderItem[] =>
-          items
-            .map((item) => {
-              if (item.key === childKey) return null;
-              return item.children
-                ? { ...item, children: deleteItemRecursive(item.children) }
-                : item;
-            })
-            .filter(Boolean) as WorshipOrderItem[];
+        setSelectedItems((prevItems) => {
+          const deleteItemRecursive = (
+            items: WorshipOrderItem[]
+          ): WorshipOrderItem[] =>
+            items
+              .map((item) => {
+                if (item.key === childKey) return null;
+                return item.children
+                  ? { ...item, children: deleteItemRecursive(item.children) }
+                  : item;
+              })
+              .filter(Boolean) as WorshipOrderItem[];
 
-        return deleteItemRecursive(prevItems);
-      });
-    } else if (action === "PLUS") {
-      const keys = childKey.split(".");
-      const lastKey = parseInt(keys[keys.length - 1], 10);
-      const newKey = `${keys.slice(0, -1).join(".")}.${lastKey + 1}`;
+          return deleteItemRecursive(prevItems);
+        });
+      case "PLUS":
+        const keys = childKey.split(".");
+        const lastKey = parseInt(keys[keys.length - 1], 10);
+        const newKey = `${keys.slice(0, -1).join(".")}.${lastKey + 1}`;
 
-      const newChild: WorshipOrderItem = {
-        key: newKey,
-        title: "새로운 항목",
-        info: "c-edit",
-        obj: "",
-      };
+        const newChild: WorshipOrderItem = {
+          key: newKey,
+          title: "",
+          info: "c-edit",
+          obj: "",
+          children: [
+            {
+              key: `${newKey}.1`,
+              title: "sample",
+              info: "c-edit",
+              obj: "",
+            },
+          ],
+        };
 
-      setAddContent(newChild);
+        setAddContent(newChild);
     }
   };
 
   const handleAddNewItem = (title: string, obj: string) => {
     if (addContent) {
       const updatedChild = { ...addContent, title, obj };
-
       setSelectedDetail((prev) => {
         if (!prev) return prev;
 
         const insertSibling = (
           items: WorshipOrderItem[]
         ): WorshipOrderItem[] => {
-          return items.map((item) => {
+          return items.flatMap((item) => {
             const keys = addContent.key.split(".");
             const lastKey = parseInt(keys[keys.length - 1], 10);
             const beforeKey = `${keys.slice(0, -1).join(".")}.${lastKey - 1}`;
 
             if (item.key === beforeKey) {
-              return {
-                ...item,
-                children: [...(item.children || []), updatedChild],
-              };
+              return [item, updatedChild];
             } else if (item.children) {
-              return { ...item, children: insertSibling(item.children) };
+              return [{ ...item, children: insertSibling(item.children) }];
             }
-            return item;
+            return [item];
           });
         };
 
@@ -106,20 +110,17 @@ const ChurchNews = ({
         const insertSibling = (
           items: WorshipOrderItem[]
         ): WorshipOrderItem[] => {
-          return items.map((item) => {
+          return items.flatMap((item) => {
             const keys = addContent.key.split(".");
             const lastKey = parseInt(keys[keys.length - 1], 10);
             const beforeKey = `${keys.slice(0, -1).join(".")}.${lastKey - 1}`;
 
             if (item.key === beforeKey) {
-              return {
-                ...item,
-                children: [...(item.children || []), updatedChild],
-              };
+              return [item, updatedChild];
             } else if (item.children) {
-              return { ...item, children: insertSibling(item.children) };
+              return [{ ...item, children: insertSibling(item.children) }];
             }
-            return item;
+            return [item];
           });
         };
         return insertSibling(prevItems);
@@ -145,7 +146,16 @@ const ChurchNews = ({
       const backgroundColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 
       return (
-        <div key={news.key} className="news-tag-wrapper">
+        <div
+          key={news.key}
+          className="news-tag-wrapper"
+          style={{
+            boxShadow: !depth ? "2px 3px rgba(0, 0, 0, 0.1)" : "none",
+            border: !depth ? "1px solid #e5e5e5" : "none",
+            margin: !depth ? "5px" : "none",
+            borderRadius: "5px",
+          }}
+        >
           <span
             className="tag"
             onClick={() => setSelectedChild(news)}
@@ -184,8 +194,10 @@ const ChurchNews = ({
             <span
               className="tag"
               style={{
-                backgroundColor,
+                backgroundColor: "transparent",
+                color: "rgb(130 130 130)",
                 padding: "5px 10px",
+                border: "1px dashed #ccc",
                 borderRadius: "5px",
               }}
             >
@@ -219,7 +231,18 @@ const ChurchNews = ({
       </div>
 
       {addContent && (
-        <div className="add-item-form">
+        <div
+          className="add-item-form"
+          style={{
+            backgroundColor: "#fff",
+            padding: "16px",
+            borderRadius: "8px",
+            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "5px",
+          }}
+        >
           <input
             type="text"
             placeholder="타이틀을 입력하세요"
@@ -230,8 +253,16 @@ const ChurchNews = ({
                 title: e.target.value,
               }))
             }
+            style={{
+              width: "100%",
+              padding: "3px",
+              border: "1px solid #ccc",
+              borderRadius: "3px",
+              outline: "none",
+              fontSize: "0.8rem",
+            }}
           />
-          <textarea
+          <input
             placeholder="내용을 입력하세요"
             value={addContent.obj}
             onChange={(e) =>
@@ -240,9 +271,34 @@ const ChurchNews = ({
                 obj: e.target.value,
               }))
             }
+            style={{
+              width: "100%",
+              height: "50px",
+              padding: "3px",
+              border: "1px solid #ccc",
+              borderRadius: "3px",
+              outline: "none",
+              fontSize: "0.8rem",
+            }}
           />
           <button
             onClick={() => handleAddNewItem(addContent.title, addContent.obj)}
+            style={{
+              backgroundColor: "#007bff",
+              color: "#fff",
+              padding: "10px",
+              borderRadius: "6px",
+              fontSize: "16px",
+              border: "none",
+              cursor: "pointer",
+              transition: "background 0.3s",
+            }}
+            onMouseOver={(e) =>
+              (e.currentTarget.style.backgroundColor = "#0056b3")
+            }
+            onMouseOut={(e) =>
+              (e.currentTarget.style.backgroundColor = "#007bff")
+            }
           >
             항목 추가
           </button>
