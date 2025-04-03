@@ -24,7 +24,7 @@ export default function Bulletin() {
 
   const sendDataToGoServer = async () => {
     try {
-      const response = await fetch("http://localhost:8080/api/submit", {
+      const response = await fetch("http://138.2.119.220:8080/api/submit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
