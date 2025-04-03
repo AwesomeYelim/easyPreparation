@@ -46,6 +46,9 @@ APP_ENV=dev
 # apply 16:9 size -> current size
   width : 1409.0,
   height : 792.5
+    - inner
+        width : 1270
+        height : 530
   
 # 16:10
   width : 323.33,
@@ -54,6 +57,9 @@ APP_ENV=dev
 # apply 16:10 size -> current size
   width : 1409.0,
   height : 880.6
+      - inner
+        width : 1270
+        height : 590
   
 # A4 size
   width : 297.0,
