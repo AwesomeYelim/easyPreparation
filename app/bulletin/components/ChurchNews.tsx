@@ -3,20 +3,14 @@ import { WorshipOrderItem } from "../page";
 import EditChildNews from "./EditChildNews";
 
 export interface ChurchNewsProps {
-  handleValueChange: (key: string, newObj: string) => void;
+  handleValueChange: (key: string, { newObj, newLead }: { newObj: string; newLead?: string }) => void;
   selectedDetail: WorshipOrderItem;
   setSelectedDetail: React.Dispatch<React.SetStateAction<WorshipOrderItem>>;
   setSelectedItems: React.Dispatch<React.SetStateAction<WorshipOrderItem[]>>;
 }
 
-const ChurchNews = ({
-  handleValueChange,
-  selectedDetail,
-  setSelectedDetail,
-  setSelectedItems,
-}: ChurchNewsProps) => {
-  const [selectedChild, setSelectedChild] =
-    useState<WorshipOrderItem>(selectedDetail);
+const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setSelectedItems }: ChurchNewsProps) => {
+  const [selectedChild, setSelectedChild] = useState<WorshipOrderItem>(selectedDetail);
   const [expandedKeys, setExpandedKeys] = useState(new Set<string>());
   const [addContent, setAddContent] = useState<WorshipOrderItem | null>(null);
 
@@ -26,15 +20,11 @@ const ChurchNews = ({
         setSelectedDetail((prev) => {
           if (!prev) return prev;
 
-          const deleteRecursive = (
-            items: WorshipOrderItem[]
-          ): WorshipOrderItem[] =>
+          const deleteRecursive = (items: WorshipOrderItem[]): WorshipOrderItem[] =>
             items
               .map((child) => {
                 if (child.key === childKey) return null;
-                return child.children
-                  ? { ...child, children: deleteRecursive(child.children) }
-                  : child;
+                return child.children ? { ...child, children: deleteRecursive(child.children) } : child;
               })
               .filter(Boolean) as WorshipOrderItem[];
 
@@ -42,15 +32,11 @@ const ChurchNews = ({
         });
 
         setSelectedItems((prevItems) => {
-          const deleteItemRecursive = (
-            items: WorshipOrderItem[]
-          ): WorshipOrderItem[] =>
+          const deleteItemRecursive = (items: WorshipOrderItem[]): WorshipOrderItem[] =>
             items
               .map((item) => {
                 if (item.key === childKey) return null;
-                return item.children
-                  ? { ...item, children: deleteItemRecursive(item.children) }
-                  : item;
+                return item.children ? { ...item, children: deleteItemRecursive(item.children) } : item;
               })
               .filter(Boolean) as WorshipOrderItem[];
 
@@ -86,9 +72,7 @@ const ChurchNews = ({
       setSelectedDetail((prev) => {
         if (!prev) return prev;
 
-        const insertSibling = (
-          items: WorshipOrderItem[]
-        ): WorshipOrderItem[] => {
+        const insertSibling = (items: WorshipOrderItem[]): WorshipOrderItem[] => {
           return items.flatMap((item) => {
             const keys = addContent.key.split(".");
             const lastKey = parseInt(keys[keys.length - 1], 10);
@@ -107,9 +91,7 @@ const ChurchNews = ({
       });
 
       setSelectedItems((prevItems) => {
-        const insertSibling = (
-          items: WorshipOrderItem[]
-        ): WorshipOrderItem[] => {
+        const insertSibling = (items: WorshipOrderItem[]): WorshipOrderItem[] => {
           return items.flatMap((item) => {
             const keys = addContent.key.split(".");
             const lastKey = parseInt(keys[keys.length - 1], 10);
@@ -154,8 +136,7 @@ const ChurchNews = ({
             border: !depth ? "1px solid #e5e5e5" : "none",
             margin: !depth ? "5px" : "none",
             borderRadius: "5px",
-          }}
-        >
+          }}>
           <span
             className="tag"
             onClick={() => setSelectedChild(news)}
@@ -164,16 +145,14 @@ const ChurchNews = ({
               color: lightness > 60 ? "#000" : "#fff",
               padding: "5px 10px",
               borderRadius: "5px",
-            }}
-          >
+            }}>
             {news.title}
             <button
               className="delete-btn"
               onClick={(e) => {
                 e.stopPropagation();
                 handleModifyChild("DELETE", news.key);
-              }}
-            >
+              }}>
               x
             </button>
           </span>
@@ -184,8 +163,7 @@ const ChurchNews = ({
               onClick={(e) => {
                 e.stopPropagation();
                 toggleExpand(news.key);
-              }}
-            >
+              }}>
               {expandedKeys.has(news.key) ? "▼" : "◀"}
             </button>
           )}
@@ -199,15 +177,13 @@ const ChurchNews = ({
                 padding: "5px 10px",
                 border: "1px dashed #ccc",
                 borderRadius: "5px",
-              }}
-            >
+              }}>
               <button
                 className="plus-btn"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleModifyChild("PLUS", news.key);
-                }}
-              >
+                }}>
                 +
               </button>
               추가
@@ -215,9 +191,7 @@ const ChurchNews = ({
           )}
 
           {news.children && expandedKeys.has(news.key) && (
-            <div className="sub-news">
-              {renderNewsList(news.children, depth + 1)}
-            </div>
+            <div className="sub-news">{renderNewsList(news.children, depth + 1)}</div>
           )}
         </div>
       );
@@ -226,9 +200,7 @@ const ChurchNews = ({
 
   return (
     <>
-      <div className="church-news-container">
-        {selectedDetail?.children && renderNewsList(selectedDetail.children)}
-      </div>
+      <div className="church-news-container">{selectedDetail?.children && renderNewsList(selectedDetail.children)}</div>
 
       {addContent && (
         <div
@@ -241,8 +213,7 @@ const ChurchNews = ({
             display: "flex",
             flexDirection: "column",
             gap: "5px",
-          }}
-        >
+          }}>
           <input
             type="text"
             placeholder="타이틀을 입력하세요"
@@ -293,13 +264,8 @@ const ChurchNews = ({
               cursor: "pointer",
               transition: "background 0.3s",
             }}
-            onMouseOver={(e) =>
-              (e.currentTarget.style.backgroundColor = "#0056b3")
-            }
-            onMouseOut={(e) =>
-              (e.currentTarget.style.backgroundColor = "#007bff")
-            }
-          >
+            onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#0056b3")}
+            onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#007bff")}>
             항목 추가
           </button>
         </div>

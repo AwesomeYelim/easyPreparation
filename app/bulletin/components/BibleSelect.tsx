@@ -11,7 +11,7 @@ type Selection = {
 };
 
 interface BibleSelectProps {
-  handleValueChange: (key: string, newObj: string) => void;
+  handleValueChange: (key: string, { newObj, newLead }: { newObj: string; newLead?: string }) => void;
   parentKey: string;
 }
 
@@ -61,19 +61,17 @@ const BibleSelect: React.FC<BibleSelectProps> = ({ handleValueChange, parentKey 
           const last = updatedRanges[1];
 
           if (updatedRanges.length > 1) {
-            handleValueChange(
-              parentKey,
-              `${bibleData[selectedBook.book as BibleKey].kor}_${bibleData[selectedBook.book as BibleKey].index}/${
-                first.chapter
-              }:${first.verse}-${last.chapter}:${last.verse}`
-            );
+            handleValueChange(parentKey, {
+              newObj: `${bibleData[selectedBook.book as BibleKey].kor}_${
+                bibleData[selectedBook.book as BibleKey].index
+              }/${first.chapter}:${first.verse}-${last.chapter}:${last.verse}`,
+            });
           } else {
-            handleValueChange(
-              parentKey,
-              `${bibleData[selectedBook.book as BibleKey].kor}_${bibleData[selectedBook.book as BibleKey].index}/${
-                first.chapter
-              }:${first.verse}`
-            );
+            handleValueChange(parentKey, {
+              newObj: `${bibleData[selectedBook.book as BibleKey].kor}_${
+                bibleData[selectedBook.book as BibleKey].index
+              }/${first.chapter}:${first.verse}`,
+            });
           }
 
           return updatedRanges;

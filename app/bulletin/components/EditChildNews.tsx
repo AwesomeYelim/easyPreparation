@@ -1,9 +1,8 @@
 import React from "react";
 import { WorshipOrderItem } from "../page";
-import { ChurchNewsProps } from "./ChurchNews";
 
 interface EditChildNewsProps {
-  handleValueChange: (key: string, newObj: string) => void;
+  handleValueChange: (key: string, { newObj, newLead }: { newObj: string; newLead?: string }) => void;
   selectedChild: WorshipOrderItem;
   setSelectedChild: React.Dispatch<React.SetStateAction<WorshipOrderItem>>;
 }
@@ -25,7 +24,7 @@ export default function EditChildNews({
           const newObj = e.target.value;
           setSelectedChild((prev) => ({ ...prev, obj: newObj }));
           if (handleValueChange) {
-            handleValueChange(selectedChild.key, newObj); // 부모에서 받은 handleValueChange 호출
+            handleValueChange(selectedChild.key, { newObj }); // 부모에서 받은 handleValueChange 호출
           }
         }}
         placeholder="Enter news content"

@@ -8,6 +8,8 @@ export function ResultPart({
   selectedItems: WorshipOrderItem[];
   setSelectedItems: React.Dispatch<React.SetStateAction<WorshipOrderItem[]>>;
 }) {
+  console.log(selectedItems);
+
   return (
     <div className="card">
       <h2>생성된 예배 내용</h2>

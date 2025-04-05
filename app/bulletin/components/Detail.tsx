@@ -12,7 +12,7 @@ export default function Detail({
 }) {
   const [selectedDetail, setSelectedDetail] = useRecoilState(selectedDetailState);
 
-  const handleValueChange = (key: string, newObj: string) => {
+  const handleValueChange = (key: string, { newObj, newLead }: { newObj: string; newLead?: string }) => {
     const updateData = (items: WorshipOrderItem[]): WorshipOrderItem[] => {
       return items.map((item) => {
         if (item.children) {
@@ -24,8 +24,17 @@ export default function Detail({
         if (item.key === key) {
           switch (item.info) {
             case "b_edit":
+              if (newLead) {
+                return { ...item, obj: newObj, lead: newLead };
+              }
+              return { ...item, obj: newObj };
             case "c_edit":
+              if (newLead) {
+                return { ...item, obj: newObj, lead: newLead };
+              }
+              return { ...item, obj: newObj };
             case "r_edit":
+              return { ...item, lead: newLead };
             case "edit":
               return { ...item, obj: newObj };
           }
@@ -56,7 +65,7 @@ export default function Detail({
             )) || (
               <input
                 type="text"
-                onChange={(e) => handleValueChange(selectedDetail.key, e.target.value)}
+                onChange={(e) => handleValueChange(selectedDetail.key, { newObj: e.target.value })}
                 placeholder={selectedDetail?.title}
               />
             )}
@@ -67,7 +76,9 @@ export default function Detail({
             </strong>
             <input
               type="text"
-              onChange={(e) => handleValueChange(selectedDetail.key, e.target.value)}
+              onChange={(e) =>
+                handleValueChange(selectedDetail.key, { newObj: selectedDetail.obj, newLead: e.target.value })
+              }
               placeholder={selectedDetail?.lead || "새로 입력하세요"}
             />
           </p>
