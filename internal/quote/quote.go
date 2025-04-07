@@ -43,7 +43,6 @@ func getChapterVerses(bookIdx string, chapter int) (map[int]string, error) {
 
 	// 절 번호별로 맵핑
 	versesMap := make(map[int]string)
-
 	for _, v := range verses {
 		v = strings.TrimSpace(v) // 앞뒤 공백 제거
 
@@ -51,13 +50,19 @@ func getChapterVerses(bookIdx string, chapter int) (map[int]string, error) {
 		if strings.HasPrefix(v, "<b>") {
 			endIdx := strings.Index(v, "</b>")
 			if endIdx > -1 {
+
 				// `<b>숫자.</b>` 부분 추출 후 공백 제거
 				prefix := v[3:endIdx] // "<b>1.</b>" → "1."
 				prefix = strings.TrimSpace(prefix)
 
+				if strings.Contains(prefix, "<b>") {
+					prefix = prefix[3:]
+					prefix = strings.TrimSpace(prefix)
+				}
 				// 절 번호 변환
 				var verseNum int
 				_, err := fmt.Sscanf(prefix, "%d.", &verseNum)
+
 				if err == nil {
 					// 절 번호가 존재하면 텍스트 저장
 					text := v[endIdx+4:]                // "</b>" 이후부터가 구절 내용

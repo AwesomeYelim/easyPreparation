@@ -9,6 +9,7 @@ import (
 func TestGetQuote(t *testing.T) {
 	// 📌 실제 사용할 forUrl 예제
 	testCases := []string{
+		"23/53:1-53:12",
 		"1/1:1",
 		"4/3:4",
 	}

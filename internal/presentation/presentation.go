@@ -292,7 +292,7 @@ func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config, execPath str
 	case "성시교독":
 		pdf.setOutDirFiles("responsive_reading", con.Obj)
 	case "교회소식":
-		pdf.DrawChurchNews(fontInfo, con, hLColor, pdf.Config.Padding, pdf.Config.Padding*2)
+		pdf.DrawChurchNews(fontInfo, con, hLColor, pdf.Config.Padding, pdf.Config.Padding*2.5)
 	case "참회의 기도":
 		pdf.SetText(fontInfo, true, hLColor)
 		pdf.SetXY(pdf.Config.Padding, pdf.Config.Padding*2)
@@ -345,7 +345,7 @@ func (pdf *PDF) DrawChurchNews(fontInfo classification.FontInfo, con gui.Worship
 
 	// 최종 출력
 	pdf.SetXY(x, y)
-	pdf.MultiCell(pdf.Config.InnerRectangle.Width, fontInfo.FontSize/1.8, tmpData, "", "L", false)
+	pdf.MultiCell(pdf.Config.InnerRectangle.Width, fontInfo.FontSize/2.3, tmpData, "", "L", false)
 }
 
 func (pdf *PDF) setBegin(con gui.WorshipInfo, lines int) {
@@ -362,7 +362,7 @@ func (pdf *PDF) setBegin(con gui.WorshipInfo, lines int) {
 
 		// 페이지 처리 조건
 		if (i+1)%lines == 0 || i == len(pdf.BibleVerse)-1 {
-			pdf.SetXY(pdf.Config.Padding, pdf.Config.Padding*2)
+			pdf.SetXY(pdf.Config.Padding, pdf.Config.Padding*2.5)
 			pdf.MultiCell(pdf.Config.InnerRectangle.Width, pdf.Config.FontSize/2, tmpEl, "", "L", false)
 			tmpEl = ""
 
@@ -383,7 +383,7 @@ func (pdf *PDF) setBody(lines int) {
 
 		// 페이지 처리 조건
 		if (i+1)%lines == 0 || i == len(pdf.BibleVerse)-1 {
-			pdf.SetXY(pdf.Config.Padding, pdf.Config.Padding*2)
+			pdf.SetXY(pdf.Config.Padding, pdf.Config.Padding*2.5)
 			pdf.MultiCell(pdf.Config.InnerRectangle.Width, pdf.Config.FontSize/2, tmpEl, "", "L", false)
 			tmpEl = ""
 
