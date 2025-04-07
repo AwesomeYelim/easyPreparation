@@ -55,9 +55,44 @@
     font-weight: bold;
     text-align: center;
   }
+}
 
-  .add-selection-button {
-    margin-top: 10px;
-    margin-right: 10px;
-  }
+.add-selection-button {
+  margin-top: 12px;
+  background-color: #4a90e2;
+  border: none;
+  padding: 5px 10px;
+  margin-right: 5px;
+  color: white;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.confirm-button:hover,
+.add-selection-button:hover {
+  background-color: #357ab8;
+}
+.multi-selection-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.verse-chip {
+  background-color: #f0f4ff;
+  border: 1px solid #b3cfff;
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-size: 14px;
+  color: #333;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+  transition: background-color 0.2s ease;
+}
+
+.verse-chip:hover {
+  background-color: #d8e7ff;
 }
