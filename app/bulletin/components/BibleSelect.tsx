@@ -28,7 +28,11 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
   let [chapter, verse] = chapterverse.split(":");
   const isRanged = verse.includes("-");
 
-  const [selectedBook, setSelectedBook] = useState<Selection>({ book });
+  const [selectedBook, setSelectedBook] = useState<Selection>({
+    book,
+    chapter: 0,
+    verse: 0,
+  });
   const selectedInit = isRanged
     ? [
         { book, chapter: +chapter, verse: +verse.split("-")[0] },
