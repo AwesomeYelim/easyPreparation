@@ -24,23 +24,37 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
   parentKey,
 }) => {
   const selectedDetail = useRecoilValue(selectedDetailState);
-  const [book, chapterverse] = selectedDetail.obj.split("_");
-  let [chapter, verse] = chapterverse.split(":");
-  const isRanged = verse.includes("-");
+  // const [book, chapterverse] = selectedDetail.obj.split("_");
+  const totalInfo = selectedDetail.obj;
+  let [book, chapterverse] = totalInfo.includes(",")
+    ? totalInfo.split(", ")[0].split("_")
+    : totalInfo.split("_");
+  // const isRanged = chapterverse.includes("-");
+  // let [first, second] = isRanged ? chapterverse.split("-") : chapterverse;
+
+  if (book.length > 1) {
+    const findKey = Object.entries(bibleData).find(
+      ([_, v]) => v.kor === book
+    )?.[0];
+    book = findKey as string;
+  }
 
   const [selectedBook, setSelectedBook] = useState<Selection>({
     book,
     chapter: 0,
     verse: 0,
   });
-  const selectedInit = isRanged
-    ? [
-        { book, chapter: +chapter, verse: +verse.split("-")[0] },
-        { book, chapter: +chapter, verse: +verse.split("-")[1] },
-      ]
-    : [{ book, chapter: +chapter, verse: +verse }];
-  const [selectedRanges, setSelectedRanges] =
-    useState<Selection[]>(selectedInit);
+  // const selectedInit = isRanged
+  //   ? [
+  //       { book, chapter: +first.split(":")[0], verse: +first.split(":")[1] },
+  //       {
+  //         book,
+  //         chapter: +second.split(":")[0],
+  //         verse: +second.split(":")[1] || +second.split(":")[0],
+  //       },
+  //     ]
+  //   : [{ book, chapter: +first.split(":")[0], verse: +first.split(":")[1] }];
+  const [selectedRanges, setSelectedRanges] = useState<Selection[]>([]);
   const [multiSelection, setMultiSelection] = useState<Selection[][]>([]);
 
   const handler = {
@@ -232,7 +246,7 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
             const first = ranges[0];
             const last = ranges[1] || first;
             const kor = bibleData[first.book as BibleKey].kor;
-
+            console.log(first);
             const displayText =
               `${kor} ${first.chapter}:${first.verse}` +
               (ranges.length > 1
