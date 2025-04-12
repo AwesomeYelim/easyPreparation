@@ -24,7 +24,9 @@ export default function EditChildNews({
     ): WorshipOrderItem | null => {
       if (!items) return null;
       for (const item of items) {
-        if (item.key === key) return item;
+        if (item.key === key) {
+          return item;
+        }
         if (item.children) {
           const found = findMatchingChild(item.children, key);
           if (found) return found;

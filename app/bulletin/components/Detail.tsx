@@ -19,38 +19,32 @@ export default function Detail({
   ) => {
     const updateData = (items: WorshipOrderItem[]): WorshipOrderItem[] => {
       return items.map((item) => {
+        let updatedItem: WorshipOrderItem = { ...item };
+
         if (item.children) {
-          return {
-            ...item,
-            children: updateData(item.children),
+          const updatedChildren = updateData(item.children);
+          updatedItem = {
+            ...updatedItem,
+            children: updatedChildren,
           };
         }
 
-        if (item.key !== key) return item;
-
-        const updatedItem: WorshipOrderItem = { ...item };
-        const detailUpdate: Partial<WorshipOrderItem> = {};
-
-        if (["b_edit", "c_edit", "edit"].includes(item.info)) {
-          if (newObj) {
-            updatedItem.obj = newObj;
-            detailUpdate.obj = newObj;
-          }
-          if (newLead) {
+        if (item.key === key) {
+          if (["b_edit", "c_edit", "edit"].includes(item.info)) {
+            if (newObj) {
+              updatedItem.obj = newObj;
+            }
+            if (newLead) {
+              updatedItem.lead = newLead;
+            }
+          } else if (item.info === "r_edit" && newLead) {
             updatedItem.lead = newLead;
-            detailUpdate.lead = newLead;
           }
-        } else if (item.info === "r_edit" && newLead) {
-          updatedItem.lead = newLead;
-          detailUpdate.lead = newLead;
         }
 
-        // key가 일치하는 경우에만 selectedDetail 업데이트
+        // selectedDetail과 같은 key면, 전체를 업데이트
         if (item.key === selectedDetail.key) {
-          setSelectedDetail((prevDetail: WorshipOrderItem) => ({
-            ...prevDetail,
-            ...detailUpdate,
-          }));
+          setSelectedDetail(updatedItem);
         }
 
         return updatedItem;
