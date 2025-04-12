@@ -1,16 +1,47 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { WorshipOrderItem } from "../page";
 
 interface EditChildNewsProps {
-  handleValueChange: (key: string, { newObj, newLead }: { newObj: string; newLead?: string }) => void;
+  selectedDetail: WorshipOrderItem;
   selectedChild: WorshipOrderItem;
   setSelectedChild: React.Dispatch<React.SetStateAction<WorshipOrderItem>>;
+  handleValueChange: (
+    key: string,
+    { newObj, newLead }: { newObj: string; newLead?: string }
+  ) => void;
 }
+
 export default function EditChildNews({
+  selectedDetail,
   selectedChild,
   setSelectedChild,
-  handleValueChange, // handleValueChange를 부모에서 전달받음
+  handleValueChange,
 }: EditChildNewsProps) {
+  useEffect(() => {
+    const findMatchingChild = (
+      items: WorshipOrderItem[] | undefined,
+      key: string
+    ): WorshipOrderItem | null => {
+      if (!items) return null;
+      for (const item of items) {
+        if (item.key === key) return item;
+        if (item.children) {
+          const found = findMatchingChild(item.children, key);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const matched = findMatchingChild(
+      selectedDetail.children,
+      selectedChild.key
+    );
+    if (matched) {
+      setSelectedChild(matched);
+    }
+  }, [selectedDetail, selectedChild.key]); // key 기준으로 찾기
+
   return (
     <div className="form-group">
       <label htmlFor="obj" className="form-label">
@@ -23,9 +54,7 @@ export default function EditChildNews({
         onChange={(e) => {
           const newObj = e.target.value;
           setSelectedChild((prev) => ({ ...prev, obj: newObj }));
-          if (handleValueChange) {
-            handleValueChange(selectedChild.key, { newObj }); // 부모에서 받은 handleValueChange 호출
-          }
+          handleValueChange(selectedChild.key, { newObj });
         }}
         placeholder="Enter news content"
       />

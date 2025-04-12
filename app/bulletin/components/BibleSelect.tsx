@@ -24,13 +24,10 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
   parentKey,
 }) => {
   const selectedDetail = useRecoilValue(selectedDetailState);
-  // const [book, chapterverse] = selectedDetail.obj.split("_");
   const totalInfo = selectedDetail.obj;
-  let [book, chapterverse] = totalInfo.includes(",")
-    ? totalInfo.split(", ")[0].split("_")
-    : totalInfo.split("_");
-  // const isRanged = chapterverse.includes("-");
-  // let [first, second] = isRanged ? chapterverse.split("-") : chapterverse;
+  let book = totalInfo.includes(",")
+    ? totalInfo.split(", ")[0].split("_")[0]
+    : totalInfo.split("_")[0];
 
   if (book.length > 1) {
     const findKey = Object.entries(bibleData).find(
@@ -44,16 +41,7 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
     chapter: 0,
     verse: 0,
   });
-  // const selectedInit = isRanged
-  //   ? [
-  //       { book, chapter: +first.split(":")[0], verse: +first.split(":")[1] },
-  //       {
-  //         book,
-  //         chapter: +second.split(":")[0],
-  //         verse: +second.split(":")[1] || +second.split(":")[0],
-  //       },
-  //     ]
-  //   : [{ book, chapter: +first.split(":")[0], verse: +first.split(":")[1] }];
+
   const [selectedRanges, setSelectedRanges] = useState<Selection[]>([]);
   const [multiSelection, setMultiSelection] = useState<Selection[][]>([]);
 
@@ -92,10 +80,9 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
           .map((ranges) => {
             const first = ranges[0];
             const last = ranges[1] || first;
-            const kor = bibleData[first.book as BibleKey].kor;
             const index = bibleData[first.book as BibleKey].index;
             return (
-              `${kor}_${index}/${first.chapter}:${first.verse}` +
+              `${first.book}_${index}/${first.chapter}:${first.verse}` +
               (ranges.length > 1 ? `-${last.chapter}:${last.verse}` : "")
             );
           })
@@ -171,7 +158,11 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
                       장을 선택하세요
                     </option>
                     {currentBook.chapters.map((_, index) => (
-                      <option key={index} value={index + 1}>
+                      <option
+                        key={index}
+                        value={index + 1}
+                        disabled={selectedRanges[0]?.chapter > index + 1}
+                      >
                         {index + 1}장
                       </option>
                     ))}
@@ -193,8 +184,16 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
                     {Array.from(
                       { length: currentChapterVerses },
                       (_, i) => i + 1
-                    ).map((verse) => (
-                      <option key={verse} value={verse}>
+                    ).map((verse, index) => (
+                      <option
+                        key={verse}
+                        value={verse}
+                        disabled={
+                          selectedRanges[0]?.chapter == selectedBook.chapter
+                            ? selectedRanges[0]?.verse > index
+                            : false
+                        }
+                      >
                         {verse}절
                       </option>
                     ))}
@@ -246,7 +245,6 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
             const first = ranges[0];
             const last = ranges[1] || first;
             const kor = bibleData[first.book as BibleKey].kor;
-            console.log(first);
             const displayText =
               `${kor} ${first.chapter}:${first.verse}` +
               (ranges.length > 1

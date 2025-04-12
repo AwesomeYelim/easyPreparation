@@ -10,9 +10,13 @@ export default function Detail({
 }: {
   setSelectedItems: React.Dispatch<React.SetStateAction<WorshipOrderItem[]>>;
 }) {
-  const [selectedDetail, setSelectedDetail] = useRecoilState(selectedDetailState);
+  const [selectedDetail, setSelectedDetail] =
+    useRecoilState(selectedDetailState);
 
-  const handleValueChange = (key: string, { newObj, newLead }: { newObj: string; newLead?: string }) => {
+  const handleValueChange = (
+    key: string,
+    { newObj, newLead }: { newObj: string; newLead?: string }
+  ) => {
     const updateData = (items: WorshipOrderItem[]): WorshipOrderItem[] => {
       return items.map((item) => {
         if (item.children) {
@@ -21,34 +25,39 @@ export default function Detail({
             children: updateData(item.children),
           };
         }
-        if (item.key === key) {
-          switch (item.info) {
-            case "b_edit":
-              if (newLead) {
-                return { ...item, obj: newObj, lead: newLead };
-              }
-              return { ...item, obj: newObj };
-            case "c_edit":
-              if (newLead) {
-                return { ...item, obj: newObj, lead: newLead };
-              }
-              return { ...item, obj: newObj };
-            case "r_edit":
-              return { ...item, lead: newLead };
-            case "edit":
-              return { ...item, obj: newObj };
+
+        if (item.key !== key) return item;
+
+        const updatedItem: WorshipOrderItem = { ...item };
+        const detailUpdate: Partial<WorshipOrderItem> = {};
+
+        if (["b_edit", "c_edit", "edit"].includes(item.info)) {
+          if (newObj) {
+            updatedItem.obj = newObj;
+            detailUpdate.obj = newObj;
           }
+          if (newLead) {
+            updatedItem.lead = newLead;
+            detailUpdate.lead = newLead;
+          }
+        } else if (item.info === "r_edit" && newLead) {
+          updatedItem.lead = newLead;
+          detailUpdate.lead = newLead;
         }
-        return item;
+
+        // key가 일치하는 경우에만 selectedDetail 업데이트
+        if (item.key === selectedDetail.key) {
+          setSelectedDetail((prevDetail: WorshipOrderItem) => ({
+            ...prevDetail,
+            ...detailUpdate,
+          }));
+        }
+
+        return updatedItem;
       });
     };
 
     setSelectedItems((prevData) => updateData(prevData));
-
-    setSelectedDetail((prevDetail: WorshipOrderItem) => ({
-      ...prevDetail,
-      obj: newObj,
-    }));
   };
 
   return (
@@ -61,11 +70,18 @@ export default function Detail({
               Object<span>center</span>
             </strong>
             {(selectedDetail.info.includes("b_") && (
-              <BibleSelect handleValueChange={handleValueChange} parentKey={selectedDetail?.key || ""} />
+              <BibleSelect
+                handleValueChange={handleValueChange}
+                parentKey={selectedDetail?.key || ""}
+              />
             )) || (
               <input
                 type="text"
-                onChange={(e) => handleValueChange(selectedDetail.key, { newObj: e.target.value })}
+                onChange={(e) =>
+                  handleValueChange(selectedDetail.key, {
+                    newObj: e.target.value,
+                  })
+                }
                 placeholder={selectedDetail?.title}
               />
             )}
@@ -77,7 +93,10 @@ export default function Detail({
             <input
               type="text"
               onChange={(e) =>
-                handleValueChange(selectedDetail.key, { newObj: selectedDetail.obj, newLead: e.target.value })
+                handleValueChange(selectedDetail.key, {
+                  newObj: selectedDetail.obj,
+                  newLead: e.target.value,
+                })
               }
               placeholder={selectedDetail?.lead || "새로 입력하세요"}
             />
@@ -92,7 +111,8 @@ export default function Detail({
           setSelectedItems={setSelectedItems}
         />
       )}
-      {!selectedDetail?.info.includes("edit") && !selectedDetail?.info.includes("notice") && <>is not editable</>}
+      {!selectedDetail?.info.includes("edit") &&
+        !selectedDetail?.info.includes("notice") && <>is not editable</>}
     </section>
   );
 }
