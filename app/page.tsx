@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export default function Home() {
-  return redirect("/bulletin");
+  return redirect("/login");
 
   // return (
   //   <div className="w-80">

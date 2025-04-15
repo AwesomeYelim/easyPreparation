@@ -19,32 +19,6 @@ export default function NavBar() {
     dark: useState(Cookies.get("theme") === "dark"),
   };
 
-  // const admin = session?.user?.email === "uiop01900@gmail.com";
-
-  // const scrollToHide = useCallback(() => {
-  //   setNavInfo((prev) => ({ ...prev, to: window.pageYOffset }));
-  //   //  스크롤 아래로 내릴때
-  //   if (navInfo.to < window.pageYOffset) {
-  //     setNavInfo({ to: window.pageYOffset, hide: false });
-  //     //  스크롤 위로 올릴때
-  //   } else if (navInfo.to > window.pageYOffset) {
-  //     setNavInfo({ to: window.pageYOffset, hide: true });
-  //   }
-  // }, [navInfo]);
-
-  // useEffect(() => {
-  //   document.addEventListener("scroll", scrollToHide);
-  //   return () => document.removeEventListener("scroll", scrollToHide);
-  // }, [navInfo]);
-
-  // useEffect(() => {
-  //   if (dark) {
-  //     document.documentElement.dataset.theme = "dark";
-  //   } else {
-  //     document.documentElement.dataset.theme = "light";
-  //   }
-  // }, []);
-
   return (
     <div
       className="nav_wrapper"
