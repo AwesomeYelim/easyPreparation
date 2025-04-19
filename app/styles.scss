@@ -1,3 +1,6 @@
+// 이미지 경로
+$img: "/images/image.svg";
+
 /* styles.css */
 body {
   font-family: Arial, sans-serif;
@@ -331,4 +334,17 @@ h2 {
 
 .save-button:hover {
   background-color: #003f7f;
+}
+
+.login {
+  background: url($img) no-repeat -120px -6px;
+  width: 17px;
+  height: 20px;
+  cursor: pointer;
+
+  &.logout {
+    background: url($img) no-repeat -158px -6px;
+    width: 17px;
+    height: 20px;
+  }
 }

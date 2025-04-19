@@ -23,9 +23,7 @@ export const authOptions = {
       },
     }),
   ],
-  pages: {
-    signIn: "/login", // 로그인 페이지 경로
-  },
+
   secret: process.env.NEXTAUTH_SECRET,
 };
 

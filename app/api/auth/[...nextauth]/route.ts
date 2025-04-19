@@ -1,34 +1,18 @@
 import NextAuth from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
+import GithubProvider from "next-auth/providers/github";
+import GoogleProvider from "next-auth/providers/google";
 
-export const handler = NextAuth({
+const handler = NextAuth({
   providers: [
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        username: { label: "Username", type: "text" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        const user = { username: "user1", password: "password123" };
-
-        if (
-          credentials?.username === user.username &&
-          credentials?.password === user.password
-        ) {
-          return user; // 로그인 성공 시 사용자 객체 반환
-        } else {
-          return null; // 로그인 실패 시 null 반환
-        }
-      },
+    GithubProvider({
+      clientId: process.env.GITHUB_ID as string,
+      clientSecret: process.env.GITHUB_SECRET as string,
+    }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
     }),
   ],
-  session: {
-    strategy: "jwt", // JWT 기반 세션 관리
-  },
-  pages: {
-    signIn: "/login", // 로그인 페이지 경로 설정
-  },
 });
 
-export { handler as GET, handler as POST }; // GET, POST 메서드 처리
+export { handler as GET, handler as POST };

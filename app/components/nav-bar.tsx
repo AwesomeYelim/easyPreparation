@@ -1,29 +1,16 @@
 "use client";
 
-// import { signIn, signOut, useSession } from "next-auth/react";
+import { signIn, signOut, useSession } from "next-auth/react";
 import classNames from "classnames";
-import Cookies from "js-cookie";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
 
 export default function NavBar() {
-  // const { data: session } = useSession();
+  const { data: session } = useSession();
   const location = usePathname();
 
-  const {
-    navInfo: [navInfo, setNavInfo],
-    dark: [dark, setDark],
-  } = {
-    navInfo: useState({ to: 0, hide: true }),
-    dark: useState(Cookies.get("theme") === "dark"),
-  };
-
   return (
-    <div
-      className="nav_wrapper"
-      // style={{ height: navInfo.hide ? "111px" : "0px" }}
-    >
+    <div className="nav_wrapper">
       <nav>
         <Link
           href="/bulletin"
@@ -38,6 +25,30 @@ export default function NavBar() {
         >
           Lyrics
         </Link>
+
+        <i
+          title={(() => {
+            if (session?.user) {
+              return "logout";
+            }
+            return "login";
+          })()}
+          className={classNames("login", { logout: !!session?.user })}
+          onClick={() => {
+            if (session?.user) {
+              return signOut();
+            }
+            return signIn();
+          }}
+        />
+        {session?.user && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={session?.user.image as string}
+            style={{ width: 25, height: 25, borderRadius: "50%" }}
+            alt="profile-img"
+          />
+        )}
       </nav>
     </div>
   );
