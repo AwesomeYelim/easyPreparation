@@ -67,6 +67,7 @@
   font-weight: bold;
   border-radius: 8px;
   cursor: pointer;
+  max-width: 600px;
   transition: background-color 0.2s ease;
 }
 

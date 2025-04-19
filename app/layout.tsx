@@ -1,5 +1,5 @@
 import RecoilProvider from "@/components/recoil-provider";
-import NavBar from "@/components/nav-bar";
+import NavBar from "@/components/NavBar";
 import AuthProvider from "./lib/next-auth";
 import "@/globals.css";
 import "@/styles.scss";
