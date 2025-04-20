@@ -3,10 +3,10 @@ bin/
 output/
 config/*
 lyricsPPT_v*.zip
-public
 .next/
 next-env.d.ts
 pnpm-lock.yaml
+.env.*
 
 node_modules/
 .pnp
@@ -23,7 +23,7 @@ build/
 # misc
 .DS_Store
 .env.local
-.env.development.local
+.env.*
 .env.test.local
 .env.production.local
 
