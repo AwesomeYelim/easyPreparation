@@ -1,5 +1,3 @@
-"use client";
-
 export default function ProfileButton({
   image,
   onClick,
@@ -9,7 +7,6 @@ export default function ProfileButton({
 }) {
   return (
     <div style={{ position: "relative", display: "inline-block" }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={image}
         alt="profile-img"
