@@ -55,6 +55,7 @@ func (lpm *LyricsPresentationManager) Cleanup() {
 func (lpm *LyricsPresentationManager) CreatePresentation(lyricsInfo map[string]string) {
 	songTitle := lyricsInfo["songTitle"]
 	label := lyricsInfo["label"]
+	hasLyrics := lyricsInfo["hasLyrics"]
 
 	fontInfo := lpm.config.Classification.Lyrics.Presentation.FontInfo
 
@@ -69,17 +70,22 @@ func (lpm *LyricsPresentationManager) CreatePresentation(lyricsInfo map[string]s
 
 	songTitles := strings.Split(songTitle, ",")
 	backgroundImages, _ := os.ReadDir(lpm.outputDir)
+	instanceSize := gofpdf.SizeType{
+		Wd: extract.ConfigMem.Classification.Lyrics.Presentation.Width,
+		Ht: extract.ConfigMem.Classification.Lyrics.Presentation.Height,
+	}
 
 	for _, title := range songTitles {
 		song := &parser.SlideData{}
-		song.SearchLyricsList("https://music.bugs.co.kr/search/lyrics?q=%s", title, false)
+
+		if hasLyrics != "" {
+			song.Content = pkg.SplitTwoLines(hasLyrics)
+		} else {
+			song.SearchLyricsList("https://music.bugs.co.kr/search/lyrics?q=%s", title, false)
+		}
 
 		fileName := filepath.Join(strings.TrimSuffix(lpm.outputDir, "tmp"), sanitize.FileName(title)+".pdf")
 
-		instanceSize := gofpdf.SizeType{
-			Wd: extract.ConfigMem.Classification.Lyrics.Presentation.Width,
-			Ht: extract.ConfigMem.Classification.Lyrics.Presentation.Height,
-		}
 		objPdf := presentation.New(instanceSize)
 		objPdf.Config = extract.ConfigMem.Classification.Lyrics.Presentation
 

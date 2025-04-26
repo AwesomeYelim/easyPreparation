@@ -4,6 +4,7 @@ const SongTitleInput: React.FC = () => {
   const [aboutLyric, setAboutLyric] = useState({
     songTitle: "",
     label: "",
+    hasLyrics: "",
   });
 
   const handleSubmit = async (secureInfo) => {
@@ -36,7 +37,9 @@ const SongTitleInput: React.FC = () => {
         <input
           type="text"
           value={aboutLyric.label}
-          onChange={(e) => setAboutLyric({ ...aboutLyric, label: e.target.value })}
+          onChange={(e) =>
+            setAboutLyric({ ...aboutLyric, label: e.target.value })
+          }
           placeholder="교회 이름을 입력하세요. (ppt label 용)"
           style={{ padding: "10px", width: "300px", marginBottom: "10px" }}
         />
@@ -47,9 +50,24 @@ const SongTitleInput: React.FC = () => {
         <input
           type="text"
           value={aboutLyric.songTitle}
-          onChange={(e) => setAboutLyric({ ...aboutLyric, songTitle: e.target.value })}
+          onChange={(e) =>
+            setAboutLyric({ ...aboutLyric, songTitle: e.target.value })
+          }
           placeholder="노래 제목(또는 가사)을 입력하세요"
           style={{ padding: "10px", width: "300px", marginBottom: "10px" }}
+        />
+        <textarea
+          value={aboutLyric.hasLyrics}
+          onChange={(e) =>
+            setAboutLyric({ ...aboutLyric, hasLyrics: e.target.value })
+          }
+          placeholder="(노래 가사가 있으면) 가사 내용으로 pdf 가 제작됩니다."
+          style={{
+            padding: "10px",
+            width: "300px",
+            marginBottom: "10px",
+            height: "100px",
+          }}
         />
       </div>
       <FigmaTokenForm onSubmit={handleSubmit} />

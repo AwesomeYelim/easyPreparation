@@ -35,15 +35,6 @@ func (si *SlideData) parseTrackList(doc *goquery.Document) {
 // 가사 파싱
 func (si *SlideData) parseLyrics(doc *goquery.Document) {
 	doc.Find(".lyricsContainer xmp").Each(func(i int, s *goquery.Selection) {
-		// 공백 제거
-		lines := pkg.RemoveEmptyLines(s.Text())
-		// 두 줄씩 자르기
-		for i := 0; i < len(lines); i += 2 {
-			if i+1 < len(lines) {
-				si.Content = append(si.Content, lines[i]+"\n"+lines[i+1])
-			} else {
-				si.Content = append(si.Content, lines[i]) // 마지막줄 홀수 인경우에만
-			}
-		}
+		si.Content = pkg.SplitTwoLines(s.Text())
 	})
 }
