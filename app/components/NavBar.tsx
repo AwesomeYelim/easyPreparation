@@ -5,6 +5,7 @@ import { useState } from "react";
 import NavLink from "./NavLink";
 import Sidebar from "./SideBar";
 import ProfileButton from "./ProfileButton";
+import PostList from "./PostList";
 
 export default function NavBar() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -26,6 +27,7 @@ export default function NavBar() {
               image={session.user.image!}
               onClick={() => setSidebarOpen(true)}
             />
+            <PostList />
             <Sidebar
               open={sidebarOpen}
               onClose={() => setSidebarOpen(false)}
