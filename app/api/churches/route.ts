@@ -1,16 +1,32 @@
+// app/api/churches/route.ts
 import { NextResponse } from "next/server";
-import pool from "@/lib/db"; // pool은 PostgreSQL 연결을 담당하는 객체입니다.
+import pool from "@/lib/db";
 
-type Post = {
+type Church = {
   id: number;
-  title: string;
-  content: string;
+  name: string;
+  email: string;
 };
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const email = searchParams.get("email");
+
+  if (!email) {
+    return NextResponse.json({ error: "Email is required" }, { status: 400 });
+  }
+
   try {
-    const { rows }: { rows: Post[] } = await pool.query("SELECT * FROM posts");
-    return NextResponse.json(rows); // 데이터를 JSON 형식으로 반환
+    const { rows }: { rows: Church[] } = await pool.query(
+      "SELECT * FROM churches WHERE email = $1 LIMIT 1",
+      [email]
+    );
+
+    if (rows.length === 0) {
+      return NextResponse.json({ error: "Church not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(rows[0]);
   } catch (error) {
     console.error(error);
     return NextResponse.json(
