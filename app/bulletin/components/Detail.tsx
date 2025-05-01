@@ -69,8 +69,8 @@ export default function Detail({
                 parentKey={selectedDetail?.key || ""}
               />
             )) || (
-              <input
-                type="text"
+              <textarea
+                value={selectedDetail.obj}
                 onChange={(e) =>
                   handleValueChange(selectedDetail.key, {
                     newObj: e.target.value,
@@ -86,6 +86,7 @@ export default function Detail({
             </strong>
             <input
               type="text"
+              value={selectedDetail.lead}
               onChange={(e) =>
                 handleValueChange(selectedDetail.key, {
                   newObj: selectedDetail.obj,

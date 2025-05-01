@@ -24,26 +24,69 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
   parentKey,
 }) => {
   const selectedDetail = useRecoilValue(selectedDetailState);
-  const totalInfo = selectedDetail.obj;
-  let book = totalInfo.includes(",")
-    ? totalInfo.split(", ")[0].split("_")[0]
-    : totalInfo.split("_")[0];
 
-  if (book.length > 1) {
-    const findKey = Object.entries(bibleData).find(
-      ([_, v]) => v.kor === book
-    )?.[0];
-    book = findKey as string;
-  }
+  // "신_5/4:5-6, 수_6/5:6"
+
+  //  Selection = {
+  //   book: '신';
+  //   chapter: 4;
+  //   verse: 5;
+  // };
+  const selectedInitInfo = (() => {
+    let sermonsSelection: Selection[][] = [];
+    if (selectedDetail.obj) {
+      const sermons = selectedDetail.obj.split(/,\s*/);
+
+      sermonsSelection = sermons.map((sEl, _) => {
+        const splitStandardUnder = sEl.split("_");
+        const shortBook = splitStandardUnder[0];
+        const chapter = splitStandardUnder[1];
+
+        if (chapter.includes("-")) {
+          const splitStandardhyphen = chapter.split("-");
+          const selections = splitStandardhyphen.map((el, i) => {
+            if (el.includes(":")) {
+              const splitStandardColon = el.split(":");
+              return {
+                book: shortBook,
+                chapter: +splitStandardColon[0],
+                verse: +splitStandardColon[1],
+              };
+            } else {
+              return {
+                book: shortBook,
+                chapter: +splitStandardhyphen[i - 1].split(":")[0],
+                verse: +el,
+              };
+            }
+          });
+
+          return selections;
+        } else {
+          const splitStandardColon = chapter.split(":");
+          return [
+            {
+              book: shortBook,
+              chapter: +splitStandardColon[0],
+              verse: +splitStandardColon[1],
+            },
+          ];
+        }
+      });
+    }
+
+    return sermonsSelection;
+  })();
 
   const [selectedBook, setSelectedBook] = useState<Selection>({
-    book,
+    book: "",
     chapter: 0,
     verse: 0,
   });
 
   const [selectedRanges, setSelectedRanges] = useState<Selection[]>([]);
-  const [multiSelection, setMultiSelection] = useState<Selection[][]>([]);
+  const [multiSelection, setMultiSelection] =
+    useState<Selection[][]>(selectedInitInfo);
 
   const handler = {
     bookChange: (event: React.ChangeEvent<HTMLSelectElement>) => {
