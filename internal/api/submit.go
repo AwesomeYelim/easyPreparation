@@ -43,5 +43,5 @@ func handleSubmit(w http.ResponseWriter, r *http.Request) {
 func main() {
 	http.HandleFunc("/submit", handleSubmit)
 	fmt.Println("Server is running on port 8080...")
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe("0.0.0.0:8080", nil)
 }
