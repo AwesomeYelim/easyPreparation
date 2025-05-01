@@ -24,12 +24,13 @@ export default function Bulletin() {
 
   const sendDataToGoServer = async () => {
     try {
-      const response = await fetch("http://127.0.0.1:8080/api/submit", {
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const response = await fetch(`${baseUrl}/submit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ selectedInfo }), // JSON 형식으로 변환
+        body: JSON.stringify({ selectedInfo }),
       });
 
       if (!response.ok) {
