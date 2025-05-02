@@ -2,14 +2,50 @@ package quote
 
 import (
 	"easyPreparation_1.0/internal/parser"
+	"easyPreparation_1.0/internal/path"
+	"easyPreparation_1.0/pkg"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 )
+
+func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
+	for i, el := range *bulletin {
+		title, tIs := el["title"].(string)
+		info, iIs := el["info"].(string)
+		obj, bIs := el["obj"].(string)
+		if !tIs || !bIs {
+			continue
+		}
+		// 성경 구절 처리
+		if iIs && strings.HasPrefix(info, "b_") {
+			kor := strings.Split(obj, "_")[0]
+			forUrl := strings.Split(obj, "_")[1]
+
+			el["contents"] = GetQuote(forUrl)
+
+			el["obj"] = fmt.Sprintf("%s %s", kor, strings.Split(forUrl, "/")[1])
+
+		}
+		if strings.HasSuffix(title, "말씀내용") {
+			(*bulletin)[i]["contents"] = (*bulletin)[i-1]["contents"]
+		}
+
+	}
+	execPath := path.ExecutePath("easyPreparation")
+
+	sample, _ := json.MarshalIndent(bulletin, "", "  ")
+	_ = pkg.CheckDirIs(filepath.Join(execPath, "config"))
+	_ = os.WriteFile(filepath.Join(execPath, "config", worshipTitle+".json"), sample, 0644)
+
+}
 
 // **성경 구절 크롤링 함수 (특정 장 크롤링)**
 func getChapterVerses(bookIdx string, chapter int) (map[int]string, error) {

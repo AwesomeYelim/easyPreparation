@@ -2,7 +2,6 @@ package main
 
 import (
 	"easyPreparation_1.0/internal/classification"
-	"easyPreparation_1.0/internal/db"
 	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/gui"
 	"easyPreparation_1.0/internal/parser"
@@ -113,26 +112,5 @@ func (lpm *LyricsPresentationManager) CreatePresentation(lyricsInfo map[string]s
 		}
 		fmt.Printf("프레젠테이션이 '%s'에 저장되었습니다.\n", fileName)
 
-		lpm.saveToDB(title, song)
-	}
-}
-
-func (lpm *LyricsPresentationManager) saveToDB(title string, song *parser.SlideData) {
-	dbPath := "data/local.db"
-	if err := pkg.CheckDirIs(filepath.Dir(dbPath)); err != nil {
-		fmt.Printf("디렉토리 생성 중 오류 발생: %v\n", err)
-		return
-	}
-
-	store := db.OpenDB(dbPath)
-	defer func() {
-		_ = store.Close()
-	}()
-
-	song.Title = title
-	if err := db.SaveSongToDB(store, song); err != nil {
-		log.Printf("노래 저장 실패: %v\n", err)
-	} else {
-		fmt.Printf("'%s' 노래가 데이터베이스에 저장되었습니다.\n", title)
 	}
 }

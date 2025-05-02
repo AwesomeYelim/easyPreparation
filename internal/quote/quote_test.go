@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// 📌 **네트워크 테스트: GetQuote 실행 후 크롤링 결과 출력**
+// 📌 **네트워크 테스트: getQuote 실행 후 크롤링 결과 출력**
 func TestGetQuote(t *testing.T) {
 	// 📌 실제 사용할 forUrl 예제
 	testCases := []string{

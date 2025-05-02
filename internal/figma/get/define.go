@@ -7,8 +7,8 @@ type Info struct {
 	Client         *figma.Client
 	Nodes          []figma.Node
 	AssembledNodes []figma.Node
-	Token          *string
-	Key            *string
+	Token          *string `json:"token"`
+	Key            *string `json:"key"`
 	ExecPath       string
 	PathInfo       map[string]string
 }
