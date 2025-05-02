@@ -29,7 +29,7 @@ func StartServer() {
 			return
 		}
 
-		fmt.Println("📩 Submit Received:", data)
+		fmt.Println("Submit Received:", data)
 
 		// 채널로 데이터 전달
 		DataChan <- data
@@ -42,7 +42,7 @@ func StartServer() {
 		})
 	})))
 
-	fmt.Println("🌐 Server running on http://localhost:8080")
+	fmt.Println("Server running on http://localhost:8080")
 	if err := http.ListenAndServe("0.0.0.0:8080", mux); err != nil {
 		panic(err)
 	}
