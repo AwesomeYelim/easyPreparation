@@ -4,7 +4,7 @@ import { WorshipOrder } from "./components/WorshipOrder";
 import SelectedOrder from "./components/SelectedOrder";
 import Detail from "./components/Detail";
 import { useState } from "react";
-import { worshipOrderState } from "../recoilState";
+import { userInfoState, worshipOrderState } from "@/recoilState";
 import { useRecoilValue } from "recoil";
 import { ResultPart } from "./components/ResultPage";
 
@@ -21,6 +21,7 @@ export default function Bulletin() {
   const worshipOrder = useRecoilValue(worshipOrderState);
   const [selectedInfo, setSelectedInfo] =
     useState<WorshipOrderItem[]>(worshipOrder);
+  const userInfo = useRecoilValue(userInfoState);
 
   const sendDataToGoServer = async () => {
     try {
@@ -30,7 +31,11 @@ export default function Bulletin() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ selectedInfo }),
+        body: JSON.stringify({
+          targetInfo: selectedInfo,
+          target: "main_worship",
+          figmaInfo: userInfo.figmaInfo,
+        }),
       });
 
       if (!response.ok) {
@@ -50,7 +55,7 @@ export default function Bulletin() {
     <div className="bulletin_container">
       <div className="top_bar">
         <button onClick={sendDataToGoServer} className="send_button">
-          데이터 전송
+          Submit
         </button>
       </div>
       <div className="bulletin_wrap">

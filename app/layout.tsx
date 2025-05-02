@@ -1,4 +1,4 @@
-import RecoilProvider from "@/components/recoil-provider";
+import RecoilProvider from "@/components/RecoilProvider";
 import NavBar from "@/components/NavBar";
 import AuthProvider from "./lib/next-auth";
 import "@/globals.css";
@@ -13,10 +13,12 @@ export default function RootLayout({
     <html lang="ko">
       <body>
         <div className="entire-wrap">
-          <AuthProvider>
-            <NavBar />
-            <RecoilProvider>{children}</RecoilProvider>
-          </AuthProvider>
+          <RecoilProvider>
+            <AuthProvider>
+              <NavBar />
+              {children}
+            </AuthProvider>
+          </RecoilProvider>
         </div>
       </body>
     </html>

@@ -22,25 +22,24 @@ export default function SelectedOrder({
       <div>
         {selectedItems.map((item) => {
           return (
-            <>
-              <span
-                className="tag"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedDetail(item);
+            <span
+              key={item.key}
+              className="tag"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedDetail(item);
+              }}
+            >
+              {item.title}
+              <button
+                className="delete-btn"
+                onClick={() => {
+                  handleDeleteItem(item);
                 }}
               >
-                {item.title}
-                <button
-                  className="delete-btn"
-                  onClick={() => {
-                    handleDeleteItem(item);
-                  }}
-                >
-                  x
-                </button>
-              </span>
-            </>
+                x
+              </button>
+            </span>
           );
         })}
       </div>

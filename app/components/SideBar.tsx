@@ -1,5 +1,6 @@
+import { userInfoState } from "@/recoilState";
 import { signOut } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useRecoilValue } from "recoil";
 
 interface SidebarProps {
   open: boolean;
@@ -11,28 +12,21 @@ interface SidebarProps {
   };
 }
 
-type ChurchInfo = {
+export type UserChurchInfo = {
   id: number;
   name: string;
   english_name: string;
   title: string;
   content: string;
+  email: string;
+  figmaInfo: {
+    key: string;
+    token: string;
+  };
 };
 
 export default function Sidebar({ open, onClose, user }: SidebarProps) {
-  const [info, setInfo] = useState<ChurchInfo>();
-
-  useEffect(() => {
-    async function fetchPosts() {
-      const response = await fetch(
-        `/api/churches?email=${encodeURIComponent(user?.email as string)}`
-      );
-      const data: ChurchInfo = await response.json();
-      setInfo(data);
-    }
-
-    fetchPosts();
-  }, []);
+  const userInfo = useRecoilValue(userInfoState);
 
   return (
     <>
@@ -118,8 +112,8 @@ export default function Sidebar({ open, onClose, user }: SidebarProps) {
           }}
         >
           {[
-            ["소속교회", info?.name],
-            ["교회표기", info?.english_name],
+            ["소속교회", userInfo?.name],
+            ["교회표기", userInfo?.english_name],
             ["라이선스 정보"],
             ["주보 생성 내역"],
             ["PPT 생성 내역"],
