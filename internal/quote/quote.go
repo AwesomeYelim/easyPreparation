@@ -24,14 +24,30 @@ func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 		if !tIs || !bIs {
 			continue
 		}
+
 		// 성경 구절 처리
 		if iIs && strings.HasPrefix(info, "b_") {
-			kor := strings.Split(obj, "_")[0]
-			forUrl := strings.Split(obj, "_")[1]
+			var contentStr string
+			var objRange string
+			if strings.Contains(obj, ",") {
+				objs := strings.Split(obj, ",")
+				for _, qObj := range objs {
+					qObj = strings.TrimSpace(qObj)
+					kor := strings.Split(qObj, "_")[0]
+					forUrl := strings.Split(qObj, "_")[1]
 
-			el["contents"] = GetQuote(forUrl)
-
-			el["obj"] = fmt.Sprintf("%s %s", kor, strings.Split(forUrl, "/")[1])
+					contentStr += GetQuote(forUrl)
+					objRange += fmt.Sprintf(", %s %s", kor, strings.Split(forUrl, "/")[1])
+				}
+			} else {
+				kor := strings.Split(obj, "_")[0]
+				forUrl := strings.Split(obj, "_")[1]
+				contentStr = GetQuote(forUrl)
+				objRange = fmt.Sprintf("%s %s", kor, strings.Split(forUrl, "/")[1])
+			}
+			objRange = strings.TrimPrefix(objRange, ", ")
+			(*bulletin)[i]["contents"] = contentStr
+			(*bulletin)[i]["obj"] = objRange
 
 		}
 		if strings.HasSuffix(title, "말씀내용") {
