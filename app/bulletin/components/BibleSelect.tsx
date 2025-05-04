@@ -26,6 +26,7 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
   const selectedDetail = useRecoilValue(selectedDetailState);
 
   // "신_5/4:5-6, 수_6/5:6"
+  // "신명기_5/4:5-4:6, 여호수아_6/5:6"
 
   //  Selection = {
   //   book: '신';
@@ -39,26 +40,18 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
 
       sermonsSelection = sermons.map((sEl, _) => {
         const splitStandardUnder = sEl.split("_");
-        const shortBook = splitStandardUnder[0];
-        const chapter = splitStandardUnder[1];
+        const book = splitStandardUnder[0];
+        const chapter = splitStandardUnder[1].split("/")[1];
 
         if (chapter.includes("-")) {
           const splitStandardhyphen = chapter.split("-");
-          const selections = splitStandardhyphen.map((el, i) => {
-            if (el.includes(":")) {
-              const splitStandardColon = el.split(":");
-              return {
-                book: shortBook,
-                chapter: +splitStandardColon[0],
-                verse: +splitStandardColon[1],
-              };
-            } else {
-              return {
-                book: shortBook,
-                chapter: +splitStandardhyphen[i - 1].split(":")[0],
-                verse: +el,
-              };
-            }
+          const selections = splitStandardhyphen.map((el) => {
+            const splitStandardColon = el.split(":");
+            return {
+              book,
+              chapter: +splitStandardColon[0],
+              verse: +splitStandardColon[1],
+            };
           });
 
           return selections;
@@ -66,7 +59,7 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
           const splitStandardColon = chapter.split(":");
           return [
             {
-              book: shortBook,
+              book,
               chapter: +splitStandardColon[0],
               verse: +splitStandardColon[1],
             },
@@ -118,14 +111,17 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
 
       setMultiSelection((prev) => {
         const updated = [...prev, selectedRanges];
+        console.log(updated);
 
         const finalObj = updated
           .map((ranges) => {
             const first = ranges[0];
             const last = ranges[1] || first;
-            const index = bibleData[first.book as BibleKey].index;
+
             return (
-              `${first.book}_${index}/${first.chapter}:${first.verse}` +
+              `${first.book}_${bibleData[first.book as BibleKey]?.index}/${
+                first.chapter
+              }:${first.verse}` +
               (ranges.length > 1 ? `-${last.chapter}:${last.verse}` : "")
             );
           })
@@ -154,9 +150,8 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
   const formatRange = (ranges: Selection[]) => {
     return ranges
       .map((range, i) => {
-        const bookName = bibleData[selectedBook.book as BibleKey]?.kor;
         if (!i) {
-          return `${bookName} ${range.chapter}장 ${range.verse}절`;
+          return `${selectedBook.book} ${range.chapter}장 ${range.verse}절`;
         } else {
           return `${range.chapter}장 ${range.verse}절`;
         }
@@ -181,9 +176,9 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
                   <option value="" disabled>
                     책을 선택하세요
                   </option>
-                  {Object.entries(bibleData).map(([key, value]) => (
+                  {Object.entries(bibleData).map(([key]) => (
                     <option key={key} value={key}>
-                      {value.kor}
+                      {key}
                     </option>
                   ))}
                 </select>
@@ -287,9 +282,9 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
           {multiSelection.map((ranges, index) => {
             const first = ranges[0];
             const last = ranges[1] || first;
-            const kor = bibleData[first.book as BibleKey].kor;
+
             const displayText =
-              `${kor} ${first.chapter}:${first.verse}` +
+              `${first.book} ${first.chapter}:${first.verse}` +
               (ranges.length > 1
                 ? `-${
                     first.chapter === last.chapter ? "" : `${last.chapter}:`
