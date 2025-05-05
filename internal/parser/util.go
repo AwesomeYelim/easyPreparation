@@ -1,6 +1,9 @@
 package parser
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 func RemoveLineNumberPattern(text string) string {
 	var result strings.Builder
@@ -44,4 +47,41 @@ func RemoveTags(input string) string {
 func NormalizeSpaces(input string) string {
 	fields := strings.Fields(input) // 여러 개의 공백을 단일 공백으로 변환
 	return strings.Join(fields, " ")
+}
+
+// verse 정리 함수
+// "30:3-30:5", "10:4-10:7", "1:3-3:5", "2:1-2:1"
+func CompressVerse(verse string) string {
+	parts := strings.Split(verse, "-")
+	if len(parts) != 2 {
+		return verse // 잘못된 포맷은 그대로 반환
+	}
+
+	start := parts[0]
+	end := parts[1]
+
+	startParts := strings.Split(start, ":")
+	endParts := strings.Split(end, ":")
+
+	if len(startParts) != 2 || (len(endParts) != 1 && len(endParts) != 2) {
+		return verse // 포맷 오류
+	}
+
+	startChap := startParts[0]
+	startVerse := startParts[1]
+
+	var endChap, endVerse string
+	if len(endParts) == 2 {
+		endChap = endParts[0]
+		endVerse = endParts[1]
+	} else {
+		endChap = startChap // 장 정보가 없으면 시작 장과 같음
+		endVerse = endParts[0]
+	}
+
+	// 같은 장일 경우 장 번호 생략
+	if startChap == endChap {
+		return fmt.Sprintf("%s:%s-%s", startChap, startVerse, endVerse)
+	}
+	return verse
 }

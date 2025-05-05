@@ -35,15 +35,16 @@ func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 					qObj = strings.TrimSpace(qObj)
 					kor := strings.Split(qObj, "_")[0]
 					forUrl := strings.Split(qObj, "_")[1]
-
 					contentStr += GetQuote(forUrl)
-					objRange += fmt.Sprintf(", %s %s", kor, strings.Split(forUrl, "/")[1])
+					chapterVerse := strings.Split(forUrl, "/")[1]
+					objRange += fmt.Sprintf(", %s %s", kor, parser.CompressVerse(chapterVerse))
 				}
 			} else {
 				kor := strings.Split(obj, "_")[0]
 				forUrl := strings.Split(obj, "_")[1]
 				contentStr = GetQuote(forUrl)
-				objRange = fmt.Sprintf("%s %s", kor, strings.Split(forUrl, "/")[1])
+				chapterVerse := strings.Split(forUrl, "/")[1]
+				objRange = fmt.Sprintf("%s %s", kor, parser.CompressVerse(chapterVerse))
 			}
 			objRange = strings.TrimPrefix(objRange, ", ")
 			(*bulletin)[i]["contents"] = contentStr
