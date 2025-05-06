@@ -1,14 +1,16 @@
 package main
 
 import (
+	"easyPreparation_1.0/executor/bulletin/define"
+	"easyPreparation_1.0/executor/bulletin/forPresentation"
+	"easyPreparation_1.0/executor/bulletin/forPrint"
+	"easyPreparation_1.0/internal/api"
+	"easyPreparation_1.0/internal/date"
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"path/filepath"
 
-	"easyPreparation_1.0/executor/bulletin/forPresentation"
-	"easyPreparation_1.0/executor/bulletin/forPrint"
 	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/figma"
 	"easyPreparation_1.0/internal/handlers"
@@ -17,9 +19,11 @@ import (
 )
 
 func main() {
-	go handlers.StartServer() // 서버 실행 고루틴
+	var dataChan = make(chan map[string]interface{}, 100)
 
-	for data := range handlers.DataChan {
+	go api.StartServer(dataChan) // 서버 실행 고루틴
+
+	for data := range dataChan {
 		go func(data map[string]interface{}) {
 			execPath := path.ExecutePath("easyPreparation")
 			fmt.Println("Start Data Process !!")
@@ -64,11 +68,28 @@ func main() {
 			configPath := filepath.Join(execPath, "config", "custom.json")
 			extract.ExtCustomOption(configPath)
 
-			forPrint.CreatePrint(figmaInfo, target, execPath)
-			forPresentation.CreatePresentation(figmaInfo, target, execPath)
+			// 파일명 생성: "202411_3.pdf"
+			yearMonth, weekFormatted := date.SetDateTitle()
+			outputFilename := fmt.Sprintf("%s_%s.pdf", yearMonth, weekFormatted)
+			PdfInfo := &define.PdfInfo{
+				FigmaInfo:      figmaInfo,
+				ExecPath:       execPath,
+				Target:         target,
+				OutputFilename: outputFilename,
+			}
+			presentationData := forPresentation.PdfInfo{
+				PdfInfo: PdfInfo,
+			}
 
+			printData := forPrint.PdfInfo{
+				PdfInfo: PdfInfo,
+			}
+
+			printData.Create()
+			presentationData.Create()
+
+			handlers.BroadcastProcessDone(target, outputFilename)
 			fmt.Println("Finish Data Process !!")
-			os.Exit(0)
 		}(data)
 	}
 }

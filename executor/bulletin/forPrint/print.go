@@ -1,11 +1,11 @@
 package forPrint
 
 import (
+	"easyPreparation_1.0/executor/bulletin/define"
 	"easyPreparation_1.0/internal/classification"
 	"easyPreparation_1.0/internal/colorPalette"
 	"easyPreparation_1.0/internal/date"
 	"easyPreparation_1.0/internal/extract"
-	"easyPreparation_1.0/internal/figma/get"
 	"easyPreparation_1.0/internal/gui"
 	"easyPreparation_1.0/internal/presentation"
 	"easyPreparation_1.0/internal/sorted"
@@ -18,16 +18,20 @@ import (
 	"strings"
 )
 
-func CreatePrint(figmaInfo *get.Info, target, execPath string) {
+type PdfInfo struct {
+	*define.PdfInfo
+}
+
+func (pi PdfInfo) Create() {
 	config := extract.ConfigMem
-	outputDir := filepath.Join(execPath, config.OutputPath.Bulletin, "print", "tmp")
+	outputDir := filepath.Join(pi.ExecPath, config.OutputPath.Bulletin, "print", "tmp")
 	_ = pkg.CheckDirIs(outputDir)
 
 	defer func() {
 		_ = os.RemoveAll(outputDir)
 	}()
 
-	figmaInfo.GetFigmaImage(outputDir, "forPrint")
+	pi.FigmaInfo.GetFigmaImage(outputDir, "forPrint")
 
 	files, _ := os.ReadDir(outputDir)
 	instanceSize := gofpdf.SizeType{
@@ -36,17 +40,14 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 	}
 	objPdf := presentation.New(instanceSize)
 	objPdf.Config = config.Classification.Bulletin.Print
-	yearMonth, weekFormatted := date.SetDateTitle()
 	objPdf.GetConversionRatio()
-	// 파일명 생성: "202411_3.pdf"
-	outputFilename := fmt.Sprintf("%s_%s.pdf", yearMonth, weekFormatted)
 
 	sorted.ToIntSort(files, "- ", ".png", 0)
 
 	var elements []gui.WorshipInfo
 	var newsCon gui.WorshipInfo
 
-	worshipContents, err := os.ReadFile(filepath.Join(execPath, "config", target+".json"))
+	worshipContents, err := os.ReadFile(filepath.Join(pi.ExecPath, "config", pi.Target+".json"))
 	err = json.Unmarshal(worshipContents, &elements)
 	fontInfo := config.Classification.Bulletin.Print.FontInfo
 	hLColor := colorPalette.HexToRGBA(objPdf.Config.Color.LineColor)
@@ -77,10 +78,10 @@ func CreatePrint(figmaInfo *get.Info, target, execPath string) {
 		}
 
 	}
-	outputBtPath := filepath.Join(execPath, config.OutputPath.Bulletin, "print")
+	outputBtPath := filepath.Join(pi.ExecPath, config.OutputPath.Bulletin, "print")
 
 	_ = pkg.CheckDirIs(outputBtPath)
-	bulletinPath := filepath.Join(outputBtPath, outputFilename)
+	bulletinPath := filepath.Join(outputBtPath, pi.OutputFilename)
 	err = objPdf.OutputFileAndClose(bulletinPath)
 	if err != nil {
 		fmt.Printf("PDF 저장 중 에러 발생: %v", err)

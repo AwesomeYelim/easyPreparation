@@ -1,9 +1,8 @@
 package forPresentation
 
 import (
-	"easyPreparation_1.0/internal/date"
+	"easyPreparation_1.0/executor/bulletin/define"
 	"easyPreparation_1.0/internal/extract"
-	"easyPreparation_1.0/internal/figma/get"
 	"easyPreparation_1.0/internal/gui"
 	"easyPreparation_1.0/internal/presentation"
 	"easyPreparation_1.0/pkg"
@@ -15,51 +14,52 @@ import (
 	"strings"
 )
 
-func CreatePresentation(figmaInfo *get.Info, target, execPath string) {
+type PdfInfo struct {
+	*define.PdfInfo
+}
+
+func (pi PdfInfo) Create() {
 	config := extract.ConfigMem
-	outputDir := filepath.Join(execPath, config.OutputPath.Bulletin, "presentation", "tmp")
+	outputDir := filepath.Join(pi.ExecPath, config.OutputPath.Bulletin, "presentation", "tmp")
 	_ = pkg.CheckDirIs(outputDir)
 
 	defer func() {
 		_ = os.RemoveAll(outputDir)
 	}()
 
-	figmaInfo.GetFigmaImage(outputDir, "forShowing")
+	pi.FigmaInfo.GetFigmaImage(outputDir, "forShowing")
 
-	yearMonth, weekFormatted := date.SetDateTitle()
 	instanceSize := gofpdf.SizeType{
 		Wd: config.Classification.Bulletin.Presentation.Width,
 		Ht: config.Classification.Bulletin.Presentation.Height,
 	}
 	objPdf := presentation.New(instanceSize)
 	objPdf.Config = config.Classification.Bulletin.Presentation
-	objPdf.ExecutePath = execPath
-
-	outputFilename := fmt.Sprintf("%s_%s.pdf", yearMonth, weekFormatted)
+	objPdf.ExecutePath = pi.ExecPath
 
 	var contents []gui.WorshipInfo
 
-	worshipContents, err := os.ReadFile(filepath.Join(execPath, "config", target+".json"))
+	worshipContents, err := os.ReadFile(filepath.Join(pi.ExecPath, "config", pi.Target+".json"))
 	err = json.Unmarshal(worshipContents, &contents)
 
 	for _, con := range contents {
 		objPdf.Title = con.Title
 
-		if path, ok := figmaInfo.PathInfo[objPdf.Title]; ok {
+		if path, ok := pi.FigmaInfo.PathInfo[objPdf.Title]; ok {
 			objPdf.Path = filepath.Join(outputDir, filepath.Base(path))
 			if !strings.Contains(objPdf.Title, "성시교독") {
 				objPdf.AddPage()
 				objPdf.CheckImgPlaced(objPdf.Path, 0)
 			}
 			if strings.Contains(con.Info, "edit") {
-				objPdf.ForEdit(con, config, execPath)
+				objPdf.ForEdit(con, config, pi.ExecPath)
 			}
 		}
 	}
 
-	outputBtPath := filepath.Join(execPath, config.OutputPath.Bulletin, "presentation")
+	outputBtPath := filepath.Join(pi.ExecPath, config.OutputPath.Bulletin, "presentation")
 	_ = pkg.CheckDirIs(outputBtPath)
-	bulletinPath := filepath.Join(outputBtPath, outputFilename)
+	bulletinPath := filepath.Join(outputBtPath, pi.OutputFilename)
 	err = objPdf.OutputFileAndClose(bulletinPath)
 	if err != nil {
 		fmt.Printf("PDF 저장 중 에러 발생: %v", err)
