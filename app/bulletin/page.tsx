@@ -7,6 +7,8 @@ import { useState } from "react";
 import { userInfoState, worshipOrderState } from "@/recoilState";
 import { useRecoilValue } from "recoil";
 import { ResultPart } from "./components/ResultPage";
+import { useRef } from "react";
+import { useEffect } from "react";
 
 export type WorshipOrderItem = {
   key: string;
@@ -22,6 +24,48 @@ export default function Bulletin() {
   const [selectedInfo, setSelectedInfo] =
     useState<WorshipOrderItem[]>(worshipOrder);
   const userInfo = useRecoilValue(userInfoState);
+
+  const wsRef = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    const baseUrl = process.env.NEXT_PUBLIC_WS_URL;
+    const ws = new WebSocket(baseUrl || `ws://localhost:8080/ws`);
+
+    ws.onopen = () => {
+      console.log("WebSocket 연결 성공");
+    };
+
+    ws.onmessage = (event) => {
+      console.log("WebSocket 메시지 수신:", event.data);
+      const message = JSON.parse(event.data);
+
+      // 완료 알림 수신시 PDF 자동 다운로드
+      if (message.type === "done" && message.target === "main_worship") {
+        downloadPDF(message.fileName);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log("WebSocket 연결 종료");
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, []);
+
+  const downloadPDF = (fileName: string) => {
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+    const link = document.createElement("a");
+    link.href = `${baseUrl}/download?target=${fileName}`;
+    link.download = fileName;
+    link.target = "_self"; // 새로운 페이지가 열리지 않도록 _self로 설정
+
+    // 링크 클릭하여 다운로드
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const sendDataToGoServer = async () => {
     try {
