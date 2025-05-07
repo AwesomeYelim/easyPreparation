@@ -26,7 +26,13 @@ for target in "${TARGETS[@]}"; do
     output_file="${BIN_DIR}/${bin_name}_${GOOS}_${GOARCH}"
 
     echo "Building $file for $GOOS/$GOARCH..."
-    GOOS=$GOOS GOARCH=$GOARCH go build -a -trimpath -o "$output_file" "$file"
+
+    # 정적 컴파일 설정
+    if [ "$GOOS" == "linux" ] || [ "$GOOS" == "darwin" ]; then
+      CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build -a -trimpath -ldflags="-extldflags=-static" -o "$output_file" "$file"
+    else
+      GOOS=$GOOS GOARCH=$GOARCH go build -a -trimpath -o "$output_file" "$file"
+    fi
   done
 done
 
