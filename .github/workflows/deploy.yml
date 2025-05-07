@@ -1,0 +1,44 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ✅ Checkout repository
+        uses: actions/checkout@v3
+
+      - name: ✅ Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23.0'
+
+      - name: ✅ Build Go binaries
+        run: |
+          chmod +x ./autoBuild.sh
+          ./autoBuild.sh  
+
+      - name: ✅ Create target directory on server
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          script: |
+            mkdir -p /home/ubuntu/eb
+
+      - name: ✅ Copy files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          source: "./bin,./config"
+          target: "/home/ubuntu/eb"
