@@ -25,18 +25,16 @@ export default function Bulletin() {
     useState<WorshipOrderItem[]>(worshipOrder);
   const userInfo = useRecoilValue(userInfoState);
 
-  const wsRef = useRef<WebSocket | null>(null);
-
   useEffect(() => {
     const baseUrl = process.env.NEXT_PUBLIC_WS_URL;
     const ws = new WebSocket(baseUrl || `ws://localhost:8080/ws`);
 
     ws.onopen = () => {
-      console.log("WebSocket 연결 성공");
+      console.log("WebSocket connected");
     };
 
     ws.onmessage = (event) => {
-      console.log("WebSocket 메시지 수신:", event.data);
+      console.log("WebSocket Received Message:", event.data);
       const message = JSON.parse(event.data);
 
       // 완료 알림 수신시 PDF 자동 다운로드
@@ -46,7 +44,7 @@ export default function Bulletin() {
     };
 
     ws.onclose = () => {
-      console.log("WebSocket 연결 종료");
+      console.log("WebSocket connected close");
     };
 
     return () => {
