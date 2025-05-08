@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"sync"
 
@@ -44,12 +45,12 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// 서버가 클라이언트들에게 완료 알림 보내기
-func BroadcastProcessDone(target, fileName string) {
+func BroadcastMessage(messageType string, payload map[string]interface{}) {
 	message := map[string]interface{}{
-		"type":     "done",
-		"target":   target,
-		"fileName": fileName,
+		"type": messageType,
+	}
+	for k, v := range payload {
+		message[k] = v
 	}
 
 	msgBytes, _ := json.Marshal(message)
@@ -64,4 +65,21 @@ func BroadcastProcessDone(target, fileName string) {
 			delete(clients, client)
 		}
 	}
+}
+
+func BroadcastProcessDone(target, fileName string) {
+	BroadcastMessage("done", map[string]interface{}{
+		"target":   target,
+		"fileName": fileName,
+	})
+}
+
+func BroadcastProgress(target string, code int, message string) {
+	BroadcastMessage("progress", map[string]interface{}{
+		"target":  target,
+		"code":    code,
+		"message": message,
+	})
+	log.Printf(message)
+
 }

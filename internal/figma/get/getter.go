@@ -1,6 +1,7 @@
 package get
 
 import (
+	"easyPreparation_1.0/internal/handlers"
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/torie/figma"
@@ -15,7 +16,7 @@ func (i *Info) GetNodes() (err error) {
 
 	i.Nodes = f.Nodes()
 	if len(i.Nodes) > 0 {
-		log.Printf("Got %d documents", len(i.Nodes))
+		handlers.BroadcastProgress("Get figma image elements", 1, fmt.Sprintf("Got %d documents", len(i.Nodes)))
 	} else {
 		return errors.Wrap(err, "Nothing documents")
 	}
@@ -34,9 +35,9 @@ func (i *Info) GetFigmaImage(path string, frameName string) {
 func (i *Info) GetImage(createdPath string, id string, name string) {
 	img, err := i.Client.Images(*i.Key, 2, figma.ImageFormatPNG, id)
 	if err != nil {
-		log.Println(err)
+		handlers.BroadcastProgress(err.Error(), -1, err.Error())
 	}
-	log.Printf("Downloading %s images\n", name)
+	handlers.BroadcastProgress("Downloading figma images", 1, fmt.Sprintf("Downloading %s images\n", name))
 
 	rc, err := download(img[0])
 	if err != nil {
@@ -69,7 +70,6 @@ func (i *Info) GetFrames(frameName string) []figma.Node {
 			}
 		}
 	}
-
-	log.Printf("Got %d frames", len(res))
+	handlers.BroadcastProgress("Got frame", 1, fmt.Sprintf("Got %d frames", len(res)))
 	return res
 }

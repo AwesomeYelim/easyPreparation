@@ -2,6 +2,7 @@ package googleCloud
 
 import (
 	"context"
+	"easyPreparation_1.0/internal/handlers"
 	"fmt"
 	"io"
 	"log"
@@ -110,6 +111,6 @@ func downloadFile(srv *drive.Service, fileID, outputPath string) {
 	if err != nil {
 		log.Fatalf("파일 저장 실패: %v", err)
 	}
+	handlers.BroadcastProgress("File download success", 1, fmt.Sprintf("File download success: %s\n", outputPath))
 
-	fmt.Printf("파일 다운로드 성공: %s\n", outputPath)
 }

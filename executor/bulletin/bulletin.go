@@ -8,7 +8,6 @@ import (
 	"easyPreparation_1.0/internal/date"
 	"encoding/json"
 	"fmt"
-	"log"
 	"path/filepath"
 
 	"easyPreparation_1.0/internal/extract"
@@ -26,7 +25,7 @@ func main() {
 	for data := range dataChan {
 		go func(data map[string]interface{}) {
 			execPath := path.ExecutePath("easyPreparation")
-			fmt.Println("Start Data Process !!")
+			handlers.BroadcastProgress("Start", 1, "Start Data Process !!")
 
 			//  figmaInfo 파싱
 			var key, token string
@@ -43,14 +42,14 @@ func main() {
 
 			figmaInfo := figma.New(&token, &key, execPath)
 			if err := figmaInfo.GetNodes(); err != nil {
-				log.Println("GetNodes Error:", err)
+				handlers.BroadcastProgress("Get Nodes Error", -1, fmt.Sprintf("GetNodes Error: %s", err))
 				return
 			}
 
 			// target
 			target, ok := data["target"].(string)
 			if !ok {
-				log.Println("target is not a string")
+				handlers.BroadcastProgress("target string type assertion error", -1, "target is not a string")
 				return
 			}
 
@@ -59,7 +58,7 @@ func main() {
 			if rawTargetInfo, err := json.Marshal(data["targetInfo"]); err == nil {
 				_ = json.Unmarshal(rawTargetInfo, &targetInfo)
 			} else {
-				log.Println("Failed to parse targetInfo:", err)
+				handlers.BroadcastProgress("TargetInfo parsing error", -1, fmt.Sprintf("Failed to parse targetInfo: %s", err))
 				return
 			}
 
@@ -89,7 +88,9 @@ func main() {
 			presentationData.Create()
 
 			handlers.BroadcastProcessDone(target, outputFilename)
-			fmt.Println("Finish Data Process !!")
+			fmt.Println()
+			handlers.BroadcastProgress("Finish Data Process", 1, "Finish Data Process !!")
+
 		}(data)
 	}
 }
