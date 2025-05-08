@@ -31,7 +31,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
           script: |
-            mkdir -p /home/ubuntu/eb
+            mkdir -p /home/ubuntu/easyPreparation
 
       - name: ✅ Copy files to server
         uses: appleboy/scp-action@v0.1.7
@@ -41,4 +41,4 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
           source: "./bin,./config"
-          target: "/home/ubuntu/eb"
+          target: "/home/ubuntu/easyPreparation"
