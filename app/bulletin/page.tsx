@@ -29,7 +29,7 @@ export default function Bulletin() {
 
   useEffect(() => {
     const baseUrl = process.env.NEXT_PUBLIC_WS_URL;
-    const ws = new WebSocket(baseUrl || `ws://localhost:8080/ws`);
+    const ws = new WebSocket(baseUrl as string);
 
     ws.onopen = () => {
       console.log("WebSocket connected");
