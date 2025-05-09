@@ -1,21 +1,25 @@
 package handlers
 
 import (
+	"easyPreparation_1.0/internal/path"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 )
 
 func DownloadPDFHandler(w http.ResponseWriter, r *http.Request) {
 	target := r.URL.Query().Get("target")
+	execPath := path.ExecutePath("easyPreparation")
+
 	if target == "" {
 		http.Error(w, "Target parameter is missing", http.StatusBadRequest)
 		return
 	}
 
 	// PDF 파일 경로 생성 (예시)
-	filePath := fmt.Sprintf("./output/bulletin/presentation/%s", target)
+	filePath := filepath.Join(execPath, "output", "bulletin", "presentation", target)
 
 	// 파일 열기
 	file, err := os.Open(filePath)
