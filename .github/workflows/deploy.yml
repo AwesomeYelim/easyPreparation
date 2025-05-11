@@ -53,4 +53,5 @@ jobs:
           script: |
             cd /home/ubuntu/easyPreparation
             sudo pkill -f bin/bulletin_linux_amd64 || true
-            nohup ./bin/bulletin_linux_amd64 > bulletin.log 2>&1 &
+            sleep 2
+            setsid ./bin/bulletin_linux_amd64 > bulletin.log 2>&1 < /dev/null &
