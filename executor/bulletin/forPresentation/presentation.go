@@ -51,7 +51,7 @@ func (pi PdfInfo) Create() {
 				objPdf.AddPage()
 				objPdf.CheckImgPlaced(objPdf.Path, 0)
 			}
-			if strings.Contains(con.Info, "edit") {
+			if strings.Contains(con.Info, "edit") || strings.Contains(con.Info, "notice") {
 				objPdf.ForEdit(con, config, pi.ExecPath)
 			}
 		}

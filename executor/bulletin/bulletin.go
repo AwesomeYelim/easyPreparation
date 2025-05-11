@@ -88,7 +88,6 @@ func main() {
 			presentationData.Create()
 
 			handlers.BroadcastProcessDone(target, outputFilename)
-			fmt.Println()
 			handlers.BroadcastProgress("Finish Data Process", 1, "Finish Data Process !!")
 
 		}(data)
