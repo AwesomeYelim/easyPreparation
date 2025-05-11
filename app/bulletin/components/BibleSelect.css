@@ -92,6 +92,26 @@
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   white-space: nowrap;
   transition: background-color 0.2s ease;
+
+  .delete-button {
+    margin-left: 8px;
+    cursor: pointer;
+    border: 1px solid #555;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    background-color: white;
+    color: #333;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.2s, color 0.2s;
+  }
+
+  .delete-button:hover {
+    background-color: #357ab8;
+    color: white;
+    border-color: #357ab8;
+  }
 }
 
 .verse-chip:hover {

@@ -19,12 +19,12 @@ interface BibleSelectProps {
 }
 
 type BibleKey = keyof typeof bibleData;
+
 const BibleSelect: React.FC<BibleSelectProps> = ({
   handleValueChange,
   parentKey,
 }) => {
   const selectedDetail = useRecoilValue(selectedDetailState);
-
   // "신_5/4:5-6, 수_6/5:6"
   // "신명기_5/4:5-4:6, 여호수아_6/5:6"
 
@@ -111,7 +111,6 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
 
       setMultiSelection((prev) => {
         const updated = [...prev, selectedRanges];
-        console.log(updated);
 
         const finalObj = updated
           .map((ranges) => {
@@ -136,6 +135,29 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
 
       setSelectedRanges([]);
       setSelectedBook({ book: "", chapter: 0, verse: 0 });
+    },
+    deleteSelection: (deleteIndex: number) => {
+      setMultiSelection((prev) => {
+        const updated = prev.filter((_, i) => i !== deleteIndex);
+        const finalObj = updated
+          .map((ranges) => {
+            const first = ranges[0];
+            const last = ranges[1] || first;
+
+            return (
+              `${first.book}_${bibleData[first.book as BibleKey]?.index}/${
+                first.chapter
+              }:${first.verse}` +
+              (ranges.length > 1 ? `-${last.chapter}:${last.verse}` : "")
+            );
+          })
+          .join(", ");
+        handleValueChange(parentKey, {
+          newObj: finalObj,
+        });
+
+        return updated;
+      });
     },
   };
 
@@ -294,6 +316,12 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
             return (
               <span key={index} className="verse-chip">
                 📖 {displayText}
+                <button
+                  className="delete-button"
+                  onClick={() => handler.deleteSelection(index)}
+                >
+                  x
+                </button>
               </span>
             );
           })}

@@ -29,11 +29,9 @@ export default function Detail({
           };
         }
 
-        if (item.key === key) {
+        if (item.key == key) {
           if (["b_edit", "c_edit", "edit"].includes(item.info)) {
-            if (newObj) {
-              updatedItem.obj = newObj;
-            }
+            updatedItem.obj = newObj;
             if (newLead) {
               updatedItem.lead = newLead;
             }
@@ -46,7 +44,6 @@ export default function Detail({
         if (item.key === selectedDetail.key) {
           setSelectedDetail(updatedItem);
         }
-
         return updatedItem;
       });
     };
