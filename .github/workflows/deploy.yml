@@ -36,7 +36,13 @@ jobs:
           port: 22
           script: |
             cd /home/ubuntu/ep-ui
-            export PATH=$PATH:/home/ubuntu/.nvm/versions/node/v20.11.1/bin  
+            export PATH=$PATH:/home/ubuntu/.npm-global/bin:/home/ubuntu/.nvm/versions/node/v20.11.1/bin
+            if ! command -v pm2 &> /dev/null; then
+              echo "pm2 not found, installing..."
+              npm install -g pm2
+            fi
+            # Restart the pm2 process
             pm2 delete ep-ui || true
             pm2 start "pnpm start" --name ep-ui
             pm2 save
+
