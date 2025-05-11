@@ -52,5 +52,5 @@ jobs:
           port: 22
           script: |
             cd /home/ubuntu/easyPreparation
-            pkill -f bin/bulletin_linux_amd64 || true
+            sudo pkill -f bin/bulletin_linux_amd64 || true
             nohup ./bin/bulletin_linux_amd64 > bulletin.log 2>&1 &
