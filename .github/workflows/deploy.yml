@@ -1,0 +1,40 @@
+name: Deploy ep-ui to Server
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy-ui:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ✅ Checkout ep-ui repository
+        uses: actions/checkout@v3
+
+      - name: 🎨 Deploy and Build UI on Server
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          script: |
+            cd /home/ubuntu/ep-ui
+            git pull
+            pnpm install
+            pnpm build
+
+      - name: 🚀 Restart UI with pm2
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          script: |
+            cd /home/ubuntu/ep-ui
+            pm2 delete ep-ui || true
+            pm2 start "pnpm start" --name ep-ui
+            pm2 save  # 재부팅 시에도 자동으로 실행되게 저장
