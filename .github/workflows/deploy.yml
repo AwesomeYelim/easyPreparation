@@ -35,6 +35,7 @@ jobs:
           port: 22
           script: |
             cd /home/ubuntu/ep-ui
+            export PATH=$PATH:/home/ubuntu/.nvm/versions/node/v20.11.1/bin  
             pm2 delete ep-ui || true
             pm2 start "pnpm start" --name ep-ui
-            pm2 save  # 재부팅 시에도 자동으로 실행되게 저장
+            pm2 save
