@@ -54,4 +54,5 @@ jobs:
             cd /home/ubuntu/easyPreparation
             sudo pkill -f bin/bulletin_linux_amd64 || true
             sleep 2
-            nohup ./bin/bulletin_linux_amd64 > bulletin.log 2>&1 &
+            ./bin/bulletin_linux_amd64 &
+            exit 0
