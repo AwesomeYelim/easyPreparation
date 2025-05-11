@@ -42,3 +42,15 @@ jobs:
           port: 22
           source: "./bin,./config"
           target: "/home/ubuntu/easyPreparation"
+
+      - name: 🚀 Run bulletin binary on server
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          script: |
+            cd /home/ubuntu/easyPreparation
+            pkill -f bin/bulletin_linux_amd64 || true
+            nohup ./bin/bulletin_linux_amd64 > bulletin.log 2>&1 &
