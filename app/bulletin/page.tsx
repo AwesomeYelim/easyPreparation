@@ -3,7 +3,7 @@
 import { WorshipOrder } from "./components/WorshipOrder";
 import SelectedOrder from "./components/SelectedOrder";
 import Detail from "./components/Detail";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import classNames from "classnames";
 import { userInfoState, worshipOrderState } from "@/recoilState";
 import { useRecoilValue } from "recoil";
@@ -23,19 +23,20 @@ export default function Bulletin() {
   const [selectedInfo, setSelectedInfo] =
     useState<WorshipOrderItem[]>(worshipOrder);
   const userInfo = useRecoilValue(userInfoState);
+  const ws = useRef<WebSocket | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [wsMessage, setWsMessage] = useState("");
 
   useEffect(() => {
     const baseUrl = process.env.NEXT_PUBLIC_WS_URL;
-    const ws = new WebSocket(baseUrl as string);
+    ws.current = new WebSocket(baseUrl as string);
 
-    ws.onopen = () => {
+    ws.current.onopen = () => {
       console.log("WebSocket connected");
     };
 
-    ws.onmessage = (event) => {
+    ws.current.onmessage = (event) => {
       console.log("WebSocket Received Message:", event.data);
       const message = JSON.parse(event.data);
 
@@ -50,14 +51,16 @@ export default function Bulletin() {
       }
     };
 
-    ws.onclose = () => {
+    ws.current.onclose = () => {
       console.log("WebSocket connected close");
       setLoading(false);
     };
 
-    // return () => {
-    //   ws.close();
-    // };
+    return () => {
+      if (ws.current && ws.current.readyState === 1) {
+        ws.current.close();
+      }
+    };
   }, []);
 
   const downloadPDF = (fileName: string) => {
