@@ -29,37 +29,48 @@ export default function Bulletin() {
   const [wsMessage, setWsMessage] = useState("");
 
   useEffect(() => {
-    const baseUrl = process.env.NEXT_PUBLIC_WS_URL;
-    ws.current = new WebSocket(baseUrl as string);
+    let pingInterval: NodeJS.Timeout;
 
-    ws.current.onopen = () => {
-      console.log("WebSocket connected");
-    };
+    const mount = () => {
+      const baseUrl = process.env.NEXT_PUBLIC_WS_URL;
+      ws.current = new WebSocket(baseUrl as string);
 
-    ws.current.onmessage = (event) => {
-      console.log("WebSocket Received Message:", event.data);
-      const message = JSON.parse(event.data);
+      ws.current.onopen = () => {
+        console.log("WebSocket connected");
+        // Ping 메시지 30초마다 보내기
+        pingInterval = setInterval(() => {
+          if (ws.current?.readyState === WebSocket.OPEN) {
+            ws.current.send(JSON.stringify({ type: "ping" }));
+          }
+        }, 30000); // 30초
+      };
 
-      // 받은 메시지 저장 (화면에 띄움)
-      setWsMessage(message.message);
+      ws.current.onmessage = (event) => {
+        console.log("WebSocket Received Message:", event.data);
+        const message = JSON.parse(event.data);
+        setWsMessage(message.message);
 
-      // 완료 알림 수신시 PDF 자동 다운로드
-      if (message.type === "done" && message.target === "main_worship") {
-        downloadPDF(message.fileName);
-        setWsMessage("Success !!");
+        if (message.type === "done" && message.target === "main_worship") {
+          downloadPDF(message.fileName);
+          setWsMessage("Success !!");
+          setLoading(false);
+        }
+      };
+
+      ws.current.onclose = () => {
+        console.log("WebSocket closed");
         setLoading(false);
-      }
+        clearInterval(pingInterval);
+      };
     };
 
-    ws.current.onclose = () => {
-      console.log("WebSocket connected close");
-      setLoading(false);
-    };
+    mount();
 
     return () => {
-      if (ws.current && ws.current.readyState === 1) {
+      if (ws.current?.readyState === WebSocket.OPEN) {
         ws.current.close();
       }
+      clearInterval(pingInterval);
     };
   }, []);
 
