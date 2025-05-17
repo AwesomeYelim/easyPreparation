@@ -55,9 +55,9 @@ export default function Bulletin() {
       setLoading(false);
     };
 
-    return () => {
-      ws.close();
-    };
+    // return () => {
+    //   ws.close();
+    // };
   }, []);
 
   const downloadPDF = (fileName: string) => {
