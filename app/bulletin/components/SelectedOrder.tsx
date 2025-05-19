@@ -1,7 +1,8 @@
 import React from "react";
-import { useSetRecoilState } from "recoil";
+import { useRecoilState, useSetRecoilState } from "recoil";
 import { selectedDetailState } from "@/recoilState";
 import { WorshipOrderItem } from "../page";
+import classNames from "classnames";
 
 export default function SelectedOrder({
   selectedItems,
@@ -10,7 +11,8 @@ export default function SelectedOrder({
   selectedItems: WorshipOrderItem[];
   setSelectedItems: React.Dispatch<React.SetStateAction<WorshipOrderItem[]>>;
 }) {
-  const setSelectedDetail = useSetRecoilState(selectedDetailState);
+  const [selectedDetail, setSelectedDetail] =
+    useRecoilState(selectedDetailState);
 
   const handleDeleteItem = (item: WorshipOrderItem) => {
     setSelectedItems((prevItems) => prevItems.filter((el) => el !== item));
@@ -24,7 +26,11 @@ export default function SelectedOrder({
           return (
             <span
               key={item.key}
-              className="tag"
+              className={classNames("tag", {
+                selected:
+                  selectedDetail.key === item.key &&
+                  selectedDetail.title == item.title,
+              })}
               onClick={(e) => {
                 e.stopPropagation();
                 setSelectedDetail(item);

@@ -243,10 +243,15 @@ h2 {
       background-color: #444444;
     }
   }
-}
-
-.tag:hover {
-  background-color: #0056b3;
+  &:hover {
+    background-color: #0056b3;
+  }
+  &.selected {
+    background-color: #3c85d3;
+  }
+  &.fix {
+    background-color: #434b55;
+  }
 }
 
 /* 컨테이너 스타일 */

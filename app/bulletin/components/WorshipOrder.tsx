@@ -19,6 +19,17 @@ export function WorshipOrder({
     <div className="card">
       <h2>예배 순서 선택하기</h2>
       <div>
+        {/* {Array.from(
+          new Map(worshipOrder.map((el) => [el.title, el])).values()
+        ).map((item) => (
+          <span
+            key={item.title}
+            className="fix tag"
+            onClick={() => handleSelectItem(item)}
+          >
+            {item.title}
+          </span>
+        ))} */}
         {worshipOrder
           .filter(
             (el) => !selectedItems.map((el) => el.title).includes(el.title)
@@ -26,7 +37,7 @@ export function WorshipOrder({
           .map((item) => (
             <span
               key={item.title}
-              className="tag"
+              className="fix tag"
               onClick={() => handleSelectItem(item)}
             >
               {item.title}
