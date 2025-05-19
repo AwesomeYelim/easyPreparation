@@ -25,17 +25,30 @@ func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 			continue
 		}
 
-		// 성경 구절 처리
+		// 성경 구절 처리 - 사이에 끼워넣음
 		if iIs && strings.HasPrefix(info, "b_") {
+			if title == "성경봉독" {
+				newItem := map[string]interface{}{
+					"key":   fmt.Sprintf("%d.1", i),
+					"title": "말씀내용",
+					"info":  "c_edit",
+					"obj":   "-",
+				}
+
+				// 슬라이스 복사 및 끼워넣기
+				*bulletin = append((*bulletin)[:i+1], append([]map[string]interface{}{newItem}, (*bulletin)[i+1:]...)...)
+			}
+
 			var contentStr string
 			var objRange string
+			// 여러 구절 참조할 경우
 			if strings.Contains(obj, ",") {
 				objs := strings.Split(obj, ",")
 				for _, qObj := range objs {
 					qObj = strings.TrimSpace(qObj)
 					kor := strings.Split(qObj, "_")[0]
 					forUrl := strings.Split(qObj, "_")[1]
-					contentStr += GetQuote(forUrl)
+					contentStr += fmt.Sprintf("%s\n", GetQuote(forUrl))
 					chapterVerse := strings.Split(forUrl, "/")[1]
 					objRange += fmt.Sprintf(", %s %s", kor, parser.CompressVerse(chapterVerse))
 				}
