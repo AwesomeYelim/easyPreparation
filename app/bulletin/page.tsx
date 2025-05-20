@@ -51,7 +51,7 @@ export default function Bulletin() {
         setWsMessage(message.message);
 
         if (message.type === "done" && message.target === "main_worship") {
-          downloadPDF(message.fileName);
+          downloadZip(message.fileName);
           setWsMessage("Success !!");
           setLoading(false);
         }
@@ -74,7 +74,7 @@ export default function Bulletin() {
     };
   }, []);
 
-  const downloadPDF = (fileName: string) => {
+  const downloadZip = (fileName: string) => {
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
     const link = document.createElement("a");
     link.href = `${baseUrl}/download?target=${fileName}`;

@@ -1,0 +1,86 @@
+[
+  {
+    "title": "행사",
+    "info": "-"
+  },
+  {
+    "title": "전주",
+    "info": "-"
+  },
+  {
+    "title": "예배의 부름",
+    "info": "b_edit"
+  },
+  {
+    "title": "개회기도",
+    "info": "-"
+  },
+  {
+    "title": "성시교독",
+    "info": "c_edit"
+  },
+  {
+    "title": "신앙고백",
+    "info": "-"
+  },
+  {
+    "title": "찬송",
+    "info": "c_edit"
+  },
+  {
+    "title": "대표기도",
+    "info": "r_edit"
+  },
+  {
+    "title": "성경봉독",
+    "info": "b_edit"
+  },
+  {
+    "title": "찬양",
+    "info": "-"
+  },
+  {
+    "title": "참회의 기도",
+    "info": "edit"
+  },
+  {
+    "title": "말씀",
+    "info": "c_edit"
+  },
+  {
+    "title": "기도",
+    "info": "-"
+  },
+  {
+    "title": "헌금봉헌",
+    "info": "c_edit"
+  },
+  {
+    "title": "봉헌기도",
+    "info": "-"
+  },
+  {
+    "title": "교회소식",
+    "info": "notice"
+  },
+  {
+    "title": "축도",
+    "info": "-"
+  },
+  {
+    "title": "내주기도",
+    "info": "edit"
+  },
+  {
+    "title": "헌금, 안내",
+    "info": "edit"
+  },
+  {
+    "title": "오늘의 말씀",
+    "info": "b_edit"
+  },
+  {
+    "title": "성찬식",
+    "info": "-"
+  }
+]

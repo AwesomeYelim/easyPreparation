@@ -90,7 +90,7 @@ export default function Detail({
                   newLead: e.target.value,
                 })
               }
-              placeholder={selectedDetail?.lead || "새로 입력하세요"}
+              placeholder={selectedDetail?.lead ? "" : "새로 입력하세요"}
             />
           </p>
         </div>

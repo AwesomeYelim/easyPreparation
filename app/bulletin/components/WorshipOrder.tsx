@@ -1,6 +1,7 @@
 import { useRecoilValue } from "recoil";
 import { worshipOrderState } from "@/recoilState";
 import { WorshipOrderItem } from "../page";
+import fixData from "@/data/fix_data.json";
 
 export function WorshipOrder({
   selectedItems,
@@ -11,8 +12,15 @@ export function WorshipOrder({
 }) {
   const worshipOrder = useRecoilValue(worshipOrderState);
 
-  const handleSelectItem = (item: WorshipOrderItem) => {
-    setSelectedItems((prevItems) => [...prevItems, item]);
+  const handleSelectItem = (item: Partial<WorshipOrderItem>) => {
+    setSelectedItems((prevItems) => [
+      ...prevItems,
+      {
+        ...(item as WorshipOrderItem),
+        key: String(selectedItems.length),
+        lead: "",
+      },
+    ]);
   };
 
   return (
@@ -30,19 +38,15 @@ export function WorshipOrder({
             {item.title}
           </span>
         ))} */}
-        {worshipOrder
-          .filter(
-            (el) => !selectedItems.map((el) => el.title).includes(el.title)
-          )
-          .map((item) => (
-            <span
-              key={item.title}
-              className="fix tag"
-              onClick={() => handleSelectItem(item)}
-            >
-              {item.title}
-            </span>
-          ))}
+        {fixData.map((item) => (
+          <span
+            key={item.title}
+            className="fix tag"
+            onClick={() => handleSelectItem(item)}
+          >
+            {item.title}
+          </span>
+        ))}
       </div>
     </div>
   );
