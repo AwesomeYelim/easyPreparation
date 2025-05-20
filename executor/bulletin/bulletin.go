@@ -69,12 +69,13 @@ func main() {
 
 			// 파일명 생성: "202411_3.pdf"
 			yearMonth, weekFormatted := date.SetDateTitle()
-			outputFilename := fmt.Sprintf("%s_%s.pdf", yearMonth, weekFormatted)
+			outputFilename := fmt.Sprintf("%s_%s", yearMonth, weekFormatted)
+			outputFilenameExe := fmt.Sprintf("%s.pdf", outputFilename)
 			PdfInfo := &define.PdfInfo{
 				FigmaInfo:      figmaInfo,
 				ExecPath:       execPath,
 				Target:         target,
-				OutputFilename: outputFilename,
+				OutputFilename: outputFilenameExe,
 			}
 			presentationData := forPresentation.PdfInfo{
 				PdfInfo: PdfInfo,
