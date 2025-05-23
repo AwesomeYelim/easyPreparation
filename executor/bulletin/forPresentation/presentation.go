@@ -50,9 +50,10 @@ func (pi PdfInfo) Create() {
 			if !strings.Contains(objPdf.Title, "성시교독") {
 				objPdf.AddPage()
 				objPdf.CheckImgPlaced(objPdf.Path, 0)
+				objPdf.MarkName(pi.MarkName)
 			}
 			if strings.Contains(con.Info, "edit") || strings.Contains(con.Info, "notice") {
-				objPdf.ForEdit(con, config, pi.ExecPath)
+				objPdf.ForEdit(con, config, pi.MarkName)
 			}
 		}
 	}

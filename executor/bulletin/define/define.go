@@ -11,4 +11,5 @@ type PdfInfo struct {
 	Target         string
 	ExecPath       string
 	OutputFilename string
+	MarkName       string
 }

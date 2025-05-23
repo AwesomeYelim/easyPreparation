@@ -272,7 +272,7 @@ func (pdf *PDF) ForTodayVerse(element gui.WorshipInfo) {
 	pdf.MultiCell(innerBoxW, fontInfo.FontSize/2, element.Contents, "", "C", false)
 }
 
-func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config, execPath string) {
+func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config, mark string) {
 	hLColor := colorPalette.HexToRGBA(pdf.Config.Color.BoxColor) // 박스 색상 설정
 	fontInfo := config.Classification.Bulletin.Presentation.FontInfo
 
@@ -284,7 +284,7 @@ func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config, execPath str
 	case "예배의 부름":
 		pdf.setBegin(con, 4)
 	case "말씀내용":
-		pdf.setBody(3) // 3 줄씩 끊기
+		pdf.setBody(3, mark) // 3 줄씩 끊기
 	case "찬송", "헌금봉헌":
 		pdf.SetText(fontInfo, true, hLColor)
 		pdf.WriteText(con.Obj, "center")
@@ -307,6 +307,22 @@ func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config, execPath str
 	}
 }
 
+func (pdf *PDF) MarkName(mark string) {
+	labelW := 340.00
+	labelWm, labelHm := 13.00, 18.00
+	labelP := 11.00
+
+	fontSize := pdf.Config.FontInfo.FontSize / 1.5
+	pdf.SetText(classification.FontInfo{
+		FontFamily: "Jacques Francois", FontSize: fontSize,
+	}, false, color.RGBA{R: 255, G: 255, B: 255})
+
+	x := pdf.Config.Width - (labelW + labelWm + labelP)
+	y := pdf.Config.Height - (labelHm + labelP)
+
+	pdf.SetXY(x, y)
+	pdf.MultiCell(labelW, 0, mark, "", "R", false)
+}
 func (pdf *PDF) DrawChurchNews(fontInfo classification.FontInfo, con gui.WorshipInfo, hLColor color.RGBA, x, y float64) {
 	// 재귀적으로 교회소식과 그 내부 children 데이터를 처리하는 함수
 	var draw func(items []gui.WorshipInfo, depth int)
@@ -376,14 +392,17 @@ func (pdf *PDF) setBegin(con gui.WorshipInfo, lines int) {
 	}
 }
 
-func (pdf *PDF) setBody(lines int) {
+func (pdf *PDF) setBody(lines int, mark string) {
 	var tmpEl string
+	hLColor := colorPalette.HexToRGBA(pdf.Config.Color.BoxColor) // 박스 색상 설정
+	fontInfo := pdf.Config.FontInfo
 
 	for i, content := range pdf.BibleVerse {
 		tmpEl += content + "\n\n"
 
 		// 페이지 처리 조건
 		if (i+1)%lines == 0 || i == len(pdf.BibleVerse)-1 {
+			pdf.SetText(fontInfo, true, hLColor)
 			pdf.SetXY(pdf.Config.Padding, pdf.Config.Padding*2.5)
 			pdf.MultiCell(pdf.Config.InnerRectangle.Width, pdf.Config.FontSize/2, tmpEl, "", "L", false)
 			tmpEl = ""
@@ -392,6 +411,7 @@ func (pdf *PDF) setBody(lines int) {
 			if i != len(pdf.BibleVerse)-1 {
 				pdf.AddPage()
 				pdf.CheckImgPlaced(pdf.Path, 0)
+				pdf.MarkName(mark)
 			}
 		}
 	}
