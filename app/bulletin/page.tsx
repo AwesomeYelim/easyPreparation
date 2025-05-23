@@ -97,6 +97,7 @@ export default function Bulletin() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          mark: userInfo.english_name,
           targetInfo: selectedInfo,
           target: "main_worship",
           figmaInfo: userInfo.figmaInfo,
