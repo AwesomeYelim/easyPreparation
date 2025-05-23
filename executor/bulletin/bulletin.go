@@ -53,6 +53,13 @@ func main() {
 				return
 			}
 
+			// mark
+			mark, ok := data["mark"].(string)
+			if !ok {
+				handlers.BroadcastProgress("mark string type assertion error", -1, "target is not a string")
+				return
+			}
+
 			// targetInfo 파싱
 			var targetInfo []map[string]interface{}
 			if rawTargetInfo, err := json.Marshal(data["targetInfo"]); err == nil {
@@ -76,6 +83,7 @@ func main() {
 				ExecPath:       execPath,
 				Target:         target,
 				OutputFilename: outputFilenameExe,
+				MarkName:       mark,
 			}
 			presentationData := forPresentation.PdfInfo{
 				PdfInfo: PdfInfo,
