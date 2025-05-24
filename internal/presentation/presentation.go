@@ -1,6 +1,7 @@
 package presentation
 
 import (
+	"easyPreparation_1.0/executor/bulletin/define"
 	"easyPreparation_1.0/internal/classification"
 	"easyPreparation_1.0/internal/colorPalette"
 	"easyPreparation_1.0/internal/extract"
@@ -26,11 +27,11 @@ import (
 
 type PDF struct {
 	*gofpdf.Fpdf
-	Title       string
-	BibleVerse  []string
-	Path        string
-	ExecutePath string
-	Config      classification.ResultInfo
+	Title      string
+	BibleVerse []string
+	Path       string
+	Config     classification.ResultInfo
+	*define.PdfInfo
 }
 
 type InnerSizeInfo struct {
@@ -272,7 +273,7 @@ func (pdf *PDF) ForTodayVerse(element gui.WorshipInfo) {
 	pdf.MultiCell(innerBoxW, fontInfo.FontSize/2, element.Contents, "", "C", false)
 }
 
-func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config, mark string) {
+func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config) {
 	hLColor := colorPalette.HexToRGBA(pdf.Config.Color.BoxColor) // 박스 색상 설정
 	fontInfo := config.Classification.Bulletin.Presentation.FontInfo
 
@@ -284,7 +285,7 @@ func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config, mark string)
 	case "예배의 부름":
 		pdf.setBegin(con, 4)
 	case "말씀내용":
-		pdf.setBody(3, mark) // 3 줄씩 끊기
+		pdf.setBody(3) // 3 줄씩 끊기
 	case "찬송", "헌금봉헌":
 		pdf.SetText(fontInfo, true, hLColor)
 		pdf.WriteText(con.Obj, "center")
@@ -307,7 +308,7 @@ func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config, mark string)
 	}
 }
 
-func (pdf *PDF) MarkName(mark string) {
+func (pdf *PDF) MarkName() {
 	labelW := 340.00
 	labelWm, labelHm := 13.00, 18.00
 	labelP := 11.00
@@ -321,7 +322,7 @@ func (pdf *PDF) MarkName(mark string) {
 	y := pdf.Config.Height - (labelHm + labelP)
 
 	pdf.SetXY(x, y)
-	pdf.MultiCell(labelW, 0, mark, "", "R", false)
+	pdf.MultiCell(labelW, 0, pdf.PdfInfo.MarkName, "", "R", false)
 }
 func (pdf *PDF) DrawChurchNews(fontInfo classification.FontInfo, con gui.WorshipInfo, hLColor color.RGBA, x, y float64) {
 	// 재귀적으로 교회소식과 그 내부 children 데이터를 처리하는 함수
@@ -392,7 +393,7 @@ func (pdf *PDF) setBegin(con gui.WorshipInfo, lines int) {
 	}
 }
 
-func (pdf *PDF) setBody(lines int, mark string) {
+func (pdf *PDF) setBody(lines int) {
 	var tmpEl string
 	hLColor := colorPalette.HexToRGBA(pdf.Config.Color.BoxColor) // 박스 색상 설정
 	fontInfo := pdf.Config.FontInfo
@@ -411,7 +412,7 @@ func (pdf *PDF) setBody(lines int, mark string) {
 			if i != len(pdf.BibleVerse)-1 {
 				pdf.AddPage()
 				pdf.CheckImgPlaced(pdf.Path, 0)
-				pdf.MarkName(mark)
+				pdf.MarkName()
 			}
 		}
 	}
@@ -429,7 +430,7 @@ func (pdf *PDF) setOutDirFiles(category, target string) {
 	case "responsive_reading":
 		splitNum = strings.Split(target, ".")[0]
 	}
-	outputPath := filepath.Join(pdf.ExecutePath, "data", category)
+	outputPath := filepath.Join(pdf.FigmaInfo.ExecPath, "data", category)
 
 	_ = pkg.CheckDirIs(outputPath)
 	defer func() {
