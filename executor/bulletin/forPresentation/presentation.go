@@ -35,7 +35,7 @@ func (pi PdfInfo) Create() {
 	}
 	objPdf := presentation.New(instanceSize)
 	objPdf.Config = config.Classification.Bulletin.Presentation
-	objPdf.ExecutePath = pi.ExecPath
+	objPdf.PdfInfo = pi.PdfInfo
 
 	var contents []gui.WorshipInfo
 
@@ -50,10 +50,10 @@ func (pi PdfInfo) Create() {
 			if !strings.Contains(objPdf.Title, "성시교독") {
 				objPdf.AddPage()
 				objPdf.CheckImgPlaced(objPdf.Path, 0)
-				objPdf.MarkName(pi.MarkName)
+				objPdf.MarkName()
 			}
 			if strings.Contains(con.Info, "edit") || strings.Contains(con.Info, "notice") {
-				objPdf.ForEdit(con, config, pi.MarkName)
+				objPdf.ForEdit(con, config)
 			}
 		}
 	}
