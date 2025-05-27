@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import "./LyricsManager.scss";
+import { useRecoilValue } from "recoil";
+import { userInfoState } from "@/recoilState";
 
 interface SongBlock {
   title: string;
@@ -12,11 +14,14 @@ interface SongBlock {
 export default function LyricsManager() {
   const [input, setInput] = useState("");
   const [songs, setSongs] = useState<SongBlock[]>([]);
+  //   const userInfo = useRecoilValue(userInfoState);
 
   const handler = {
     add: () => {
+      console.log(input);
+
       const trimmed = input.trim();
-      if (trimmed && !songs.some((s) => s.title === trimmed)) {
+      if (trimmed && !songs.some((s) => s.title === input)) {
         setSongs([...songs, { title: trimmed, lyrics: "", expanded: false }]);
         setInput("");
       }
@@ -37,6 +42,40 @@ export default function LyricsManager() {
     setSongs(newSongs);
   };
 
+  const handleSearchLyrics = async () => {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const response = await fetch(`${baseUrl}/searchLyrics`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          //   figmaInfo: userInfo.figmaInfo,
+          //   mark: userInfo.english_name,
+          songs: songs.map(({ title, lyrics }) => ({ title, lyrics })),
+        }),
+      });
+
+      if (!response.ok) throw new Error("가사 검색 요청 실패");
+      const data = await response.json();
+      console.log("가사 검색 결과:", data);
+
+      const updatedSongs = songs.map((song) => {
+        const matched = data.searchedSongs.find(
+          (s: { title: string }) => s.title === song.title
+        );
+        return {
+          ...song,
+          lyrics: matched?.lyrics || song.lyrics,
+        };
+      });
+      setSongs(updatedSongs);
+    } catch (error) {
+      console.error("에러:", error);
+    }
+  };
+
   return (
     <div className="container">
       <div className="search_wrap">
@@ -46,7 +85,12 @@ export default function LyricsManager() {
             placeholder="검색하세요."
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handler.add()}
+            onKeyUp={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handler.add();
+              }
+            }}
           />
           <button onClick={handler.add}>+</button>
           {songs.length > 0 && (
@@ -57,7 +101,7 @@ export default function LyricsManager() {
         </div>
 
         {songs.length > 0 && (
-          <button className="searchBtn">
+          <button className="searchBtn" onClick={handleSearchLyrics}>
             전체 가사 찾기 <span>⌕</span>
           </button>
         )}
