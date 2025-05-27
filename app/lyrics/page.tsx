@@ -1,5 +1,7 @@
 "use client";
 
+import LyricsManager from "@/lyrics/components/LyricsManager";
+
 export default function Lyrics() {
-  return <div className="lyrics_container">lyrics ui</div>;
+  return <LyricsManager />;
 }

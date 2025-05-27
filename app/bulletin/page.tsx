@@ -137,7 +137,7 @@ export default function Bulletin() {
             disabled: !userInfo.figmaInfo.key || !userInfo.figmaInfo.token,
           })}
         >
-          Submit
+          예배 자료 생성하기
         </button>
       </div>
 

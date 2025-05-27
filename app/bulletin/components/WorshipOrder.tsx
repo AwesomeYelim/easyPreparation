@@ -10,7 +10,7 @@ export function WorshipOrder({
   selectedItems: WorshipOrderItem[];
   setSelectedItems: React.Dispatch<React.SetStateAction<WorshipOrderItem[]>>;
 }) {
-  const worshipOrder = useRecoilValue(worshipOrderState);
+  // const worshipOrder = useRecoilValue(worshipOrderState);
 
   const handleSelectItem = (item: Partial<WorshipOrderItem>) => {
     setSelectedItems((prevItems) => [
@@ -27,17 +27,6 @@ export function WorshipOrder({
     <div className="card">
       <h2>예배 순서 선택하기</h2>
       <div>
-        {/* {Array.from(
-          new Map(worshipOrder.map((el) => [el.title, el])).values()
-        ).map((item) => (
-          <span
-            key={item.title}
-            className="fix tag"
-            onClick={() => handleSelectItem(item)}
-          >
-            {item.title}
-          </span>
-        ))} */}
         {fixData.map((item) => (
           <span
             key={item.title}
