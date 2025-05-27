@@ -1,7 +1,7 @@
 package presentation
 
 import (
-	"easyPreparation_1.0/executor/bulletin/define"
+	"easyPreparation_1.0/apiServer/bulletin/define"
 	"easyPreparation_1.0/internal/classification"
 	"easyPreparation_1.0/internal/colorPalette"
 	"easyPreparation_1.0/internal/extract"

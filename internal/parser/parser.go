@@ -13,6 +13,7 @@ type SlideData struct {
 	Title   string
 	Content []string
 	TrackID int
+	Lyrics  string
 }
 
 // 트랙 리스트를 파싱
@@ -35,6 +36,7 @@ func (si *SlideData) parseTrackList(doc *goquery.Document) {
 // 가사 파싱
 func (si *SlideData) parseLyrics(doc *goquery.Document) {
 	doc.Find(".lyricsContainer xmp").Each(func(i int, s *goquery.Selection) {
+		si.Lyrics = s.Text()
 		si.Content = pkg.SplitTwoLines(s.Text())
 	})
 }

@@ -1,11 +1,10 @@
 package handlers
 
 import (
+	middleware "easyPreparation_1.0/internal/middlerware"
 	"encoding/json"
 	"fmt"
 	"net/http"
-
-	middleware "easyPreparation_1.0/internal/middlerware"
 )
 
 func SubmitHandler(dataChan chan map[string]interface{}) http.Handler {
