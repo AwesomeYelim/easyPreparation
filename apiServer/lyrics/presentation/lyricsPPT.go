@@ -77,6 +77,7 @@ func (lpm *LyricsPresentationManager) CreatePresentation(lyricsInfo map[string]s
 	for _, title := range songTitles {
 		song := &parser.SlideData{}
 
+		// content 완성
 		if hasLyrics != "" {
 			song.Content = pkg.SplitTwoLines(hasLyrics)
 		} else {

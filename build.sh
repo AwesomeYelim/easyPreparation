@@ -3,9 +3,9 @@
 # 빌드할 Go 파일 경로 설정
 GO_FILES=(
   "전체 선택"   # 전체 선택 항목 추가
-  "./executor/lyrics/presentation/lyricsPPT.go"
-  "./executor/lyrics/history/history.go"
-  "./executor/bulletin/bulletin.go"
+  "./apiServer/lyrics/presentation/lyricsPPT.go"
+  "./apiServer/lyrics/history/history.go"
+  "./apiServer/bulletin/bulletin.go"
 )
 
 # 바이너리 파일을 저장할 디렉토리 설정
@@ -86,7 +86,7 @@ build_file() {
   if [ "$CURRENT_OS" == "windows" ]; then
     output_file="${output_file}.exe"
     echo "Building for Windows: $file..."
-    if [ "$file" == "./executor/bulletin/bulletin.go" ]; then
+    if [ "$file" == "./apiServer/bulletin/bulletin.go" ]; then
       echo "Building Windows GUI for: $file..."
       echo GOOS=windows GOARCH=amd64 go build -ldflags="-H=windowsgui" -o "$output_file" "$file"
       GOOS=windows GOARCH=amd64 go build -ldflags="-H=windowsgui" -o "$output_file" "$file"

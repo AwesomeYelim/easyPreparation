@@ -3,8 +3,8 @@
 set -e
 
 GO_FILES=(
-  "./executor/lyrics/presentation/lyricsPPT.go"
-  "./executor/bulletin/bulletin.go"
+  "./apiServer/lyrics/presentation/lyricsPPT.go"
+  "./apiServer/bulletin/bulletin.go"
 )
 
 BIN_DIR="./bin"

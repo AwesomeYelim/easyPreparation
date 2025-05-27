@@ -1,7 +1,7 @@
 package forPresentation
 
 import (
-	"easyPreparation_1.0/executor/bulletin/define"
+	"easyPreparation_1.0/apiServer/bulletin/define"
 	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/gui"
 	"easyPreparation_1.0/internal/presentation"
