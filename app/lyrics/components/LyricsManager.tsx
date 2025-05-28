@@ -18,8 +18,6 @@ export default function LyricsManager() {
 
   const handler = {
     add: () => {
-      console.log(input);
-
       const trimmed = input.trim();
       if (trimmed && !songs.some((s) => s.title === input)) {
         setSongs([...songs, { title: trimmed, lyrics: "", expanded: false }]);
