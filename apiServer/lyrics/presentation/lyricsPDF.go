@@ -1,9 +1,10 @@
-package main
+package presentation
 
 import (
 	"easyPreparation_1.0/internal/classification"
 	"easyPreparation_1.0/internal/extract"
-	"easyPreparation_1.0/internal/gui"
+	"easyPreparation_1.0/internal/figma"
+	"easyPreparation_1.0/internal/handlers"
 	"easyPreparation_1.0/internal/parser"
 	"easyPreparation_1.0/internal/path"
 	"easyPreparation_1.0/internal/presentation"
@@ -19,17 +20,38 @@ import (
 )
 
 type LyricsPresentationManager struct {
-	execPath  string
-	config    extract.Config
-	outputDir string
+	ExecPath  string
+	Config    extract.Config
+	OutputDir string
 }
 
-func main() {
+func CreateLyricsPDF(data map[string]interface{}) {
+	execPath := path.ExecutePath("easyPreparation")
+
 	lpm := NewLyricsPresentationManager()
 	defer lpm.Cleanup()
-	lyricsInfo, figmaInfo := gui.SetLyricsGui(lpm.execPath)
-	figmaInfo.GetFigmaImage(lpm.outputDir, "forLyrics")
-	lpm.CreatePresentation(lyricsInfo)
+
+	var key, token string
+	if rawFigma, ok := data["figmaInfo"]; ok {
+		if figmaMap, ok := rawFigma.(map[string]interface{}); ok {
+			if k, ok := figmaMap["key"].(string); ok {
+				key = k
+			}
+			if t, ok := figmaMap["token"].(string); ok {
+				token = t
+			}
+		}
+	}
+
+	figmaInfo := figma.New(&token, &key, execPath)
+	if err := figmaInfo.GetNodes(); err != nil {
+		handlers.BroadcastProgress("Get Nodes Error", -1, fmt.Sprintf("GetNodes Error: %s", err))
+		return
+	}
+
+	figmaInfo.GetFigmaImage(lpm.OutputDir, "forLyrics")
+
+	lpm.CreatePresentation(data)
 }
 
 func NewLyricsPresentationManager() *LyricsPresentationManager {
@@ -41,57 +63,75 @@ func NewLyricsPresentationManager() *LyricsPresentationManager {
 	_ = pkg.CheckDirIs(outputDir)
 
 	return &LyricsPresentationManager{
-		execPath:  execPath,
-		config:    extract.ConfigMem,
-		outputDir: outputDir,
+		ExecPath:  execPath,
+		Config:    extract.ConfigMem,
+		OutputDir: outputDir,
 	}
 }
 
 func (lpm *LyricsPresentationManager) Cleanup() {
-	_ = os.RemoveAll(lpm.outputDir)
+	_ = os.RemoveAll(lpm.OutputDir)
 }
 
-func (lpm *LyricsPresentationManager) CreatePresentation(lyricsInfo map[string]string) {
-	songTitle := lyricsInfo["songTitle"]
-	label := lyricsInfo["label"]
-	hasLyrics := lyricsInfo["hasLyrics"]
+func (lpm *LyricsPresentationManager) CreatePresentation(data map[string]interface{}) {
 
-	fontInfo := lpm.config.Classification.Lyrics.Presentation.FontInfo
+	rawSongs, ok := data["songs"].([]interface{})
+	if !ok {
+		log.Println("songs 데이터가 유효하지 않습니다.")
+		return
+	}
+
+	var songs []struct {
+		Title  string
+		Lyrics string
+	}
+
+	for _, item := range rawSongs {
+		songMap, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		title, _ := songMap["title"].(string)
+		lyrics, _ := songMap["lyrics"].(string)
+
+		songs = append(songs, struct {
+			Title  string
+			Lyrics string
+		}{
+			Title:  title,
+			Lyrics: lyrics,
+		})
+	}
+	label := data["mark"].(string)
+
+	fontInfo := lpm.Config.Classification.Lyrics.Presentation.FontInfo
 
 	labelS, labelH := fontInfo.FontSize/2, 28.00
 	labelWm, labelHm := 13.00, 10.00
 	labelP := 15.00
 
-	if songTitle == "" {
-		fmt.Println("노래 제목을 입력하지 않았습니다. 프로그램을 종료합니다.")
-		return
-	}
-
-	songTitles := strings.Split(songTitle, ",")
-	backgroundImages, _ := os.ReadDir(lpm.outputDir)
+	//songTitles := strings.Split(songs, ",")
+	backgroundImages, _ := os.ReadDir(lpm.OutputDir)
 	instanceSize := gofpdf.SizeType{
 		Wd: extract.ConfigMem.Classification.Lyrics.Presentation.Width,
 		Ht: extract.ConfigMem.Classification.Lyrics.Presentation.Height,
 	}
 
-	for _, title := range songTitles {
-		song := &parser.SlideData{}
+	for _, song := range songs {
+		newSong := &parser.SlideData{}
+		newSong.Title = song.Title
+		newSong.Content = pkg.SplitTwoLines(song.Lyrics)
 
-		// content 완성
-		if hasLyrics != "" {
-			song.Content = pkg.SplitTwoLines(hasLyrics)
-		} else {
-			song.SearchLyricsList("https://music.bugs.co.kr/search/lyrics?q=%s", title, false)
-		}
+		//newSong.SearchLyricsList("https://music.bugs.co.kr/search/lyrics?q=%s", song.title, false)
 
-		fileName := filepath.Join(strings.TrimSuffix(lpm.outputDir, "tmp"), sanitize.FileName(title)+".pdf")
+		fileName := filepath.Join(strings.TrimSuffix(lpm.OutputDir, "tmp"), sanitize.FileName(song.Title)+".pdf")
 
 		objPdf := presentation.New(instanceSize)
 		objPdf.Config = extract.ConfigMem.Classification.Lyrics.Presentation
 
-		for _, content := range song.Content {
+		for _, content := range newSong.Content {
 			objPdf.AddPage()
-			objPdf.CheckImgPlaced(filepath.Join(lpm.outputDir, backgroundImages[0].Name()), 0)
+			objPdf.CheckImgPlaced(filepath.Join(lpm.OutputDir, backgroundImages[0].Name()), 0)
 			// 가운데 배치
 			objPdf.SetXY((objPdf.Config.Width-objPdf.Config.InnerRectangle.Width)/2, (objPdf.Config.Height-fontInfo.FontSize)/2)
 			objPdf.SetText(fontInfo, true, color.RGBA{R: 255, G: 255, B: 255})

@@ -1,13 +1,14 @@
 package handlers
 
 import (
+	"easyPreparation_1.0/internal/api/global"
 	middleware "easyPreparation_1.0/internal/middlerware"
 	"encoding/json"
 	"fmt"
 	"net/http"
 )
 
-func SubmitHandler(dataChan chan map[string]interface{}) http.Handler {
+func SubmitHandler(dataChan chan global.DataEnvelope) http.Handler {
 	return middleware.CORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
@@ -27,7 +28,10 @@ func SubmitHandler(dataChan chan map[string]interface{}) http.Handler {
 		fmt.Println("Submit Received:", data)
 
 		// 채널로 데이터 전달
-		dataChan <- data
+		dataChan <- global.DataEnvelope{
+			Type:    "submit",
+			Payload: data,
+		}
 
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
