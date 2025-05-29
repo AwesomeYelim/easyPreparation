@@ -14,7 +14,7 @@ interface SongBlock {
 export default function LyricsManager() {
   const [input, setInput] = useState("");
   const [songs, setSongs] = useState<SongBlock[]>([]);
-  //   const userInfo = useRecoilValue(userInfoState);
+  const userInfo = useRecoilValue(userInfoState);
 
   const handler = {
     add: () => {
@@ -49,15 +49,12 @@ export default function LyricsManager() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          //   figmaInfo: userInfo.figmaInfo,
-          //   mark: userInfo.english_name,
           songs: songs.map(({ title, lyrics }) => ({ title, lyrics })),
         }),
       });
 
       if (!response.ok) throw new Error("가사 검색 요청 실패");
       const data = await response.json();
-      console.log("가사 검색 결과:", data);
 
       const updatedSongs = songs.map((song) => {
         const matched = data.searchedSongs.find(
@@ -71,6 +68,30 @@ export default function LyricsManager() {
       setSongs(updatedSongs);
     } catch (error) {
       console.error("에러:", error);
+    }
+  };
+
+  const handleSubmitLyrics = async () => {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const response = await fetch(`${baseUrl}/submitLyrics`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          figmaInfo: userInfo.figmaInfo,
+          mark: userInfo.english_name,
+          songs: songs.map(({ title, lyrics }) => ({ title, lyrics })),
+        }),
+      });
+
+      if (!response.ok) throw new Error("가사 제출 실패");
+
+      alert("가사가 성공적으로 제출되었습니다!");
+    } catch (error) {
+      console.error("가사 제출 중 에러:", error);
+      alert("가사 제출 중 오류가 발생했습니다.");
     }
   };
 
@@ -92,16 +113,30 @@ export default function LyricsManager() {
           />
           <button onClick={handler.add}>+</button>
           {songs.length > 0 && (
-            <span className="notice">
-              가사를 입력할 경우 자동가사 찾기는 생략됩니다.
-            </span>
+            <div className="notice">
+              <span>가사를 입력할 경우 자동가사 찾기는 생략됩니다.</span>
+              <span className="ref">
+                가사 참조 사이트 :
+                <a href="https://music.bugs.co.kr/" target="_blank">
+                  https://music.bugs.co.kr/
+                </a>
+              </span>
+            </div>
           )}
         </div>
 
         {songs.length > 0 && (
-          <button className="searchBtn" onClick={handleSearchLyrics}>
-            전체 가사 찾기 <span>⌕</span>
-          </button>
+          <div className="btnGroup">
+            <button className="searchBtn" onClick={handleSearchLyrics}>
+              전체 가사 찾기 <span>⌕</span>
+            </button>
+
+            {songs.every((song) => song.lyrics.trim() !== "") && (
+              <button className="submitBtn" onClick={handleSubmitLyrics}>
+                가사 제출 <span>✓</span>
+              </button>
+            )}
+          </div>
         )}
       </div>
 
