@@ -51,7 +51,6 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
           script: |
-            chmod +x /home/ubuntu/easyPreparation/bin/bulletin_linux_amd64
             cd /home/ubuntu/easyPreparation
             sudo systemctl restart bulletin
             sudo systemctl status bulletin --no-pager
