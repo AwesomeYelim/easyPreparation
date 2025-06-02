@@ -1,13 +1,12 @@
 package handlers
 
 import (
-	"archive/zip"
 	"easyPreparation_1.0/internal/api/global"
 	middleware "easyPreparation_1.0/internal/middlerware"
 	"easyPreparation_1.0/internal/path"
+	ziputil "easyPreparation_1.0/internal/utils"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -76,66 +75,24 @@ func SubmitLyricsHandler(dataChan chan global.DataEnvelope) http.Handler {
 				}
 			}
 		}
-		tmpZipName := "lyrics_bundle.zip"
-		// 4. ZIP 생성
-		zipPath := filepath.Join(outputDir, tmpZipName)
-		if err := createZipFromFiles(expectedFiles, zipPath); err != nil {
+
+		var fileNames []string
+		for _, f := range expectedFiles {
+			fileNames = append(fileNames, filepath.Base(f))
+		}
+
+		zipBytes, err := ziputil.CreateZipBufferFromFiles(expectedFiles, fileNames)
+		if err != nil {
 			http.Error(w, "ZIP 생성 실패: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		// 5. 응답 전송
 		w.Header().Set("Content-Type", "application/zip")
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", tmpZipName))
-		http.ServeFile(w, r, zipPath)
+		w.Header().Set("Content-Disposition", "attachment; filename=lyrics_bundle.zip")
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", len(zipBytes)))
+		if _, err := w.Write(zipBytes); err != nil {
+			fmt.Println("ZIP 전송 오류:", err)
+		}
 
-		// 6. 정리 (선택)
-		go func() {
-			time.Sleep(5 * time.Second)
-			_ = os.RemoveAll(zipPath)
-		}()
 	}))
-}
-
-func createZipFromFiles(filePaths []string, zipPath string) error {
-	zipFile, err := os.Create(zipPath)
-	if err != nil {
-		return err
-	}
-	defer zipFile.Close()
-
-	zipWriter := zip.NewWriter(zipFile)
-	defer zipWriter.Close()
-
-	for _, file := range filePaths {
-		fileToZip, err := os.Open(file)
-		if err != nil {
-			return err
-		}
-		defer fileToZip.Close()
-
-		info, err := fileToZip.Stat()
-		if err != nil {
-			return err
-		}
-
-		header, err := zip.FileInfoHeader(info)
-		if err != nil {
-			return err
-		}
-		header.Name = filepath.Base(file)
-		header.Method = zip.Deflate
-
-		writer, err := zipWriter.CreateHeader(header)
-		if err != nil {
-			return err
-		}
-
-		_, err = io.Copy(writer, fileToZip)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
