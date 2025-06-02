@@ -4,6 +4,7 @@ import { useState } from "react";
 import "./LyricsManager.scss";
 import { useRecoilValue } from "recoil";
 import { userInfoState } from "@/recoilState";
+import classNames from "classnames";
 
 interface SongBlock {
   title: string;
@@ -147,7 +148,14 @@ export default function LyricsManager() {
             </button>
 
             {songs.every((song) => song.lyrics.trim() !== "") && (
-              <button className="submitBtn" onClick={handleSubmitLyrics}>
+              <button
+                disabled={!userInfo.figmaInfo.key || !userInfo.figmaInfo.token}
+                className={classNames("submitBtn", {
+                  disabled:
+                    !userInfo.figmaInfo.key || !userInfo.figmaInfo.token,
+                })}
+                onClick={handleSubmitLyrics}
+              >
                 가사 제출 <span>✓</span>
               </button>
             )}
