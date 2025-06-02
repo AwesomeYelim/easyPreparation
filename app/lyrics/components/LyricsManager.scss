@@ -7,9 +7,11 @@
   width: 100%;
   display: flex;
   justify-content: space-between;
+  height: 100px;
   .inputGroup {
     display: flex;
     margin-bottom: 20px;
+    height: 50px;
 
     input {
       flex: 1;

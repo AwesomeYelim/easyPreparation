@@ -88,7 +88,22 @@ export default function LyricsManager() {
 
       if (!response.ok) throw new Error("가사 제출 실패");
 
-      alert("가사가 성공적으로 제출되었습니다!");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      if (songs.length > 1) {
+        a.download = `${songs[0].title} 외 ${songs.length - 1}.zip`;
+      } else {
+        a.download = `${songs[0].title}.zip`;
+      }
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      alert("가사 제출 및 ZIP 다운로드 완료!");
     } catch (error) {
       console.error("가사 제출 중 에러:", error);
       alert("가사 제출 중 오류가 발생했습니다.");
