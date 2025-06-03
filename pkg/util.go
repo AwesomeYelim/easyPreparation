@@ -3,35 +3,53 @@ package pkg
 import (
 	"os"
 	"strings"
+	"unicode"
 )
 
 func SplitTwoLines(text string) (result []string) {
-	// 공백 제거
-	lines := RemoveEmptyLines(text)
-	// 두 줄씩 자르기
-	for lineIndex := 0; lineIndex < len(lines); lineIndex += 2 {
-		if lineIndex+1 < len(lines) {
-			result = append(result, lines[lineIndex]+"\n"+lines[lineIndex+1])
+	lines := RemoveEmptyNonLetterLines(text)
+	seen := make(map[string]bool)
+
+	// 중복 가사 제거
+	for i := 0; i < len(lines); i += 2 {
+		var block string
+		if i+1 < len(lines) {
+			block = lines[i] + "\n" + lines[i+1]
 		} else {
-			result = append(result, lines[lineIndex]) // 마지막줄 홀수 인경우에만
+			block = lines[i]
+		}
+
+		if !seen[block] {
+			result = append(result, block)
+			seen[block] = true
 		}
 	}
 
 	return result
 }
 
-// RemoveEmptyLines 함수는 중간 공백을 제거합니다.
-func RemoveEmptyLines(text string) []string {
+// 중간 공백 및 비문자 제거
+func RemoveEmptyNonLetterLines(text string) []string {
 	lines := strings.Split(text, "\n")
 	var result []string
+
 	for _, line := range lines {
-		if strings.TrimSpace(line) != "" {
-			result = append(result, strings.TrimSpace(line))
+		line = strings.TrimSpace(line)
+		filtered := ""
+
+		for _, r := range line {
+			if unicode.IsLetter(r) || r == ' ' { // 문자 및 공백만 허용
+				filtered += string(r)
+			}
+		}
+
+		if filtered != "" {
+			result = append(result, filtered)
 		}
 	}
+
 	return result
 }
-
 func CheckDirIs(dirPath string) (err error) {
 	if _, err = os.Stat(dirPath); os.IsNotExist(err) {
 		err = os.MkdirAll(dirPath, 0700)
