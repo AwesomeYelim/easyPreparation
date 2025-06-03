@@ -25,6 +25,11 @@ type LyricsPresentationManager struct {
 	OutputDir string
 }
 
+type stSong struct {
+	title  string
+	lyrics string
+}
+
 func CreateLyricsPDF(data map[string]interface{}) {
 	execPath := path.ExecutePath("easyPreparation")
 
@@ -81,10 +86,7 @@ func (lpm *LyricsPresentationManager) CreatePresentation(data map[string]interfa
 		return
 	}
 
-	var songs []struct {
-		Title  string
-		Lyrics string
-	}
+	var songs []stSong
 
 	for _, item := range rawSongs {
 		songMap, ok := item.(map[string]interface{})
@@ -94,12 +96,9 @@ func (lpm *LyricsPresentationManager) CreatePresentation(data map[string]interfa
 		title, _ := songMap["title"].(string)
 		lyrics, _ := songMap["lyrics"].(string)
 
-		songs = append(songs, struct {
-			Title  string
-			Lyrics string
-		}{
-			Title:  title,
-			Lyrics: lyrics,
+		songs = append(songs, stSong{
+			title:  title,
+			lyrics: lyrics,
 		})
 	}
 	label := data["mark"].(string)
@@ -110,7 +109,6 @@ func (lpm *LyricsPresentationManager) CreatePresentation(data map[string]interfa
 	labelWm, labelHm := 13.00, 10.00
 	labelP := 15.00
 
-	//songTitles := strings.Split(songs, ",")
 	backgroundImages, _ := os.ReadDir(lpm.OutputDir)
 	instanceSize := gofpdf.SizeType{
 		Wd: extract.ConfigMem.Classification.Lyrics.Presentation.Width,
@@ -119,12 +117,10 @@ func (lpm *LyricsPresentationManager) CreatePresentation(data map[string]interfa
 
 	for _, song := range songs {
 		newSong := &parser.SlideData{}
-		newSong.Title = song.Title
-		newSong.Content = pkg.SplitTwoLines(song.Lyrics)
+		newSong.Title = song.title
+		newSong.Content = pkg.SplitTwoLines(song.lyrics)
 
-		//newSong.SearchLyricsList("https://music.bugs.co.kr/search/lyrics?q=%s", song.title, false)
-
-		fileName := filepath.Join(strings.TrimSuffix(lpm.OutputDir, "tmp"), sanitize.FileName(song.Title)+".pdf")
+		fileName := filepath.Join(strings.TrimSuffix(lpm.OutputDir, "tmp"), sanitize.FileName(song.title)+".pdf")
 
 		objPdf := presentation.New(instanceSize)
 		objPdf.Config = extract.ConfigMem.Classification.Lyrics.Presentation
