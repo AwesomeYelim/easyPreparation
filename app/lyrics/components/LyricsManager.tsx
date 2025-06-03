@@ -15,6 +15,8 @@ interface SongBlock {
 export default function LyricsManager() {
   const [input, setInput] = useState("");
   const [songs, setSongs] = useState<SongBlock[]>([]);
+  const [loadingInfo, setLoadingInfo] = useState({ is: false, msg: "" });
+
   const userInfo = useRecoilValue(userInfoState);
 
   const handler = {
@@ -43,6 +45,7 @@ export default function LyricsManager() {
 
   const handleSearchLyrics = async () => {
     try {
+      setLoadingInfo({ is: true, msg: "전체 가사를 검색 중입니다..." });
       const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
       const response = await fetch(`${baseUrl}/searchLyrics`, {
         method: "POST",
@@ -69,11 +72,15 @@ export default function LyricsManager() {
       setSongs(updatedSongs);
     } catch (error) {
       console.error("에러:", error);
+    } finally {
+      setLoadingInfo({ is: false, msg: "" });
     }
   };
 
   const handleSubmitLyrics = async () => {
     try {
+      setLoadingInfo({ is: true, msg: "가사 기반으로 PDF 생성중입니다..." });
+
       const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
       const response = await fetch(`${baseUrl}/submitLyrics`, {
         method: "POST",
@@ -108,11 +115,19 @@ export default function LyricsManager() {
     } catch (error) {
       console.error("가사 제출 중 에러:", error);
       alert("가사 제출 중 오류가 발생했습니다.");
+    } finally {
+      setLoadingInfo({ is: false, msg: "" });
     }
   };
 
   return (
     <div className="container">
+      {loadingInfo.is && (
+        <div className="loadingOverlay">
+          <div className="spinner" />
+          <p>{loadingInfo.msg}</p>
+        </div>
+      )}
       <div className="search_wrap">
         <div className="inputGroup">
           <input
