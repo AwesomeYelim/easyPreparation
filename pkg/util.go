@@ -7,7 +7,7 @@ import (
 )
 
 func SplitTwoLines(text string) (result []string) {
-	lines := RemoveEmptyNonLetterLines(text)
+	lines := RemoveEmptyNonLetterLines(text, 20)
 	seen := make(map[string]bool)
 
 	// 중복 가사 제거
@@ -28,8 +28,7 @@ func SplitTwoLines(text string) (result []string) {
 	return result
 }
 
-// 중간 공백 및 비문자 제거
-func RemoveEmptyNonLetterLines(text string) []string {
+func RemoveEmptyNonLetterLines(text string, maxLineLength int) []string {
 	lines := strings.Split(text, "\n")
 	var result []string
 
@@ -37,19 +36,53 @@ func RemoveEmptyNonLetterLines(text string) []string {
 		line = strings.TrimSpace(line)
 		filtered := ""
 
+		// 문자 및 공백만 남기기
 		for _, r := range line {
-			if unicode.IsLetter(r) || r == ' ' { // 문자 및 공백만 허용
+			if unicode.IsLetter(r) || r == ' ' {
 				filtered += string(r)
 			}
 		}
 
-		if filtered != "" {
-			result = append(result, filtered)
+		if filtered == "" {
+			continue
+		}
+
+		words := strings.Fields(filtered)
+		currentLine := ""
+
+		for _, word := range words {
+			//if len([]rune(word)) > maxLineLength {
+			//	// 단어 자체가 너무 길면 단독 줄로
+			//	if currentLine != "" {
+			//		result = append(result, currentLine)
+			//		currentLine = ""
+			//	}
+			//	result = append(result, word)
+			//	continue
+			//}
+
+			// 새로운 줄에 단어를 추가할 수 있는지 확인
+			testLine := word
+			if currentLine != "" {
+				testLine = currentLine + " " + word
+			}
+
+			if len([]rune(testLine)) <= maxLineLength {
+				currentLine = testLine
+			} else {
+				result = append(result, currentLine)
+				currentLine = word
+			}
+		}
+
+		if currentLine != "" {
+			result = append(result, currentLine)
 		}
 	}
 
 	return result
 }
+
 func CheckDirIs(dirPath string) (err error) {
 	if _, err = os.Stat(dirPath); os.IsNotExist(err) {
 		err = os.MkdirAll(dirPath, 0700)
