@@ -110,8 +110,6 @@ export default function LyricsManager() {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
-
-      alert("가사 제출 및 ZIP 다운로드 완료!");
     } catch (error) {
       console.error("가사 제출 중 에러:", error);
       alert("가사 제출 중 오류가 발생했습니다.");
