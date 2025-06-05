@@ -1,16 +1,17 @@
 package pkg
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"unicode"
 )
 
 func SplitTwoLines(text string) (result []string) {
-	lines := RemoveEmptyNonLetterLines(text, 20)
-	seen := make(map[string]bool)
+	lines := RemoveEmptyNonLetterLines(text, 25)
+	var prev string
+	count := 1
 
-	// 중복 가사 제거
 	for i := 0; i < len(lines); i += 2 {
 		var block string
 		if i+1 < len(lines) {
@@ -19,15 +20,25 @@ func SplitTwoLines(text string) (result []string) {
 			block = lines[i]
 		}
 
-		if !seen[block] {
+		if block == prev {
+			count++
+		} else {
+			if count > 1 && len(result) > 0 {
+				result[len(result)-1] = fmt.Sprintf("%s\n(x%d)", result[len(result)-1], count)
+			}
 			result = append(result, block)
-			seen[block] = true
+			prev = block
+			count = 1
 		}
+	}
+
+	// 마지막 반복된 가사 처리
+	if count > 1 && len(result) > 0 {
+		result[len(result)-1] = fmt.Sprintf("%s\n(x%d)", result[len(result)-1], count)
 	}
 
 	return result
 }
-
 func RemoveEmptyNonLetterLines(text string, maxLineLength int) []string {
 	lines := strings.Split(text, "\n")
 	var result []string
