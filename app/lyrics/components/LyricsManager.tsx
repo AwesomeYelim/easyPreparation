@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import "./LyricsManager.scss";
 import { useRecoilValue } from "recoil";
 import { userInfoState } from "@/recoilState";
 import classNames from "classnames";
+import "./LyricsManager.scss";
 
 interface SongBlock {
   title: string;

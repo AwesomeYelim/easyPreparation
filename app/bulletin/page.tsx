@@ -3,11 +3,12 @@
 import { WorshipOrder } from "./components/WorshipOrder";
 import SelectedOrder from "./components/SelectedOrder";
 import Detail from "./components/Detail";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import classNames from "classnames";
 import { userInfoState, worshipOrderState } from "@/recoilState";
 import { useRecoilValue } from "recoil";
 import { ResultPart } from "./components/ResultPage";
+import { useWS } from "@/components/WebSocketProvider";
 
 export type WorshipOrderItem = {
   key: string;
@@ -23,56 +24,23 @@ export default function Bulletin() {
   const [selectedInfo, setSelectedInfo] =
     useState<WorshipOrderItem[]>(worshipOrder);
   const userInfo = useRecoilValue(userInfoState);
-  const ws = useRef<WebSocket | null>(null);
+  const { message, isOpen } = useWS();
 
   const [loading, setLoading] = useState(false);
   const [wsMessage, setWsMessage] = useState("");
 
   useEffect(() => {
-    let pingInterval: NodeJS.Timeout;
+    if (!message) return;
 
-    const mount = () => {
-      const baseUrl = process.env.NEXT_PUBLIC_WS_URL;
-      ws.current = new WebSocket(baseUrl as string);
-
-      ws.current.onopen = () => {
-        console.log("WebSocket connected");
-        // Ping 메시지 30초마다 보내기
-        pingInterval = setInterval(() => {
-          if (ws.current?.readyState === WebSocket.OPEN) {
-            ws.current.send(JSON.stringify({ type: "ping" }));
-          }
-        }, 30000); // 30초
-      };
-
-      ws.current.onmessage = (event) => {
-        console.log("WebSocket Received Message:", event.data);
-        const message = JSON.parse(event.data);
-        setWsMessage(message.message);
-
-        if (message.type === "done" && message.target === "main_worship") {
-          downloadZip(message.fileName);
-          setWsMessage("Success !!");
-          setLoading(false);
-        }
-      };
-
-      ws.current.onclose = () => {
-        console.log("WebSocket closed");
-        setLoading(false);
-        clearInterval(pingInterval);
-      };
-    };
-
-    mount();
-
-    return () => {
-      if (ws.current?.readyState === WebSocket.OPEN) {
-        ws.current.close();
-      }
-      clearInterval(pingInterval);
-    };
-  }, []);
+    if (message.type === "done" && message.target === "main_worship") {
+      downloadZip(message.fileName);
+      setWsMessage("Success !!");
+      setLoading(false);
+    } else {
+      console.log(message);
+      setWsMessage(message.message || "");
+    }
+  }, [message]);
 
   const downloadZip = (fileName: string) => {
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -87,8 +55,8 @@ export default function Bulletin() {
 
   const sendDataToGoServer = async () => {
     try {
-      setLoading(true); // 로딩 시작
-      setWsMessage(""); // 이전 메시지 초기화
+      setLoading(true);
+      setWsMessage("");
 
       const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
       const response = await fetch(`${baseUrl}/submit`, {
@@ -104,19 +72,15 @@ export default function Bulletin() {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("서버 응답 실패");
-      }
+      if (!response.ok) throw new Error("서버 응답 실패");
 
       const data = await response.json();
       console.log("서버 응답:", data);
       alert("서버로 데이터 전송 성공!");
-
-      // 로딩은 유지 (WebSocket 메시지 기다리는 중)
     } catch (error) {
       console.error("서버 전송 중 오류 발생:", error);
       alert("서버 전송 실패");
-      setLoading(false); // 실패 시 로딩 종료
+      setLoading(false);
     }
   };
 
