@@ -17,7 +17,8 @@ import (
 )
 
 func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
-	for i, el := range *bulletin {
+	for i := 0; i < len(*bulletin); i++ {
+		el := (*bulletin)[i]
 		title, tIs := el["title"].(string)
 		info, iIs := el["info"].(string)
 		obj, bIs := el["obj"].(string)

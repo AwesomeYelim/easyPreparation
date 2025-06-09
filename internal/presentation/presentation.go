@@ -198,7 +198,10 @@ func (pdf *PDF) ForComposeBuiltin(elements []gui.WorshipInfo) (ym float64) {
 		if strings.Contains(order.Key, ".") {
 			continue
 		}
-
+		// 행사인 경우 skip
+		if strings.Contains(order.Title, "행사") {
+			continue
+		}
 		pdf.SetXY(xm, ym)
 		strOW := pdf.GetStringWidth(order.Obj)
 		editLine := (line - (strOW + (lineM * 2))) / 2
