@@ -56,7 +56,7 @@ export default function Detail({
       <h2>{selectedDetail?.title}</h2>
       {selectedDetail?.info.includes("edit") && (
         <div key={selectedDetail?.key} className="detail-card">
-          <p>
+          <div className="block">
             <strong>
               Object<span>center</span>
             </strong>
@@ -76,8 +76,8 @@ export default function Detail({
                 placeholder={selectedDetail?.title}
               />
             )}
-          </p>
-          <p>
+          </div>
+          <div className="block">
             <strong>
               Lead<span>right</span>
             </strong>
@@ -92,7 +92,7 @@ export default function Detail({
               }
               placeholder={selectedDetail?.lead ? "" : "새로 입력하세요"}
             />
-          </p>
+          </div>
         </div>
       )}
       {selectedDetail?.info.includes("notice") && (

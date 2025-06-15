@@ -142,7 +142,7 @@ h2 {
 
       .detail-card {
         margin-top: 10px;
-        > p {
+        .block {
           display: flex;
           flex-direction: column;
           margin-bottom: 15px;
