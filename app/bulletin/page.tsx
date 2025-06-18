@@ -5,7 +5,7 @@ import SelectedOrder from "./components/SelectedOrder";
 import Detail from "./components/Detail";
 import { useState, useEffect } from "react";
 import classNames from "classnames";
-import { userInfoState, worshipOrderState } from "@/recoilState";
+import { WorshipType, userInfoState, worshipOrderState } from "@/recoilState";
 import { useRecoilValue } from "recoil";
 import { ResultPart } from "./components/ResultPage";
 import { useWS } from "@/components/WebSocketProvider";
@@ -20,14 +20,24 @@ export type WorshipOrderItem = {
 };
 
 export default function Bulletin() {
+  const [selectedWorshipType, setSelectedWorshipType] =
+    useState<WorshipType>("main_worship");
   const worshipOrder = useRecoilValue(worshipOrderState);
-  const [selectedInfo, setSelectedInfo] =
-    useState<WorshipOrderItem[]>(worshipOrder);
+  const [selectedInfo, setSelectedInfo] = useState<WorshipOrderItem[]>(
+    worshipOrder[selectedWorshipType]
+  );
   const userInfo = useRecoilValue(userInfoState);
   const { message, isOpen } = useWS();
 
   const [loading, setLoading] = useState(false);
   const [wsMessage, setWsMessage] = useState("");
+
+  // 예배 종류에 따른 초기값 설정
+  useEffect(() => {
+    if (worshipOrder[selectedWorshipType]) {
+      setSelectedInfo(worshipOrder[selectedWorshipType]);
+    }
+  }, [selectedWorshipType, worshipOrder]);
 
   useEffect(() => {
     if (!message) return;
@@ -67,7 +77,7 @@ export default function Bulletin() {
         body: JSON.stringify({
           mark: userInfo.english_name,
           targetInfo: selectedInfo,
-          target: "main_worship",
+          target: selectedWorshipType,
           figmaInfo: userInfo.figmaInfo,
         }),
       });
@@ -94,6 +104,18 @@ export default function Bulletin() {
       )}
 
       <div className="top_bar">
+        <select
+          value={selectedWorshipType}
+          onChange={(e) =>
+            setSelectedWorshipType(e.target.value as WorshipType)
+          }
+          className="worship_select"
+        >
+          <option value="main_worship">주일예배</option>
+          <option value="after_worship">오후예배</option>
+          <option value="wed_worship">수요예배</option>
+        </select>
+
         <button
           disabled={!userInfo.figmaInfo.key || !userInfo.figmaInfo.token}
           onClick={sendDataToGoServer}
