@@ -74,11 +74,10 @@ func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 				}
 
 				*bulletin = append((*bulletin)[:i+1], append([]map[string]interface{}{newItem}, (*bulletin)[i+1:]...)...)
-				i++ // 삽입했으니 인덱스 증가
 			}
 
 			var sb strings.Builder
-			var objRangeParts []string
+			var objRange string
 
 			if strings.Contains(obj, ",") {
 				refs := strings.Split(obj, ",")
@@ -100,7 +99,7 @@ func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 					if len(urlParts) == 2 {
 						chapterVerse = urlParts[1]
 					}
-					objRangeParts = append(objRangeParts, fmt.Sprintf("%s %s", kor, parser.CompressVerse(chapterVerse)))
+					objRange += fmt.Sprintf(", %s %s", kor, parser.CompressVerse(chapterVerse))
 				}
 			} else {
 				parts := strings.SplitN(obj, "_", 2)
@@ -115,11 +114,11 @@ func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 					if len(urlParts) == 2 {
 						chapterVerse = urlParts[1]
 					}
-					objRangeParts = append(objRangeParts, fmt.Sprintf("%s %s", kor, parser.CompressVerse(chapterVerse)))
+					objRange = fmt.Sprintf("%s %s", kor, parser.CompressVerse(chapterVerse))
 				}
 			}
 
-			objRange := strings.Join(objRangeParts, ", ")
+			objRange = strings.TrimPrefix(objRange, ", ")
 			(*bulletin)[i]["contents"] = sb.String()
 			(*bulletin)[i]["obj"] = objRange
 		}
