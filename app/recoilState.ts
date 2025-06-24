@@ -1,5 +1,7 @@
 import { atom } from "recoil";
-import worshipData from "@/data/data.json";
+import main_worship from "@/data/main_worship.json";
+import after_worship from "@/data/after_worship.json";
+import wed_worship from "@/data/wed_worship.json";
 import { WorshipOrderItem } from "./bulletin/page";
 import { UserChurchInfo } from "./components/SideBar";
 
@@ -10,15 +12,15 @@ export type WorshipType = "main_worship" | "after_worship" | "wed_worship";
 export const worshipOrderState = atom<Record<WorshipType, WorshipOrderItem[]>>({
   key: "worshipOrderState",
   default: {
-    main_worship: worshipData,
-    after_worship: worshipData,
-    wed_worship: worshipData,
+    main_worship,
+    after_worship,
+    wed_worship,
   },
 });
 
 export const selectedDetailState = atom<WorshipOrderItem>({
   key: "selectedDetailState",
-  default: worshipData[0],
+  default: main_worship[0],
 });
 
 export const userInfoState = atom<UserChurchInfo>({

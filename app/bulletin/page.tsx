@@ -140,10 +140,7 @@ export default function Bulletin() {
           <Detail setSelectedItems={setSelectedInfo} />
         </div>
         <div className="result">
-          <ResultPart
-            selectedItems={selectedInfo}
-            setSelectedItems={setSelectedInfo}
-          />
+          <ResultPart selectedItems={selectedInfo} />
         </div>
       </div>
     </div>
