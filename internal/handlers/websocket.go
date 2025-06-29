@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 )
 
 var upgrader = websocket.Upgrader{
@@ -64,6 +65,16 @@ func BroadcastMessage(messageType string, payload map[string]interface{}) {
 			delete(clients, client)
 		}
 	}
+}
+
+func StartKeepAliveBroadcast() {
+	ticker := time.NewTicker(50 * time.Second)
+
+	go func() {
+		for range ticker.C {
+			BroadcastMessage("keepalive", map[string]interface{}{})
+		}
+	}()
 }
 
 func BroadcastProcessDone(target, fileName string) {
