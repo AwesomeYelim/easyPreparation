@@ -42,7 +42,7 @@ export function ResultPart({
           const result = [];
 
           for (const el of selectedItems) {
-            if (el.title !== "말씀내용") {
+            if (el.title !== "말씀내용" && el.title !== "행사") {
               result.push(
                 <div className="row" key={el.title + el.obj}>
                   <div className="title">{el.title}</div>

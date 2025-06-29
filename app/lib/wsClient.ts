@@ -13,40 +13,50 @@ export function useGlobalWebSocket(url: string) {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    const socket = new WebSocket(url);
-    ws.current = socket;
+    let reconnectTimer: ReturnType<typeof setTimeout>;
 
-    const pingInterval = setInterval(() => {
-      if (ws.current?.readyState === WebSocket.OPEN) {
-        ws.current.send(JSON.stringify({ type: "ping" }));
-      }
-    }, 30000);
+    const connect = () => {
+      const socket = new WebSocket(url);
+      ws.current = socket;
 
-    socket.onopen = () => {
-      setIsOpen(true);
-      console.log("WebSocket connected");
+      const pingInterval = setInterval(() => {
+        if (ws.current?.readyState === WebSocket.OPEN) {
+          ws.current.send(JSON.stringify({ type: "ping" }));
+        }
+      }, 30000);
+
+      socket.onopen = () => {
+        setIsOpen(true);
+        console.log("WebSocket connected");
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          setMessage(data);
+        } catch (e) {
+          console.warn("Invalid WS message:", event.data);
+          setMessage(event.data);
+        }
+      };
+
+      socket.onclose = () => {
+        setIsOpen(false);
+        clearInterval(pingInterval);
+        console.log("WebSocket closed");
+
+        // 5초 후 재연결
+        reconnectTimer = setTimeout(() => {
+          connect();
+        }, 5000);
+      };
     };
 
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        setMessage(data);
-      } catch (e) {
-        console.warn("Invalid WS message:", event.data);
-        setMessage(event.data);
-      }
-    };
+    connect();
 
-    socket.onclose = () => {
-      setIsOpen(false);
-      clearInterval(pingInterval);
-      console.log("WebSocket closed");
-    };
     return () => {
-      if (ws.current?.readyState === WebSocket.OPEN) {
-        ws.current.close();
-      }
-      clearInterval(pingInterval);
+      clearTimeout(reconnectTimer);
+      ws.current?.close();
     };
   }, [url]);
 
