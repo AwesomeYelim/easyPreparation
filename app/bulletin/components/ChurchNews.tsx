@@ -23,7 +23,7 @@ const ChurchNews = ({
   const [expandedKeys, setExpandedKeys] = useState(new Set<string>());
   const [addContent, setAddContent] = useState<WorshipOrderItem | null>(null);
 
-  const handleModifyChild = (action: "DELETE" | "PLUS", childKey: string) => {
+  const handleModifyChild = (action: "DELETE" | "ADD", childKey: string) => {
     switch (action) {
       case "DELETE":
         setSelectedDetail((prev) => {
@@ -59,7 +59,7 @@ const ChurchNews = ({
 
           return deleteItemRecursive(prevItems);
         });
-      case "PLUS":
+      case "ADD":
         const keys = childKey.split(".");
         const lastKey = parseInt(keys[keys.length - 1], 10);
         const newKey = `${keys.slice(0, -1).join(".")}.${lastKey + 1}`;
@@ -69,15 +69,28 @@ const ChurchNews = ({
           title: "",
           info: "c-edit",
           obj: "",
+          children: [
+            {
+              key: `${newKey}.0`,
+              title: "-",
+              info: "c-edit",
+              obj: "",
+            },
+          ],
         };
 
         setAddContent(newChild);
     }
   };
 
-  const handleAddNewItem = (title: string, obj: string) => {
+  const handleAddNewItem = (argAdd: WorshipOrderItem) => {
     if (addContent) {
-      const updatedChild = { ...addContent, title, obj };
+      const updatedChild = {
+        ...addContent,
+        title: argAdd.title,
+        obj: argAdd.obj,
+      };
+
       setSelectedDetail((prev) => {
         if (!prev) return prev;
 
@@ -151,27 +164,29 @@ const ChurchNews = ({
             borderRadius: "5px",
           }}
         >
-          <span
-            className="tag"
-            onClick={() => setSelectedChild(news)}
-            style={{
-              backgroundColor,
-              color: lightness > 60 ? "#000" : "#fff",
-              padding: "5px 10px",
-              borderRadius: "5px",
-            }}
-          >
-            {news.title}
-            <button
-              className="delete-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleModifyChild("DELETE", news.key);
+          {news.title !== "-" && (
+            <span
+              className="tag"
+              onClick={() => setSelectedChild(news)}
+              style={{
+                backgroundColor,
+                color: lightness > 60 ? "#000" : "#fff",
+                padding: "5px 10px",
+                borderRadius: "5px",
               }}
             >
-              x
-            </button>
-          </span>
+              {news.title}
+              <button
+                className="delete-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleModifyChild("DELETE", news.key);
+                }}
+              >
+                x
+              </button>
+            </span>
+          )}
 
           {news.children && (
             <button
@@ -200,7 +215,7 @@ const ChurchNews = ({
                 className="plus-btn"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleModifyChild("PLUS", news.key);
+                  handleModifyChild("ADD", news.key);
                 }}
               >
                 +
@@ -277,7 +292,7 @@ const ChurchNews = ({
             }}
           />
           <button
-            onClick={() => handleAddNewItem(addContent.title, addContent.obj)}
+            onClick={() => handleAddNewItem(addContent)}
             style={{
               backgroundColor: "#007bff",
               color: "#fff",
