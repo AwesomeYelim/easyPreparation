@@ -20,12 +20,9 @@ export type WorshipOrderItem = {
 };
 
 export default function Bulletin() {
-  const [selectedWorshipType, setSelectedWorshipType] =
-    useState<WorshipType>("main_worship");
+  const [selectedWorshipType, setSelectedWorshipType] = useState<WorshipType>("main_worship");
   const worshipOrder = useRecoilValue(worshipOrderState);
-  const [selectedInfo, setSelectedInfo] = useState<WorshipOrderItem[]>(
-    worshipOrder[selectedWorshipType]
-  );
+  const [selectedInfo, setSelectedInfo] = useState<WorshipOrderItem[]>(worshipOrder[selectedWorshipType]);
   const userInfo = useRecoilValue(userInfoState);
   const { message, isOpen } = useWS();
 
@@ -63,6 +60,35 @@ export default function Bulletin() {
     document.body.removeChild(link);
   };
 
+  const removeEmptyNodes = (items: WorshipOrderItem[]): WorshipOrderItem[] => {
+    return items
+      .map((item) => {
+        // 자식이 있으면 자식 먼저 처리
+        if (item.children) {
+          item = { ...item, children: removeEmptyNodes(item.children) };
+        }
+        return item;
+      })
+      .filter((item) => {
+        // key가 ".0"으로 끝나고 title이 "-"인 경우 제외 (삭제)
+        const isKeyEndsWithZero = item.key.endsWith(".0");
+        const isTitleDash = item.title === "-";
+        return !(isKeyEndsWithZero && isTitleDash);
+      });
+  };
+
+  const processSelectedInfo = (data: WorshipOrderItem[]): WorshipOrderItem[] => {
+    return data.map((item) => {
+      if (item.title === "교회소식" && item.children) {
+        return {
+          ...item,
+          children: removeEmptyNodes(item.children),
+        };
+      }
+      return item;
+    });
+  };
+
   const sendDataToGoServer = async () => {
     try {
       setLoading(true);
@@ -76,7 +102,7 @@ export default function Bulletin() {
         },
         body: JSON.stringify({
           mark: userInfo.english_name,
-          targetInfo: selectedInfo,
+          targetInfo: processSelectedInfo(selectedInfo),
           target: selectedWorshipType,
           figmaInfo: userInfo.figmaInfo,
         }),
@@ -106,11 +132,8 @@ export default function Bulletin() {
       <div className="top_bar">
         <select
           value={selectedWorshipType}
-          onChange={(e) =>
-            setSelectedWorshipType(e.target.value as WorshipType)
-          }
-          className="worship_select"
-        >
+          onChange={(e) => setSelectedWorshipType(e.target.value as WorshipType)}
+          className="worship_select">
           <option value="main_worship">주일예배</option>
           <option value="after_worship">오후예배</option>
           <option value="wed_worship">수요예배</option>
@@ -121,22 +144,15 @@ export default function Bulletin() {
           onClick={sendDataToGoServer}
           className={classNames("send_button", {
             disabled: !userInfo.figmaInfo.key || !userInfo.figmaInfo.token,
-          })}
-        >
+          })}>
           예배 자료 생성하기
         </button>
       </div>
 
       <div className="bulletin_wrap">
         <div className="editable">
-          <WorshipOrder
-            selectedItems={selectedInfo}
-            setSelectedItems={setSelectedInfo}
-          />
-          <SelectedOrder
-            selectedItems={selectedInfo}
-            setSelectedItems={setSelectedInfo}
-          />
+          <WorshipOrder selectedItems={selectedInfo} setSelectedItems={setSelectedInfo} />
+          <SelectedOrder selectedItems={selectedInfo} setSelectedItems={setSelectedInfo} />
           <Detail setSelectedItems={setSelectedInfo} />
         </div>
         <div className="result">
