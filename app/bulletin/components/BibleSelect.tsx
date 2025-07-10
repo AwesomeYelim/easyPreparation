@@ -11,19 +11,13 @@ type Selection = {
 };
 
 interface BibleSelectProps {
-  handleValueChange: (
-    key: string,
-    { newObj, newLead }: { newObj: string; newLead?: string }
-  ) => void;
+  handleValueChange: (key: string, { newObj, newLead }: { newObj: string; newLead?: string }) => void;
   parentKey: string;
 }
 
 type BibleKey = keyof typeof bibleData;
 
-const BibleSelect: React.FC<BibleSelectProps> = ({
-  handleValueChange,
-  parentKey,
-}) => {
+const BibleSelect: React.FC<BibleSelectProps> = ({ handleValueChange, parentKey }) => {
   const selectedDetail = useRecoilValue(selectedDetailState);
   // "신_5/4:5-6, 수_6/5:6"
   // "신명기_5/4:5-4:6, 여호수아_6/5:6"
@@ -78,8 +72,7 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
   });
 
   const [selectedRanges, setSelectedRanges] = useState<Selection[]>([]);
-  const [multiSelection, setMultiSelection] =
-    useState<Selection[][]>(selectedInitInfo);
+  const [multiSelection, setMultiSelection] = useState<Selection[][]>(selectedInitInfo);
 
   const handler = {
     bookChange: (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -97,11 +90,7 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
       setSelectedBook({ ...selectedBook, verse: Number(event.target.value) });
     },
     addSelection: () => {
-      if (
-        selectedBook.book &&
-        selectedBook.chapter > 0 &&
-        selectedBook.verse > 0
-      ) {
+      if (selectedBook.book && selectedBook.chapter > 0 && selectedBook.verse > 0) {
         setSelectedRanges((prev) => [...prev, selectedBook]);
         setSelectedBook({ book: selectedBook.book, chapter: 0, verse: 0 });
       }
@@ -118,9 +107,7 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
             const last = ranges[1] || first;
 
             return (
-              `${first.book}_${bibleData[first.book as BibleKey]?.index}/${
-                first.chapter
-              }:${first.verse}` +
+              `${first.book}_${bibleData[first.book as BibleKey]?.index}/${first.chapter}:${first.verse}` +
               (ranges.length > 1 ? `-${last.chapter}:${last.verse}` : "")
             );
           })
@@ -145,9 +132,7 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
             const last = ranges[1] || first;
 
             return (
-              `${first.book}_${bibleData[first.book as BibleKey]?.index}/${
-                first.chapter
-              }:${first.verse}` +
+              `${first.book}_${bibleData[first.book as BibleKey]?.index}/${first.chapter}:${first.verse}` +
               (ranges.length > 1 ? `-${last.chapter}:${last.verse}` : "")
             );
           })
@@ -161,13 +146,8 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
     },
   };
 
-  const currentBook = selectedBook.book
-    ? bibleData[selectedBook.book as BibleKey]
-    : null;
-  const currentChapterVerses =
-    currentBook && selectedBook.chapter
-      ? currentBook.chapters[selectedBook.chapter - 1]
-      : 0;
+  const currentBook = selectedBook.book ? bibleData[selectedBook.book as BibleKey] : null;
+  const currentChapterVerses = currentBook && selectedBook.chapter ? currentBook.chapters[selectedBook.chapter - 1] : 0;
 
   const formatRange = (ranges: Selection[]) => {
     return ranges
@@ -190,11 +170,7 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
             <div className="select-group">
               <label className="select-label">
                 책 선택:
-                <select
-                  className="select-box"
-                  onChange={handler.bookChange}
-                  value={selectedBook.book || ""}
-                >
+                <select className="select-box" onChange={handler.bookChange} value={selectedBook.book || ""}>
                   <option value="" disabled>
                     책을 선택하세요
                   </option>
@@ -209,20 +185,12 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
               {currentBook && (
                 <label className="select-label">
                   장 선택:
-                  <select
-                    className="select-box"
-                    onChange={handler.chapterChange}
-                    value={selectedBook.chapter || ""}
-                  >
+                  <select className="select-box" onChange={handler.chapterChange} value={selectedBook.chapter || ""}>
                     <option value="" disabled>
                       장을 선택하세요
                     </option>
                     {currentBook.chapters.map((_, index) => (
-                      <option
-                        key={index}
-                        value={index + 1}
-                        disabled={selectedRanges[0]?.chapter > index + 1}
-                      >
+                      <option key={index} value={index + 1} disabled={selectedRanges[0]?.chapter > index + 1}>
                         {index + 1}장
                       </option>
                     ))}
@@ -233,27 +201,17 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
               {currentBook && selectedBook.chapter > 0 && (
                 <label className="select-label">
                   절 선택:
-                  <select
-                    className="select-box"
-                    onChange={handler.verseChange}
-                    value={selectedBook.verse || ""}
-                  >
+                  <select className="select-box" onChange={handler.verseChange} value={selectedBook.verse || ""}>
                     <option value="" disabled>
                       절을 선택하세요
                     </option>
-                    {Array.from(
-                      { length: currentChapterVerses },
-                      (_, i) => i + 1
-                    ).map((verse, index) => (
+                    {Array.from({ length: currentChapterVerses }, (_, i) => i + 1).map((verse, index) => (
                       <option
                         key={verse}
                         value={verse}
                         disabled={
-                          selectedRanges[0]?.chapter == selectedBook.chapter
-                            ? selectedRanges[0]?.verse > index
-                            : false
-                        }
-                      >
+                          selectedRanges[0]?.chapter == selectedBook.chapter ? selectedRanges[0]?.verse > index : false
+                        }>
                         {verse}절
                       </option>
                     ))}
@@ -264,14 +222,7 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
             <button
               className="add-selection-button"
               onClick={handler.addSelection}
-              disabled={
-                !(
-                  selectedBook.book &&
-                  selectedBook.chapter > 0 &&
-                  selectedBook.verse > 0
-                )
-              }
-            >
+              disabled={!(selectedBook.book && selectedBook.chapter > 0 && selectedBook.verse > 0)}>
               추가
             </button>
           </>
@@ -282,8 +233,7 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
             onClick={() => {
               setSelectedRanges([]);
               setSelectedBook({ book: "", chapter: 0, verse: 0 });
-            }}
-          >
+            }}>
             다시 선택
           </button>
         )}
@@ -293,10 +243,7 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
           </div>
         )}
       </div>
-      <button
-        className="add-selection-button"
-        onClick={handler.finalizeSelection}
-      >
+      <button className="add-selection-button" onClick={handler.finalizeSelection}>
         구절 추가
       </button>
       {multiSelection.length > 0 && (
@@ -307,19 +254,12 @@ const BibleSelect: React.FC<BibleSelectProps> = ({
 
             const displayText =
               `${first.book} ${first.chapter}:${first.verse}` +
-              (ranges.length > 1
-                ? `-${
-                    first.chapter === last.chapter ? "" : `${last.chapter}:`
-                  }${last.verse}`
-                : "");
+              (ranges.length > 1 ? `-${first.chapter === last.chapter ? "" : `${last.chapter}:`}${last.verse}` : "");
 
             return (
               <span key={index} className="verse-chip">
                 📖 {displayText}
-                <button
-                  className="delete-button"
-                  onClick={() => handler.deleteSelection(index)}
-                >
+                <button className="delete-button" onClick={() => handler.deleteSelection(index)}>
                   x
                 </button>
               </span>

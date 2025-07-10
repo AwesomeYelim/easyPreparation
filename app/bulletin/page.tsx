@@ -24,7 +24,7 @@ export default function Bulletin() {
   const worshipOrder = useRecoilValue(worshipOrderState);
   const [selectedInfo, setSelectedInfo] = useState<WorshipOrderItem[]>(worshipOrder[selectedWorshipType]);
   const userInfo = useRecoilValue(userInfoState);
-  const { message, isOpen } = useWS();
+  const { message } = useWS();
 
   const [loading, setLoading] = useState(false);
   const [wsMessage, setWsMessage] = useState("");
@@ -93,6 +93,15 @@ export default function Bulletin() {
     try {
       setLoading(true);
       setWsMessage("");
+
+      await fetch("/api/saveBulletin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          target: selectedWorshipType,
+          targetInfo: processSelectedInfo(selectedInfo),
+        }),
+      });
 
       const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
       const response = await fetch(`${baseUrl}/submit`, {

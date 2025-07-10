@@ -26,11 +26,7 @@ export function WorshipOrder({
       <h2>예배 순서 선택하기</h2>
       <div>
         {fixData.map((item) => (
-          <span
-            key={item.title}
-            className="fix tag"
-            onClick={() => handleSelectItem(item)}
-          >
+          <span key={item.title} className="fix tag" onClick={() => handleSelectItem(item)}>
             {item.title}
           </span>
         ))}
