@@ -25,7 +25,7 @@ export function WorshipOrder({
     <div className="card">
       <h2>예배 순서 선택하기</h2>
       <div>
-        {fixData.map((item) => (
+        {fixData.map((item: Partial<WorshipOrderItem>) => (
           <span key={item.title} className="fix tag" onClick={() => handleSelectItem(item)}>
             {item.title}
           </span>

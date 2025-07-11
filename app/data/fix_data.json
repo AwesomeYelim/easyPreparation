@@ -61,12 +61,7 @@
   },
   {
     "title": "교회소식",
-    "info": "notice",
-    "children": [
-      {
-        "key": ".0"
-      }
-    ]
+    "info": "notice"
   },
   {
     "title": "축도",
