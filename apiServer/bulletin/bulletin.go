@@ -12,6 +12,7 @@ import (
 	"easyPreparation_1.0/internal/quote"
 	"encoding/json"
 	"fmt"
+	"log"
 	"path/filepath"
 )
 
@@ -60,7 +61,13 @@ func CreateBulletin(data map[string]interface{}) {
 		handlers.BroadcastProgress("TargetInfo parsing error", -1, fmt.Sprintf("Failed to parse targetInfo: %s", err))
 		return
 	}
-
+	err := quote.InitDB("postgres://postgres:02031122@138.2.119.220/postgres?sslmode=disable")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		_ = quote.CloseDB()
+	}()
 	quote.ProcessQuote(target, &targetInfo)
 
 	configPath := filepath.Join(execPath, "config", "custom.json")
