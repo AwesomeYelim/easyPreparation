@@ -20,9 +20,12 @@ export type WorshipOrderItem = {
 };
 
 export default function Bulletin() {
-  const [selectedWorshipType, setSelectedWorshipType] = useState<WorshipType>("main_worship");
+  const [selectedWorshipType, setSelectedWorshipType] =
+    useState<WorshipType>("main_worship");
   const worshipOrder = useRecoilValue(worshipOrderState);
-  const [selectedInfo, setSelectedInfo] = useState<WorshipOrderItem[]>(worshipOrder[selectedWorshipType]);
+  const [selectedInfo, setSelectedInfo] = useState<WorshipOrderItem[]>(
+    worshipOrder[selectedWorshipType]
+  );
   const userInfo = useRecoilValue(userInfoState);
   const { message } = useWS();
 
@@ -77,7 +80,9 @@ export default function Bulletin() {
       });
   };
 
-  const processSelectedInfo = (data: WorshipOrderItem[]): WorshipOrderItem[] => {
+  const processSelectedInfo = (
+    data: WorshipOrderItem[]
+  ): WorshipOrderItem[] => {
     return data.map((item) => {
       if (item.title === "교회소식" && item.children) {
         return {
@@ -94,7 +99,7 @@ export default function Bulletin() {
       setLoading(true);
       setWsMessage("");
 
-      await fetch("/api/saveBulletin", {
+      const saverRes = await fetch("/api/saveBulletin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -102,6 +107,8 @@ export default function Bulletin() {
           targetInfo: processSelectedInfo(selectedInfo),
         }),
       });
+
+      if (saverRes.status == 500) throw new Error("저장 실패");
 
       const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
       const response = await fetch(`${baseUrl}/submit`, {
@@ -141,8 +148,11 @@ export default function Bulletin() {
       <div className="top_bar">
         <select
           value={selectedWorshipType}
-          onChange={(e) => setSelectedWorshipType(e.target.value as WorshipType)}
-          className="worship_select">
+          onChange={(e) =>
+            setSelectedWorshipType(e.target.value as WorshipType)
+          }
+          className="worship_select"
+        >
           <option value="main_worship">주일예배</option>
           <option value="after_worship">오후예배</option>
           <option value="wed_worship">수요예배</option>
@@ -153,15 +163,22 @@ export default function Bulletin() {
           onClick={sendDataToGoServer}
           className={classNames("send_button", {
             disabled: !userInfo.figmaInfo.key || !userInfo.figmaInfo.token,
-          })}>
+          })}
+        >
           예배 자료 생성하기
         </button>
       </div>
 
       <div className="bulletin_wrap">
         <div className="editable">
-          <WorshipOrder selectedItems={selectedInfo} setSelectedItems={setSelectedInfo} />
-          <SelectedOrder selectedItems={selectedInfo} setSelectedItems={setSelectedInfo} />
+          <WorshipOrder
+            selectedItems={selectedInfo}
+            setSelectedItems={setSelectedInfo}
+          />
+          <SelectedOrder
+            selectedItems={selectedInfo}
+            setSelectedItems={setSelectedInfo}
+          />
           <Detail setSelectedItems={setSelectedInfo} />
         </div>
         <div className="result">
