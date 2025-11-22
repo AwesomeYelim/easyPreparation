@@ -3,6 +3,7 @@ package forPresentation
 import (
 	"easyPreparation_1.0/apiServer/bulletin/define"
 	"easyPreparation_1.0/internal/extract"
+	"easyPreparation_1.0/internal/figma/get"
 	"easyPreparation_1.0/internal/gui"
 	"easyPreparation_1.0/internal/presentation"
 	"easyPreparation_1.0/pkg"
@@ -21,13 +22,22 @@ type PdfInfo struct {
 func (pi PdfInfo) Create() {
 	config := extract.ConfigMem
 	outputDir := filepath.Join(pi.ExecPath, config.OutputPath.Bulletin, "presentation", "tmp")
-	_ = pkg.CheckDirIs(outputDir)
+	//_ = pkg.CheckDirIs(outputDir)
+	//
+	//defer func() {
+	//	_ = os.RemoveAll(outputDir)
+	//}()
 
-	defer func() {
-		_ = os.RemoveAll(outputDir)
-	}()
+	//pi.FigmaInfo.GetFigmaImage(outputDir, "forShowing")
 
-	pi.FigmaInfo.GetFigmaImage(outputDir, "forShowing")
+	pi.FigmaInfo = &get.Info{
+		PathInfo: make(map[string]string),
+	}
+
+	imgFiles, _ := os.ReadDir(outputDir)
+	for _, img := range imgFiles {
+		pi.FigmaInfo.PathInfo[strings.TrimSuffix(img.Name(), ".png")] = filepath.Join(outputDir, img.Name())
+	}
 
 	instanceSize := gofpdf.SizeType{
 		Wd: config.Classification.Bulletin.Presentation.Width,

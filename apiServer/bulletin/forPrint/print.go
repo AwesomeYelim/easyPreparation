@@ -25,13 +25,13 @@ type PdfInfo struct {
 func (pi PdfInfo) Create() {
 	config := extract.ConfigMem
 	outputDir := filepath.Join(pi.ExecPath, config.OutputPath.Bulletin, "print", "tmp")
-	_ = pkg.CheckDirIs(outputDir)
+	//_ = pkg.CheckDirIs(outputDir)
+	//
+	//defer func() {
+	//	_ = os.RemoveAll(outputDir)
+	//}()
 
-	defer func() {
-		_ = os.RemoveAll(outputDir)
-	}()
-
-	pi.FigmaInfo.GetFigmaImage(outputDir, "forPrint")
+	//pi.FigmaInfo.GetFigmaImage(outputDir, "forPrint")
 
 	files, _ := os.ReadDir(outputDir)
 	instanceSize := gofpdf.SizeType{

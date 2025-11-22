@@ -3,8 +3,6 @@ package presentation
 import (
 	"easyPreparation_1.0/internal/classification"
 	"easyPreparation_1.0/internal/extract"
-	"easyPreparation_1.0/internal/figma"
-	"easyPreparation_1.0/internal/handlers"
 	"easyPreparation_1.0/internal/parser"
 	"easyPreparation_1.0/internal/path"
 	"easyPreparation_1.0/internal/presentation"
@@ -31,30 +29,30 @@ type stSong struct {
 }
 
 func CreateLyricsPDF(data map[string]interface{}) {
-	execPath := path.ExecutePath("easyPreparation")
+	//execPath := path.ExecutePath("easyPreparation")
 
 	lpm := NewLyricsPresentationManager()
-	defer lpm.Cleanup()
+	//defer lpm.Cleanup()
 
-	var key, token string
-	if rawFigma, ok := data["figmaInfo"]; ok {
-		if figmaMap, ok := rawFigma.(map[string]interface{}); ok {
-			if k, ok := figmaMap["key"].(string); ok {
-				key = k
-			}
-			if t, ok := figmaMap["token"].(string); ok {
-				token = t
-			}
-		}
-	}
+	//var key, token string
+	//if rawFigma, ok := data["figmaInfo"]; ok {
+	//	if figmaMap, ok := rawFigma.(map[string]interface{}); ok {
+	//		if k, ok := figmaMap["key"].(string); ok {
+	//			key = k
+	//		}
+	//		if t, ok := figmaMap["token"].(string); ok {
+	//			token = t
+	//		}
+	//	}
+	//}
+	//
+	//figmaInfo := figma.New(&token, &key, execPath)
+	//if err := figmaInfo.GetNodes(); err != nil {
+	//	handlers.BroadcastProgress("Get Nodes Error", -1, fmt.Sprintf("GetNodes Error: %s", err))
+	//	return
+	//}
 
-	figmaInfo := figma.New(&token, &key, execPath)
-	if err := figmaInfo.GetNodes(); err != nil {
-		handlers.BroadcastProgress("Get Nodes Error", -1, fmt.Sprintf("GetNodes Error: %s", err))
-		return
-	}
-
-	figmaInfo.GetFigmaImage(lpm.OutputDir, "forLyrics")
+	//figmaInfo.GetFigmaImage(lpm.OutputDir, "forLyrics")
 
 	lpm.CreatePresentation(data)
 }
