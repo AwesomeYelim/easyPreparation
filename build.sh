@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 빌드할 경로
-TARGET="./apiServer/."
+TARGET="./cmd/server/."
 
 # 바이너리 출력 경로
 BIN_DIR="./bin"
@@ -11,7 +11,7 @@ GOOS=$(go env GOOS)
 GOARCH=$(go env GOARCH)
 
 # 출력 파일명 생성
-OUTPUT_NAME="apiServer_${GOOS}_${GOARCH}"
+OUTPUT_NAME="main_${GOOS}_${GOARCH}"
 [ "$GOOS" == "windows" ] && OUTPUT_NAME="${OUTPUT_NAME}.exe"
 
 # 출력 디렉토리 생성

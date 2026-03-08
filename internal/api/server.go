@@ -1,13 +1,13 @@
 package api
 
 import (
-	"easyPreparation_1.0/internal/api/global"
+	"easyPreparation_1.0/internal/types"
 	"easyPreparation_1.0/internal/handlers"
 	"fmt"
 	"net/http"
 )
 
-func StartServer(dataChan chan global.DataEnvelope) {
+func StartServer(dataChan chan types.DataEnvelope) {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/ws", handlers.WebSocketHandler)

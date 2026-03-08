@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"easyPreparation_1.0/pkg"
+	"easyPreparation_1.0/internal/utils"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"log"
@@ -37,6 +37,6 @@ func (si *SlideData) parseTrackList(doc *goquery.Document) {
 func (si *SlideData) parseLyrics(doc *goquery.Document) {
 	doc.Find(".lyricsContainer xmp").Each(func(i int, s *goquery.Selection) {
 		si.Lyrics = s.Text()
-		si.Content = pkg.SplitTwoLines(s.Text())
+		si.Content = utils.SplitTwoLines(s.Text())
 	})
 }

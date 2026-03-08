@@ -1,4 +1,4 @@
-package global
+package types
 
 type DataEnvelope struct {
 	Type    string                 `json:"type"`

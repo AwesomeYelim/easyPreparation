@@ -1,7 +1,7 @@
 package font
 
 import (
-	"easyPreparation_1.0/pkg"
+	"easyPreparation_1.0/internal/utils"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -41,7 +41,7 @@ func GetFont(name, weight string, isB bool) (fontPath string, err error) {
 		return savePath, nil
 	}
 
-	_ = pkg.CheckDirIs(filepath.Dir(savePath))
+	_ = utils.CheckDirIs(filepath.Dir(savePath))
 
 	resp, err := http.Get(gistURL)
 	if err != nil {

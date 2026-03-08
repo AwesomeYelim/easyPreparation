@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"easyPreparation_1.0/internal/path"
-	ziputil "easyPreparation_1.0/internal/utils"
+	"easyPreparation_1.0/internal/utils"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -21,7 +21,7 @@ func DownloadPDFHandler(w http.ResponseWriter, r *http.Request) {
 	filePaths := []string{filepath.Join(execPath, "output", "bulletin", "presentation", exeTarget), filepath.Join(execPath, "output", "bulletin", "print", exeTarget)}
 	fileNames := []string{"presentation_" + exeTarget, "print_" + exeTarget}
 
-	zipBytes, err := ziputil.CreateZipBufferFromFiles(filePaths, fileNames)
+	zipBytes, err := utils.CreateZipBufferFromFiles(filePaths, fileNames)
 	if err != nil {
 		http.Error(w, "ZIP 생성 실패: "+err.Error(), http.StatusInternalServerError)
 		return

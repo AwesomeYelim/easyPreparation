@@ -1,15 +1,15 @@
 package main
 
 import (
-	"easyPreparation_1.0/apiServer/bulletin"
-	"easyPreparation_1.0/apiServer/lyrics/presentation"
 	"easyPreparation_1.0/internal/api"
-	"easyPreparation_1.0/internal/api/global"
+	"easyPreparation_1.0/internal/types"
+	"easyPreparation_1.0/internal/bulletin"
 	"easyPreparation_1.0/internal/handlers"
+	"easyPreparation_1.0/internal/lyrics"
 )
 
 func main() {
-	dataChan := make(chan global.DataEnvelope, 100)
+	dataChan := make(chan types.DataEnvelope, 100)
 	go api.StartServer(dataChan)
 	go handlers.StartKeepAliveBroadcast()
 
@@ -18,7 +18,7 @@ func main() {
 		case "submit":
 			go bulletin.CreateBulletin(data.Payload)
 		case "submitLyrics":
-			go presentation.CreateLyricsPDF(data.Payload)
+			go lyrics.CreateLyricsPDF(data.Payload)
 		}
 	}
 }

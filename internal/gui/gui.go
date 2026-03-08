@@ -6,7 +6,7 @@ import (
 	"easyPreparation_1.0/internal/figma/get"
 	"easyPreparation_1.0/internal/quote"
 	"easyPreparation_1.0/internal/server"
-	"easyPreparation_1.0/pkg"
+	"easyPreparation_1.0/internal/utils"
 	"encoding/json"
 	"fmt"
 	"github.com/zserge/lorca"
@@ -119,7 +119,7 @@ func SetBulletinGui(execPath string) (target string, figmaInfo *get.Info) {
 		}
 		target = argTarget
 		sample, _ := json.MarshalIndent(arg, "", "  ")
-		_ = pkg.CheckDirIs(filepath.Join(execPath, "config"))
+		_ = utils.CheckDirIs(filepath.Join(execPath, "config"))
 		_ = os.WriteFile(filepath.Join(execPath, "config", target+".json"), sample, 0644)
 
 		dataReceived <- struct{}{}

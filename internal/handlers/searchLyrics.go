@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	middleware "easyPreparation_1.0/internal/middlerware"
+	middleware "easyPreparation_1.0/internal/middleware"
 	"easyPreparation_1.0/internal/parser"
 	"encoding/json"
 	"fmt"
