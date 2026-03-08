@@ -2,7 +2,77 @@
 
 > A server-side automation tool for weekly worship preparation — generates bulletin PDFs and lyrics presentation PDFs.
 
-![img.png](img.png)
+---
+
+## Architecture
+
+```mermaid
+flowchart TD
+    subgraph Client["🖥️ Client (Browser)"]
+        UI_B["Bulletin UI\n(React)"]
+        UI_L["Lyrics UI\n(React)"]
+    end
+
+    subgraph Server["⚙️ Go API Server :8080"]
+        WS["/ws\nWebSocket"]
+        SUB["/submit"]
+        SUB_L["/submitLyrics"]
+        SEARCH["/searchLyrics"]
+        DL["/download"]
+    end
+
+    subgraph Bulletin["📋 Bulletin Pipeline"]
+        B_QUOTE["Quote\n성경 구절 조회"]
+        B_PRINT["forPrint\n인쇄용 PDF"]
+        B_PRES["forPresentation\n프레젠테이션 PDF"]
+    end
+
+    subgraph Lyrics["🎵 Lyrics Pipeline"]
+        L_CRAWL["Parser\n가사 크롤링"]
+        L_PDF["Lyrics PDF\n슬라이드 생성"]
+    end
+
+    subgraph Ext["🌐 External Services"]
+        FIGMA["Figma\n배경 이미지"]
+        GCLOUD["Google Drive\n찬송가 / 성시교독 PDF"]
+        BUGS["bugs.co.kr\n가사 검색"]
+        PG[("PostgreSQL\n성경 DB")]
+    end
+
+    subgraph Output["📁 output/"]
+        OUT_BP["bulletin/print/*.pdf"]
+        OUT_BPR["bulletin/presentation/*.pdf"]
+        OUT_L["lyrics/*.pdf"]
+    end
+
+    UI_B -->|POST| SUB
+    UI_L -->|POST| SUB_L
+    UI_L -->|POST| SEARCH
+    UI_B -->|GET| DL
+    Server -->|progress| WS
+    WS -.->|실시간 알림| Client
+
+    SUB --> B_QUOTE
+    B_QUOTE --> PG
+    SUB --> B_PRINT
+    SUB --> B_PRES
+
+    B_PRINT --> FIGMA
+    B_PRES --> FIGMA
+    B_PRINT --> GCLOUD
+    B_PRES --> GCLOUD
+
+    B_PRINT --> OUT_BP
+    B_PRES --> OUT_BPR
+
+    SEARCH --> L_CRAWL
+    L_CRAWL --> BUGS
+    SUB_L --> L_PDF
+    L_PDF --> OUT_L
+
+    DL -->|ZIP| OUT_BP
+    DL -->|ZIP| OUT_BPR
+```
 
 ---
 
