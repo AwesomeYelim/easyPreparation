@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"easyPreparation_1.0/internal/parser"
 	"easyPreparation_1.0/internal/path"
-	"easyPreparation_1.0/pkg"
+	"easyPreparation_1.0/internal/utils"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -131,7 +131,7 @@ func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 	execPath := path.ExecutePath("easyPreparation")
 
 	sample, _ := json.MarshalIndent(bulletin, "", "  ")
-	_ = pkg.CheckDirIs(filepath.Join(execPath, "config"))
+	_ = utils.CheckDirIs(filepath.Join(execPath, "config"))
 	_ = os.WriteFile(filepath.Join(execPath, "config", worshipTitle+".json"), sample, 0644)
 }
 

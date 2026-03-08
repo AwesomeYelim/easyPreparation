@@ -1,4 +1,4 @@
-package pkg
+package utils
 
 import (
 	"fmt"
@@ -39,6 +39,7 @@ func SplitTwoLines(text string) (result []string) {
 
 	return result
 }
+
 func RemoveEmptyNonLetterLines(text string, maxLineLength int) []string {
 	lines := strings.Split(text, "\n")
 	var result []string
@@ -62,17 +63,6 @@ func RemoveEmptyNonLetterLines(text string, maxLineLength int) []string {
 		currentLine := ""
 
 		for _, word := range words {
-			//if len([]rune(word)) > maxLineLength {
-			//	// 단어 자체가 너무 길면 단독 줄로
-			//	if currentLine != "" {
-			//		result = append(result, currentLine)
-			//		currentLine = ""
-			//	}
-			//	result = append(result, word)
-			//	continue
-			//}
-
-			// 새로운 줄에 단어를 추가할 수 있는지 확인
 			testLine := word
 			if currentLine != "" {
 				testLine = currentLine + " " + word

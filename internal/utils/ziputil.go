@@ -1,4 +1,4 @@
-package ziputil
+package utils
 
 import (
 	"archive/zip"

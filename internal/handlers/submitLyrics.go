@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"easyPreparation_1.0/internal/api/global"
-	middleware "easyPreparation_1.0/internal/middlerware"
+	"easyPreparation_1.0/internal/types"
+	middleware "easyPreparation_1.0/internal/middleware"
 	"easyPreparation_1.0/internal/path"
-	ziputil "easyPreparation_1.0/internal/utils"
+	"easyPreparation_1.0/internal/utils"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func SubmitLyricsHandler(dataChan chan global.DataEnvelope) http.Handler {
+func SubmitLyricsHandler(dataChan chan types.DataEnvelope) http.Handler {
 	return middleware.CORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		execPath := path.ExecutePath("easyPreparation")
 
@@ -31,7 +31,7 @@ func SubmitLyricsHandler(dataChan chan global.DataEnvelope) http.Handler {
 		BroadcastProgress("Response SearchLyrics", 1, fmt.Sprintf("Response SearchLyrics: %+v", response))
 
 		// 1. 백그라운드로 처리 시작
-		dataChan <- global.DataEnvelope{
+		dataChan <- types.DataEnvelope{
 			Type:    "submitLyrics",
 			Payload: response,
 		}
@@ -81,7 +81,7 @@ func SubmitLyricsHandler(dataChan chan global.DataEnvelope) http.Handler {
 			fileNames = append(fileNames, filepath.Base(f))
 		}
 
-		zipBytes, err := ziputil.CreateZipBufferFromFiles(expectedFiles, fileNames)
+		zipBytes, err := utils.CreateZipBufferFromFiles(expectedFiles, fileNames)
 		if err != nil {
 			http.Error(w, "ZIP 생성 실패: "+err.Error(), http.StatusInternalServerError)
 			return

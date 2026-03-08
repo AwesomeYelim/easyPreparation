@@ -1,9 +1,9 @@
 package bulletin
 
 import (
-	"easyPreparation_1.0/apiServer/bulletin/define"
-	"easyPreparation_1.0/apiServer/bulletin/forPresentation"
-	"easyPreparation_1.0/apiServer/bulletin/forPrint"
+	"easyPreparation_1.0/internal/bulletin/define"
+	"easyPreparation_1.0/internal/bulletin/forPresentation"
+	"easyPreparation_1.0/internal/bulletin/forPrint"
 	"easyPreparation_1.0/internal/date"
 	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/handlers"

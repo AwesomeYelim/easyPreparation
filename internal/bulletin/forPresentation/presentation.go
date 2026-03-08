@@ -1,12 +1,12 @@
 package forPresentation
 
 import (
-	"easyPreparation_1.0/apiServer/bulletin/define"
+	"easyPreparation_1.0/internal/bulletin/define"
 	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/figma/get"
 	"easyPreparation_1.0/internal/gui"
 	"easyPreparation_1.0/internal/presentation"
-	"easyPreparation_1.0/pkg"
+	"easyPreparation_1.0/internal/utils"
 	"encoding/json"
 	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
@@ -22,7 +22,7 @@ type PdfInfo struct {
 func (pi PdfInfo) Create() {
 	config := extract.ConfigMem
 	outputDir := filepath.Join(pi.ExecPath, config.OutputPath.Bulletin, "presentation", "tmp")
-	//_ = pkg.CheckDirIs(outputDir)
+	//_ = utils.CheckDirIs(outputDir)
 	//
 	//defer func() {
 	//	_ = os.RemoveAll(outputDir)
@@ -69,7 +69,7 @@ func (pi PdfInfo) Create() {
 	}
 
 	outputBtPath := filepath.Join(pi.ExecPath, config.OutputPath.Bulletin, "presentation")
-	_ = pkg.CheckDirIs(outputBtPath)
+	_ = utils.CheckDirIs(outputBtPath)
 	bulletinPath := filepath.Join(outputBtPath, pi.OutputFilename)
 	err = objPdf.OutputFileAndClose(bulletinPath)
 	if err != nil {

@@ -3,7 +3,7 @@
 set -e
 
 GO_FILES=(
-  "./apiServer/main.go"
+  "./cmd/server/main.go"
 )
 
 BIN_DIR="./bin"

@@ -1,7 +1,7 @@
 package presentation
 
 import (
-	"easyPreparation_1.0/apiServer/bulletin/define"
+	"easyPreparation_1.0/internal/bulletin/define"
 	"easyPreparation_1.0/internal/classification"
 	"easyPreparation_1.0/internal/colorPalette"
 	"easyPreparation_1.0/internal/extract"
@@ -10,7 +10,7 @@ import (
 	"easyPreparation_1.0/internal/googleCloud"
 	"easyPreparation_1.0/internal/gui"
 	"easyPreparation_1.0/internal/parser"
-	"easyPreparation_1.0/pkg"
+	"easyPreparation_1.0/internal/utils"
 	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
 	"image/color"
@@ -281,7 +281,7 @@ func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config) {
 	fontInfo := config.Classification.Bulletin.Presentation.FontInfo
 
 	pdf.SetText(fontInfo, true, hLColor)
-	//trimmedText := pkg.RemoveEmptyLines(con.BibleVerse)
+	//trimmedText := utils.RemoveEmptyLines(con.BibleVerse)
 	pdf.BibleVerse = strings.Split(con.Contents, "\n")
 
 	switch pdf.Title {
@@ -435,7 +435,7 @@ func (pdf *PDF) setOutDirFiles(category, target string) {
 	}
 	outputPath := filepath.Join(pdf.FigmaInfo.ExecPath, "data", category)
 
-	_ = pkg.CheckDirIs(outputPath)
+	_ = utils.CheckDirIs(outputPath)
 	defer func() {
 		_ = os.RemoveAll(outputPath)
 	}()
@@ -445,7 +445,7 @@ func (pdf *PDF) setOutDirFiles(category, target string) {
 	googleCloud.GetGoogleCloudInfo(category, targetNum, outputPath)
 	// 캐싱 방지
 	tempPath := filepath.Join(outputPath, fmt.Sprintf("temp_%s", splitNum))
-	_ = pkg.CheckDirIs(tempPath)
+	_ = utils.CheckDirIs(tempPath)
 	tempPngPtah := filepath.Join(tempPath, "%d.png")
 
 	var cmdStr string

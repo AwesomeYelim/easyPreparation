@@ -1,4 +1,4 @@
-package presentation
+package lyrics
 
 import (
 	"easyPreparation_1.0/internal/classification"
@@ -7,7 +7,7 @@ import (
 	"easyPreparation_1.0/internal/path"
 	"easyPreparation_1.0/internal/presentation"
 	"easyPreparation_1.0/internal/sanitize"
-	"easyPreparation_1.0/pkg"
+	"easyPreparation_1.0/internal/utils"
 	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
 	"image/color"
@@ -63,7 +63,7 @@ func NewLyricsPresentationManager() *LyricsPresentationManager {
 	extract.ExtCustomOption(configPath)
 
 	outputDir := filepath.Join(execPath, extract.ConfigMem.OutputPath.Lyrics, "tmp")
-	_ = pkg.CheckDirIs(outputDir)
+	_ = utils.CheckDirIs(outputDir)
 
 	return &LyricsPresentationManager{
 		ExecPath:  execPath,
@@ -92,11 +92,11 @@ func (lpm *LyricsPresentationManager) CreatePresentation(data map[string]interfa
 			continue
 		}
 		title, _ := songMap["title"].(string)
-		lyrics, _ := songMap["lyrics"].(string)
+		lyricsText, _ := songMap["lyrics"].(string)
 
 		songs = append(songs, stSong{
 			title:  title,
-			lyrics: lyrics,
+			lyrics: lyricsText,
 		})
 	}
 	label := data["mark"].(string)
@@ -116,7 +116,7 @@ func (lpm *LyricsPresentationManager) CreatePresentation(data map[string]interfa
 	for _, song := range songs {
 		newSong := &parser.SlideData{}
 		newSong.Title = song.title
-		newSong.Content = pkg.SplitTwoLines(song.lyrics)
+		newSong.Content = utils.SplitTwoLines(song.lyrics)
 
 		fileName := filepath.Join(strings.TrimSuffix(lpm.OutputDir, "tmp"), sanitize.FileName(song.title)+".pdf")
 
@@ -140,7 +140,7 @@ func (lpm *LyricsPresentationManager) CreatePresentation(data map[string]interfa
 			}, false, color.RGBA{R: 255, G: 255, B: 255})
 			objPdf.MultiCell(textWidth, labelH, label, "", "R", false)
 		}
-		_ = pkg.ReplaceDirPath(fileName, "./")
+		_ = utils.ReplaceDirPath(fileName, "./")
 
 		if err := objPdf.OutputFileAndClose(fileName); err != nil {
 			log.Fatalf("PDF 저장 중 에러 발생: %v", err)
