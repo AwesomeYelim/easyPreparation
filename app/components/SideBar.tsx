@@ -1,4 +1,5 @@
 import { userInfoState } from "@/recoilState";
+import { UserChurchInfo } from "@/types";
 import { signOut } from "next-auth/react";
 import { useRecoilValue } from "recoil";
 
@@ -11,19 +12,6 @@ interface SidebarProps {
     image?: string | null;
   };
 }
-
-export type UserChurchInfo = {
-  id: number;
-  name: string;
-  english_name: string;
-  title: string;
-  content: string;
-  email: string;
-  figmaInfo: {
-    key: string;
-    token: string;
-  };
-};
 
 export default function Sidebar({ open, onClose, user }: SidebarProps) {
   const userInfo = useRecoilValue(userInfoState);

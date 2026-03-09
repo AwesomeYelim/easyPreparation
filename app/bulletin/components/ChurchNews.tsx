@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { WorshipOrderItem } from "../page";
+import { WorshipOrderItem } from "@/types";
+import { deleteNode, insertSiblingNode } from "@/lib/treeUtils";
 import EditChildNews from "./EditChildNews";
 
 export interface ChurchNewsProps {
@@ -19,29 +20,10 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
       case "DELETE":
         setSelectedDetail((prev) => {
           if (!prev) return prev;
-
-          const deleteRecursive = (items: WorshipOrderItem[]): WorshipOrderItem[] =>
-            items
-              .map((child) => {
-                if (child.key === childKey) return null;
-                return child.children ? { ...child, children: deleteRecursive(child.children) } : child;
-              })
-              .filter(Boolean) as WorshipOrderItem[];
-
-          return { ...prev, children: deleteRecursive(prev.children || []) };
+          return { ...prev, children: deleteNode(prev.children || [], childKey) };
         });
 
-        setSelectedItems((prevItems) => {
-          const deleteItemRecursive = (items: WorshipOrderItem[]): WorshipOrderItem[] =>
-            items
-              .map((item) => {
-                if (item.key === childKey) return null;
-                return item.children ? { ...item, children: deleteItemRecursive(item.children) } : item;
-              })
-              .filter(Boolean) as WorshipOrderItem[];
-
-          return deleteItemRecursive(prevItems);
-        });
+        setSelectedItems((prevItems) => deleteNode(prevItems, childKey));
       case "ADD":
         const keys = childKey.split(".");
         const lastKey = parseInt(keys[keys.length - 1], 10);
@@ -76,42 +58,10 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
 
       setSelectedDetail((prev) => {
         if (!prev) return prev;
-
-        const insertSibling = (items: WorshipOrderItem[]): WorshipOrderItem[] => {
-          return items.flatMap((item) => {
-            const keys = addContent.key.split(".");
-            const lastKey = parseInt(keys[keys.length - 1], 10);
-            const beforeKey = `${keys.slice(0, -1).join(".")}.${lastKey - 1}`;
-
-            if (item.key === beforeKey) {
-              return [item, updatedChild];
-            } else if (item.children) {
-              return [{ ...item, children: insertSibling(item.children) }];
-            }
-            return [item];
-          });
-        };
-
-        return { ...prev, children: insertSibling(prev.children || []) };
+        return { ...prev, children: insertSiblingNode(prev.children || [], updatedChild) };
       });
 
-      setSelectedItems((prevItems) => {
-        const insertSibling = (items: WorshipOrderItem[]): WorshipOrderItem[] => {
-          return items.flatMap((item) => {
-            const keys = addContent.key.split(".");
-            const lastKey = parseInt(keys[keys.length - 1], 10);
-            const beforeKey = `${keys.slice(0, -1).join(".")}.${lastKey - 1}`;
-
-            if (item.key === beforeKey) {
-              return [item, updatedChild];
-            } else if (item.children) {
-              return [{ ...item, children: insertSibling(item.children) }];
-            }
-            return [item];
-          });
-        };
-        return insertSibling(prevItems);
-      });
+      setSelectedItems((prevItems) => insertSiblingNode(prevItems, updatedChild));
 
       setAddContent(null);
     }

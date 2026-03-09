@@ -146,21 +146,6 @@
         ]
       },
       {
-        "key": "16.4",
-        "title": "선교회 소식",
-        "info": "c-edit",
-        "obj": "",
-        "children": [
-          {
-            "key": "16.4.1",
-            "title": "마카누리 선교회 임원회",
-            "info": "c-edit",
-            "obj": "8/17(주일) 오후 6시, 대구에서",
-            "children": []
-          }
-        ]
-      },
-      {
         "key": "16.5",
         "title": "노회 소식",
         "info": "c-edit",
@@ -181,13 +166,28 @@
             "children": []
           }
         ]
+      },
+      {
+        "key": "16.6",
+        "title": "asdasd",
+        "info": "c-edit",
+        "obj": "asdasd",
+        "children": [
+          {
+            "key": "16.6.1",
+            "title": "asdasd",
+            "info": "c-edit",
+            "obj": "asdasd",
+            "children": []
+          }
+        ]
       }
     ]
   },
   {
     "key": "17",
     "title": "찬송",
-    "obj": "54장",
+    "obj": "55장",
     "info": "c_edit",
     "lead": "일어서서"
   },
@@ -213,7 +213,7 @@
   {
     "key": "21",
     "title": "오늘의 말씀",
-    "obj": "창세기_1/30:3",
+    "obj": "역대상_13/14:13",
     "info": "b_edit"
   }
 ]

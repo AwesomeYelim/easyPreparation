@@ -1,7 +1,7 @@
 import React from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import { selectedDetailState } from "@/recoilState";
-import { WorshipOrderItem } from "../page";
+import { WorshipOrderItem } from "@/types";
 import classNames from "classnames";
 
 export default function SelectedOrder({

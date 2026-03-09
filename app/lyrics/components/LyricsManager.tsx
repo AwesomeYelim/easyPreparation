@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRecoilValue } from "recoil";
 import { userInfoState } from "@/recoilState";
+import { apiClient } from "@/lib/apiClient";
 import classNames from "classnames";
 import "./LyricsManager.scss";
 
@@ -46,16 +47,9 @@ export default function LyricsManager() {
   const handleSearchLyrics = async () => {
     try {
       setLoadingInfo({ is: true, msg: "전체 가사를 검색 중입니다..." });
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-      const response = await fetch(`${baseUrl}/searchLyrics`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          songs: songs.map(({ title, lyrics }) => ({ title, lyrics })),
-        }),
-      });
+      const response = await apiClient.searchLyrics(
+        songs.map(({ title, lyrics }) => ({ title, lyrics }))
+      );
 
       if (!response.ok) throw new Error("가사 검색 요청 실패");
       const data = await response.json();
@@ -81,17 +75,10 @@ export default function LyricsManager() {
     try {
       setLoadingInfo({ is: true, msg: "가사 기반으로 PDF 생성중입니다..." });
 
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-      const response = await fetch(`${baseUrl}/submitLyrics`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          figmaInfo: userInfo.figmaInfo,
-          mark: userInfo.english_name,
-          songs: songs.map(({ title, lyrics }) => ({ title, lyrics })),
-        }),
+      const response = await apiClient.submitLyrics({
+        figmaInfo: userInfo.figmaInfo,
+        mark: userInfo.english_name,
+        songs: songs.map(({ title, lyrics }) => ({ title, lyrics })),
       });
 
       if (!response.ok) throw new Error("가사 제출 실패");

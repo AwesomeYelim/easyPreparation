@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import bibleData from "@/data/bible_info.json";
+import { formatBibleRanges } from "@/lib/bibleUtils";
 import { useRecoilValue } from "recoil";
 import { selectedDetailState } from "@/recoilState";
 import "./BibleSelect.css";
@@ -100,23 +101,7 @@ const BibleSelect: React.FC<BibleSelectProps> = ({ handleValueChange, parentKey 
 
       setMultiSelection((prev) => {
         const updated = [...prev, selectedRanges];
-
-        const finalObj = updated
-          .map((ranges) => {
-            const first = ranges[0];
-            const last = ranges[1] || first;
-
-            return (
-              `${first.book}_${bibleData[first.book as BibleKey]?.index}/${first.chapter}:${first.verse}` +
-              (ranges.length > 1 ? `-${last.chapter}:${last.verse}` : "")
-            );
-          })
-          .join(", ");
-
-        handleValueChange(parentKey, {
-          newObj: finalObj,
-        });
-
+        handleValueChange(parentKey, { newObj: formatBibleRanges(updated) });
         return updated;
       });
 
@@ -126,21 +111,7 @@ const BibleSelect: React.FC<BibleSelectProps> = ({ handleValueChange, parentKey 
     deleteSelection: (deleteIndex: number) => {
       setMultiSelection((prev) => {
         const updated = prev.filter((_, i) => i !== deleteIndex);
-        const finalObj = updated
-          .map((ranges) => {
-            const first = ranges[0];
-            const last = ranges[1] || first;
-
-            return (
-              `${first.book}_${bibleData[first.book as BibleKey]?.index}/${first.chapter}:${first.verse}` +
-              (ranges.length > 1 ? `-${last.chapter}:${last.verse}` : "")
-            );
-          })
-          .join(", ");
-        handleValueChange(parentKey, {
-          newObj: finalObj,
-        });
-
+        handleValueChange(parentKey, { newObj: formatBibleRanges(updated) });
         return updated;
       });
     },
@@ -189,7 +160,7 @@ const BibleSelect: React.FC<BibleSelectProps> = ({ handleValueChange, parentKey 
                     <option value="" disabled>
                       장을 선택하세요
                     </option>
-                    {currentBook.chapters.map((_, index) => (
+                    {currentBook.chapters.map((_: number, index: number) => (
                       <option key={index} value={index + 1} disabled={selectedRanges[0]?.chapter > index + 1}>
                         {index + 1}장
                       </option>

@@ -1,38 +1,11 @@
-import { WorshipOrderItem } from "../page";
+import { WorshipOrderItem } from "@/types";
+import { formatBibleReference } from "@/lib/bibleUtils";
 
 export function ResultPart({
   selectedItems,
 }: {
   selectedItems: WorshipOrderItem[];
 }) {
-  function formatBibleReference(obj: string): string {
-    const bibleRegex = /^(.+?)_\d+\/(\d+):(\d+)(?:-(\d+):)?(\d+)?$/;
-
-    return obj
-      .split(",")
-      .map((item) => {
-        const trimmed = item.trim();
-        const match = trimmed.match(bibleRegex);
-        if (!match) return trimmed;
-
-        const [_, bookName, chapterStart, verseStart, chapterEnd, verseEnd] =
-          match;
-
-        // 단일절
-        if (!chapterEnd && !verseEnd) {
-          return `${bookName} ${chapterStart}:${verseStart}`;
-        }
-
-        // 절 범위, 같은 장
-        if (!chapterEnd || chapterStart === chapterEnd) {
-          return `${bookName} ${chapterStart}:${verseStart}-${verseEnd}`;
-        }
-
-        // 절 범위, 다른 장
-        return `${bookName} ${chapterStart}:${verseStart}-${chapterEnd}:${verseEnd}`;
-      })
-      .join(", ");
-  }
   console.log(selectedItems);
   return (
     <div className="card">

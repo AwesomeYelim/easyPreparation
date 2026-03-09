@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
-import { WorshipOrderItem } from "../page";
+import { WorshipOrderItem } from "@/types";
+import { findNode } from "@/lib/treeUtils";
 
 interface EditChildNewsProps {
   selectedDetail: WorshipOrderItem;
@@ -18,30 +19,8 @@ export default function EditChildNews({
   handleValueChange,
 }: EditChildNewsProps) {
   useEffect(() => {
-    const findMatchingChild = (
-      items: WorshipOrderItem[] | undefined,
-      key: string
-    ): WorshipOrderItem | null => {
-      if (!items) return null;
-      for (const item of items) {
-        if (item.key === key) {
-          return item;
-        }
-        if (item.children) {
-          const found = findMatchingChild(item.children, key);
-          if (found) return found;
-        }
-      }
-      return null;
-    };
-
-    const matched = findMatchingChild(
-      selectedDetail.children,
-      selectedChild.key
-    );
-    if (matched) {
-      setSelectedChild(matched);
-    }
+    const matched = findNode(selectedDetail.children, selectedChild.key);
+    if (matched) setSelectedChild(matched);
   }, [selectedDetail, selectedChild.key]); // key 기준으로 찾기
 
   return (

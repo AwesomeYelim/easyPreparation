@@ -1,4 +1,4 @@
-import { WorshipOrderItem } from "../page";
+import { WorshipOrderItem } from "@/types";
 import fixData from "@/data/fix_data.json";
 
 export function WorshipOrder({

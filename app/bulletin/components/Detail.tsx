@@ -1,7 +1,7 @@
 import React from "react";
 import { useRecoilState } from "recoil";
 import { selectedDetailState } from "@/recoilState";
-import { WorshipOrderItem } from "../page";
+import { WorshipOrderItem } from "@/types";
 import BibleSelect from "./BibleSelect";
 import ChurchNews from "./ChurchNews";
 

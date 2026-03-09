@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc:*)",
+      "Bash(/c/Users/User/Desktop/yelim/ep-ui/.claude/bin/indexer.exe:*)",
+      "Bash(./.claude/bin/indexer.exe:*)",
+      "Bash(node:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx next:*)"
+    ]
+  }
+}

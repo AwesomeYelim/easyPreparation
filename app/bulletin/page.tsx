@@ -6,18 +6,11 @@ import Detail from "./components/Detail";
 import { useState, useEffect } from "react";
 import classNames from "classnames";
 import { WorshipType, userInfoState, worshipOrderState } from "@/recoilState";
+import { WorshipOrderItem } from "@/types";
+import { apiClient } from "@/lib/apiClient";
 import { useRecoilValue } from "recoil";
 import { ResultPart } from "./components/ResultPage";
 import { useWS } from "@/components/WebSocketProvider";
-
-export type WorshipOrderItem = {
-  key: string;
-  title: string;
-  obj: string;
-  info: string;
-  lead?: string;
-  children?: WorshipOrderItem[];
-};
 
 export default function Bulletin() {
   const [selectedWorshipType, setSelectedWorshipType] =
@@ -52,16 +45,7 @@ export default function Bulletin() {
     }
   }, [message]);
 
-  const downloadZip = (fileName: string) => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-    const link = document.createElement("a");
-    link.href = `${baseUrl}/download?target=${fileName}`;
-    link.download = fileName;
-    link.target = "_self";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const downloadZip = (fileName: string) => apiClient.downloadFile(fileName);
 
   const removeEmptyNodes = (items: WorshipOrderItem[]): WorshipOrderItem[] => {
     return items
@@ -99,29 +83,16 @@ export default function Bulletin() {
       setLoading(true);
       setWsMessage("");
 
-      const saverRes = await fetch("/api/saveBulletin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          target: selectedWorshipType,
-          targetInfo: processSelectedInfo(selectedInfo),
-        }),
-      });
+      const processedInfo = processSelectedInfo(selectedInfo);
 
+      const saverRes = await apiClient.saveBulletin(selectedWorshipType, processedInfo);
       if (saverRes.status == 500) throw new Error("저장 실패");
 
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-      const response = await fetch(`${baseUrl}/submit`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          mark: userInfo.english_name,
-          targetInfo: processSelectedInfo(selectedInfo),
-          target: selectedWorshipType,
-          figmaInfo: userInfo.figmaInfo,
-        }),
+      const response = await apiClient.submitBulletin({
+        mark: userInfo.english_name,
+        targetInfo: processedInfo,
+        target: selectedWorshipType,
+        figmaInfo: userInfo.figmaInfo,
       });
 
       if (!response.ok) throw new Error("서버 응답 실패");
