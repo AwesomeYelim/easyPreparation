@@ -6,37 +6,37 @@ import (
 	"easyPreparation_1.0/internal/bulletin/forPrint"
 	"easyPreparation_1.0/internal/date"
 	"easyPreparation_1.0/internal/extract"
+	figmapkg "easyPreparation_1.0/internal/figma"
 	"easyPreparation_1.0/internal/handlers"
 	"easyPreparation_1.0/internal/path"
 	"easyPreparation_1.0/internal/quote"
 	"encoding/json"
 	"fmt"
-	"log"
 	"path/filepath"
 )
 
 func CreateBulletin(data map[string]interface{}) {
 	execPath := path.ExecutePath("easyPreparation")
 	handlers.BroadcastProgress("Start", 1, "Start Data Process !!")
-	//
-	////  figmaInfo 파싱
-	//var key, token string
-	//if rawFigma, ok := data["figmaInfo"]; ok {
-	//	if figmaMap, ok := rawFigma.(map[string]interface{}); ok {
-	//		if k, ok := figmaMap["key"].(string); ok {
-	//			key = k
-	//		}
-	//		if t, ok := figmaMap["token"].(string); ok {
-	//			token = t
-	//		}
-	//	}
-	//}
-	//
-	//figmaInfo := figma.New(&token, &key, execPath)
-	//if err := figmaInfo.GetNodes(); err != nil {
-	//	handlers.BroadcastProgress("Get Nodes Error", -1, fmt.Sprintf("GetNodes Error: %s", err))
-	//	return
-	//}
+
+	// figmaInfo 파싱
+	var key, token string
+	if rawFigma, ok := data["figmaInfo"]; ok {
+		if figmaMap, ok := rawFigma.(map[string]interface{}); ok {
+			if k, ok := figmaMap["key"].(string); ok {
+				key = k
+			}
+			if t, ok := figmaMap["token"].(string); ok {
+				token = t
+			}
+		}
+	}
+
+	figmaInfo, err := figmapkg.New(&token, &key, execPath)
+	if err != nil {
+		handlers.BroadcastProgress("Figma Init Error", -1, fmt.Sprintf("Figma 초기화 실패: %s", err))
+		return
+	}
 
 	// target
 	target, ok := data["target"].(string)
@@ -54,15 +54,25 @@ func CreateBulletin(data map[string]interface{}) {
 
 	// targetInfo 파싱
 	var targetInfo []map[string]interface{}
-	if rawTargetInfo, err := json.Marshal(data["targetInfo"]); err == nil {
-		_ = json.Unmarshal(rawTargetInfo, &targetInfo)
-	} else {
+	rawTargetInfo, err := json.Marshal(data["targetInfo"])
+	if err != nil {
+		handlers.BroadcastProgress("TargetInfo parsing error", -1, fmt.Sprintf("Failed to marshal targetInfo: %s", err))
+		return
+	}
+	if err := json.Unmarshal(rawTargetInfo, &targetInfo); err != nil {
 		handlers.BroadcastProgress("TargetInfo parsing error", -1, fmt.Sprintf("Failed to parse targetInfo: %s", err))
 		return
 	}
-	err := quote.InitDB("postgres://postgres:02031122@138.2.119.220/postgres?sslmode=disable")
+
+	dbConfigPath := filepath.Join(execPath, "config", "db.json")
+	dsn, err := quote.LoadDSN(dbConfigPath)
 	if err != nil {
-		log.Fatal(err)
+		handlers.BroadcastProgress("DB Config Error", -1, err.Error())
+		return
+	}
+	if err := quote.InitDB(dsn); err != nil {
+		handlers.BroadcastProgress("DB Init Error", -1, fmt.Sprintf("DB 연결 실패: %s", err))
+		return
 	}
 	defer func() {
 		_ = quote.CloseDB()
@@ -77,7 +87,7 @@ func CreateBulletin(data map[string]interface{}) {
 	outputFilename := fmt.Sprintf("%s_%s", yearMonth, weekFormatted)
 	outputFilenameExe := fmt.Sprintf("%s.pdf", outputFilename)
 	PdfInfo := &define.PdfInfo{
-		//FigmaInfo:      figmaInfo,
+		FigmaInfo:      figmaInfo,
 		ExecPath:       execPath,
 		Target:         target,
 		OutputFilename: outputFilenameExe,

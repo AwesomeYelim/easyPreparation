@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mkdir -p \"$CLAUDE_PROJECT_DIR/.claude/bin/output\" && cd \"$CLAUDE_PROJECT_DIR/.claude/bin\" && OS=$(uname -s) && ARCH=$(uname -m) && case \"$OS-$ARCH\" in Linux-x86_64) BIN=indexer-linux-amd64;; Darwin-x86_64) BIN=indexer-darwin-amd64;; Darwin-arm64) BIN=indexer-darwin-arm64;; MINGW*|MSYS*|CYGWIN*) BIN=indexer.exe;; *) BIN=indexer.exe;; esac && ./$BIN -build"
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/tools/setup.sh\" 2>&1 | tail -8"
+          }
+        ]
+      }
+    ]
+  }
+}

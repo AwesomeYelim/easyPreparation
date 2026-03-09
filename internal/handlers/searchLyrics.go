@@ -42,7 +42,9 @@ func SearchLyrics() http.Handler {
 		for _, song := range songs {
 			newSong := &parser.SlideData{}
 			if song.Lyrics == "" {
-				newSong.SearchLyricsList("https://music.bugs.co.kr/search/lyrics?q=%s", song.Title, false)
+				if err := newSong.SearchLyricsList("https://music.bugs.co.kr/search/lyrics?q=%s", song.Title, false); err != nil {
+					BroadcastProgress("SearchLyrics Error", -1, fmt.Sprintf("가사 검색 실패 (%s): %v", song.Title, err))
+				}
 			}
 			responseLyrics = append(responseLyrics, Song{Title: song.Title, Lyrics: newSong.Lyrics})
 		}

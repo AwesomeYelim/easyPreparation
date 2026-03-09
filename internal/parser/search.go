@@ -2,43 +2,42 @@ package parser
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 
 	"github.com/PuerkitoBio/goquery"
 )
 
-// searchLyricsList 함수는 가사 목록을 검색합니다.
-func (si *SlideData) SearchLyricsList(baseUrl, query string, isDirect bool) {
-
+// SearchLyricsList 함수는 가사 목록을 검색합니다.
+func (si *SlideData) SearchLyricsList(baseUrl, query string, isDirect bool) error {
 	if len(si.Content) > 0 {
-		return
+		return nil
 	}
 	searchUrl := formatSearchURL(baseUrl, query, isDirect)
 
-	// HTTP 요청 보내기
 	resp, err := http.Get(searchUrl)
 	if err != nil {
-		log.Fatalf("Failed to make HTTP request: %v", err)
+		return fmt.Errorf("HTTP 요청 실패: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		log.Fatalf("Status code error: %d %s", resp.StatusCode, resp.Status)
+		return fmt.Errorf("HTTP 오류: %d %s", resp.StatusCode, resp.Status)
 	}
 
-	// HTML 파싱
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
-		log.Fatalf("Failed to parse HTML: %v", err)
+		return fmt.Errorf("HTML 파싱 실패: %v", err)
 	}
 
 	if isDirect {
 		si.parseLyrics(doc)
 	} else {
-		si.parseTrackList(doc)
+		if err := si.parseTrackList(doc); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // formatSearchURL 함수는 검색 URL을 생성합니다.

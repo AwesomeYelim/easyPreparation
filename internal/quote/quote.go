@@ -16,6 +16,27 @@ import (
 	_ "github.com/lib/pq" // PostgreSQL 드라이버
 )
 
+// LoadDSN은 환경변수 DB_DSN → config/db.json 순서로 DSN을 읽습니다.
+func LoadDSN(configPath string) (string, error) {
+	if dsn := os.Getenv("DB_DSN"); dsn != "" {
+		return dsn, nil
+	}
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return "", fmt.Errorf("DB_DSN 환경변수가 없고 설정 파일을 읽을 수 없습니다: %v", err)
+	}
+	var cfg struct {
+		DSN string `json:"dsn"`
+	}
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return "", fmt.Errorf("db.json 파싱 오류: %v", err)
+	}
+	if cfg.DSN == "" {
+		return "", fmt.Errorf("db.json에 dsn 필드가 없습니다")
+	}
+	return cfg.DSN, nil
+}
+
 // DB 연결 변수 (전역 또는 의존성 주입으로 관리)
 var db *sql.DB
 
@@ -85,8 +106,11 @@ func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 						continue
 					}
 
-					quoteText := GetQuote(codeAndRange)
-
+					quoteText, err := GetQuote(codeAndRange)
+					if err != nil {
+						log.Printf("성경 구절 조회 오류 (%s): %v", codeAndRange, err)
+						continue
+					}
 					sb.WriteString(quoteText)
 					sb.WriteString("\n")
 
@@ -103,11 +127,13 @@ func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 						continue
 					}
 
-					quoteText := GetQuote(codeAndRange)
-
-					sb.WriteString(quoteText)
-
-					objRange = fmt.Sprintf("%s %s", korName, parser.CompressVerse(codeParts[1]))
+					quoteText, err := GetQuote(codeAndRange)
+					if err != nil {
+						log.Printf("성경 구절 조회 오류 (%s): %v", codeAndRange, err)
+					} else {
+						sb.WriteString(quoteText)
+						objRange = fmt.Sprintf("%s %s", korName, parser.CompressVerse(codeParts[1]))
+					}
 				}
 			}
 
@@ -135,13 +161,13 @@ func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 	_ = os.WriteFile(filepath.Join(execPath, "config", worshipTitle+".json"), sample, 0644)
 }
 
-func GetQuote(codeAndRange string) string {
+func GetQuote(codeAndRange string) (string, error) {
 	var startChapter, startVerse, endChapter, endVerse int
 
 	// codeAndRange 형태: "45/8:1" 또는 "45/8:1-3"
 	referBible := strings.Split(codeAndRange, "/")
 	if len(referBible) < 2 {
-		log.Fatalf("잘못된 입력 형식입니다: %s (예: 45/8:1-3)", codeAndRange)
+		return "", fmt.Errorf("잘못된 입력 형식: %s (예: 45/8:1-3)", codeAndRange)
 	}
 
 	bookOrder := referBible[0]  // "45" (book_order)
@@ -150,7 +176,7 @@ func GetQuote(codeAndRange string) string {
 	// book_order를 정수로 변환
 	bookOrderInt, err := strconv.Atoi(bookOrder)
 	if err != nil {
-		log.Fatalf("잘못된 책 번호입니다: %s", bookOrder)
+		return "", fmt.Errorf("잘못된 책 번호: %s", bookOrder)
 	}
 
 	if strings.Contains(quoteRange, "-") {
@@ -179,12 +205,11 @@ func GetQuote(codeAndRange string) string {
 
 	versesText, err := getBibleVersesFromDB(bookOrderInt, startChapter, startVerse, endChapter, endVerse)
 	if err != nil {
-		log.Printf("성경 구절 가져오기 오류: %v", err)
-		return fmt.Sprintf("구절을 찾을 수 없습니다: %s", codeAndRange)
+		return "", fmt.Errorf("성경 구절 가져오기 오류 (%s): %v", codeAndRange, err)
 	}
 
-	fmt.Printf("\n📖 최종 결과:\n%s\n", versesText)
-	return versesText
+	log.Printf("📖 %s 조회 완료 (%d절)", codeAndRange, len(strings.Split(versesText, "\n")))
+	return versesText, nil
 }
 
 func getBibleVersesFromDB(bookOrder, startChapter, startVerse, endChapter, endVerse int) (string, error) {

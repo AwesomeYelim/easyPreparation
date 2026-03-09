@@ -3,6 +3,8 @@ package lyrics
 import (
 	"easyPreparation_1.0/internal/classification"
 	"easyPreparation_1.0/internal/extract"
+	figmapkg "easyPreparation_1.0/internal/figma"
+	"easyPreparation_1.0/internal/handlers"
 	"easyPreparation_1.0/internal/parser"
 	"easyPreparation_1.0/internal/path"
 	"easyPreparation_1.0/internal/presentation"
@@ -29,30 +31,29 @@ type stSong struct {
 }
 
 func CreateLyricsPDF(data map[string]interface{}) {
-	//execPath := path.ExecutePath("easyPreparation")
+	execPath := path.ExecutePath("easyPreparation")
 
 	lpm := NewLyricsPresentationManager()
-	//defer lpm.Cleanup()
 
-	//var key, token string
-	//if rawFigma, ok := data["figmaInfo"]; ok {
-	//	if figmaMap, ok := rawFigma.(map[string]interface{}); ok {
-	//		if k, ok := figmaMap["key"].(string); ok {
-	//			key = k
-	//		}
-	//		if t, ok := figmaMap["token"].(string); ok {
-	//			token = t
-	//		}
-	//	}
-	//}
-	//
-	//figmaInfo := figma.New(&token, &key, execPath)
-	//if err := figmaInfo.GetNodes(); err != nil {
-	//	handlers.BroadcastProgress("Get Nodes Error", -1, fmt.Sprintf("GetNodes Error: %s", err))
-	//	return
-	//}
+	var key, token string
+	if rawFigma, ok := data["figmaInfo"]; ok {
+		if figmaMap, ok := rawFigma.(map[string]interface{}); ok {
+			if k, ok := figmaMap["key"].(string); ok {
+				key = k
+			}
+			if t, ok := figmaMap["token"].(string); ok {
+				token = t
+			}
+		}
+	}
 
-	//figmaInfo.GetFigmaImage(lpm.OutputDir, "forLyrics")
+	figmaInfo, err := figmapkg.New(&token, &key, execPath)
+	if err != nil {
+		handlers.BroadcastProgress("Figma Init Error", -1, fmt.Sprintf("Figma 초기화 실패: %s", err))
+		return
+	}
+
+	figmaInfo.GetFigmaImage(lpm.OutputDir, "forLyrics")
 
 	lpm.CreatePresentation(data)
 }
@@ -99,7 +100,7 @@ func (lpm *LyricsPresentationManager) CreatePresentation(data map[string]interfa
 			lyrics: lyricsText,
 		})
 	}
-	label := data["mark"].(string)
+	label, _ := data["mark"].(string)
 
 	fontInfo := lpm.Config.Classification.Lyrics.Presentation.FontInfo
 
@@ -107,7 +108,13 @@ func (lpm *LyricsPresentationManager) CreatePresentation(data map[string]interfa
 	labelWm, labelHm := 13.00, 10.00
 	labelP := 15.00
 
-	backgroundImages, _ := os.ReadDir(lpm.OutputDir)
+	backgroundImages, err := os.ReadDir(lpm.OutputDir)
+	if err != nil || len(backgroundImages) == 0 {
+		handlers.BroadcastProgress("Lyrics Error", -1, fmt.Sprintf("배경 이미지 없음: %s", lpm.OutputDir))
+		return
+	}
+	bgImagePath := filepath.Join(lpm.OutputDir, backgroundImages[0].Name())
+
 	instanceSize := gofpdf.SizeType{
 		Wd: extract.ConfigMem.Classification.Lyrics.Presentation.Width,
 		Ht: extract.ConfigMem.Classification.Lyrics.Presentation.Height,
@@ -118,6 +125,11 @@ func (lpm *LyricsPresentationManager) CreatePresentation(data map[string]interfa
 		newSong.Title = song.title
 		newSong.Content = utils.SplitTwoLines(song.lyrics)
 
+		if len(newSong.Content) == 0 {
+			log.Printf("가사 없음, 스킵: %s", song.title)
+			continue
+		}
+
 		fileName := filepath.Join(strings.TrimSuffix(lpm.OutputDir, "tmp"), sanitize.FileName(song.title)+".pdf")
 
 		objPdf := presentation.New(instanceSize)
@@ -125,14 +137,13 @@ func (lpm *LyricsPresentationManager) CreatePresentation(data map[string]interfa
 
 		for _, content := range newSong.Content {
 			objPdf.AddPage()
-			objPdf.CheckImgPlaced(filepath.Join(lpm.OutputDir, backgroundImages[0].Name()), 0)
+			objPdf.CheckImgPlaced(bgImagePath, 0)
 			// 가운데 배치
 			objPdf.SetXY((objPdf.Config.Width-objPdf.Config.InnerRectangle.Width)/2, (objPdf.Config.Height-fontInfo.FontSize)/2)
 			objPdf.SetText(fontInfo, true, color.RGBA{R: 255, G: 255, B: 255})
 			objPdf.MultiCell(objPdf.Config.InnerRectangle.Width, fontInfo.FontSize/2, content, "", "C", false)
 
-			// label - 400*70
-			// margin - 20, 15
+			// label
 			textWidth := objPdf.GetStringWidth(label)
 			objPdf.SetXY(objPdf.Config.Width-(textWidth+labelWm+labelP), objPdf.Config.Height-(labelH+labelHm+labelP))
 			objPdf.SetText(classification.FontInfo{
@@ -143,9 +154,9 @@ func (lpm *LyricsPresentationManager) CreatePresentation(data map[string]interfa
 		_ = utils.ReplaceDirPath(fileName, "./")
 
 		if err := objPdf.OutputFileAndClose(fileName); err != nil {
-			log.Fatalf("PDF 저장 중 에러 발생: %v", err)
+			log.Printf("PDF 저장 중 에러 발생: %v", err)
+			continue
 		}
 		fmt.Printf("프레젠테이션이 '%s'에 저장되었습니다.\n", fileName)
-
 	}
 }
