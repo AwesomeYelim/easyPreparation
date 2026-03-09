@@ -1,7 +1,7 @@
 *.pdf
 bin/
 data/
-output/
+output/*/*.pdf
 config/*
 lyricsPPT_v*.zip
 public

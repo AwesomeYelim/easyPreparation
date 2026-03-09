@@ -4,7 +4,6 @@ import (
 	"easyPreparation_1.0/internal/utils"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
-	"log"
 	"strconv"
 )
 
@@ -17,20 +16,28 @@ type SlideData struct {
 }
 
 // 트랙 리스트를 파싱
-func (si *SlideData) parseTrackList(doc *goquery.Document) {
+func (si *SlideData) parseTrackList(doc *goquery.Document) error {
+	var retErr error
 	doc.Find("table.trackList tbody tr[rowtype='lyrics']").Each(func(i int, s *goquery.Selection) {
+		if retErr != nil {
+			return
+		}
 		albumID, exists := s.Attr("trackid")
-		if exists {
-			tempNo, err := strconv.ParseInt(albumID, 10, 64)
-			if err != nil {
-				log.Fatalf("Failed to parse track ID: %v", err)
-			}
-			si.TrackID = int(tempNo)
-			si.SearchLyricsList("https://music.bugs.co.kr/track/%s", albumID, true)
-		} else {
-			fmt.Println("the trackId is not exist")
+		if !exists {
+			fmt.Println("trackId가 없습니다")
+			return
+		}
+		tempNo, err := strconv.ParseInt(albumID, 10, 64)
+		if err != nil {
+			retErr = fmt.Errorf("트랙 ID 파싱 실패: %v", err)
+			return
+		}
+		si.TrackID = int(tempNo)
+		if err := si.SearchLyricsList("https://music.bugs.co.kr/track/%s", albumID, true); err != nil {
+			retErr = err
 		}
 	})
+	return retErr
 }
 
 // 가사 파싱

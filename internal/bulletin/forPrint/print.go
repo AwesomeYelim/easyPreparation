@@ -25,15 +25,25 @@ type PdfInfo struct {
 func (pi PdfInfo) Create() {
 	config := extract.ConfigMem
 	outputDir := filepath.Join(pi.ExecPath, config.OutputPath.Bulletin, "print", "tmp")
-	//_ = utils.CheckDirIs(outputDir)
-	//
-	//defer func() {
-	//	_ = os.RemoveAll(outputDir)
-	//}()
+	_ = utils.CheckDirIs(outputDir)
 
-	//pi.FigmaInfo.GetFigmaImage(outputDir, "forPrint")
+	pi.FigmaInfo.GetFigmaImage(outputDir, "forPrint")
 
-	files, _ := os.ReadDir(outputDir)
+	allFiles, err := os.ReadDir(outputDir)
+	if err != nil {
+		fmt.Printf("[forPrint] 배경 이미지 디렉토리 읽기 실패: %v\n", err)
+		return
+	}
+	var files []os.DirEntry
+	for _, f := range allFiles {
+		if !f.IsDir() && strings.HasSuffix(f.Name(), ".png") {
+			files = append(files, f)
+		}
+	}
+	if len(files) == 0 {
+		fmt.Printf("[forPrint] 배경 이미지 없음: %s\n", outputDir)
+		return
+	}
 	instanceSize := gofpdf.SizeType{
 		Wd: config.Classification.Bulletin.Print.Width,
 		Ht: config.Classification.Bulletin.Print.Height,

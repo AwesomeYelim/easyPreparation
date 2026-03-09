@@ -35,8 +35,10 @@ func SetLyricsGui(execPath string) (target map[string]string, figmaInfo *get.Inf
 		key := arg["key"]
 		fmt.Printf("Received Token: %s, Key: %s\n", token, key)
 
-		figmaInfo = figma.New(&token, &key, execPath)
-		err = figmaInfo.GetNodes()
+		figmaInfo, err = figma.New(&token, &key, execPath)
+		if err == nil {
+			err = figmaInfo.GetNodes()
+		}
 		if err != nil {
 			ui.Eval(fmt.Sprintf(`document.getElementById("responseMessage").textContent = "[ERROR] : %s"`, err.Error()))
 		} else {
@@ -81,8 +83,10 @@ func SetBulletinGui(execPath string) (target string, figmaInfo *get.Info) {
 		key := arg["key"]
 		fmt.Printf("Received Token: %s, Key: %s\n", token, key)
 
-		figmaInfo = figma.New(&token, &key, execPath)
-		err = figmaInfo.GetNodes()
+		figmaInfo, err = figma.New(&token, &key, execPath)
+		if err == nil {
+			err = figmaInfo.GetNodes()
+		}
 		if err != nil {
 			ui.Eval(fmt.Sprintf(`document.getElementById("responseMessage").textContent = "[ERROR] : %s"`, err.Error()))
 		} else {
@@ -107,7 +111,11 @@ func SetBulletinGui(execPath string) (target string, figmaInfo *get.Info) {
 				kor := strings.Split(obj, "_")[0]
 				forUrl := strings.Split(obj, "_")[1]
 
-				el["contents"] = quote.GetQuote(forUrl)
+				if content, err := quote.GetQuote(forUrl); err != nil {
+					log.Printf("성경 구절 조회 오류: %v", err)
+				} else {
+					el["contents"] = content
+				}
 
 				el["obj"] = fmt.Sprintf("%s %s", kor, strings.Split(forUrl, "/")[1])
 
