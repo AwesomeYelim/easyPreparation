@@ -1,8 +1,9 @@
 package api
 
 import (
-	"easyPreparation_1.0/internal/types"
 	"easyPreparation_1.0/internal/handlers"
+	"easyPreparation_1.0/internal/middleware"
+	"easyPreparation_1.0/internal/types"
 	"fmt"
 	"net/http"
 )
@@ -12,7 +13,7 @@ func StartServer(dataChan chan types.DataEnvelope) {
 
 	mux.HandleFunc("/ws", handlers.WebSocketHandler)
 	mux.Handle("/submit", handlers.SubmitHandler(dataChan))
-	mux.HandleFunc("/download", handlers.DownloadPDFHandler)
+	mux.Handle("/download", middleware.CORS(http.HandlerFunc(handlers.DownloadPDFHandler)))
 	mux.Handle("/searchLyrics", handlers.SearchLyrics())
 	mux.Handle("/submitLyrics", handlers.SubmitLyricsHandler(dataChan))
 
