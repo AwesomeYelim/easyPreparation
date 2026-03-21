@@ -26,8 +26,23 @@ from pathlib import Path
 # Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client ID
 # Application type: Desktop application
 
-_CLIENT_ID     = os.environ.get("GOOGLE_CLIENT_ID", "")
-_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+def _load_oauth_creds() -> tuple[str, str]:
+    # 1) 환경변수 우선
+    cid = os.environ.get("GOOGLE_CLIENT_ID", "")
+    cs  = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+    if cid and cs:
+        return cid, cs
+    # 2) config/google_oauth.json (gitignore됨)
+    cfg = Path(__file__).parent.parent / "config" / "google_oauth.json"
+    if cfg.exists():
+        try:
+            d = json.loads(cfg.read_text())
+            return d.get("client_id", ""), d.get("client_secret", "")
+        except Exception:
+            pass
+    return "", ""
+
+_CLIENT_ID, _CLIENT_SECRET = _load_oauth_creds()
 
 TOKEN_URI  = "https://oauth2.googleapis.com/token"
 TOKEN_PATH = Path(__file__).parent / "output" / ".gtoken"
@@ -46,10 +61,10 @@ SCOPES = [
 # ── 공통 유틸 ─────────────────────────────────────────────────────────────────
 
 def _check_creds() -> None:
-    if _CLIENT_ID == "YOUR_CLIENT_ID":
-        print("❌ auth.py에 client_id / client_secret을 채워넣으세요.")
-        print("\n  Google Cloud Console → APIs & Services → Credentials")
-        print("  → Create OAuth 2.0 Client ID → Desktop application")
+    if not _CLIENT_ID or not _CLIENT_SECRET:
+        print("❌ OAuth 자격증명이 없습니다.")
+        print("\n  config/google_oauth.json 에 client_id / client_secret 을 입력하세요.")
+        print("  또는 환경변수 GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET 을 설정하세요.")
         sys.exit(1)
 
 
