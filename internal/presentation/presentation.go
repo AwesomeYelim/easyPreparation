@@ -13,6 +13,7 @@ import (
 	"easyPreparation_1.0/internal/utils"
 	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
+	"golang.org/x/text/unicode/norm"
 	"image/color"
 	"log"
 	"os"
@@ -38,6 +39,24 @@ type InnerSizeInfo struct {
 	Width   float64
 	Height  float64
 	Padding float64
+}
+
+// Text, MultiCell, CellFormat, GetStringWidth — NFC 정규화 래퍼
+// macOS에서 한글이 NFD(자모 분리)로 들어올 경우 NFC(완성형)로 변환
+func (pdf *PDF) Text(x, y float64, txtStr string) {
+	pdf.Fpdf.Text(x, y, norm.NFC.String(txtStr))
+}
+
+func (pdf *PDF) MultiCell(w, h float64, txtStr, borderStr, alignStr string, fill bool) {
+	pdf.Fpdf.MultiCell(w, h, norm.NFC.String(txtStr), borderStr, alignStr, fill)
+}
+
+func (pdf *PDF) CellFormat(w, h float64, txtStr, borderStr string, ln int, alignStr string, fill bool, link int, linkStr string) {
+	pdf.Fpdf.CellFormat(w, h, norm.NFC.String(txtStr), borderStr, ln, alignStr, fill, link, linkStr)
+}
+
+func (pdf *PDF) GetStringWidth(s string) float64 {
+	return pdf.Fpdf.GetStringWidth(norm.NFC.String(s))
 }
 
 func New(size gofpdf.SizeType) PDF {
@@ -429,7 +448,15 @@ func (pdf *PDF) setOutDirFiles(category, target string) {
 	var splitNum string
 	switch category {
 	case "hymn":
-		splitNum = strings.TrimSuffix(target, "장")
+		// "31장", "495장" → 숫자만 추출 / "사명", "하나님 품으로" → 원문 그대로
+		for _, r := range target {
+			if r >= '0' && r <= '9' {
+				splitNum += string(r)
+			}
+		}
+		if splitNum == "" {
+			splitNum = target
+		}
 	case "responsive_reading":
 		splitNum = strings.Split(target, ".")[0]
 	}
@@ -440,9 +467,19 @@ func (pdf *PDF) setOutDirFiles(category, target string) {
 		_ = os.RemoveAll(outputPath)
 	}()
 
-	targetNum := fmt.Sprintf("%03s.pdf", splitNum)
+	// %03d 로 숫자 0-패딩 ("31" → "031.pdf")
+	num, err := strconv.Atoi(splitNum)
+	var targetNum string
+	if err == nil {
+		targetNum = fmt.Sprintf("%03d.pdf", num)
+	} else {
+		targetNum = fmt.Sprintf("%s.pdf", splitNum)
+	}
 
-	googleCloud.GetGoogleCloudInfo(category, targetNum, outputPath)
+	if err := googleCloud.GetGoogleCloudInfo(category, targetNum, outputPath); err != nil {
+		log.Printf("[경고] Google Drive 파일 없음 — %v (건너뜀)", err)
+		return
+	}
 	// 캐싱 방지
 	tempPath := filepath.Join(outputPath, fmt.Sprintf("temp_%s", splitNum))
 	_ = utils.CheckDirIs(tempPath)
