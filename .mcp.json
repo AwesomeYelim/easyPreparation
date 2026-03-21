@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "gdrive": {
+      "command": "bash",
+      "args": ["tools/start_mcp.sh"]
+    }
+  }
+}

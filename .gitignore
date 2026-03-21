@@ -3,6 +3,16 @@ bin/
 data/
 output/*/*.pdf
 config/*
+
+# ai_supporter tools
+tools/.venv/
+tools/output/*.pptx
+tools/output/*.docx
+tools/output/*.xlsx
+tools/output/.gtoken
+tools/output/doc_registry.json
+tools/output/_tmp.py
+tools/templates/
 lyricsPPT_v*.zip
 public
 
