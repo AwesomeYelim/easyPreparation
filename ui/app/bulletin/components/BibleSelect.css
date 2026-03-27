@@ -1,0 +1,119 @@
+.bible-select-container {
+  font-family: "Arial", sans-serif;
+  margin-top: 10px;
+  max-width: 600px;
+  padding: 15px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background-color: #f9f9f9;
+
+  .title {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 1em;
+    font-weight: bold;
+  }
+
+  .select-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .select-label {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.9em;
+    color: #555;
+  }
+
+  .select-box {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9em;
+    margin-top: 5px;
+  }
+
+  .select-box:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 3px #007bff;
+    outline: none;
+  }
+
+  .result-container {
+    margin-top: 15px;
+    padding: 10px;
+    border: 1px solid #007bff;
+    border-radius: 6px;
+    background-color: #eef7ff;
+  }
+
+  .result-text {
+    font-size: 1em;
+    color: #333;
+    font-weight: bold;
+    text-align: center;
+  }
+}
+
+.add-selection-button {
+  margin-top: 12px;
+  background-color: #4a90e2;
+  border: none;
+  padding: 5px 10px;
+  margin-right: 5px;
+  color: white;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  max-width: 600px;
+  transition: background-color 0.2s ease;
+}
+
+.confirm-button:hover,
+.add-selection-button:hover {
+  background-color: #357ab8;
+}
+.multi-selection-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.verse-chip {
+  background-color: #f0f4ff;
+  border: 1px solid #b3cfff;
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-size: 14px;
+  color: #333;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+  transition: background-color 0.2s ease;
+
+  .delete-button {
+    margin-left: 8px;
+    cursor: pointer;
+    border: 1px solid #555;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    background-color: white;
+    color: #333;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.2s, color 0.2s;
+  }
+
+  .delete-button:hover {
+    background-color: #357ab8;
+    color: white;
+    border-color: #357ab8;
+  }
+}
+
+.verse-chip:hover {
+  background-color: #d8e7ff;
+}
