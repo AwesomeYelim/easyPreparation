@@ -17,6 +17,10 @@ func StartServer(dataChan chan types.DataEnvelope) {
 	mux.Handle("/searchLyrics", handlers.SearchLyrics())
 	mux.Handle("/submitLyrics", handlers.SubmitLyricsHandler(dataChan))
 
+	// OBS Browser Source
+	mux.Handle("/display", middleware.CORS(http.HandlerFunc(handlers.DisplayHandler)))
+	mux.Handle("/display/push", middleware.CORS(http.HandlerFunc(handlers.DisplayPushHandler)))
+
 	fmt.Println("Server running on http://localhost:8080")
 	if err := http.ListenAndServe("0.0.0.0:8080", mux); err != nil {
 		panic(err)
