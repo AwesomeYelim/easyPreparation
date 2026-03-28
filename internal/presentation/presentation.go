@@ -9,6 +9,7 @@ import (
 	"easyPreparation_1.0/internal/format"
 	"easyPreparation_1.0/internal/googleCloud"
 	"easyPreparation_1.0/internal/gui"
+	"easyPreparation_1.0/internal/handlers"
 	"easyPreparation_1.0/internal/parser"
 	"easyPreparation_1.0/internal/utils"
 	"fmt"
@@ -480,12 +481,14 @@ func (pdf *PDF) setOutDirFiles(category, target string) {
 
 	// PDF 캐시 확인 → 없으면 Google Drive에서 다운로드
 	if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
+		handlers.BroadcastProgress("Drive download", 1, fmt.Sprintf("Google Drive에서 %s/%s 다운로드 중...", category, targetNum))
 		if err := googleCloud.GetGoogleCloudInfo(category, targetNum, cacheDir); err != nil {
-			log.Printf("[경고] Google Drive 파일 없음 — %v (건너뜀)", err)
+			handlers.BroadcastProgress("Drive error", -1, fmt.Sprintf("Google Drive 파일 없음 — %v", err))
 			return
 		}
+		handlers.BroadcastProgress("Drive done", 1, fmt.Sprintf("%s/%s 다운로드 완료", category, targetNum))
 	} else {
-		log.Printf("[캐시] %s 사용", pdfPath)
+		handlers.BroadcastProgress("Drive cache", 1, fmt.Sprintf("[캐시] %s/%s 사용", category, targetNum))
 	}
 
 	// PNG 변환용 임시 디렉토리

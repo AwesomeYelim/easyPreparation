@@ -1,9 +1,15 @@
 "use client";
 
 import React, { createContext, useContext } from "react";
-import { useGlobalWebSocket } from "@/lib/wsClient";
+import { useGlobalWebSocket, WsMessage } from "@/lib/wsClient";
 
-const WebSocketContext = createContext<any>(null);
+type WsContextValue = {
+  ws: WebSocket | null;
+  subscribe: (fn: (msg: WsMessage) => void) => () => void;
+  isOpen: boolean;
+};
+
+const WebSocketContext = createContext<WsContextValue>(null!);
 
 export const WebSocketProvider = ({
   children,

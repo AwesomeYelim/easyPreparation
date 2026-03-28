@@ -21,10 +21,35 @@ export default function Bulletin() {
     worshipOrder[selectedWorshipType]
   );
   const userInfo = useRecoilValue(userInfoState);
-  const { message } = useWS();
+  const { subscribe } = useWS();
 
   const [loading, setLoading] = useState(false);
   const [wsMessage, setWsMessage] = useState("");
+  const [wsLogs, setWsLogs] = useState<string[]>([]);
+  const msgQueueRef = useRef<string[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastMsgRef = useRef("");
+
+  const flushQueue = () => {
+    if (timerRef.current) return;
+    timerRef.current = setInterval(() => {
+      const next = msgQueueRef.current.shift();
+      if (!next) {
+        clearInterval(timerRef.current!);
+        timerRef.current = null;
+        return;
+      }
+      setWsMessage(next);
+      setWsLogs((prev) => [...prev.slice(-9), next]);
+    }, 400);
+  };
+
+  const enqueueMsg = (msg: string) => {
+    if (!msg || msg === lastMsgRef.current) return;
+    lastMsgRef.current = msg;
+    msgQueueRef.current.push(msg);
+    flushQueue();
+  };
 
   // 예배 종류에 따른 초기값 설정
   useEffect(() => {
@@ -34,27 +59,32 @@ export default function Bulletin() {
   }, [selectedWorshipType, worshipOrder]);
 
   useEffect(() => {
-    if (!message) return;
+    const ignored = new Set(["navigate", "order", "keepalive", "position"]);
 
-    if (message.type === "display_loading") {
-      if (message.done) {
-        setDisplayLoading(false);
-        setDisplayProgress("");
-      } else {
-        setDisplayProgress(message.message || "");
+    return subscribe((message) => {
+      if (message.type === "display_loading") {
+        if (message.done) {
+          setDisplayLoading(false);
+          setDisplayProgress("");
+        } else {
+          setDisplayProgress(message.message || "");
+        }
+        return;
       }
-      return;
-    }
 
-    if (message.type === "done" && message.target === "main_worship") {
-      downloadZip(message.fileName);
-      setWsMessage("Success !!");
-      setLoading(false);
-    } else if (message.type !== "navigate" && message.type !== "order" && message.type !== "keepalive" && message.type !== "position") {
-      console.log(message);
-      setWsMessage(message.message || "");
-    }
-  }, [message]);
+      if (message.type === "done") {
+        // 큐 즉시 비우고 완료 표시
+        msgQueueRef.current = [];
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        downloadZip(message.fileName);
+        setWsMessage("Success !!");
+        setWsLogs([]);
+        setLoading(false);
+      } else if (!ignored.has(message.type)) {
+        enqueueMsg(message.message || "");
+      }
+    });
+  }, [subscribe]);
 
   const downloadZip = (fileName: string) => apiClient.downloadFile(fileName);
 
@@ -124,6 +154,7 @@ export default function Bulletin() {
     try {
       setLoading(true);
       setWsMessage("");
+      setWsLogs([]);
 
       const processedInfo = processSelectedInfo(selectedInfo);
 
@@ -154,6 +185,13 @@ export default function Bulletin() {
       {(loading || displayLoading) && (
         <div className="loading_overlay">
           <div className="spinner"></div>
+          {!displayLoading && wsLogs.length > 1 && (
+            <div className="ws_logs">
+              {wsLogs.slice(0, -1).map((log, i) => (
+                <div key={i}>{log}</div>
+              ))}
+            </div>
+          )}
           <div className="ws_message">
             {displayLoading ? displayProgress : wsMessage}
           </div>

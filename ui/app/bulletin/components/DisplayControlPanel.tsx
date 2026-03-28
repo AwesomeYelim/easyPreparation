@@ -13,16 +13,17 @@ type Props = {
 export default function DisplayControlPanel({ items, onClose }: Props) {
   const [idx, setIdx] = useState(0);
   const [obsStatus, setObsStatus] = useState<OBSStatus>({ connected: false, currentScene: "" });
-  const { message } = useWS();
+  const { subscribe } = useWS();
   const listRef = useRef<HTMLDivElement>(null);
 
   // WS position 메시지 → idx 동기화 (display HTML이 보고)
   useEffect(() => {
-    if (!message) return;
-    if (message.type === "position" && typeof message.idx === "number") {
-      setIdx(message.idx);
-    }
-  }, [message]);
+    return subscribe((msg) => {
+      if (msg.type === "position" && typeof msg.idx === "number") {
+        setIdx(msg.idx);
+      }
+    });
+  }, [subscribe]);
 
   // OBS 상태 폴링 (5초) — idx는 WS position으로만 동기화
   useEffect(() => {

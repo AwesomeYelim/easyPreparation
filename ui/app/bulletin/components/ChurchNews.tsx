@@ -79,19 +79,21 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
   const renderNewsList = (newsList: WorshipOrderItem[], depth = 0) => {
     return newsList.map((news, i) => {
       const hue = 215;
-      const saturation = 50;
-      const lightness = Math.min(90, 25 + depth * 10);
+      const saturation = depth === 0 ? 55 : 40;
+      const lightness = depth === 0 ? 30 : Math.min(85, 45 + depth * 15);
       const backgroundColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+      const depthLabel = depth === 0 ? "▪ " : "└ ";
 
       return (
         <div
           key={news.key}
-          className="news-tag-wrapper"
+          className={`news-tag-wrapper depth-${depth}`}
           style={{
             boxShadow: !depth ? "2px 3px rgba(0, 0, 0, 0.1)" : "none",
             border: !depth ? "1px solid #e5e5e5" : "none",
-            margin: !depth ? "5px" : "none",
+            margin: !depth ? "6px 0" : "none",
             borderRadius: "5px",
+            paddingLeft: depth > 0 ? `${depth * 24}px` : undefined,
           }}>
           {news.title !== "-" && (
             <span
@@ -100,14 +102,16 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
               style={{
                 backgroundColor,
                 color: lightness > 60 ? "#000" : "#fff",
-                padding: "5px 10px",
+                padding: "7px 14px",
                 borderRadius: "5px",
+                fontSize: depth === 0 ? "14px" : "13px",
               }}>
-              {news.title}
+              {depthLabel}{news.title}
               <button
                 className="delete-btn"
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (!window.confirm(`'${news.title}' 소식을 삭제하시겠습니까?`)) return;
                   handleModifyChild("DELETE", news.key);
                 }}>
                 x

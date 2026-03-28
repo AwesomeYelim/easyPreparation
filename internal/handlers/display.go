@@ -832,12 +832,17 @@ func fetchDisplayImages(title, obj string) []string {
 
 	// PDF 캐시 확인 → 없으면 Google Drive에서 다운로드
 	if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
+		BroadcastMessage("display_loading", map[string]interface{}{
+			"message": fmt.Sprintf("Google Drive: %s/%s 다운로드 중...", category, targetNum),
+		})
 		if err := googleCloud.GetGoogleCloudInfo(category, targetNum, cacheDir); err != nil {
 			log.Printf("[display] Google Drive 파일 없음 — %v (건너뜀)", err)
 			return nil
 		}
 	} else {
-		log.Printf("[display 캐시] %s 사용", pdfPath)
+		BroadcastMessage("display_loading", map[string]interface{}{
+			"message": fmt.Sprintf("[캐시] %s/%s 사용", category, targetNum),
+		})
 	}
 
 	// PDF → PNG 변환 (gs)

@@ -15,7 +15,8 @@ export function WorshipOrder({
       ...prevItems,
       {
         ...(item as WorshipOrderItem),
-        key: String(selectedItems.length),
+        key: `add_${Date.now()}_${prevItems.length}`,
+        obj: (item as WorshipOrderItem).obj || "",
         lead: "",
       },
     ]);

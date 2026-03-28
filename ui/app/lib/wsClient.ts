@@ -1,16 +1,22 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
-interface RecevedData {
+export interface WsMessage {
   code: number;
   message: string;
   target: string;
   type: string;
+  [key: string]: any;
 }
 
 export function useGlobalWebSocket(url: string) {
   const ws = useRef<WebSocket | null>(null);
-  const [message, setMessage] = useState<RecevedData>();
   const [isOpen, setIsOpen] = useState(false);
+  const listenersRef = useRef<Set<(msg: WsMessage) => void>>(new Set());
+
+  const subscribe = useCallback((fn: (msg: WsMessage) => void) => {
+    listenersRef.current.add(fn);
+    return () => { listenersRef.current.delete(fn); };
+  }, []);
 
   useEffect(() => {
     let reconnectTimer: ReturnType<typeof setTimeout>;
@@ -33,10 +39,9 @@ export function useGlobalWebSocket(url: string) {
       socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          setMessage(data);
+          listenersRef.current.forEach((fn) => fn(data));
         } catch (e) {
           console.warn("Invalid WS message:", event.data);
-          setMessage(event.data);
         }
       };
 
@@ -44,11 +49,7 @@ export function useGlobalWebSocket(url: string) {
         setIsOpen(false);
         clearInterval(pingInterval);
         console.log("WebSocket closed");
-
-        // 5초 후 재연결
-        reconnectTimer = setTimeout(() => {
-          connect();
-        }, 5000);
+        reconnectTimer = setTimeout(() => connect(), 5000);
       };
     };
 
@@ -60,5 +61,5 @@ export function useGlobalWebSocket(url: string) {
     };
   }, [url]);
 
-  return { ws: ws.current, message, isOpen };
+  return { ws: ws.current, subscribe, isOpen };
 }

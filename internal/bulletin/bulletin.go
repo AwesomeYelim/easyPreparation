@@ -88,10 +88,12 @@ func CreateBulletin(data map[string]interface{}) {
 		PdfInfo: PdfInfo,
 	}
 
+	handlers.BroadcastProgress("Print PDF", 1, "인쇄용 주보 생성 중...")
 	printData.Create()
+	handlers.BroadcastProgress("Presentation PDF", 1, "프레젠테이션 주보 생성 중...")
 	presentationData.Create()
 
 	handlers.BroadcastProcessDone(target, outputFilename)
-	handlers.BroadcastProgress("Finish Data Process", 1, "Finish Data Process !!")
+	handlers.BroadcastProgress("Finish Data Process", 1, "주보 생성 완료!")
 
 }

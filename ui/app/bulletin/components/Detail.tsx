@@ -104,7 +104,9 @@ export default function Detail({
         />
       )}
       {!selectedDetail?.info.includes("edit") &&
-        !selectedDetail?.info.includes("notice") && <>is not editable</>}
+        !selectedDetail?.info.includes("notice") && (
+          <p className="auto-guide">이 항목은 자동으로 처리됩니다</p>
+        )}
     </section>
   );
 }

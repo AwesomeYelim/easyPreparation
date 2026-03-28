@@ -168,6 +168,18 @@ h2 {
     color: #ffeb3b;
   }
 
+  .ws_logs {
+    margin-bottom: 8px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: center;
+    max-height: 150px;
+    overflow-y: auto;
+    div {
+      margin-bottom: 2px;
+    }
+  }
+
   .bulletin_wrap {
     display: flex;
     gap: 30px;
@@ -295,6 +307,19 @@ h2 {
   &.selected {
     background-color: #3c85d3;
   }
+  &.dragging {
+    opacity: 0.4;
+  }
+  &.drag-over {
+    border-top: 3px solid #4285f4;
+  }
+  .drag-handle {
+    cursor: grab;
+    margin-right: 4px;
+    font-size: 12px;
+    opacity: 0.7;
+    user-select: none;
+  }
   &.fix {
     background-color: transparent;
     color: #444444;
@@ -368,13 +393,20 @@ h2 {
 
 // 교회 소식관련
 .sub-news {
-  padding-left: 10px;
+  padding-left: 24px;
 }
 
 .sub-item .tag {
   background-color: #7593b4;
   font-size: 13px;
   padding: 4px 8px;
+}
+
+.empty-guide,
+.auto-guide {
+  color: #888;
+  font-size: 14px;
+  padding: 12px 0;
 }
 
 .expand-btn {

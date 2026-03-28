@@ -37,6 +37,7 @@ export const formatBibleRanges = (multiSelection: Selection[][], bibleData: Bibl
     .join(", ");
 
 export const formatBibleReference = (obj: string): string => {
+  if (!obj) return "";
   const bibleRegex = /^(.+?)_\d+\/(\d+):(\d+)(?:-(\d+):)?(\d+)?$/;
   return obj
     .split(",")
