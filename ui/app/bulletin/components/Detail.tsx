@@ -30,7 +30,7 @@ export default function Detail({
         }
 
         if (item.key == key) {
-          if (["b_edit", "c_edit", "edit"].includes(item.info)) {
+          if (["b_edit", "c_edit", "c-edit", "edit"].includes(item.info)) {
             updatedItem.obj = newObj;
             if (newLead) {
               updatedItem.lead = newLead;

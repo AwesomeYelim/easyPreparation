@@ -4,8 +4,11 @@ export type WorshipOrderItem = {
   obj: string;
   info: string;
   lead?: string;
+  contents?: string;
   children?: WorshipOrderItem[];
 };
+
+export type OBSStatus = { connected: boolean; currentScene: string };
 
 export type UserChurchInfo = {
   id: number;

@@ -64,19 +64,6 @@ func CreateBulletin(data map[string]interface{}) {
 		return
 	}
 
-	dbConfigPath := filepath.Join(execPath, "config", "db.json")
-	dsn, err := quote.LoadDSN(dbConfigPath)
-	if err != nil {
-		handlers.BroadcastProgress("DB Config Error", -1, err.Error())
-		return
-	}
-	if err := quote.InitDB(dsn); err != nil {
-		handlers.BroadcastProgress("DB Init Error", -1, fmt.Sprintf("DB 연결 실패: %s", err))
-		return
-	}
-	defer func() {
-		_ = quote.CloseDB()
-	}()
 	quote.ProcessQuote(target, &targetInfo)
 
 	configPath := filepath.Join(execPath, "config", "custom.json")

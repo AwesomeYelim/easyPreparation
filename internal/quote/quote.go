@@ -58,6 +58,11 @@ func CloseDB() error {
 	return nil
 }
 
+// GetDB returns the shared DB connection
+func GetDB() *sql.DB {
+	return db
+}
+
 func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 	i := 0
 	for i < len(*bulletin) {

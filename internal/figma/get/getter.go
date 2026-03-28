@@ -5,11 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
-
-const cacheCountFile = ".figma_count"
 
 // GetNodes는 Figma 파일 노드를 가져옵니다.
 // 외부에서 직접 호출할 때 사용 (예: 토큰 검증용).
@@ -32,17 +29,14 @@ func (i *Info) GetNodes() error {
 func (i *Info) GetFigmaImage(path string, frameName string) {
 	_ = os.MkdirAll(path, 0755)
 
-	// 캐시 유효성 검사: PNG 수 == 저장된 기대 수
+	// PNG 캐시가 하나라도 있으면 Figma API 호출하지 않음
 	if i.loadFromCache(path) {
-		expected := readCacheCount(path)
-		if expected > 0 && len(i.PathInfo) == expected {
-			handlers.BroadcastProgress("Figma cache hit", 1,
-				fmt.Sprintf("캐시 사용 (%d개) — 새 이미지를 받으려면 tmp 폴더를 비워주세요", expected))
-			return
-		}
+		handlers.BroadcastProgress("Figma cache hit", 1,
+			fmt.Sprintf("캐시 사용 (%d개)", len(i.PathInfo)))
+		return
 	}
 
-	// 캐시 미스 → 이때만 Figma API 호출
+	// 캐시 없음 → Figma API 호출
 	handlers.BroadcastProgress("Figma download", 1, fmt.Sprintf("'%s' 이미지 다운로드 중...", frameName))
 
 	if err := i.GetNodes(); err != nil {
@@ -56,9 +50,8 @@ func (i *Info) GetFigmaImage(path string, frameName string) {
 		return
 	}
 
-	// 전체 재다운로드
+	// 전체 다운로드
 	i.PathInfo = make(map[string]string)
-	_ = os.RemoveAll(path)
 	_ = os.MkdirAll(path, 0755)
 
 	for _, node := range i.AssembledNodes {
@@ -66,10 +59,6 @@ func (i *Info) GetFigmaImage(path string, frameName string) {
 			handlers.BroadcastProgress("Figma image error", -1, fmt.Sprintf("%s 다운로드 실패: %v", node.Name, err))
 		}
 	}
-
-	// 다운로드된 수를 캐시 메타데이터로 저장
-	_ = os.WriteFile(filepath.Join(path, cacheCountFile),
-		[]byte(strconv.Itoa(len(i.AssembledNodes))), 0644)
 }
 
 // loadFromCache는 캐시 디렉토리의 PNG 파일을 PathInfo에 로드합니다.
@@ -85,19 +74,6 @@ func (i *Info) loadFromCache(path string) bool {
 		}
 	}
 	return len(i.PathInfo) > 0
-}
-
-// readCacheCount는 저장된 기대 프레임 수를 읽습니다.
-func readCacheCount(path string) int {
-	data, err := os.ReadFile(filepath.Join(path, cacheCountFile))
-	if err != nil {
-		return 0
-	}
-	n, err := strconv.Atoi(strings.TrimSpace(string(data)))
-	if err != nil {
-		return 0
-	}
-	return n
 }
 
 func (i *Info) GetImage(createdPath, id, name string) error {

@@ -6,7 +6,6 @@ export function ResultPart({
 }: {
   selectedItems: WorshipOrderItem[];
 }) {
-  console.log(selectedItems);
   return (
     <div className="card">
       <h2>생성된 예배 내용</h2>

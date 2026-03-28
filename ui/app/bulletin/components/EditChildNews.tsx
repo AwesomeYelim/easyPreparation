@@ -5,7 +5,7 @@ import { findNode } from "@/lib/treeUtils";
 interface EditChildNewsProps {
   selectedDetail: WorshipOrderItem;
   selectedChild: WorshipOrderItem;
-  setSelectedChild: React.Dispatch<React.SetStateAction<WorshipOrderItem>>;
+  setSelectedChild: React.Dispatch<React.SetStateAction<WorshipOrderItem | null>>;
   handleValueChange: (
     key: string,
     { newObj, newLead }: { newObj: string; newLead?: string }
@@ -34,7 +34,7 @@ export default function EditChildNews({
         value={selectedChild.obj}
         onChange={(e) => {
           const newObj = e.target.value;
-          setSelectedChild((prev) => ({ ...prev, obj: newObj }));
+          setSelectedChild((prev) => prev ? { ...prev, obj: newObj } : prev);
           handleValueChange(selectedChild.key, { newObj });
         }}
         placeholder="Enter news content"

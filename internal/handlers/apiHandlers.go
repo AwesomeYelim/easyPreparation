@@ -1,0 +1,132 @@
+package handlers
+
+import (
+	"database/sql"
+	"encoding/json"
+	"net/http"
+	"os"
+	"path/filepath"
+
+	_ "github.com/lib/pq"
+)
+
+var apiDB *sql.DB
+
+// InitAPIDB — handlers 패키지에서 사용할 DB 연결 설정
+func InitAPIDB(db *sql.DB) {
+	apiDB = db
+}
+
+// BibleBooksHandler — GET /api/bible/books
+// config/bible_info.json을 그대로 서빙 (프론트 bible_info.json 대체)
+func BibleBooksHandler(w http.ResponseWriter, r *http.Request) {
+	path, _ := filepath.Abs("./config/bible_info.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		http.Error(w, "bible_info not found", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write(data)
+}
+
+// UserHandler — GET /api/user?email=xxx  /  POST /api/user
+func UserHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		getUserHandler(w, r)
+	case http.MethodPost:
+		upsertUserHandler(w, r)
+	default:
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func getUserHandler(w http.ResponseWriter, r *http.Request) {
+	email := r.URL.Query().Get("email")
+	if email == "" {
+		http.Error(w, `{"error":"Email is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	row := apiDB.QueryRow(`
+		SELECT c.id, c.name, c.english_name, c.email,
+		       COALESCE(l.license_key, '') AS figma_key,
+		       COALESCE(l.license_token, '') AS figma_token
+		FROM churches c
+		LEFT JOIN licenses l ON c.id = l.church_id
+		WHERE c.email = $1
+		ORDER BY l.issued_at DESC
+		LIMIT 1
+	`, email)
+
+	var id int
+	var name, englishName, emailVal, figmaKey, figmaToken string
+	if err := row.Scan(&id, &name, &englishName, &emailVal, &figmaKey, &figmaToken); err != nil {
+		http.Error(w, `{"error":"User church info not found"}`, http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"id":           id,
+		"name":         name,
+		"english_name": englishName,
+		"email":        emailVal,
+		"figmaInfo": map[string]string{
+			"key":   figmaKey,
+			"token": figmaToken,
+		},
+	})
+}
+
+func upsertUserHandler(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Name        string `json:"name"`
+		EnglishName string `json:"english_name"`
+		Email       string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Email == "" {
+		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
+		return
+	}
+
+	var exists int
+	_ = apiDB.QueryRow("SELECT 1 FROM churches WHERE email=$1 LIMIT 1", body.Email).Scan(&exists)
+
+	if exists == 1 {
+		_, _ = apiDB.Exec("UPDATE churches SET name=$1, english_name=$2 WHERE email=$3",
+			body.Name, body.EnglishName, body.Email)
+	} else {
+		_, _ = apiDB.Exec("INSERT INTO churches (name, english_name, email) VALUES ($1,$2,$3)",
+			body.Name, body.EnglishName, body.Email)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]bool{"success": true})
+}
+
+// AuthSignInHandler — POST /api/auth/signin
+// NextAuth signIn 이벤트에서 직접 DB 대신 이 엔드포인트 호출
+func AuthSignInHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Email == "" {
+		http.Error(w, `{"error":"email required"}`, http.StatusBadRequest)
+		return
+	}
+
+	var exists int
+	_ = apiDB.QueryRow("SELECT 1 FROM churches WHERE email=$1 LIMIT 1", body.Email).Scan(&exists)
+	if exists == 0 {
+		_, _ = apiDB.Exec("INSERT INTO churches (name, english_name, email) VALUES ('','', $1)", body.Email)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+}

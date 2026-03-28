@@ -34,6 +34,30 @@ export const apiClient = {
       body: JSON.stringify(payload),
     }),
 
+  startDisplay: (order: WorshipOrderItem[]) =>
+    fetch(`${BASE_URL}/display/order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(order),
+    }),
+
+  navigateDisplay: (direction: "next" | "prev") =>
+    fetch(`${BASE_URL}/display/navigate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ direction }),
+    }),
+
+  jumpDisplay: (index: number) =>
+    fetch(`${BASE_URL}/display/jump`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ index }),
+    }),
+
+  getDisplayStatus: () =>
+    fetch(`${BASE_URL}/display/status`).then((res) => res.json()),
+
   downloadFile: (fileName: string) => {
     const link = document.createElement("a");
     link.href = `${BASE_URL}/download?target=${fileName}`;

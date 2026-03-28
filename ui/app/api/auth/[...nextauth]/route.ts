@@ -1,7 +1,8 @@
 import NextAuth from "next-auth";
 import GithubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
-import pool from "@/lib/db";
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
 const handler = NextAuth({
   providers: [
@@ -18,22 +19,14 @@ const handler = NextAuth({
   events: {
     async signIn({ user }) {
       if (!user?.email) return;
-
       try {
-        const { rows } = await pool.query(
-          "SELECT 1 FROM churches WHERE email = $1 LIMIT 1",
-          [user.email]
-        );
-
-        if (rows.length === 0) {
-          await pool.query(
-            "INSERT INTO churches (name, english_name, email) VALUES ($1, $2, $3)",
-            ["", "", user.email]
-          );
-          console.log(`Inserted new user email: ${user.email}`);
-        }
+        await fetch(`${BASE_URL}/api/auth/signin`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: user.email }),
+        });
       } catch (error) {
-        console.error("Failed to insert into churches:", error);
+        console.error("Failed to register user:", error);
       }
     },
   },

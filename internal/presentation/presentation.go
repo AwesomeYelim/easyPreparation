@@ -460,12 +460,12 @@ func (pdf *PDF) setOutDirFiles(category, target string) {
 	case "responsive_reading":
 		splitNum = strings.Split(target, ".")[0]
 	}
-	outputPath := filepath.Join(pdf.FigmaInfo.ExecPath, "data", category)
+	baseDir := filepath.Join(pdf.FigmaInfo.ExecPath, "data")
+	_ = utils.CheckDirIs(baseDir)
 
-	_ = utils.CheckDirIs(outputPath)
-	defer func() {
-		_ = os.RemoveAll(outputPath)
-	}()
+	// 고정 디렉토리에 PDF 캐시 (data/hymn/, data/responsive_reading/)
+	cacheDir := filepath.Join(baseDir, category)
+	_ = utils.CheckDirIs(cacheDir)
 
 	// %03d 로 숫자 0-패딩 ("31" → "031.pdf")
 	num, err := strconv.Atoi(splitNum)
@@ -476,38 +476,47 @@ func (pdf *PDF) setOutDirFiles(category, target string) {
 		targetNum = fmt.Sprintf("%s.pdf", splitNum)
 	}
 
-	if err := googleCloud.GetGoogleCloudInfo(category, targetNum, outputPath); err != nil {
-		log.Printf("[경고] Google Drive 파일 없음 — %v (건너뜀)", err)
-		return
+	pdfPath := filepath.Join(cacheDir, targetNum)
+
+	// PDF 캐시 확인 → 없으면 Google Drive에서 다운로드
+	if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
+		if err := googleCloud.GetGoogleCloudInfo(category, targetNum, cacheDir); err != nil {
+			log.Printf("[경고] Google Drive 파일 없음 — %v (건너뜀)", err)
+			return
+		}
+	} else {
+		log.Printf("[캐시] %s 사용", pdfPath)
 	}
-	// 캐싱 방지
-	tempPath := filepath.Join(outputPath, fmt.Sprintf("temp_%s", splitNum))
+
+	// PNG 변환용 임시 디렉토리
+	tempPath := filepath.Join(cacheDir, fmt.Sprintf("temp_%s", splitNum))
 	_ = utils.CheckDirIs(tempPath)
 	tempPngPtah := filepath.Join(tempPath, "%d.png")
 
-	var cmdStr string
 	var cmd *exec.Cmd
-	osType := runtime.GOOS
 
-	switch osType {
+	switch runtime.GOOS {
 	case "windows":
-		cmd = exec.Command("gswin64c", "-sDEVICE=pngalpha", "-o", tempPngPtah, "-r96", filepath.Join(outputPath, targetNum))
+		cmd = exec.Command("gswin64c", "-sDEVICE=pngalpha", "-o", tempPngPtah, "-r96", pdfPath)
 	default:
-		cmdStr = fmt.Sprintf("gs -sDEVICE=pngalpha -o \"%s\" -r96 \"%s\"", tempPngPtah, filepath.Join(outputPath, targetNum))
-		cmd = exec.Command("bash", "-c", cmdStr)
+		gsPath := "/opt/homebrew/bin/gs"
+		if _, err := os.Stat(gsPath); err != nil {
+			gsPath = "gs"
+		}
+		cmd = exec.Command(gsPath, "-sDEVICE=pngalpha", "-o", tempPngPtah, "-r96", pdfPath)
 	}
 
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
-		log.Fatalf("명령어 실행 실패: %s, 에러: %v", string(output), err)
+		log.Printf("찬송/교독 변환 실패: %s, 에러: %v", string(output), err)
+		return
 	}
 	defer func() {
 		_ = os.RemoveAll(tempPath)
 	}()
-	err = pdf.AddImagesToPDF(tempPath)
-	if err != nil {
-		log.Fatalf("이미지 PDF 추가 실패: %v", err)
+	if err = pdf.AddImagesToPDF(tempPath); err != nil {
+		log.Printf("이미지 PDF 추가 실패: %v", err)
 	}
 }
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useRecoilState } from "recoil";
 import { selectedDetailState } from "@/recoilState";
 import { WorshipOrderItem } from "@/types";
 import classNames from "classnames";
@@ -18,7 +18,7 @@ export default function SelectedOrder({
     setSelectedItems((prevItems) => prevItems.filter((el) => el !== item));
   };
 
-  return (
+return (
     <section className="card">
       <h2>선택된 예배 순서</h2>
       <div>

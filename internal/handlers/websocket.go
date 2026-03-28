@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"easyPreparation_1.0/internal/obs"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
@@ -32,15 +33,42 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("WebSocket client connected")
 
-	// Keep the connection open
+	// 새 클라이언트에게 현재 order + idx 전송 (display 창이 늦게 연결되어도 동작)
+	orderMu.RLock()
+	if len(currentOrder) > 0 {
+		msg, _ := json.Marshal(map[string]interface{}{
+			"type":  "order",
+			"items": currentOrder,
+			"idx":   currentIdx,
+		})
+		_ = conn.WriteMessage(websocket.TextMessage, msg)
+	}
+	orderMu.RUnlock()
+
+	// Keep the connection open + handle incoming messages
 	for {
-		_, _, err := conn.ReadMessage()
+		_, msg, err := conn.ReadMessage()
 		if err != nil {
 			clientsMu.Lock()
 			delete(clients, conn)
 			clientsMu.Unlock()
 			fmt.Println("WebSocket client disconnected")
 			break
+		}
+		// Display HTML이 보고하는 position 처리
+		var data map[string]interface{}
+		if json.Unmarshal(msg, &data) == nil {
+			if msgType, _ := data["type"].(string); msgType == "position" {
+				if idxFloat, ok := data["idx"].(float64); ok {
+					newIdx := int(idxFloat)
+					UpdateDisplayIdx(newIdx)
+					BroadcastMessage("position", map[string]interface{}{"idx": newIdx})
+					// OBS 씬 전환
+					if title := GetCurrentTitle(); title != "" {
+						go obs.Get().SwitchScene(title)
+					}
+				}
+			}
 		}
 	}
 }

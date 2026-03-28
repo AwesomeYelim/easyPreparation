@@ -19,7 +19,19 @@ func StartServer(dataChan chan types.DataEnvelope) {
 
 	// OBS Browser Source
 	mux.Handle("/display", middleware.CORS(http.HandlerFunc(handlers.DisplayHandler)))
+	mux.Handle("/display/bg", middleware.CORS(http.HandlerFunc(handlers.DisplayBgHandler)))
+	mux.Handle("/display/assets/", middleware.CORS(http.HandlerFunc(handlers.DisplayAssetsHandler)))
+	mux.Handle("/display/tmp/", middleware.CORS(http.HandlerFunc(handlers.DisplayTmpHandler)))
+	mux.Handle("/display/order", middleware.CORS(http.HandlerFunc(handlers.DisplayOrderHandler)))
+	mux.Handle("/display/navigate", middleware.CORS(http.HandlerFunc(handlers.DisplayNavigateHandler)))
 	mux.Handle("/display/push", middleware.CORS(http.HandlerFunc(handlers.DisplayPushHandler)))
+	mux.Handle("/display/jump", middleware.CORS(http.HandlerFunc(handlers.DisplayJumpHandler)))
+	mux.Handle("/display/status", middleware.CORS(http.HandlerFunc(handlers.DisplayStatusHandler)))
+
+	// 통합 API (프론트 DB 직접 연결 제거)
+	mux.Handle("/api/bible/books", middleware.CORS(http.HandlerFunc(handlers.BibleBooksHandler)))
+	mux.Handle("/api/user", middleware.CORS(http.HandlerFunc(handlers.UserHandler)))
+	mux.Handle("/api/auth/signin", middleware.CORS(http.HandlerFunc(handlers.AuthSignInHandler)))
 
 	fmt.Println("Server running on http://localhost:8080")
 	if err := http.ListenAndServe("0.0.0.0:8080", mux); err != nil {

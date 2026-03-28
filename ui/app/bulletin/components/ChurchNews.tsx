@@ -11,7 +11,7 @@ export interface ChurchNewsProps {
 }
 
 const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setSelectedItems }: ChurchNewsProps) => {
-  const [selectedChild, setSelectedChild] = useState<WorshipOrderItem>(selectedDetail);
+  const [selectedChild, setSelectedChild] = useState<WorshipOrderItem | null>(null);
   const [expandedKeys, setExpandedKeys] = useState(new Set<string>());
   const [addContent, setAddContent] = useState<WorshipOrderItem | null>(null);
 
@@ -24,6 +24,7 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
         });
 
         setSelectedItems((prevItems) => deleteNode(prevItems, childKey));
+        break;
       case "ADD":
         const keys = childKey.split(".");
         const lastKey = parseInt(keys[keys.length - 1], 10);

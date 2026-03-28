@@ -3,7 +3,7 @@
 import { WorshipOrder } from "./components/WorshipOrder";
 import SelectedOrder from "./components/SelectedOrder";
 import Detail from "./components/Detail";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import classNames from "classnames";
 import { WorshipType, userInfoState, worshipOrderState } from "@/recoilState";
 import { WorshipOrderItem } from "@/types";
@@ -11,6 +11,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useRecoilValue } from "recoil";
 import { ResultPart } from "./components/ResultPage";
 import { useWS } from "@/components/WebSocketProvider";
+import DisplayControlPanel from "./components/DisplayControlPanel";
 
 export default function Bulletin() {
   const [selectedWorshipType, setSelectedWorshipType] =
@@ -35,17 +36,58 @@ export default function Bulletin() {
   useEffect(() => {
     if (!message) return;
 
+    if (message.type === "display_loading") {
+      if (message.done) {
+        setDisplayLoading(false);
+        setDisplayProgress("");
+      } else {
+        setDisplayProgress(message.message || "");
+      }
+      return;
+    }
+
     if (message.type === "done" && message.target === "main_worship") {
       downloadZip(message.fileName);
       setWsMessage("Success !!");
       setLoading(false);
-    } else {
+    } else if (message.type !== "navigate" && message.type !== "order" && message.type !== "keepalive" && message.type !== "position") {
       console.log(message);
       setWsMessage(message.message || "");
     }
   }, [message]);
 
   const downloadZip = (fileName: string) => apiClient.downloadFile(fileName);
+
+  const [panelOpen, setPanelOpen] = useState(false);
+  const displayStarted = useRef(false);
+  const [displayItems, setDisplayItems] = useState<WorshipOrderItem[]>([]);
+  const [displayLoading, setDisplayLoading] = useState(false);
+  const [displayProgress, setDisplayProgress] = useState("");
+
+  const toggleDisplay = async () => {
+    if (panelOpen) {
+      setPanelOpen(false);
+      return;
+    }
+
+    // 최초 1회만 display 창 열기 + order 전송
+    if (!displayStarted.current) {
+      const processedInfo = processSelectedInfo(selectedInfo);
+      setDisplayItems(processedInfo);
+      setDisplayLoading(true);
+      setDisplayProgress("예배 화면 준비 중...");
+      window.open(
+        `${window.location.protocol}//${window.location.hostname}:8080/display`,
+        "displayWindow",
+        "width=1280,height=720"
+      );
+      await apiClient.startDisplay(processedInfo);
+      displayStarted.current = true;
+      setDisplayLoading(false);
+    }
+
+    setPanelOpen(true);
+  };
 
   const removeEmptyNodes = (items: WorshipOrderItem[]): WorshipOrderItem[] => {
     return items
@@ -108,11 +150,13 @@ export default function Bulletin() {
   };
 
   return (
-    <div className="bulletin_container">
-      {loading && (
+    <div className={classNames("bulletin_container", { panel_open: panelOpen })}>
+      {(loading || displayLoading) && (
         <div className="loading_overlay">
           <div className="spinner"></div>
-          {wsMessage && <div className="ws_message">{wsMessage}</div>}
+          <div className="ws_message">
+            {displayLoading ? displayProgress : wsMessage}
+          </div>
         </div>
       )}
 
@@ -138,6 +182,13 @@ export default function Bulletin() {
         >
           예배 자료 생성하기
         </button>
+
+        <button
+          onClick={toggleDisplay}
+          className={classNames("send_button display_start_btn", { active: panelOpen })}
+        >
+          {panelOpen ? "제어판 닫기" : "예배 화면 시작"}
+        </button>
       </div>
 
       <div className="bulletin_wrap">
@@ -156,6 +207,13 @@ export default function Bulletin() {
           <ResultPart selectedItems={selectedInfo} />
         </div>
       </div>
+
+      {panelOpen && (
+        <DisplayControlPanel
+          items={displayItems}
+          onClose={() => setPanelOpen(false)}
+        />
+      )}
     </div>
   );
 }
