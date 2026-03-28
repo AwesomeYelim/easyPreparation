@@ -18,13 +18,14 @@ tools/templates/
 lyricsPPT_v*.zip
 public
 
+# env (시크릿)
+.env
+.env.*
+ui/.env*
+
 # Next.js (ui/)
 ui/node_modules/
 ui/.next/
-ui/.env.local
-ui/.env.development.local
-ui/.env.test.local
-ui/.env.production.local
 ui/tsconfig.tsbuildinfo
 
 # misc
