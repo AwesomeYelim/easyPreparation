@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { WorshipOrderItem } from "@/types";
 import { deleteNode, insertSiblingNode } from "@/lib/treeUtils";
 import EditChildNews from "./EditChildNews";
+import s from "../bulletin.module.scss";
 
 export interface ChurchNewsProps {
   handleValueChange: (key: string, { newObj, newLead }: { newObj: string; newLead?: string }) => void;
@@ -97,7 +98,7 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
           }}>
           {news.title !== "-" && (
             <span
-              className="tag"
+              className={s.tag}
               onClick={() => setSelectedChild(news)}
               style={{
                 backgroundColor,
@@ -108,7 +109,7 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
               }}>
               {depthLabel}{news.title}
               <button
-                className="delete-btn"
+                className={s.delete_btn}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (!window.confirm(`'${news.title}' 소식을 삭제하시겠습니까?`)) return;
@@ -121,7 +122,7 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
 
           {news.children && (
             <button
-              className="expand-btn"
+              className={s.expand_btn}
               onClick={(e) => {
                 e.stopPropagation();
                 toggleExpand(news.key);
@@ -132,7 +133,7 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
 
           {i === newsList.length - 1 && (
             <span
-              className="tag"
+              className={s.tag}
               style={{
                 backgroundColor: "transparent",
                 color: "rgb(130 130 130)",
@@ -141,7 +142,7 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
                 borderRadius: "5px",
               }}>
               <button
-                className="plus-btn"
+                className={s.plus_btn}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleModifyChild("ADD", news.key);
@@ -153,7 +154,7 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
           )}
 
           {news.children && expandedKeys.has(news.key) && (
-            <div className="sub-news">{renderNewsList(news.children, depth + 1)}</div>
+            <div className={s.sub_news}>{renderNewsList(news.children, depth + 1)}</div>
           )}
         </div>
       );

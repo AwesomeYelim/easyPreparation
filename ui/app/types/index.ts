@@ -6,9 +6,19 @@ export type WorshipOrderItem = {
   lead?: string;
   contents?: string;
   children?: WorshipOrderItem[];
+  bpm?: number;
+  pages?: string[];
+  sections?: { label: string; startPage: number; text: string }[];
 };
 
 export type OBSStatus = { connected: boolean; currentScene: string };
+
+export type SongBlock = {
+  title: string;
+  lyrics: string;
+  bpm: number;
+  expanded: boolean;
+};
 
 export type UserChurchInfo = {
   id: number;

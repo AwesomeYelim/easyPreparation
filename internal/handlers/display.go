@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"os/exec"
@@ -18,6 +19,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
+	"unicode"
 )
 
 // 현재 예배 순서 메모리 저장
@@ -26,6 +29,30 @@ var (
 	currentOrder []map[string]interface{}
 	currentIdx   int
 )
+
+// ── 서버 사이드 자동 넘김 타이머 ──
+var (
+	timerMu          sync.Mutex
+	timerEnabled     bool
+	timerSpeedFactor float64 = 1.0
+	timerCancel      chan struct{}
+	timerCountdown   int
+	timerCurIdx      int
+	timerCurSubPage  int
+)
+
+const lordsPrayer = `하늘에 계신 우리 아버지여,
+이름이 거룩히 여김을 받으시오며,
+나라가 임하시오며,
+뜻이 하늘에서 이루어진 것 같이
+땅에서도 이루어지이다.
+오늘 우리에게 일용할 양식을 주시옵고,
+우리가 우리에게 죄 지은 자를 사하여 준 것 같이
+우리 죄를 사하여 주시옵고,
+우리를 시험에 들게 하지 마시옵고,
+다만 악에서 구하시옵소서.
+나라와 권세와 영광이 아버지께
+영원히 있사옵나이다. 아멘.`
 
 const apostlesCreed = `나는 전능하신 아버지 하나님, 천지의 창조주를 믿습니다.
 나는 그의 유일하신 아들, 우리 주 예수 그리스도를 믿습니다.
@@ -136,6 +163,15 @@ const displayHTML = `<!DOCTYPE html>
     text-shadow:0 3px 12px rgba(0,0,0,0.7);
   }
 
+  /* 가사 슬라이드 (큰 텍스트 중앙) */
+  .lyrics-text {
+    font-size:5vh; line-height:1.8;
+    text-align:center; color:#fff;
+    white-space:pre-wrap; width:100%;
+    font-weight:500;
+    text-shadow:0 2px 10px rgba(0,0,0,0.7);
+  }
+
   /* 신앙고백 (사도신경) 중앙정렬 */
   .creed-text {
     font-size:3.3vh; line-height:1.9;
@@ -207,12 +243,24 @@ let subPageIdx = 0;
 function connect() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(proto + '://' + location.host + '/ws');
+  ws.onopen = () => { console.log('[Display] WS connected'); };
+  ws.onerror = (e) => { console.error('[Display] WS error', e); };
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
+    console.log('[Display] WS msg:', msg.type, msg.items ? msg.items.length + ' items' : '');
     if (msg.type === 'order') loadOrder(msg.items, msg.idx);
     if (msg.type === 'navigate') {
       if (msg.direction === 'jump' && typeof msg.idx === 'number') {
         showSlide(msg.idx);
+        if (typeof msg.subPageIdx === 'number' && msg.subPageIdx > 0) {
+          subPageIdx = msg.subPageIdx;
+          renderItem(slides[idx], subPageIdx);
+          reportPosition();
+        }
+      } else if (msg.direction === 'jump_sub' && typeof msg.subPageIdx === 'number') {
+        subPageIdx = msg.subPageIdx;
+        renderItem(slides[idx], subPageIdx);
+        reportPosition();
       } else {
         navigate(msg.direction);
       }
@@ -227,9 +275,15 @@ function connect() {
 
 /* ───── 순서 로드 ───── */
 function loadOrder(items, startIdx) {
+  var prevLen = slides.length;
   slides = items || [];
-  idx = 0;
   var start = (typeof startIdx === 'number') ? startIdx : 0;
+  // append: 이전에 슬라이드가 있고 startIdx가 현재 idx와 같으면 이동하지 않음
+  if (prevLen > 0 && start === idx && slides.length > prevLen) {
+    return;
+  }
+  idx = 0;
+  lastReportedIdx = -1;
   showSlide(start);
 }
 
@@ -242,9 +296,7 @@ function showSlide(i) {
   // 항목 변경 시 서버에 위치 보고
   if (idx !== lastReportedIdx) {
     lastReportedIdx = idx;
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({type:'position', idx:idx}));
-    }
+    reportPosition();
   }
   const item = slides[idx];
 
@@ -261,6 +313,14 @@ function showSlide(i) {
   else if (itemTitle === '신앙고백' && item.contents) {
     subPages = paginate(item.contents, 10);
   }
+  // 주기도문 본문 → 페이지 분할
+  else if (itemTitle === '주기도문' && item.contents) {
+    subPages = paginate(item.contents, 10);
+  }
+  // 가사 슬라이드 (텍스트 페이지)
+  else if ((item.info || '') === 'lyrics_display' && item.pages && item.pages.length > 0) {
+    subPages = item.pages;
+  }
   // 찬송/교독 이미지 → 표지 + 이미지 페이지
   else if (item.images && item.images.length > 0) {
     subPages = ['__cover__'].concat(item.images);
@@ -270,11 +330,18 @@ function showSlide(i) {
 }
 
 /* ───── 키보드 / 네비게이션 ───── */
+function reportPosition() {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({type:'position', idx:idx, subPageIdx:subPageIdx}));
+  }
+}
+
 function navigate(dir) {
   if (dir === 'next') {
     if (subPages.length > 1 && subPageIdx < subPages.length - 1) {
       subPageIdx++;
       renderItem(slides[idx], subPageIdx);
+      reportPosition();
     } else {
       showSlide(idx + 1);
     }
@@ -282,6 +349,7 @@ function navigate(dir) {
     if (subPages.length > 1 && subPageIdx > 0) {
       subPageIdx--;
       renderItem(slides[idx], subPageIdx);
+      reportPosition();
     } else {
       showSlide(idx - 1);
     }
@@ -297,6 +365,7 @@ document.addEventListener('keydown', (e) => {
 
 /* ───── 렌더링 (title 기반 분기) ───── */
 function renderItem(item, pageIdx) {
+  console.log('[Display] renderItem idx=' + idx + ' pageIdx=' + pageIdx + ' info=' + (item.info||''));
   const info     = item.info     || '';
   const title    = item.title    || '';
   const obj      = item.obj      || '';
@@ -323,6 +392,16 @@ function renderItem(item, pageIdx) {
     slide.innerHTML = header +
       '<div class="bible-ref">' + esc(obj) + '</div>' +
       '<div class="bible-contents">' + esc(page) + '</div>' +
+      footer;
+    return;
+  }
+
+  // ── 1b. 가사 슬라이드 (lyrics_display) ──
+  if (info === 'lyrics_display' && subPages.length > 0) {
+    var lyricsPage = subPages[pageIdx] || '';
+    console.log('[Display] lyrics render pageIdx=' + pageIdx + '/' + subPages.length + ' text=' + lyricsPage.substring(0, 30));
+    slide.innerHTML = header +
+      '<div class="lyrics-text">' + esc(lyricsPage) + '</div>' +
       footer;
     return;
   }
@@ -373,6 +452,16 @@ function renderItem(item, pageIdx) {
     const page = subPages.length > 0 ? (subPages[pageIdx] || contents) : contents;
     slide.innerHTML = header +
       '<div class="title">' + esc(obj) + '</div>' +
+      '<div class="creed-text">' + esc(page) + '</div>' +
+      footer;
+    return;
+  }
+
+  // ── 5b. 주기도문 ──
+  if (title === '주기도문' && contents) {
+    const page = subPages.length > 0 ? (subPages[pageIdx] || contents) : contents;
+    slide.innerHTML = header +
+      '<div class="title">' + esc(title) + '</div>' +
       '<div class="creed-text">' + esc(page) + '</div>' +
       footer;
     return;
@@ -462,6 +551,212 @@ func GetCurrentTitle() string {
 	return ""
 }
 
+// ── 서버 사이드 타이머 함수 ──
+
+// calcSlideDelay — 현재 항목/서브페이지에 대한 딜레이(초) 계산
+func calcSlideDelay() int {
+	orderMu.RLock()
+	defer orderMu.RUnlock()
+
+	if timerCurIdx < 0 || timerCurIdx >= len(currentOrder) {
+		return 0
+	}
+	item := currentOrder[timerCurIdx]
+	title, _ := item["title"].(string)
+	info, _ := item["info"].(string)
+
+	bpm := 0
+	switch v := item["bpm"].(type) {
+	case float64:
+		bpm = int(v)
+	case int:
+		bpm = v
+	}
+
+	// 전주/후주: 60초
+	if title == "전주" || title == "후주" {
+		return 60
+	}
+
+	// 찬송/교독 이미지: 커버 5초, 나머지 15초
+	if title == "찬송" || title == "헌금봉헌" || title == "성시교독" {
+		hasImages := false
+		if imgs, ok := item["images"].([]string); ok && len(imgs) > 0 {
+			hasImages = true
+		} else if imgs, ok := item["images"].([]interface{}); ok && len(imgs) > 0 {
+			hasImages = true
+		}
+		if hasImages {
+			if timerCurSubPage == 0 {
+				return 5
+			}
+			return 15
+		}
+	}
+
+	// 가사 (lyrics_display): 글자 수 비례 + BPM 보정
+	if info == "lyrics_display" {
+		baseTime := 8.0
+		if bpm > 0 {
+			baseTime = float64(16) / float64(bpm) * 60
+		}
+
+		// pages에서 현재 슬라이드와 전체 평균 글자 수 계산
+		pages := extractPages(item)
+		if len(pages) > 0 && timerCurSubPage >= 0 && timerCurSubPage < len(pages) {
+			avgChars := 0.0
+			for _, p := range pages {
+				avgChars += float64(countKoreanChars(p))
+			}
+			avgChars /= float64(len(pages))
+			if avgChars > 0 {
+				curChars := float64(countKoreanChars(pages[timerCurSubPage]))
+				ratio := curChars / avgChars
+				// 비율 범위 제한 (0.5 ~ 2.0)
+				if ratio < 0.5 {
+					ratio = 0.5
+				} else if ratio > 2.0 {
+					ratio = 2.0
+				}
+				return int(math.Round(baseTime * ratio))
+			}
+		}
+		return int(math.Round(baseTime))
+	}
+
+	// 그 외 (대표기도, 말씀, 교회소식 등): 수동
+	return 0
+}
+
+// extractPages — item에서 pages 배열 추출
+func extractPages(item map[string]interface{}) []string {
+	switch v := item["pages"].(type) {
+	case []string:
+		return v
+	case []interface{}:
+		pages := make([]string, 0, len(v))
+		for _, p := range v {
+			if s, ok := p.(string); ok {
+				pages = append(pages, s)
+			}
+		}
+		return pages
+	}
+	return nil
+}
+
+// countKoreanChars — 공백/줄바꿈 제외한 글자 수 (한글+영문+숫자)
+func countKoreanChars(s string) int {
+	count := 0
+	for _, r := range s {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			count++
+		}
+	}
+	return count
+}
+
+// restartServerTimer — 타이머 재시작 (timerMu 외부에서 호출)
+func restartServerTimer() {
+	timerMu.Lock()
+
+	// 기존 타이머 취소
+	if timerCancel != nil {
+		close(timerCancel)
+	}
+	cancel := make(chan struct{})
+	timerCancel = cancel
+
+	if !timerEnabled {
+		timerCountdown = 0
+		timerMu.Unlock()
+		broadcastTimerState()
+		return
+	}
+
+	delay := calcSlideDelay()
+	if delay <= 0 {
+		timerCountdown = 0
+		timerMu.Unlock()
+		broadcastTimerState()
+		return
+	}
+
+	// 속도 적용
+	delay = int(math.Round(float64(delay) / timerSpeedFactor))
+	if delay < 1 {
+		delay = 1
+	}
+	timerCountdown = delay
+	timerMu.Unlock()
+	broadcastTimerState()
+
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-cancel:
+				return
+			case <-ticker.C:
+				timerMu.Lock()
+				timerCountdown--
+				if timerCountdown <= 0 {
+					timerCountdown = 0
+					timerMu.Unlock()
+					broadcastTimerState()
+					log.Printf("[timer] auto-navigate next (idx=%d subPage=%d)", timerCurIdx, timerCurSubPage)
+					BroadcastMessage("navigate", map[string]interface{}{"direction": "next"})
+					return
+				}
+				timerMu.Unlock()
+				broadcastTimerState()
+			}
+		}
+	}()
+}
+
+// stopServerTimer — 타이머 정지
+func stopServerTimer() {
+	timerMu.Lock()
+	timerEnabled = false
+	if timerCancel != nil {
+		close(timerCancel)
+		timerCancel = nil
+	}
+	timerCountdown = 0
+	timerMu.Unlock()
+	broadcastTimerState()
+}
+
+// broadcastTimerState — 제어판에 타이머 상태 전송
+func broadcastTimerState() {
+	timerMu.Lock()
+	state := map[string]interface{}{
+		"enabled":     timerEnabled,
+		"countdown":   timerCountdown,
+		"idx":         timerCurIdx,
+		"subPageIdx":  timerCurSubPage,
+		"speedFactor": timerSpeedFactor,
+	}
+	timerMu.Unlock()
+	BroadcastMessage("timer_state", state)
+}
+
+// OnPositionUpdate — Display에서 위치 보고 시 호출 (websocket.go에서 호출)
+func OnPositionUpdate(newIdx, newSubPage int) {
+	timerMu.Lock()
+	changed := newIdx != timerCurIdx || newSubPage != timerCurSubPage
+	timerCurIdx = newIdx
+	timerCurSubPage = newSubPage
+	enabled := timerEnabled
+	timerMu.Unlock()
+
+	if enabled && changed {
+		restartServerTimer()
+	}
+}
+
 // DisplayHandler — GET /display
 func DisplayHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -520,50 +815,17 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 항목별 전처리
 	for i, item := range order {
-		info, _ := item["info"].(string)
-		obj, _ := item["obj"].(string)
 		title, _ := item["title"].(string)
-
 		BroadcastMessage("display_loading", map[string]interface{}{
 			"message": fmt.Sprintf("%s 처리 중... (%d/%d)", title, i+1, len(order)),
 			"current": i + 1,
 			"total":   len(order),
 		})
-
-		// b_edit: 성경 본문 자동 조회
-		if strings.HasPrefix(info, "b_") && obj != "" {
-			text, humanRef := fetchBibleText(obj)
-			if text != "" {
-				order[i]["contents"] = text
-			}
-			if humanRef != "" {
-				order[i]["obj"] = humanRef
-			}
-		}
-
-		// 신앙고백 (사도신경): 본문 자동 삽입
-		if title == "신앙고백" {
-			order[i]["contents"] = apostlesCreed
-		}
-
-		// 교회소식: children → contents 계층 텍스트 전처리
-		if info == "notice" || strings.Contains(title, "교회소식") {
-			if rawChildren, ok := item["children"]; ok {
-				childrenJSON, _ := json.Marshal(rawChildren)
-				var children []map[string]interface{}
-				if json.Unmarshal(childrenJSON, &children) == nil && len(children) > 0 {
-					order[i]["contents"] = formatChurchNews(children, 1)
-				}
-			}
-		}
-
-		// 찬송/헌금봉헌/성시교독: Google Drive PDF → PNG 변환
-		if title == "찬송" || title == "헌금봉헌" || title == "성시교독" {
-			if images := fetchDisplayImages(title, obj); len(images) > 0 {
-				order[i]["images"] = images
-			}
-		}
+		order[i] = preprocessItem(item)
 	}
+
+	// 새 순서 로드 시 타이머 초기화
+	stopServerTimer()
 
 	orderMu.Lock()
 	currentOrder = order
@@ -597,14 +859,20 @@ func DisplayNavigateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		Direction string `json:"direction"` // "next" | "prev"
+		Direction   string `json:"direction"`   // "next" | "prev" | "jump_sub"
+		SubPageIdx  int    `json:"subPageIdx"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	BroadcastMessage("navigate", map[string]interface{}{"direction": payload.Direction})
+	msg := map[string]interface{}{"direction": payload.Direction}
+	if payload.Direction == "jump_sub" {
+		msg["subPageIdx"] = payload.SubPageIdx
+	}
+	log.Printf("[navigate] direction=%s broadcast to clients", payload.Direction)
+	BroadcastMessage("navigate", msg)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
 }
@@ -654,7 +922,8 @@ func DisplayJumpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		Index int `json:"index"`
+		Index      int `json:"index"`
+		SubPageIdx int `json:"subPageIdx"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
@@ -674,10 +943,11 @@ func DisplayJumpHandler(w http.ResponseWriter, r *http.Request) {
 	orderMu.Unlock()
 
 	navPayload := map[string]interface{}{
-		"direction": "jump",
-		"idx":       payload.Index,
-		"title":     title,
-		"info":      info,
+		"direction":  "jump",
+		"idx":        payload.Index,
+		"subPageIdx": payload.SubPageIdx,
+		"title":      title,
+		"info":       info,
 	}
 
 	// OBS 씬 전환
@@ -685,9 +955,308 @@ func DisplayJumpHandler(w http.ResponseWriter, r *http.Request) {
 		go obs.Get().SwitchScene(title)
 	}
 
+	log.Printf("[jump] idx=%d title=%s broadcast to clients", payload.Index, title)
 	BroadcastMessage("navigate", navPayload)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "idx": payload.Index})
+}
+
+// DisplayLyricsOrderHandler — POST /display/lyrics-order
+// 가사 텍스트 → Display용 슬라이드 목록으로 변환하여 전송
+func DisplayLyricsOrderHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var payload struct {
+		Songs []struct {
+			Title  string `json:"title"`
+			Lyrics string `json:"lyrics"`
+			BPM    int    `json:"bpm"`
+		} `json:"songs"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	BroadcastMessage("display_loading", map[string]interface{}{
+		"message": "찬양 가사 준비 중...",
+		"total":   len(payload.Songs),
+	})
+
+	var order []map[string]interface{}
+	for _, song := range payload.Songs {
+		songMap := map[string]interface{}{
+			"title":  song.Title,
+			"lyrics": song.Lyrics,
+			"bpm":    song.BPM,
+		}
+		order = append(order, preprocessLyricsItem(songMap))
+	}
+
+	// 새 순서 로드 시 타이머 초기화
+	stopServerTimer()
+
+	orderMu.Lock()
+	currentOrder = order
+	currentIdx = 0
+	orderMu.Unlock()
+
+	BroadcastMessage("display_loading", map[string]interface{}{
+		"message": "준비 완료!",
+		"done":    true,
+	})
+
+	BroadcastMessage("order", map[string]interface{}{"items": order})
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "count": len(order)})
+}
+
+// lyricsSection — 가사 섹션 구조
+type lyricsSection struct {
+	Label string
+	Text  string
+}
+
+// splitLyricsSections — 빈 줄 기준으로 가사를 섹션 분리 + 라벨 자동 부여
+func splitLyricsSections(lyrics string) []lyricsSection {
+	lines := strings.Split(strings.TrimSpace(lyrics), "\n")
+	var sections []lyricsSection
+	var current []string
+
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			if len(current) > 0 {
+				sections = append(sections, lyricsSection{Text: strings.Join(current, "\n")})
+				current = nil
+			}
+			continue
+		}
+		current = append(current, line)
+	}
+	if len(current) > 0 {
+		sections = append(sections, lyricsSection{Text: strings.Join(current, "\n")})
+	}
+
+	if len(sections) == 0 {
+		return []lyricsSection{{Label: "전체", Text: lyrics}}
+	}
+
+	// 라벨 자동 부여: 반복 텍스트 감지
+	textMap := make(map[string]int)
+	for i := range sections {
+		textMap[sections[i].Text]++
+	}
+
+	verseNum := 1
+	chorusText := ""
+	for i := range sections {
+		if textMap[sections[i].Text] > 1 {
+			// 반복되는 블록 → 후렴
+			if chorusText == "" {
+				chorusText = sections[i].Text
+			}
+			sections[i].Label = "후렴"
+		} else {
+			sections[i].Label = fmt.Sprintf("%d절", verseNum)
+			verseNum++
+		}
+	}
+
+	return sections
+}
+
+// DisplayAppendHandler — POST /display/append
+// 기존 순서에 항목을 추가 (교체가 아닌 append)
+func DisplayAppendHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var payload struct {
+		Items []map[string]interface{} `json:"items"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	if len(payload.Items) == 0 {
+		http.Error(w, "No items", http.StatusBadRequest)
+		return
+	}
+
+	BroadcastMessage("display_loading", map[string]interface{}{
+		"message": "항목 추가 준비 중...",
+		"total":   len(payload.Items),
+	})
+
+	// 항목별 전처리
+	var processed []map[string]interface{}
+	for i, item := range payload.Items {
+		info, _ := item["info"].(string)
+		title, _ := item["title"].(string)
+
+		BroadcastMessage("display_loading", map[string]interface{}{
+			"message": fmt.Sprintf("%s 처리 중... (%d/%d)", title, i+1, len(payload.Items)),
+			"current": i + 1,
+			"total":   len(payload.Items),
+		})
+
+		if info == "lyrics_display" {
+			processed = append(processed, preprocessLyricsItem(item))
+		} else {
+			processed = append(processed, preprocessItem(item))
+		}
+	}
+
+	orderMu.Lock()
+	currentOrder = append(currentOrder, processed...)
+	idx := currentIdx
+	orderMu.Unlock()
+
+	BroadcastMessage("display_loading", map[string]interface{}{
+		"message": "준비 완료!",
+		"done":    true,
+	})
+
+	orderMu.RLock()
+	order := currentOrder
+	orderMu.RUnlock()
+
+	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx})
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "count": len(order)})
+}
+
+// DisplayRemoveHandler — POST /display/remove
+// 순서 목록에서 특정 인덱스의 항목 제거
+func DisplayRemoveHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var payload struct {
+		Index int `json:"index"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	orderMu.Lock()
+	if payload.Index < 0 || payload.Index >= len(currentOrder) {
+		orderMu.Unlock()
+		http.Error(w, "Index out of range", http.StatusBadRequest)
+		return
+	}
+	currentOrder = append(currentOrder[:payload.Index], currentOrder[payload.Index+1:]...)
+	// currentIdx 보정
+	if payload.Index < currentIdx {
+		currentIdx--
+	} else if payload.Index == currentIdx && currentIdx >= len(currentOrder) && len(currentOrder) > 0 {
+		currentIdx = len(currentOrder) - 1
+	}
+	if currentIdx < 0 {
+		currentIdx = 0
+	}
+	idx := currentIdx
+	order := make([]map[string]interface{}, len(currentOrder))
+	copy(order, currentOrder)
+	orderMu.Unlock()
+
+	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx})
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "count": len(order)})
+}
+
+// DisplayTimerHandler — POST /display/timer
+// 제어판에서 서버 타이머 직접 제어
+func DisplayTimerHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	var payload struct {
+		Action string  `json:"action"` // enable/disable/toggle/repeat/restart/speed
+		Factor float64 `json:"factor"` // speed 조절 배율
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("[timer] action=%s factor=%.1f", payload.Action, payload.Factor)
+
+	switch payload.Action {
+	case "enable":
+		timerMu.Lock()
+		timerEnabled = true
+		timerMu.Unlock()
+		restartServerTimer()
+	case "disable":
+		stopServerTimer()
+	case "toggle":
+		timerMu.Lock()
+		timerEnabled = !timerEnabled
+		wasEnabled := timerEnabled
+		timerMu.Unlock()
+		if wasEnabled {
+			restartServerTimer()
+		} else {
+			stopServerTimer()
+		}
+	case "repeat":
+		// 현재 항목의 서브페이지 0으로 돌아가기
+		timerMu.Lock()
+		timerCurSubPage = -1 // force change detection
+		timerMu.Unlock()
+		BroadcastMessage("navigate", map[string]interface{}{
+			"direction":  "jump_sub",
+			"subPageIdx": 0,
+		})
+	case "restart":
+		// 현재 항목의 처음으로
+		orderMu.RLock()
+		idx := currentIdx
+		orderMu.RUnlock()
+		timerMu.Lock()
+		timerCurIdx = -1
+		timerCurSubPage = -1
+		timerMu.Unlock()
+		BroadcastMessage("navigate", map[string]interface{}{
+			"direction": "jump",
+			"idx":       idx,
+		})
+	case "speed":
+		if payload.Factor > 0 {
+			timerMu.Lock()
+			timerSpeedFactor = payload.Factor
+			timerMu.Unlock()
+			broadcastTimerState()
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
 }
 
 // DisplayStatusHandler — GET /display/status
@@ -703,15 +1272,7 @@ func DisplayStatusHandler(w http.ResponseWriter, r *http.Request) {
 	count := len(currentOrder)
 
 	var title string
-	var items []map[string]interface{}
-	for _, item := range currentOrder {
-		t, _ := item["title"].(string)
-		o, _ := item["obj"].(string)
-		l, _ := item["lead"].(string)
-		items = append(items, map[string]interface{}{
-			"title": t, "obj": o, "lead": l,
-		})
-	}
+	items := currentOrder
 	if idx >= 0 && idx < count {
 		title, _ = currentOrder[idx]["title"].(string)
 	}
@@ -727,6 +1288,221 @@ func DisplayStatusHandler(w http.ResponseWriter, r *http.Request) {
 		"items": items,
 		"obs":   obsStatus,
 	})
+}
+
+// preprocessItem — 단일 항목 전처리 (성경, 신앙고백, 주기도문, 교회소식, 찬송/교독 이미지)
+func preprocessItem(item map[string]interface{}) map[string]interface{} {
+	info, _ := item["info"].(string)
+	obj, _ := item["obj"].(string)
+	title, _ := item["title"].(string)
+
+	// b_edit: 성경 본문 자동 조회
+	if strings.HasPrefix(info, "b_") && obj != "" {
+		text, humanRef := fetchBibleText(obj)
+		if text != "" {
+			item["contents"] = text
+		}
+		if humanRef != "" {
+			item["obj"] = humanRef
+		}
+	}
+
+	// 신앙고백 (사도신경): 본문 자동 삽입
+	if title == "신앙고백" {
+		item["contents"] = apostlesCreed
+	}
+
+	// 주기도문: 본문 자동 삽입
+	if title == "주기도문" {
+		item["contents"] = lordsPrayer
+	}
+
+	// 교회소식: children → contents 계층 텍스트 전처리
+	if info == "notice" || strings.Contains(title, "교회소식") {
+		if rawChildren, ok := item["children"]; ok {
+			childrenJSON, _ := json.Marshal(rawChildren)
+			var children []map[string]interface{}
+			if json.Unmarshal(childrenJSON, &children) == nil && len(children) > 0 {
+				item["contents"] = formatChurchNews(children, 1)
+			}
+		}
+	}
+
+	// 찬송/헌금봉헌/성시교독: Google Drive PDF → PNG 변환
+	if title == "찬송" || title == "헌금봉헌" || title == "성시교독" {
+		if images := fetchDisplayImages(title, obj); len(images) > 0 {
+			item["images"] = images
+		}
+	}
+
+	// ── sections 생성 (제어판 토글용) ──
+	// Display HTML의 서브페이지 분할 로직과 동일하게 맞춤
+	item = buildSections(item)
+
+	return item
+}
+
+// buildSections — 항목의 서브페이지 구조에 맞춰 sections 배열 생성
+func buildSections(item map[string]interface{}) map[string]interface{} {
+	info, _ := item["info"].(string)
+	title, _ := item["title"].(string)
+	contents, _ := item["contents"].(string)
+
+	// 이미 sections가 있으면 스킵 (lyrics 등)
+	if _, ok := item["sections"]; ok {
+		return item
+	}
+
+	// 1. 성경 본문 → 5줄 단위 페이징
+	if strings.HasPrefix(info, "b_") && contents != "" {
+		pages := paginateText(contents, 5)
+		if len(pages) > 1 {
+			item["sections"] = buildTextSections(pages)
+		}
+		return item
+	}
+
+	// 2. 신앙고백 / 주기도문 → 10줄 단위 페이징
+	if (title == "신앙고백" || title == "주기도문") && contents != "" {
+		pages := paginateText(contents, 10)
+		if len(pages) > 1 {
+			item["sections"] = buildTextSections(pages)
+		}
+		return item
+	}
+
+	// 3. 찬송/헌금봉헌/성시교독 → 표지 + 이미지 페이지
+	if title == "찬송" || title == "헌금봉헌" || title == "성시교독" {
+		var images []string
+		switch v := item["images"].(type) {
+		case []string:
+			images = v
+		case []interface{}:
+			for _, img := range v {
+				if s, ok := img.(string); ok {
+					images = append(images, s)
+				}
+			}
+		}
+		if len(images) > 0 {
+			obj, _ := item["obj"].(string)
+			sections := []map[string]interface{}{
+				{"label": "표지", "startPage": 0, "text": obj},
+			}
+			for i := range images {
+				sections = append(sections, map[string]interface{}{
+					"label":     fmt.Sprintf("%d", i+1),
+					"startPage": i + 1,
+					"text":      "",
+				})
+			}
+			item["sections"] = sections
+		}
+		return item
+	}
+
+	return item
+}
+
+// paginateText — 빈 줄 제거 후 N줄 단위로 페이지 분할 (Display HTML의 paginate 함수와 동일)
+func paginateText(text string, linesPerPage int) []string {
+	allLines := strings.Split(text, "\n")
+	var lines []string
+	for _, l := range allLines {
+		if strings.TrimSpace(l) != "" {
+			lines = append(lines, l)
+		}
+	}
+	if len(lines) == 0 {
+		return []string{text}
+	}
+	var pages []string
+	for i := 0; i < len(lines); i += linesPerPage {
+		end := i + linesPerPage
+		if end > len(lines) {
+			end = len(lines)
+		}
+		pages = append(pages, strings.Join(lines[i:end], "\n"))
+	}
+	return pages
+}
+
+// buildTextSections — 텍스트 페이지 배열 → sections 배열
+func buildTextSections(pages []string) []map[string]interface{} {
+	sections := make([]map[string]interface{}, len(pages))
+	for i, page := range pages {
+		// 미리보기: 첫 줄만 표시
+		preview := page
+		if idx := strings.Index(page, "\n"); idx > 0 {
+			preview = page[:idx] + " ..."
+		}
+		sections[i] = map[string]interface{}{
+			"label":     fmt.Sprintf("%d", i+1),
+			"startPage": i,
+			"text":      preview,
+		}
+	}
+	return sections
+}
+
+// preprocessLyricsItem — 가사 곡 하나를 Display 항목으로 변환
+func preprocessLyricsItem(song map[string]interface{}) map[string]interface{} {
+	title, _ := song["title"].(string)
+	lyrics, _ := song["lyrics"].(string)
+	bpm := 0
+	switch v := song["bpm"].(type) {
+	case float64:
+		bpm = int(v)
+	case int:
+		bpm = v
+	}
+
+	rawLines := strings.Split(strings.TrimSpace(lyrics), "\n")
+	var lines []string
+	for _, l := range rawLines {
+		if strings.TrimSpace(l) != "" {
+			lines = append(lines, l)
+		}
+	}
+
+	// (xN) 표기는 독립 페이지가 아닌 이전 페이지에 붙임
+	isRepeatMark := func(s string) bool {
+		t := strings.TrimSpace(s)
+		return len(t) >= 3 && t[0] == '(' && t[1] == 'x' && t[len(t)-1] == ')'
+	}
+
+	var allPages []string
+	var sectionMarkers []map[string]interface{}
+	for i := 0; i < len(lines); i += 2 {
+		end := i + 2
+		if end > len(lines) {
+			end = len(lines)
+		}
+		pageText := strings.Join(lines[i:end], "\n")
+
+		// 다음 줄이 (xN)이면 현재 페이지에 포함
+		if end < len(lines) && isRepeatMark(lines[end]) {
+			pageText += "\n" + lines[end]
+			i++ // 다음 루프에서 (xN)줄 건너뜀
+		}
+
+		allPages = append(allPages, pageText)
+		sectionMarkers = append(sectionMarkers, map[string]interface{}{
+			"label":     fmt.Sprintf("%d", len(sectionMarkers)+1),
+			"startPage": len(sectionMarkers),
+			"text":      pageText,
+		})
+	}
+
+	return map[string]interface{}{
+		"title":    title,
+		"info":     "lyrics_display",
+		"obj":      "-",
+		"contents": lyrics,
+		"bpm":      bpm,
+		"pages":    allPages,
+		"sections": sectionMarkers,
+	}
 }
 
 // formatChurchNews — 교회소식 children 재귀 순회하여 계층 텍스트 생성

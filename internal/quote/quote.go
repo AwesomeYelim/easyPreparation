@@ -352,6 +352,99 @@ func GetBooks() ([]map[string]interface{}, error) {
 	return books, rows.Err()
 }
 
+// SearchBibleVerses 키워드로 성경 본문 검색
+func SearchBibleVerses(keyword string, versionID int, limit int) ([]map[string]interface{}, error) {
+	if db == nil {
+		return nil, fmt.Errorf("데이터베이스 연결이 초기화되지 않았습니다")
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+
+	query := `
+		SELECT b.name_kor, b.book_order, v.chapter, v.verse, v.text
+		FROM verses v
+		JOIN books b ON v.book_id = b.id
+		WHERE v.version_id = $1 AND v.text LIKE '%' || $2 || '%'
+		ORDER BY b.book_order, v.chapter, v.verse
+		LIMIT $3
+	`
+	rows, err := db.Query(query, versionID, keyword, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []map[string]interface{}
+	for rows.Next() {
+		var bookName string
+		var bookOrder, chapter, verse int
+		var text string
+		if err := rows.Scan(&bookName, &bookOrder, &chapter, &verse, &text); err != nil {
+			return nil, err
+		}
+		results = append(results, map[string]interface{}{
+			"book_name":  bookName,
+			"book_order": bookOrder,
+			"chapter":    chapter,
+			"verse":      verse,
+			"text":       text,
+		})
+	}
+	return results, rows.Err()
+}
+
+// GetChapterVerses 특정 장의 모든 절 조회
+func GetChapterVerses(versionID, bookOrder, chapter int) ([]map[string]interface{}, error) {
+	if db == nil {
+		return nil, fmt.Errorf("데이터베이스 연결이 초기화되지 않았습니다")
+	}
+
+	query := `
+		SELECT v.verse, v.text
+		FROM verses v
+		JOIN books b ON v.book_id = b.id
+		WHERE v.version_id = $1 AND b.book_order = $2 AND v.chapter = $3
+		ORDER BY v.verse
+	`
+	rows, err := db.Query(query, versionID, bookOrder, chapter)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []map[string]interface{}
+	for rows.Next() {
+		var verse int
+		var text string
+		if err := rows.Scan(&verse, &text); err != nil {
+			return nil, err
+		}
+		results = append(results, map[string]interface{}{
+			"verse": verse,
+			"text":  text,
+		})
+	}
+	return results, rows.Err()
+}
+
+// GetBookChapterCount 특정 책의 장 수 조회
+func GetBookChapterCount(versionID, bookOrder int) (int, error) {
+	if db == nil {
+		return 0, fmt.Errorf("데이터베이스 연결이 초기화되지 않았습니다")
+	}
+
+	query := `
+		SELECT MAX(v.chapter)
+		FROM verses v
+		JOIN books b ON v.book_id = b.id
+		WHERE v.version_id = $1 AND b.book_order = $2
+	`
+	var maxChapter int
+	err := db.QueryRow(query, versionID, bookOrder).Scan(&maxChapter)
+	return maxChapter, err
+}
+
 // GetBibleVersesWithVersion 특정 번역본의 성경 구절을 가져오는 함수
 func GetBibleVersesWithVersion(versionID, bookOrder, startChapter, startVerse, endChapter, endVerse int) (string, error) {
 	if db == nil {

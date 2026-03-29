@@ -3,6 +3,7 @@ import { useRecoilState } from "recoil";
 import { selectedDetailState } from "@/recoilState";
 import { WorshipOrderItem } from "@/types";
 import classNames from "classnames";
+import s from "../bulletin.module.scss";
 
 export default function SelectedOrder({
   selectedItems,
@@ -34,22 +35,22 @@ export default function SelectedOrder({
   };
 
   return (
-    <section className="card">
+    <section className={s.card}>
       <h2>선택된 예배 순서</h2>
       <div>
         {selectedItems.length === 0 ? (
-          <p className="empty-guide">위에서 예배 순서를 클릭하여 추가하세요</p>
+          <p className={s.empty_guide}>위에서 예배 순서를 클릭하여 추가하세요</p>
         ) : (
           selectedItems.map((item, i) => (
             <span
               key={item.key}
               draggable
-              className={classNames("tag", {
-                selected:
+              className={classNames(s.tag, {
+                [s.selected]:
                   selectedDetail.key === item.key &&
                   selectedDetail.title === item.title,
-                dragging: dragIndex === i,
-                "drag-over": overIndex === i && dragIndex !== i,
+                [s.dragging]: dragIndex === i,
+                [s.drag_over]: overIndex === i && dragIndex !== i,
               })}
               onDragStart={() => setDragIndex(i)}
               onDragOver={(e) => {
@@ -70,10 +71,10 @@ export default function SelectedOrder({
                 setSelectedDetail(item);
               }}
             >
-              <span className="drag-handle">⠿</span>
+              <span className={s.drag_handle}>⠿</span>
               {item.title}
               <button
-                className="delete-btn"
+                className={s.delete_btn}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleDeleteItem(i, item.title);

@@ -22,6 +22,7 @@ flowchart TD
     subgraph Client["Client (Browser)"]
         UI_B["Bulletin UI\n(Next.js)"]
         UI_L["Lyrics UI\n(Next.js)"]
+        UI_BIBLE["Bible UI\n(Next.js)"]
         DISPLAY["Display\n(OBS / 별도 창)"]
     end
 
@@ -63,6 +64,9 @@ flowchart TD
     UI_L -->|POST| SUB_L
     UI_L -->|POST| SEARCH
     UI_B -->|GET| DL
+    UI_B -->|POST /display/order| DISP
+    UI_L -->|POST /display/append| DISP
+    UI_BIBLE -->|POST /display/append| DISP
     Server -->|progress| WS
     WS -.->|실시간 알림| Client
     DISP -.->|슬라이드 제어| DISPLAY
@@ -99,9 +103,11 @@ flowchart TD
 |------|------|
 | **주보 생성** | Figma 디자인 기반 인쇄용(A4) + 프레젠테이션용 PDF 자동 생성 |
 | **주보 편집** | 예배 순서 드래그 앤 드롭 재배치, 성경 구절 선택, 교회 소식 트리 편집 |
-| **가사 PPT 생성** | 곡명 입력 → 가사 자동 검색(bugs.co.kr) → ZIP 다운로드 |
-| **예배 화면** | OBS Browser Source 연동, 성경/찬송/교독 슬라이드 실시간 표시 |
-| **실시간 상태** | WebSocket으로 파일 생성 진행 상황 브로드캐스트 |
+| **가사 PPT 생성** | 곡명 입력 → 가사 자동 검색(bugs.co.kr) → 중복 제거 → ZIP 다운로드 |
+| **성경 검색** | 구약/신약 탭, 장/절 선택, 구절 검색, Shift+클릭 범위 선택 → Display 전송 |
+| **예배 화면** | OBS Browser Source 연동, 성경/찬송/교독/가사 슬라이드 실시간 표시 |
+| **Display 통합 제어** | 주보/가사/성경 탭에서 append 방식으로 항목 추가, 제어판에서 삭제/점프/자동 넘김 |
+| **실시간 상태** | WebSocket으로 파일 생성 진행 상황 + Display 위치 브로드캐스트 |
 | **소셜 로그인** | NextAuth 기반 인증 + 교회 프로필 등록 |
 
 ---
@@ -166,7 +172,8 @@ easyPreparation/
 │       │       ├── ResultPage.tsx       # 미리보기
 │       │       └── DisplayControlPanel.tsx  # 예배 화면 제어판
 │       ├── lyrics/          # 가사 PPT 생성 페이지
-│       ├── components/      # 전역 컴포넌트 (NavBar, WebSocketProvider)
+│       ├── bible/           # 성경 검색/열람 페이지
+│       ├── components/      # 전역 컴포넌트 (NavBar, WebSocketProvider, GlobalDisplayPanel)
 │       ├── lib/             # 유틸리티
 │       │   ├── apiClient.ts     # Go 서버 API 호출 중앙화
 │       │   ├── bibleUtils.ts    # 성경 구절 포맷
@@ -241,9 +248,12 @@ apiClient.submitLyrics()  ──▶  Go 서버  ──▶  ZIP 다운로드
 ### 전역 상태 (Recoil)
 
 ```ts
-worshipOrderState    // Record<WorshipType, WorshipOrderItem[]>  예배 순서 전체
-selectedDetailState  // WorshipOrderItem                         현재 편집 항목
-userInfoState        // UserChurchInfo                           로그인 유저 정보
+worshipOrderState      // Record<WorshipType, WorshipOrderItem[]>  예배 순서 전체
+selectedDetailState    // WorshipOrderItem                         현재 편집 항목
+userInfoState          // UserChurchInfo                           로그인 유저 정보
+displayPanelOpenState  // boolean                                  제어판 열림 여부
+displayItemsState      // WorshipOrderItem[]                      Display 항목 목록
+lyricsSongsState       // LyricsSong[]                            가사 곡 목록
 ```
 
 ### 공유 유틸
@@ -259,12 +269,19 @@ formatBibleRanges(multiSelection)  // Selection[][] → "신_5/4:5-4:6, 수_6/5:
 formatBibleReference(obj)          // "신_5/4:5"    → "신명기 4:5"
 
 // app/lib/apiClient.ts
-apiClient.saveBulletin(target, targetInfo)    // POST /api/saveBulletin
+apiClient.saveBulletin(target, targetInfo)    // POST {GO}/api/saveBulletin
 apiClient.submitBulletin(payload)             // POST {GO}/submit
 apiClient.searchLyrics(songs)                 // POST {GO}/searchLyrics
 apiClient.submitLyrics(payload)               // POST {GO}/submitLyrics
 apiClient.downloadFile(fileName)              // GET  {GO}/download
-apiClient.startDisplay(items)                 // POST {GO}/display/order
+apiClient.startDisplay(items)                 // POST {GO}/display/order  (전체 교체)
+apiClient.appendToDisplay(items)              // POST {GO}/display/append (추가)
+apiClient.removeFromDisplay(index)            // POST {GO}/display/remove (삭제)
+apiClient.jumpDisplay(index, subPageIdx?)     // POST {GO}/display/jump
+apiClient.navigateDisplay(direction)          // POST {GO}/display/navigate
+apiClient.getDisplayStatus()                  // GET  {GO}/display/status
+apiClient.timerControl(action, factor?)       // POST {GO}/display/timer
+openDisplayWindow()                           // Display 창 열기 (중복 reload 방지)
 ```
 
 ---
@@ -281,11 +298,17 @@ apiClient.startDisplay(items)                 // POST {GO}/display/order
 | `POST` | `/searchLyrics` | 가사 검색 (bugs.co.kr) |
 | `GET` | `/download?target=<name>` | 주보 PDF ZIP 다운로드 |
 | `GET` | `/display` | 예배 슬라이드 HTML |
-| `POST` | `/display/order` | 예배 순서 전송 (전처리 포함) |
+| `POST` | `/display/order` | 예배 순서 전송 — 전체 교체 (전처리 포함) |
+| `POST` | `/display/append` | 항목 추가 — 기존 순서 뒤에 추가 |
+| `POST` | `/display/remove` | 항목 삭제 — 인덱스 기반 제거 |
 | `POST` | `/display/navigate` | 슬라이드 이동 (next/prev) |
-| `POST` | `/display/jump` | 특정 항목으로 점프 |
-| `GET` | `/display/status` | 현재 상태 (idx, OBS) |
+| `POST` | `/display/jump` | 특정 항목으로 점프 (subPageIdx 지원) |
+| `POST` | `/display/timer` | 자동 넘김 타이머 제어 |
+| `GET` | `/display/status` | 현재 상태 (items, idx, OBS) |
 | `GET` | `/api/bible/books` | 성경 구조 (책/장/절) |
+| `GET` | `/api/bible/versions` | 성경 번역본 목록 |
+| `GET` | `/api/bible/verses` | 성경 구절 조회 (book, chapter, version) |
+| `GET` | `/api/bible/search` | 성경 구절 검색 |
 | `GET/POST` | `/api/user` | 교회/사용자 정보 |
 | `POST` | `/api/auth/signin` | NextAuth signIn 시 교회 레코드 생성 |
 

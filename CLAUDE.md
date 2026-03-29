@@ -49,10 +49,20 @@ Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF 생성, Google Drive
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
 | GET | /display | 슬라이드 HTML |
-| POST | /display/order | 예배 순서 전송 (성경/찬송 자동 전처리) |
+| POST | /display/order | 예배 순서 전송 — 전체 교체 (성경/찬송 자동 전처리) |
+| POST | /display/append | 항목 추가 — 기존 순서 뒤에 추가 (가사/성경 탭 사용) |
+| POST | /display/remove | 항목 삭제 — 인덱스 기반 제거 |
 | POST | /display/navigate | next/prev 이동 |
-| POST | /display/jump | 특정 항목으로 점프 |
-| GET | /display/status | 현재 상태 (idx, OBS) |
+| POST | /display/jump | 특정 항목으로 점프 (subPageIdx 지원) |
+| POST | /display/timer | 자동 넘김 타이머 제어 (enable/disable/speed) |
+| GET | /display/status | 현재 상태 (items, idx, OBS) |
+
+### Display 통합 구조
+- **주보 탭**: `/display/order` — 전체 교체 (예배 순서 일괄 전송)
+- **가사/성경 탭**: `/display/append` — 기존 순서 뒤에 추가
+- **제어판**: `/display/remove` — 개별 항목 삭제
+- `openDisplayWindow()` 유틸리티 — 이미 열린 Display 창 reload 방지
+- `GlobalDisplayPanel` — 페이지 새로고침 시 서버 상태 자동 복원
 
 ---
 

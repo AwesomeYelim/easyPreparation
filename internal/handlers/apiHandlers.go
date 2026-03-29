@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"database/sql"
+	"easyPreparation_1.0/internal/quote"
 	"encoding/json"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	_ "github.com/lib/pq"
 )
@@ -104,6 +106,88 @@ func upsertUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]bool{"success": true})
+}
+
+// BibleVersionsHandler — GET /api/bible/versions
+func BibleVersionsHandler(w http.ResponseWriter, r *http.Request) {
+	versions, err := quote.GetBibleVersions()
+	if err != nil {
+		http.Error(w, `{"error":"versions not found"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(versions)
+}
+
+// BibleSearchHandler — GET /api/bible/search?q=&version=
+func BibleSearchHandler(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
+	if q == "" {
+		http.Error(w, `{"error":"q parameter required"}`, http.StatusBadRequest)
+		return
+	}
+	versionID := 1
+	if v := r.URL.Query().Get("version"); v != "" {
+		if vid, err := strconv.Atoi(v); err == nil {
+			versionID = vid
+		}
+	}
+
+	results, err := quote.SearchBibleVerses(q, versionID, 50)
+	if err != nil {
+		http.Error(w, `{"error":"search failed"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(results)
+}
+
+// BibleVersesHandler — GET /api/bible/verses?book=&chapter=&version=
+func BibleVersesHandler(w http.ResponseWriter, r *http.Request) {
+	bookStr := r.URL.Query().Get("book")
+	chapterStr := r.URL.Query().Get("chapter")
+	if bookStr == "" || chapterStr == "" {
+		http.Error(w, `{"error":"book and chapter required"}`, http.StatusBadRequest)
+		return
+	}
+
+	bookOrder, err := strconv.Atoi(bookStr)
+	if err != nil {
+		http.Error(w, `{"error":"invalid book"}`, http.StatusBadRequest)
+		return
+	}
+	chapter, err := strconv.Atoi(chapterStr)
+	if err != nil {
+		http.Error(w, `{"error":"invalid chapter"}`, http.StatusBadRequest)
+		return
+	}
+
+	versionID := 1
+	if v := r.URL.Query().Get("version"); v != "" {
+		if vid, err := strconv.Atoi(v); err == nil {
+			versionID = vid
+		}
+	}
+
+	// chapter=0이면 장 수만 반환
+	if chapter == 0 {
+		count, err := quote.GetBookChapterCount(versionID, bookOrder)
+		if err != nil {
+			http.Error(w, `{"error":"chapter count failed"}`, http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"chapters": count})
+		return
+	}
+
+	verses, err := quote.GetChapterVerses(versionID, bookOrder, chapter)
+	if err != nil {
+		http.Error(w, `{"error":"verses not found"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(verses)
 }
 
 // AuthSignInHandler — POST /api/auth/signin

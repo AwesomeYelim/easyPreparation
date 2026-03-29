@@ -45,6 +45,9 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	orderMu.RUnlock()
 
+	// OBS 씬 전환은 항목(idx)이 바뀔 때만 수행 (서브페이지 이동 시 스킵)
+	lastObsIdx := -1
+
 	// Keep the connection open + handle incoming messages
 	for {
 		_, msg, err := conn.ReadMessage()
@@ -58,19 +61,75 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 		// Display HTML이 보고하는 position 처리
 		var data map[string]interface{}
 		if json.Unmarshal(msg, &data) == nil {
-			if msgType, _ := data["type"].(string); msgType == "position" {
+			msgType, _ := data["type"].(string)
+			if msgType == "position" {
 				if idxFloat, ok := data["idx"].(float64); ok {
 					newIdx := int(idxFloat)
 					UpdateDisplayIdx(newIdx)
-					BroadcastMessage("position", map[string]interface{}{"idx": newIdx})
-					// OBS 씬 전환
-					if title := GetCurrentTitle(); title != "" {
-						go obs.Get().SwitchScene(title)
+					posPayload := map[string]interface{}{"idx": newIdx}
+					subPage := 0
+					if sp, ok := data["subPageIdx"].(float64); ok {
+						subPage = int(sp)
+						posPayload["subPageIdx"] = subPage
 					}
+					// Display 본인 제외, 제어판에만 전달
+					BroadcastMessageExcept("position", posPayload, conn)
+					// OBS 씬 전환 (항목이 바뀔 때만)
+					if newIdx != lastObsIdx {
+						lastObsIdx = newIdx
+						if title := GetCurrentTitle(); title != "" {
+							go obs.Get().SwitchScene(title)
+						}
+					}
+					// 서버 타이머 업데이트
+					OnPositionUpdate(newIdx, subPage)
 				}
 			}
 		}
 	}
+}
+
+// broadcastTo — 공통 브로드캐스트 (except가 nil이면 전체 전송)
+func broadcastTo(msgBytes []byte, except *websocket.Conn) {
+	clientsMu.Lock()
+	// 클라이언트 목록 복사 → lock 잡은 채 I/O 하지 않기 위해
+	snapshot := make([]*websocket.Conn, 0, len(clients))
+	for c := range clients {
+		snapshot = append(snapshot, c)
+	}
+	clientsMu.Unlock()
+
+	var failed []*websocket.Conn
+	for _, c := range snapshot {
+		if c == except {
+			continue
+		}
+		_ = c.SetWriteDeadline(time.Now().Add(5 * time.Second))
+		if err := c.WriteMessage(websocket.TextMessage, msgBytes); err != nil {
+			c.Close()
+			failed = append(failed, c)
+		}
+	}
+
+	if len(failed) > 0 {
+		clientsMu.Lock()
+		for _, c := range failed {
+			delete(clients, c)
+		}
+		clientsMu.Unlock()
+	}
+}
+
+// 특정 conn 제외하고 브로드캐스트 (메시지 발신자에게 다시 보내지 않기 위해)
+func BroadcastMessageExcept(messageType string, payload map[string]interface{}, except *websocket.Conn) {
+	message := map[string]interface{}{
+		"type": messageType,
+	}
+	for k, v := range payload {
+		message[k] = v
+	}
+	msgBytes, _ := json.Marshal(message)
+	broadcastTo(msgBytes, except)
 }
 
 func BroadcastMessage(messageType string, payload map[string]interface{}) {
@@ -80,19 +139,11 @@ func BroadcastMessage(messageType string, payload map[string]interface{}) {
 	for k, v := range payload {
 		message[k] = v
 	}
-
-	msgBytes, _ := json.Marshal(message)
-
-	clientsMu.Lock()
-	defer clientsMu.Unlock()
-
-	for client := range clients {
-		err := client.WriteMessage(websocket.TextMessage, msgBytes)
-		if err != nil {
-			client.Close()
-			delete(clients, client)
-		}
+	if messageType == "navigate" {
+		log.Printf("[broadcast] navigate to %d clients", len(clients))
 	}
+	msgBytes, _ := json.Marshal(message)
+	broadcastTo(msgBytes, nil)
 }
 
 func StartKeepAliveBroadcast() {

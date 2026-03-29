@@ -4,6 +4,7 @@ import { selectedDetailState } from "@/recoilState";
 import { WorshipOrderItem } from "@/types";
 import BibleSelect from "./BibleSelect";
 import ChurchNews from "./ChurchNews";
+import s from "../bulletin.module.scss";
 
 export default function Detail({
   setSelectedItems,
@@ -52,11 +53,11 @@ export default function Detail({
   };
 
   return (
-    <section className="card">
+    <section className={s.card}>
       <h2>{selectedDetail?.title}</h2>
       {selectedDetail?.info.includes("edit") && (
-        <div key={selectedDetail?.key} className="detail-card">
-          <div className="block">
+        <div key={selectedDetail?.key} className={s.detail_card}>
+          <div className={s.block}>
             <strong>
               Object<span>center</span>
             </strong>
@@ -77,7 +78,7 @@ export default function Detail({
               />
             )}
           </div>
-          <div className="block">
+          <div className={s.block}>
             <strong>
               Lead<span>right</span>
             </strong>
@@ -105,7 +106,7 @@ export default function Detail({
       )}
       {!selectedDetail?.info.includes("edit") &&
         !selectedDetail?.info.includes("notice") && (
-          <p className="auto-guide">이 항목은 자동으로 처리됩니다</p>
+          <p className={s.auto_guide}>이 항목은 자동으로 처리됩니다</p>
         )}
     </section>
   );
