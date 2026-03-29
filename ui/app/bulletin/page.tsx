@@ -159,8 +159,6 @@ export default function Bulletin() {
 
       if (!response.ok) throw new Error("서버 응답 실패");
 
-      const data = await response.json();
-      console.log("서버 응답:", data);
       alert("서버로 데이터 전송 성공!");
     } catch (error) {
       console.error("서버 전송 중 오류 발생:", error);

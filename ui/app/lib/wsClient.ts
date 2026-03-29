@@ -33,7 +33,6 @@ export function useGlobalWebSocket(url: string) {
 
       socket.onopen = () => {
         setIsOpen(true);
-        console.log("WebSocket connected");
       };
 
       socket.onmessage = (event) => {
@@ -48,7 +47,6 @@ export function useGlobalWebSocket(url: string) {
       socket.onclose = () => {
         setIsOpen(false);
         clearInterval(pingInterval);
-        console.log("WebSocket closed");
         reconnectTimer = setTimeout(() => connect(), 5000);
       };
     };
