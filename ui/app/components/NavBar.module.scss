@@ -10,7 +10,8 @@ $img: "/images/image.svg";
   nav {
     display: flex;
     gap: 10px;
-    justify-content: space-between;
+    justify-content: flex-start;
+    flex-wrap: wrap;
     a {
       text-align: center;
       font-size: 24px;
@@ -19,6 +20,7 @@ $img: "/images/image.svg";
       padding-bottom: 10px;
       text-decoration: none;
       color: #888888;
+      white-space: nowrap;
       &:global(.active) {
         color: #1f3f62;
         border-bottom: 4px solid #1f3f62;

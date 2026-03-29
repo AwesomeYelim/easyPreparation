@@ -166,7 +166,13 @@ func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 	_ = os.WriteFile(filepath.Join(execPath, "config", worshipTitle+".json"), sample, 0644)
 }
 
+// GetQuote — 기본 버전(개역개정, versionID=1)으로 성경 구절 조회
 func GetQuote(codeAndRange string) (string, error) {
+	return GetQuoteWithVersion(codeAndRange, 1)
+}
+
+// GetQuoteWithVersion — 지정된 버전으로 성경 구절 조회
+func GetQuoteWithVersion(codeAndRange string, versionID int) (string, error) {
 	var startChapter, startVerse, endChapter, endVerse int
 
 	// codeAndRange 형태: "45/8:1" 또는 "45/8:1-3"
@@ -208,23 +214,19 @@ func GetQuote(codeAndRange string) (string, error) {
 		endChapter, endVerse = startChapter, startVerse
 	}
 
-	versesText, err := getBibleVersesFromDB(bookOrderInt, startChapter, startVerse, endChapter, endVerse)
+	versesText, err := getBibleVersesFromDB(versionID, bookOrderInt, startChapter, startVerse, endChapter, endVerse)
 	if err != nil {
 		return "", fmt.Errorf("성경 구절 가져오기 오류 (%s): %v", codeAndRange, err)
 	}
 
-	log.Printf("📖 %s 조회 완료 (%d절)", codeAndRange, len(strings.Split(versesText, "\n")))
+	log.Printf("📖 %s (v%d) 조회 완료 (%d절)", codeAndRange, versionID, len(strings.Split(versesText, "\n")))
 	return versesText, nil
 }
 
-func getBibleVersesFromDB(bookOrder, startChapter, startVerse, endChapter, endVerse int) (string, error) {
+func getBibleVersesFromDB(versionID, bookOrder, startChapter, startVerse, endChapter, endVerse int) (string, error) {
 	if db == nil {
 		return "", fmt.Errorf("데이터베이스 연결이 초기화되지 않았습니다")
 	}
-
-	// 기본적으로 개역개정 버전(id=1)을 사용한다고 가정
-	// 실제로는 설정 파일이나 매개변수로 버전을 지정할 수 있음
-	versionID := 1
 
 	query := `
 		SELECT v.chapter, v.verse, v.text, b.name_kor

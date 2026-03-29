@@ -41,6 +41,11 @@ export default function BiblePage() {
   const setDisplayPanelOpen = useSetRecoilState(displayPanelOpenState);
   const versesRef = useRef<HTMLDivElement>(null);
 
+  // 비교 모드
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareVersionId, setCompareVersionId] = useState(0);
+  const [compareVerses, setCompareVerses] = useState<Verse[]>([]);
+
   useEffect(() => {
     fetch(`${BASE_URL}/api/bible/versions`)
       .then((r) => r.json())
@@ -48,6 +53,7 @@ export default function BiblePage() {
         if (Array.isArray(data) && data.length > 0) {
           setVersions(data);
           setVersionId(data[0].id);
+          if (data.length > 1) setCompareVersionId(data[1].id);
         }
       })
       .catch((e) => console.error("bible fetch 에러:", e));
@@ -73,6 +79,7 @@ export default function BiblePage() {
     setSelectedBook(book);
     setSelectedChapter(0);
     setVerses([]);
+    setCompareVerses([]);
     setSearchResults([]);
     setChapterCount(book.chapterCount);
     setSelectedVerses(new Set());
@@ -92,7 +99,6 @@ export default function BiblePage() {
         .then((data) => {
           if (Array.isArray(data)) {
             setVerses(data);
-            // 해당 절로 스크롤
             if (highlightVerse) {
               requestAnimationFrame(() => {
                 const el = versesRef.current?.querySelector(`[data-verse="${highlightVerse}"]`);
@@ -102,9 +108,39 @@ export default function BiblePage() {
           }
         })
         .catch((e) => console.error("bible fetch 에러:", e));
+
+      // 비교 모드가 켜져 있으면 비교 버전도 fetch
+      if (compareMode && compareVersionId) {
+        fetch(
+          `${BASE_URL}/api/bible/verses?book=${bookOrder}&chapter=${chapter}&version=${compareVersionId}`
+        )
+          .then((r) => r.json())
+          .then((data) => {
+            if (Array.isArray(data)) setCompareVerses(data);
+            else setCompareVerses([]);
+          })
+          .catch(() => setCompareVerses([]));
+      }
     },
-    [versionId]
+    [versionId, compareMode, compareVersionId]
   );
+
+  // 비교 모드 토글 시 / 비교 버전 변경 시 비교 데이터 fetch
+  useEffect(() => {
+    if (compareMode && compareVersionId && selectedBook && selectedChapter > 0) {
+      fetch(
+        `${BASE_URL}/api/bible/verses?book=${selectedBook.book_order}&chapter=${selectedChapter}&version=${compareVersionId}`
+      )
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) setCompareVerses(data);
+          else setCompareVerses([]);
+        })
+        .catch(() => setCompareVerses([]));
+    } else {
+      setCompareVerses([]);
+    }
+  }, [compareMode, compareVersionId, selectedBook, selectedChapter]);
 
   const handleChapterSelect = useCallback(
     (chapter: number) => {
@@ -120,6 +156,7 @@ export default function BiblePage() {
     setSelectedBook(null);
     setSelectedChapter(0);
     setVerses([]);
+    setCompareVerses([]);
 
     fetch(`${BASE_URL}/api/bible/search?q=${encodeURIComponent(searchQuery)}&version=${versionId}`)
       .then((r) => r.json())
@@ -150,12 +187,10 @@ export default function BiblePage() {
     setSelectedVerses((prev) => {
       const next = new Set(prev);
       if (e.shiftKey && lastClickedRef.current !== null) {
-        // Shift+클릭: 마지막 클릭~현재 범위 전부 추가
         const lo = Math.min(lastClickedRef.current, verse);
         const hi = Math.max(lastClickedRef.current, verse);
         for (let v = lo; v <= hi; v++) next.add(v);
       } else {
-        // 단일 클릭: 토글
         if (next.has(verse)) next.delete(verse);
         else next.add(verse);
       }
@@ -164,7 +199,6 @@ export default function BiblePage() {
     });
   }, []);
 
-  // 연속 절을 범위 그룹으로 묶기: [1,2,3,7,8] → [[1,3],[7,8]]
   const groupRanges = useCallback((verses: number[]): [number, number][] => {
     const sorted = [...verses].sort((a, b) => a - b);
     const ranges: [number, number][] = [];
@@ -181,7 +215,6 @@ export default function BiblePage() {
     return ranges;
   }, []);
 
-  // 선택 표시 텍스트: "로마서 8:1-3, 7-8"
   const selectionLabel = useCallback(() => {
     if (selectedVerses.size === 0 || !selectedBook) return "";
     const ranges = groupRanges([...selectedVerses]);
@@ -192,7 +225,6 @@ export default function BiblePage() {
   const handleSendToDisplay = useCallback(async () => {
     if (!selectedBook || selectedChapter === 0 || selectedVerses.size === 0) return;
     const ranges = groupRanges([...selectedVerses]);
-    // 각 범위를 서버 obj 형식으로
     const objParts = ranges.map(([s, e]) =>
       `${selectedBook.name_kor}_${selectedBook.book_order}/${selectedChapter}:${s}` +
       (e > s ? `-${selectedChapter}:${e}` : "")
@@ -216,9 +248,10 @@ export default function BiblePage() {
   const ntBooks = books.filter((b) => b.book_order > 39);
   const displayBooks = tab === "ot" ? otBooks : ntBooks;
 
-  // 이전/다음 장 이동
   const canPrev = selectedChapter > 1;
   const canNext = selectedChapter > 0 && selectedChapter < chapterCount;
+
+  const getVersionName = (id: number) => versions.find((v) => v.id === id)?.name || "";
 
   return (
     <div className="bible_page">
@@ -235,6 +268,28 @@ export default function BiblePage() {
               {versions.map((v) => (
                 <option key={v.id} value={v.id}>{v.name}</option>
               ))}
+            </select>
+          )}
+          {versions.length > 1 && (
+            <button
+              className={`bible_compare_btn${compareMode ? " active" : ""}`}
+              onClick={() => setCompareMode(!compareMode)}
+              title="비교 모드"
+            >
+              비교
+            </button>
+          )}
+          {compareMode && versions.length > 1 && (
+            <select
+              className="bible_version_select"
+              value={compareVersionId}
+              onChange={(e) => setCompareVersionId(Number(e.target.value))}
+            >
+              {versions
+                .filter((v) => v.id !== versionId)
+                .map((v) => (
+                  <option key={v.id} value={v.id}>{v.name}</option>
+                ))}
             </select>
           )}
         </div>
@@ -314,8 +369,69 @@ export default function BiblePage() {
             </div>
           )}
 
-          {/* 절 본문 */}
-          {selectedChapter > 0 && verses.length > 0 && (
+          {/* 절 본문 — 비교 모드 */}
+          {selectedChapter > 0 && verses.length > 0 && compareMode && compareVerses.length > 0 && (
+            <div className="bible_reading bible_compare_view">
+              <div className="reading_header">
+                <button
+                  className="ch_nav_btn"
+                  disabled={!canPrev}
+                  onClick={() => handleChapterSelect(selectedChapter - 1)}
+                >
+                  ‹
+                </button>
+                <h3>
+                  {selectedBook?.name_kor} {selectedChapter}장
+                </h3>
+                <button
+                  className="ch_nav_btn"
+                  disabled={!canNext}
+                  onClick={() => handleChapterSelect(selectedChapter + 1)}
+                >
+                  ›
+                </button>
+              </div>
+              <div className="compare_labels">
+                <span className="compare_label">{getVersionName(versionId)}</span>
+                <span className="compare_label">{getVersionName(compareVersionId)}</span>
+              </div>
+              <div className="bible_verses_compare">
+                {verses.map((v) => {
+                  const cv = compareVerses.find((c) => c.verse === v.verse);
+                  return (
+                    <div
+                      key={v.verse}
+                      className={`verse_compare_row${selectedVerses.has(v.verse) ? " selected" : ""}`}
+                      onClick={(e) => handleVerseClick(e, v.verse)}
+                    >
+                      <sup className="verse_num">{v.verse}</sup>
+                      <div className="verse_col">{v.text}</div>
+                      <div className="verse_col compare">{cv?.text || ""}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="reading_footer">
+                <button
+                  className="ch_footer_btn"
+                  disabled={!canPrev}
+                  onClick={() => handleChapterSelect(selectedChapter - 1)}
+                >
+                  ‹ 이전 장
+                </button>
+                <button
+                  className="ch_footer_btn"
+                  disabled={!canNext}
+                  onClick={() => handleChapterSelect(selectedChapter + 1)}
+                >
+                  다음 장 ›
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 절 본문 — 일반 모드 */}
+          {selectedChapter > 0 && verses.length > 0 && !(compareMode && compareVerses.length > 0) && (
             <div className="bible_reading">
               <div className="reading_header">
                 <button

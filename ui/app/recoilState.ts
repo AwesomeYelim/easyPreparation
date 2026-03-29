@@ -2,7 +2,7 @@ import { atom } from "recoil";
 import main_worship from "@/data/main_worship.json";
 import after_worship from "@/data/after_worship.json";
 import wed_worship from "@/data/wed_worship.json";
-import { WorshipOrderItem, UserChurchInfo, SongBlock } from "@/types";
+import { WorshipOrderItem, UserChurchInfo, SongBlock, UserSettings } from "@/types";
 
 // 예배 타입 키만 모아두기
 export type WorshipType = "main_worship" | "after_worship" | "wed_worship";
@@ -53,5 +53,16 @@ export const userInfoState = atom<UserChurchInfo>({
       key: "",
       token: "",
     },
+  },
+});
+
+export const userSettingsState = atom<UserSettings>({
+  key: "userSettingsState",
+  default: {
+    preferred_bible_version: 1,
+    theme: "light",
+    font_size: 16,
+    default_bpm: 100,
+    display_layout: "default",
   },
 });

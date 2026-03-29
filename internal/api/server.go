@@ -40,6 +40,16 @@ func StartServer(dataChan chan types.DataEnvelope) {
 	mux.Handle("/api/user", middleware.CORS(http.HandlerFunc(handlers.UserHandler)))
 	mux.Handle("/api/auth/signin", middleware.CORS(http.HandlerFunc(handlers.AuthSignInHandler)))
 
+	// 찬송가 API
+	mux.Handle("/api/hymns", middleware.CORS(http.HandlerFunc(handlers.HymnListHandler)))
+	mux.Handle("/api/hymns/search", middleware.CORS(http.HandlerFunc(handlers.HymnSearchHandler)))
+	mux.Handle("/api/hymns/detail", middleware.CORS(http.HandlerFunc(handlers.HymnDetailHandler)))
+
+	// 설정 + 이력 API
+	mux.Handle("/api/settings", middleware.CORS(http.HandlerFunc(handlers.SettingsHandler)))
+	mux.Handle("/api/settings/license", middleware.CORS(http.HandlerFunc(handlers.LicenseHandler)))
+	mux.Handle("/api/history", middleware.CORS(http.HandlerFunc(handlers.HistoryHandler)))
+
 	fmt.Println("Server running on http://localhost:8080")
 	if err := http.ListenAndServe("0.0.0.0:8080", mux); err != nil {
 		panic(err)

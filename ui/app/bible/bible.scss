@@ -461,6 +461,89 @@
   }
 }
 
+/* ── 비교 모드 ── */
+.bible_compare_btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #6b7280;
+  transition: all 0.15s;
+
+  &:hover { background: #e0e7ff; color: #1f3f62; border-color: #a5b4fc; }
+  &.active {
+    background: #1f3f62;
+    color: #fff;
+    border-color: #1f3f62;
+  }
+}
+
+.bible_compare_view {
+  max-width: 960px;
+}
+
+.compare_labels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 0 0 12px 32px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 16px;
+}
+
+.compare_label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.bible_verses_compare {
+  padding-bottom: 20px;
+}
+
+.verse_compare_row {
+  display: grid;
+  grid-template-columns: 28px 1fr 1fr;
+  gap: 12px;
+  padding: 6px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s;
+  align-items: baseline;
+
+  &:hover { background: #f1f5f9; }
+  &.selected {
+    background: #dbeafe;
+    .verse_num { color: #1e40af; }
+    .verse_col { color: #1e40af; }
+  }
+
+  .verse_num {
+    font-size: 11px;
+    font-weight: 700;
+    color: #1f3f62;
+    text-align: right;
+    padding-top: 2px;
+  }
+
+  .verse_col {
+    font-size: 15px;
+    line-height: 1.8;
+    color: #1f2937;
+
+    &.compare {
+      color: #4b5563;
+      border-left: 2px solid #e5e7eb;
+      padding-left: 12px;
+    }
+  }
+}
+
 /* ── 반응형: 태블릿 ── */
 @media (max-width: 768px) {
   .bible_header {

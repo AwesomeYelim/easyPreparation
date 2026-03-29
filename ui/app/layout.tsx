@@ -3,6 +3,7 @@ import NavBar from "@/components/NavBar";
 import AuthProvider from "./lib/next-auth";
 import { WebSocketProvider } from "./components/WebSocketProvider";
 import GlobalDisplayPanel from "./components/GlobalDisplayPanel";
+import SettingsLoader from "./components/SettingsLoader";
 import "@/globals.css";
 import type { Viewport } from "next";
 
@@ -24,6 +25,7 @@ export default function RootLayout({
           <RecoilProvider>
             <AuthProvider>
               <WebSocketProvider>
+                <SettingsLoader />
                 <NavBar />
                 {children}
                 <GlobalDisplayPanel />

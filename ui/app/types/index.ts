@@ -32,3 +32,31 @@ export type UserChurchInfo = {
     token: string;
   };
 };
+
+export type Hymn = {
+  id: number;
+  hymnbook: string;
+  number: number;
+  title: string;
+  first_line?: string;
+  category?: string;
+  lyrics?: string;
+  has_pdf: boolean;
+};
+
+export type UserSettings = {
+  preferred_bible_version: number;
+  theme: string;
+  font_size: number;
+  default_bpm: number;
+  display_layout: string;
+};
+
+export type GenerationHistory = {
+  id: number;
+  type: string;
+  filename?: string;
+  status: string;
+  metadata?: Record<string, any>;
+  created_at: string;
+};

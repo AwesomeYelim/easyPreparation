@@ -104,10 +104,12 @@ flowchart TD
 | **주보 생성** | Figma 디자인 기반 인쇄용(A4) + 프레젠테이션용 PDF 자동 생성 |
 | **주보 편집** | 예배 순서 드래그 앤 드롭 재배치, 성경 구절 선택, 교회 소식 트리 편집 |
 | **가사 PPT 생성** | 곡명 입력 → 가사 자동 검색(bugs.co.kr) → 중복 제거 → ZIP 다운로드 |
-| **성경 검색** | 구약/신약 탭, 장/절 선택, 구절 검색, Shift+클릭 범위 선택 → Display 전송 |
+| **찬송가 검색** | DB 기반 645곡 새찬송가 번호/제목/가사 검색, Display 전송 |
+| **성경 검색** | 구약/신약 탭, 장/절 선택, 7개 번역판 지원, 비교 모드 (2컬럼) |
 | **예배 화면** | OBS Browser Source 연동, 성경/찬송/교독/가사 슬라이드 실시간 표시 |
 | **Display 통합 제어** | 주보/가사/성경 탭에서 append 방식으로 항목 추가, 제어판에서 삭제/점프/자동 넘김 |
 | **실시간 상태** | WebSocket으로 파일 생성 진행 상황 + Display 위치 브로드캐스트 |
+| **계정 설정** | 교회 정보 편집, 선호 성경 버전/테마/폰트 설정, 생성 이력 조회 |
 | **소셜 로그인** | NextAuth 기반 인증 + 교회 프로필 등록 |
 
 ---
@@ -153,7 +155,7 @@ easyPreparation/
 │   ├── googleCloud/         # Google Drive 연동
 │   ├── figma/               # Figma API 연동
 │   ├── obs/                 # OBS WebSocket 매니저 (goobs)
-│   ├── quote/               # 성경 구절 DB 조회
+│   ├── quote/               # 성경 구절 DB 조회 (다중 버전 지원)
 │   ├── middleware/           # CORS 미들웨어
 │   ├── types/               # 공유 타입
 │   └── utils/               # 유틸리티 (zip, 문자열, 디렉토리)
@@ -171,9 +173,13 @@ easyPreparation/
 │       │       ├── EditChildNews.tsx    # 소식 하위 항목 편집
 │       │       ├── ResultPage.tsx       # 미리보기
 │       │       └── DisplayControlPanel.tsx  # 예배 화면 제어판
-│       ├── lyrics/          # 가사 PPT 생성 페이지
-│       ├── bible/           # 성경 검색/열람 페이지
-│       ├── components/      # 전역 컴포넌트 (NavBar, WebSocketProvider, GlobalDisplayPanel)
+│       ├── lyrics/          # 가사 PPT 생성 + 찬송가 검색 페이지
+│       │   └── components/
+│       │       ├── LyricsManager.tsx   # 자유 곡 가사 관리
+│       │       ├── HymnSearch.tsx      # 찬송가 검색/상세/Display 전송
+│       │       └── HymnSearch.scss
+│       ├── bible/           # 성경 검색/열람 (7개 번역판 비교 모드)
+│       ├── components/      # 전역 컴포넌트 (NavBar, SideBar, Settings, History)
 │       ├── lib/             # 유틸리티
 │       │   ├── apiClient.ts     # Go 서버 API 호출 중앙화
 │       │   ├── bibleUtils.ts    # 성경 구절 포맷
@@ -183,6 +189,8 @@ easyPreparation/
 │       ├── types/           # TypeScript 타입
 │       └── recoilState.ts   # Recoil 전역 상태
 │
+├── craw/                    # 성경 크롤러 (GoodTV API → DB, 7개 번역판)
+├── migrations/              # SQL 마이그레이션 (성경 버전, 찬송가, 설정/이력)
 ├── tools/                   # Python AI 툴킷 (MCP, OAuth, 문서 생성)
 ├── config/                  # 설정 파일 (gitignore)
 ├── data/                    # Google Drive PDF 캐시 (hymn/, responsive_reading/)
@@ -251,6 +259,7 @@ apiClient.submitLyrics()  ──▶  Go 서버  ──▶  ZIP 다운로드
 worshipOrderState      // Record<WorshipType, WorshipOrderItem[]>  예배 순서 전체
 selectedDetailState    // WorshipOrderItem                         현재 편집 항목
 userInfoState          // UserChurchInfo                           로그인 유저 정보
+userSettingsState      // UserSettings                             선호 설정 (버전/테마/폰트/BPM)
 displayPanelOpenState  // boolean                                  제어판 열림 여부
 displayItemsState      // WorshipOrderItem[]                      Display 항목 목록
 lyricsSongsState       // LyricsSong[]                            가사 곡 목록
@@ -311,6 +320,12 @@ openDisplayWindow()                           // Display 창 열기 (중복 relo
 | `GET` | `/api/bible/search` | 성경 구절 검색 |
 | `GET/POST` | `/api/user` | 교회/사용자 정보 |
 | `POST` | `/api/auth/signin` | NextAuth signIn 시 교회 레코드 생성 |
+| `GET` | `/api/hymns` | 찬송가 목록 (페이징) |
+| `GET` | `/api/hymns/search` | 찬송가 검색 (번호/제목/가사) |
+| `GET` | `/api/hymns/detail` | 찬송가 상세 (가사 포함) |
+| `GET/PUT` | `/api/settings` | 사용자 설정 조회/저장 |
+| `PUT` | `/api/settings/license` | 라이선스 등록 |
+| `GET` | `/api/history` | 생성 이력 조회 |
 
 ---
 
@@ -389,9 +404,48 @@ make build
 |--------|------|
 | **Figma** | 주보 배경 이미지(PNG) / 프레젠테이션 템플릿 |
 | **Google Drive** | 찬송가 악보 PDF / 성시교독 PDF |
-| **PostgreSQL** | 성경 구절 DB |
+| **PostgreSQL** | 성경 구절 DB (7개 번역판), 찬송가 DB, 사용자 설정/이력 |
 | **OBS WebSocket** | 방송 씬 전환 |
 | **bugs.co.kr** | 가사 검색 크롤링 |
+
+---
+
+## 성경 번역판
+
+| ID | 이름 | 비고 |
+|----|------|------|
+| 1 | 개역개정 | 기본값 |
+| 2 | 개역한글 | |
+| 3 | 공동번역 | |
+| 4 | 표준새번역 | |
+| 5 | NIV | 영문 |
+| 6 | KJV | 영문 |
+| 7 | 우리말성경 | |
+
+비교 모드: Bible 페이지에서 두 번역판을 나란히 비교 가능.
+
+---
+
+## 찬송가 DB
+
+- 새찬송가 645곡 메타데이터 (번호, 제목, 첫 줄)
+- Lyrics 탭 내 "찬송가 검색" 서브탭으로 통합
+- Display 전송 지원 (Google Drive PDF 악보 연동)
+
+---
+
+## DB 테이블
+
+| 테이블 | 설명 |
+|--------|------|
+| `bible_versions` | 성경 번역판 목록 (7개) |
+| `books` | 성경 책 정보 |
+| `verses` | 성경 구절 (버전별 약 31,000절) |
+| `hymns` | 찬송가 (645곡 메타데이터) |
+| `churches` | 교회 정보 |
+| `user_settings` | 사용자 설정 (선호 버전, 테마, 폰트, BPM) |
+| `generation_history` | 생성 이력 (주보/PPT/가사 PPT) |
+| `licenses` | 라이선스 |
 
 ---
 

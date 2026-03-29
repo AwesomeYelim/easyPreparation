@@ -1,4 +1,4 @@
-import { WorshipOrderItem } from "@/types";
+import { WorshipOrderItem, UserSettings } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -109,4 +109,41 @@ export const apiClient = {
     link.click();
     document.body.removeChild(link);
   },
+
+  // 찬송가 API
+  getHymns: (page = 1, limit = 50, book?: string) =>
+    fetch(`${BASE_URL}/api/hymns?page=${page}&limit=${limit}${book ? `&book=${book}` : ""}`)
+      .then((r) => r.json()),
+
+  searchHymns: (q: string, type?: string) =>
+    fetch(`${BASE_URL}/api/hymns/search?q=${encodeURIComponent(q)}${type ? `&type=${type}` : ""}`)
+      .then((r) => r.json()),
+
+  getHymnDetail: (number: number, book = "new") =>
+    fetch(`${BASE_URL}/api/hymns/detail?number=${number}&book=${book}`)
+      .then((r) => r.json()),
+
+  // 설정 API
+  getSettings: (email: string) =>
+    fetch(`${BASE_URL}/api/settings?email=${encodeURIComponent(email)}`)
+      .then((r) => r.json()),
+
+  saveSettings: (email: string, settings: Partial<UserSettings>) =>
+    fetch(`${BASE_URL}/api/settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, ...settings }),
+    }).then((r) => r.json()),
+
+  saveLicense: (email: string, licenseKey: string, token: string) =>
+    fetch(`${BASE_URL}/api/settings/license`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, license_key: licenseKey, token }),
+    }).then((r) => r.json()),
+
+  // 이력 API
+  getHistory: (email: string, type?: string, page = 1) =>
+    fetch(`${BASE_URL}/api/history?email=${encodeURIComponent(email)}${type ? `&type=${type}` : ""}&page=${page}`)
+      .then((r) => r.json()),
 };
