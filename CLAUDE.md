@@ -39,6 +39,20 @@ Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF 생성, Google Drive
 - 성경: DB 자동 조회, 5절 단위 페이징
 - 배경: Figma 이미지 (`output/lyrics/tmp/Frame 1.png`) + 어두운 오버레이
 
+### 가사 오버레이 (Display Lyrics)
+`/display/lyrics` — OBS Browser Source로 방송 화면에 가사 자막 오버레이.
+
+- **가사↔페이지 자동 매핑**: 찬송 전처리 시 `hymns` 테이블에서 가사 조회 → 2줄 단위 청크로 분할 → PDF 이미지 페이지 수에 균등 배분 → `item["lyricsMap"]`
+- **투명 배경**: OBS에서 카메라 위에 겹쳐 자막처럼 표시
+- **WS 동기화**: `/display`와 동일한 WS를 통해 navigate/jump 동기화
+- 찬송: `lyricsMap[pageIdx-1]` (표지=곡번호, 이미지=가사 텍스트)
+- 성경/가사곡/신앙고백 등: 기존과 동일한 텍스트 표시
+- 제어판 sections: 찬송 이미지 페이지별 가사 미리보기 (60자 truncate)
+
+**OBS 설정 예시:**
+- 프로젝터 출력: Browser Source → `http://localhost:8080/display`
+- 방송 출력: Browser Source → `http://localhost:8080/display/lyrics` (투명 배경, 하단 자막)
+
 ### OBS WebSocket
 `internal/obs/obs.go` — 싱글턴 매니저, 자동 재연결(5초), `config/obs.json` 없으면 no-op.
 
@@ -48,7 +62,8 @@ Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF 생성, Google Drive
 ### Display API
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
-| GET | /display | 슬라이드 HTML |
+| GET | /display | 슬라이드 HTML (프로젝터용 — 악보 이미지 포함) |
+| GET | /display/lyrics | 가사 오버레이 HTML (방송용 — 투명 배경, 텍스트만) |
 | POST | /display/order | 예배 순서 전송 — 전체 교체 (성경/찬송 자동 전처리) |
 | POST | /display/append | 항목 추가 — 기존 순서 뒤에 추가 (가사/성경 탭 사용) |
 | POST | /display/remove | 항목 삭제 — 인덱스 기반 제거 |

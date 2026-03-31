@@ -8,6 +8,7 @@ export type WorshipOrderItem = {
   children?: WorshipOrderItem[];
   bpm?: number;
   pages?: string[];
+  lyricsMap?: string[];
   sections?: { label: string; startPage: number; text: string }[];
 };
 

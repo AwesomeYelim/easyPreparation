@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strconv"
@@ -294,6 +295,7 @@ function showSlide(i) {
   if (!slides.length) return;
   i = Math.max(0, Math.min(i, slides.length - 1));
   idx = i;
+  subPageIdx = 0;
   // 항목 변경 시 서버에 위치 보고
   if (idx !== lastReportedIdx) {
     lastReportedIdx = idx;
@@ -302,7 +304,6 @@ function showSlide(i) {
   const item = slides[idx];
 
   subPages = [];
-  subPageIdx = 0;
 
   const itemTitle = item.title || '';
 
@@ -756,6 +757,239 @@ func OnPositionUpdate(newIdx, newSubPage int) {
 	if enabled && changed {
 		restartServerTimer()
 	}
+}
+
+// ── /display/lyrics — OBS 가사 오버레이 전용 ──
+
+const displayLyricsHTML = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Display Lyrics</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body {
+    width:100%; height:100%;
+    background:transparent;
+    color:#fff;
+    font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif;
+    overflow:hidden;
+    user-select:none;
+  }
+
+  #slide {
+    width:100%; height:100vh;
+    display:flex; flex-direction:column;
+    justify-content:center; align-items:center;
+    padding:5vh 6vw;
+    position:relative;
+    opacity:0;
+    transition:opacity 0.4s ease;
+  }
+  #slide.visible { opacity:1; }
+
+  .lyrics-overlay {
+    font-size:5.5vh; line-height:1.8;
+    text-align:center; color:#fff;
+    white-space:pre-wrap;
+    font-weight:600;
+    text-shadow:0 2px 12px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.7);
+  }
+
+  .bible-overlay-ref {
+    font-size:2.6vh; color:rgba(255,255,255,0.7);
+    margin-bottom:2vh; text-align:center;
+    text-shadow:0 1px 6px rgba(0,0,0,0.8);
+  }
+  .bible-overlay-text {
+    font-size:3.6vh; line-height:1.9;
+    text-align:center; color:#fff;
+    white-space:pre-wrap;
+    text-shadow:0 2px 10px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.7);
+  }
+
+  .title-overlay {
+    font-size:6vh; font-weight:700;
+    text-align:center;
+    text-shadow:0 3px 14px rgba(0,0,0,0.9);
+  }
+  .sub-overlay {
+    font-size:3.6vh; color:rgba(255,255,255,0.8);
+    margin-top:1.5vh; text-align:center;
+    text-shadow:0 2px 8px rgba(0,0,0,0.8);
+  }
+</style>
+</head>
+<body>
+<div id="slide"></div>
+
+<script>
+const slide = document.getElementById('slide');
+let ws, reconnectTimer;
+let slides = [];
+let idx = 0;
+let subPages = [];
+let subPageIdx = 0;
+
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(proto + '://' + location.host + '/ws');
+  ws.onopen = () => { console.log('[Lyrics] WS connected'); };
+  ws.onerror = (e) => { console.error('[Lyrics] WS error', e); };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'order') loadOrder(msg.items, msg.idx);
+    if (msg.type === 'navigate') {
+      if (msg.direction === 'jump' && typeof msg.idx === 'number') {
+        showSlide(msg.idx);
+        if (typeof msg.subPageIdx === 'number' && msg.subPageIdx > 0) {
+          subPageIdx = msg.subPageIdx;
+          renderLyricsItem(slides[idx], subPageIdx);
+        }
+      } else if (msg.direction === 'jump_sub' && typeof msg.subPageIdx === 'number') {
+        subPageIdx = msg.subPageIdx;
+        renderLyricsItem(slides[idx], subPageIdx);
+      } else {
+        navigate(msg.direction);
+      }
+    }
+  };
+  ws.onclose = () => {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(connect, 3000);
+  };
+}
+
+function loadOrder(items, startIdx) {
+  var prevLen = slides.length;
+  slides = items || [];
+  var start = (typeof startIdx === 'number') ? startIdx : 0;
+  if (prevLen > 0 && start === idx && slides.length > prevLen) return;
+  idx = 0;
+  showSlide(start);
+}
+
+function showSlide(i) {
+  if (!slides.length) return;
+  i = Math.max(0, Math.min(i, slides.length - 1));
+  idx = i;
+  subPageIdx = 0;
+  const item = slides[idx];
+  subPages = [];
+
+  const itemTitle = item.title || '';
+
+  if ((item.info || '').startsWith('b_') && item.contents) {
+    subPages = paginate(item.contents, 5);
+  } else if (itemTitle === '신앙고백' && item.contents) {
+    subPages = paginate(item.contents, 10);
+  } else if (itemTitle === '주기도문' && item.contents) {
+    subPages = paginate(item.contents, 10);
+  } else if ((item.info || '') === 'lyrics_display' && item.pages && item.pages.length > 0) {
+    subPages = item.pages;
+  } else if (item.images && item.images.length > 0) {
+    subPages = ['__cover__'].concat(item.images);
+  }
+
+  renderLyricsItem(item, 0);
+}
+
+function navigate(dir) {
+  if (dir === 'next') {
+    if (subPages.length > 1 && subPageIdx < subPages.length - 1) {
+      subPageIdx++;
+      renderLyricsItem(slides[idx], subPageIdx);
+    } else {
+      showSlide(idx + 1);
+    }
+  } else if (dir === 'prev') {
+    if (subPages.length > 1 && subPageIdx > 0) {
+      subPageIdx--;
+      renderLyricsItem(slides[idx], subPageIdx);
+    } else {
+      showSlide(idx - 1);
+    }
+  }
+}
+
+function renderLyricsItem(item, pageIdx) {
+  const info     = item.info     || '';
+  const title    = item.title    || '';
+  const obj      = item.obj      || '';
+  const contents = item.contents || '';
+  const lyricsMap = item.lyricsMap || [];
+
+  slide.className = 'visible';
+
+  // 1. 찬송/헌금봉헌 — lyricsMap 기반 가사 표시
+  if (title === '찬송' || title === '헌금봉헌') {
+    if (pageIdx === 0) {
+      // 표지: 곡번호
+      slide.innerHTML = '<div class="title-overlay">' + esc(obj) + '</div>';
+      return;
+    }
+    var lyric = (pageIdx - 1 < lyricsMap.length) ? lyricsMap[pageIdx - 1] : '';
+    slide.innerHTML = '<div class="lyrics-overlay">' + esc(lyric) + '</div>';
+    return;
+  }
+
+  // 2. 가사 슬라이드 (lyrics_display)
+  if (info === 'lyrics_display' && subPages.length > 0) {
+    var lyricsPage = subPages[pageIdx] || '';
+    slide.innerHTML = '<div class="lyrics-overlay">' + esc(lyricsPage) + '</div>';
+    return;
+  }
+
+  // 3. 성경 본문
+  if (info.startsWith('b_') && contents) {
+    var page = subPages[pageIdx] || contents;
+    slide.innerHTML =
+      '<div class="bible-overlay-ref">' + esc(obj) + '</div>' +
+      '<div class="bible-overlay-text">' + esc(page) + '</div>';
+    return;
+  }
+
+  // 4. 신앙고백/주기도문
+  if ((title === '신앙고백' || title === '주기도문') && contents) {
+    var creedPage = subPages.length > 0 ? (subPages[pageIdx] || contents) : contents;
+    slide.innerHTML =
+      '<div class="title-overlay">' + esc(title) + '</div>' +
+      '<div class="sub-overlay" style="white-space:pre-wrap;margin-top:3vh;">' + esc(creedPage) + '</div>';
+    return;
+  }
+
+  // 5. 기타 — 제목만
+  var subText = (obj && obj !== '-') ? obj : '';
+  slide.innerHTML =
+    '<div class="title-overlay">' + esc(title) + '</div>' +
+    (subText ? '<div class="sub-overlay">' + esc(subText) + '</div>' : '');
+}
+
+function paginate(text, linesPerPage) {
+  const lines = text.split('\n').filter(l => l.trim() !== '');
+  const pages = [];
+  for (let i = 0; i < lines.length; i += linesPerPage) {
+    pages.push(lines.slice(i, i + linesPerPage).join('\n'));
+  }
+  return pages.length ? pages : [text];
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\n/g,'<br>');
+}
+
+connect();
+</script>
+</body>
+</html>`
+
+// DisplayLyricsHandler — GET /display/lyrics
+func DisplayLyricsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+	_, _ = w.Write([]byte(displayLyricsHTML))
 }
 
 // DisplayHandler — GET /display
@@ -1333,6 +1567,24 @@ func preprocessItem(item map[string]interface{}) map[string]interface{} {
 	if title == "찬송" || title == "헌금봉헌" || title == "성시교독" {
 		if images := fetchDisplayImages(title, obj); len(images) > 0 {
 			item["images"] = images
+
+			// 찬송: 가사↔페이지 자동 매핑
+			if title == "찬송" || title == "헌금봉헌" {
+				var hymnNum int
+				for _, r := range obj {
+					if r >= '0' && r <= '9' {
+						hymnNum = hymnNum*10 + int(r-'0')
+					}
+				}
+				if hymnNum > 0 {
+					if lyrics := fetchHymnLyrics(hymnNum); lyrics != "" {
+						verses := splitVerses(lyrics)
+						if lm := mapLyricsToPages(verses, len(images)); len(lm) > 0 {
+							item["lyricsMap"] = lm
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -1387,14 +1639,30 @@ func buildSections(item map[string]interface{}) map[string]interface{} {
 		}
 		if len(images) > 0 {
 			obj, _ := item["obj"].(string)
+			// lyricsMap이 있으면 각 이미지 페이지에 가사 미리보기 삽입
+			var lyricsMap []string
+			if lm, ok := item["lyricsMap"].([]string); ok {
+				lyricsMap = lm
+			}
 			sections := []map[string]interface{}{
 				{"label": "표지", "startPage": 0, "text": obj},
 			}
 			for i := range images {
+				preview := ""
+				if i < len(lyricsMap) && lyricsMap[i] != "" {
+					preview = lyricsMap[i]
+					// 60자 truncate
+					runes := []rune(preview)
+					if len(runes) > 60 {
+						preview = string(runes[:60]) + "..."
+					}
+					// 줄바꿈 → 공백으로
+					preview = strings.ReplaceAll(preview, "\n", " ")
+				}
 				sections = append(sections, map[string]interface{}{
 					"label":     fmt.Sprintf("%d", i+1),
 					"startPage": i + 1,
-					"text":      "",
+					"text":      preview,
 				})
 			}
 			item["sections"] = sections
@@ -1687,6 +1955,115 @@ func findCachedImages(baseDir, prefix string) []string {
 	}
 	sort.Strings(urls)
 	return urls
+}
+
+// ── 가사↔페이지 매핑 ──
+
+// fetchHymnLyrics — hymns 테이블에서 가사 텍스트 조회
+func fetchHymnLyrics(number int) string {
+	if apiDB == nil {
+		return ""
+	}
+	var lyrics string
+	err := apiDB.QueryRow("SELECT lyrics FROM hymns WHERE hymnbook='new' AND number=$1", number).Scan(&lyrics)
+	if err != nil {
+		return ""
+	}
+	return lyrics
+}
+
+var versePattern = regexp.MustCompile(`(?m)^\d+\.\s`)
+
+// splitVerses — 가사를 절 단위로 분리
+func splitVerses(lyrics string) []string {
+	lyrics = strings.TrimSpace(lyrics)
+	if lyrics == "" {
+		return nil
+	}
+
+	// 절 번호 패턴 (1. 2. ...) 으로 분리 시도
+	locs := versePattern.FindAllStringIndex(lyrics, -1)
+	if len(locs) >= 2 {
+		var verses []string
+		for i, loc := range locs {
+			start := loc[0]
+			var end int
+			if i+1 < len(locs) {
+				end = locs[i+1][0]
+			} else {
+				end = len(lyrics)
+			}
+			verse := strings.TrimSpace(lyrics[start:end])
+			if verse != "" {
+				verses = append(verses, verse)
+			}
+		}
+		return verses
+	}
+
+	// 절 번호 없으면 빈 줄(\n\n)로 분리
+	blocks := strings.Split(lyrics, "\n\n")
+	var verses []string
+	for _, b := range blocks {
+		b = strings.TrimSpace(b)
+		if b != "" {
+			verses = append(verses, b)
+		}
+	}
+	if len(verses) <= 1 {
+		return []string{lyrics}
+	}
+	return verses
+}
+
+// splitIntoChunks — 텍스트를 N줄 단위로 분할
+func splitIntoChunks(text string, linesPerChunk int) []string {
+	lines := strings.Split(strings.TrimSpace(text), "\n")
+	var chunks []string
+	for i := 0; i < len(lines); i += linesPerChunk {
+		end := i + linesPerChunk
+		if end > len(lines) {
+			end = len(lines)
+		}
+		chunks = append(chunks, strings.Join(lines[i:end], "\n"))
+	}
+	if len(chunks) == 0 {
+		return []string{text}
+	}
+	return chunks
+}
+
+// mapLyricsToPages — 절을 2줄 단위로 쪼갠 후 페이지 수에 균등 배분
+func mapLyricsToPages(verses []string, pageCount int) []string {
+	if pageCount <= 0 || len(verses) == 0 {
+		return nil
+	}
+
+	// 절을 2줄 단위 청크로 분할
+	var chunks []string
+	for _, v := range verses {
+		chunks = append(chunks, splitIntoChunks(v, 2)...)
+	}
+
+	result := make([]string, pageCount)
+	if pageCount >= len(chunks) {
+		// 페이지가 청크보다 많거나 같음 → 균등 분배
+		for i := 0; i < pageCount; i++ {
+			chunkIdx := i * len(chunks) / pageCount
+			result[i] = chunks[chunkIdx]
+		}
+	} else {
+		// 청크가 페이지보다 많음 → 여러 청크를 합침
+		for i := 0; i < pageCount; i++ {
+			start := i * len(chunks) / pageCount
+			end := (i + 1) * len(chunks) / pageCount
+			if end > len(chunks) {
+				end = len(chunks)
+			}
+			result[i] = strings.Join(chunks[start:end], "\n")
+		}
+	}
+	return result
 }
 
 // fetchBibleText — "책명_코드/장:절" 형식에서 성경 본문 조회 (기본 버전)

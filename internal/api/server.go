@@ -31,6 +31,7 @@ func StartServer(dataChan chan types.DataEnvelope) {
 	mux.Handle("/display/status", middleware.CORS(http.HandlerFunc(handlers.DisplayStatusHandler)))
 	mux.Handle("/display/timer", middleware.CORS(http.HandlerFunc(handlers.DisplayTimerHandler)))
 	mux.Handle("/display/lyrics-order", middleware.CORS(http.HandlerFunc(handlers.DisplayLyricsOrderHandler)))
+	mux.Handle("/display/lyrics", middleware.CORS(http.HandlerFunc(handlers.DisplayLyricsHandler)))
 
 	// 통합 API (프론트 DB 직접 연결 제거)
 	mux.Handle("/api/bible/books", middleware.CORS(http.HandlerFunc(handlers.BibleBooksHandler)))
