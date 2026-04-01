@@ -36,37 +36,43 @@ Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF 생성, Google Drive
 
 - 항목별 렌더링: 성경본문, 찬송(이미지), 교독(이미지), 대표기도, 신앙고백(사도신경), 참회의기도, 말씀, 교회소식
 - 찬송/교독: Google Drive PDF → Ghostscript PNG 변환 → `data/hymn/`, `data/responsive_reading/` 캐시
-- 성경: DB 자동 조회, 5절 단위 페이징
+- 성경: DB 자동 조회, 3절 단위 페이징
 - 배경: Figma 이미지 (`output/lyrics/tmp/Frame 1.png`) + 어두운 오버레이
+- **상태 영속화**: `data/display_state.json`에 order+idx 자동 저장, 서버 재시작 시 복원
 
-### 가사 오버레이 (Display Lyrics)
-`/display/lyrics` — OBS Browser Source로 방송 화면에 가사 자막 오버레이.
+### 가사 오버레이 (Display Overlay)
+`/display/overlay` — OBS Browser Source로 방송 화면에 가사/성경 텍스트 오버레이.
 
+- **반투명 배경 박스**: `rgba(0,0,0,0.75)` 배경, 1500px 고정 너비 (1920×1080 해상도 기준)
 - **가사↔페이지 자동 매핑**: 찬송 전처리 시 `hymns` 테이블에서 가사 조회 → 2줄 단위 청크로 분할 → PDF 이미지 페이지 수에 균등 배분 → `item["lyricsMap"]`
-- **투명 배경**: OBS에서 카메라 위에 겹쳐 자막처럼 표시
 - **WS 동기화**: `/display`와 동일한 WS를 통해 navigate/jump 동기화
-- 찬송: `lyricsMap[pageIdx-1]` (표지=곡번호, 이미지=가사 텍스트)
+- 찬송: `lyricsMap[pageIdx-1]` (표지=곡번호, 이미지=가사 텍스트, 가운데 정렬)
 - 성경/가사곡/신앙고백 등: 기존과 동일한 텍스트 표시
 - 제어판 sections: 찬송 이미지 페이지별 가사 미리보기 (60자 truncate)
+- CSS 변수로 폰트 크기/색상/간격 커스터마이즈 가능 (OBS Custom CSS)
 
 **OBS 설정 예시:**
 - 프로젝터 출력: Browser Source → `http://localhost:8080/display`
-- 방송 출력: Browser Source → `http://localhost:8080/display/lyrics` (투명 배경, 하단 자막)
+- 방송 출력: Browser Source → `http://localhost:8080/display/overlay` (반투명 배경, 하단 자막)
 
 ### OBS WebSocket
 `internal/obs/obs.go` — 싱글턴 매니저, 자동 재연결(5초), `config/obs.json` 없으면 no-op.
 
 ### 제어 패널 UI
-`ui/app/bulletin/components/DisplayControlPanel.tsx` — 예배 순서 목록 + 클릭 점프 + OBS 상태.
+`ui/app/bulletin/components/DisplayControlPanel.tsx` — 예배 순서 목록 + 클릭 점프 + 드래그 앤 드롭 순서 변경 + OBS 상태.
+
+### 성경 탭 UI
+`ui/app/bible/page.tsx` — 성경 조회 + Shift-click 범위 선택 (토글 해제 지원).
 
 ### Display API
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
 | GET | /display | 슬라이드 HTML (프로젝터용 — 악보 이미지 포함) |
-| GET | /display/lyrics | 가사 오버레이 HTML (방송용 — 투명 배경, 텍스트만) |
+| GET | /display/overlay | 텍스트 오버레이 HTML (방송용 — 반투명 배경) |
 | POST | /display/order | 예배 순서 전송 — 전체 교체 (성경/찬송 자동 전처리) |
 | POST | /display/append | 항목 추가 — 기존 순서 뒤에 추가 (가사/성경 탭 사용) |
 | POST | /display/remove | 항목 삭제 — 인덱스 기반 제거 |
+| POST | /display/reorder | 항목 순서 변경 — 드래그 앤 드롭 ({from, to}) |
 | POST | /display/navigate | next/prev 이동 |
 | POST | /display/jump | 특정 항목으로 점프 (subPageIdx 지원) |
 | POST | /display/timer | 자동 넘김 타이머 제어 (enable/disable/speed) |
@@ -75,9 +81,10 @@ Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF 생성, Google Drive
 ### Display 통합 구조
 - **주보 탭**: `/display/order` — 전체 교체 (예배 순서 일괄 전송)
 - **가사/성경 탭**: `/display/append` — 기존 순서 뒤에 추가
-- **제어판**: `/display/remove` — 개별 항목 삭제
+- **제어판**: `/display/remove` — 개별 항목 삭제, `/display/reorder` — 드래그 순서 변경
 - `openDisplayWindow()` 유틸리티 — 이미 열린 Display 창 reload 방지
 - `GlobalDisplayPanel` — 페이지 새로고침 시 서버 상태 자동 복원
+- **상태 영속화**: 서버 재시작해도 마지막 순서/위치 유지 (`data/display_state.json`)
 
 ---
 

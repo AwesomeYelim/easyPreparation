@@ -23,12 +23,15 @@ export default function DisplayControlPanel() {
   const [obsStatus, setObsStatus] = useState<OBSStatus>({ connected: false, currentScene: "" });
   const [timer, setTimer] = useState<TimerState>({ enabled: false, countdown: 0, speedFactor: 1.0 });
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
+  const [loadingMsg, setLoadingMsg] = useState("");
   const { subscribe } = useWS();
   const listRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef(items);
   itemsRef.current = items;
+  const dragRef = useRef<{ from: number } | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
 
-  // WS: position, timer_state, order 동기화
+  // WS: position, timer_state, order, display_loading 동기화
   useEffect(() => {
     return subscribe((msg) => {
       if (msg.type === "position" && typeof msg.idx === "number") {
@@ -45,13 +48,22 @@ export default function DisplayControlPanel() {
         if (typeof msg.idx === "number") setIdx(msg.idx);
       }
       if (msg.type === "order" && Array.isArray(msg.items)) {
+        setLoadingMsg("");
         setItems(msg.items as WorshipOrderItem[]);
+        setExpandedItems(new Set());
         if (typeof msg.idx === "number") {
           setIdx(msg.idx);
           setSubPageIdx(0);
         } else {
           setIdx(0);
           setSubPageIdx(0);
+        }
+      }
+      if (msg.type === "display_loading") {
+        if (msg.done) {
+          setLoadingMsg("");
+        } else {
+          setLoadingMsg(msg.message || "준비 중...");
         }
       }
     });
@@ -99,6 +111,34 @@ export default function DisplayControlPanel() {
 
   const handleRemove = useCallback((index: number) => {
     apiClient.removeFromDisplay(index);
+  }, []);
+
+  const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
+    dragRef.current = { from: index };
+    e.dataTransfer.effectAllowed = "move";
+    (e.target as HTMLElement).style.opacity = "0.4";
+  }, []);
+
+  const handleDragEnd = useCallback((e: React.DragEvent) => {
+    (e.target as HTMLElement).style.opacity = "1";
+    dragRef.current = null;
+    setDragOver(null);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOver(index);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, toIndex: number) => {
+    e.preventDefault();
+    setDragOver(null);
+    if (!dragRef.current) return;
+    const fromIndex = dragRef.current.from;
+    dragRef.current = null;
+    if (fromIndex === toIndex) return;
+    apiClient.reorderDisplay(fromIndex, toIndex);
   }, []);
 
   const toggleItemExpand = useCallback((index: number) => {
@@ -214,6 +254,12 @@ export default function DisplayControlPanel() {
       )}
 
       <div className={s.dcp_order_list} ref={listRef}>
+        {loadingMsg && (
+          <div className={s.dcp_loading}>
+            <div className={s.dcp_loading_spinner} />
+            <span>{loadingMsg}</span>
+          </div>
+        )}
         {items.map((item, i) => {
           const hasSections = item.sections && item.sections.length > 0;
           const isExpanded = expandedItems.has(i);
@@ -221,8 +267,13 @@ export default function DisplayControlPanel() {
           return (
             <div key={item.key || i}>
               <div
-                className={`${s.order_item} ${i === idx ? s.active : ""}`}
+                className={`${s.order_item} ${i === idx ? s.active : ""}${dragOver === i ? ` ${s.drag_over}` : ""}`}
                 onClick={() => handleJump(i)}
+                draggable
+                onDragStart={(e) => handleDragStart(e, i)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => handleDragOver(e, i)}
+                onDrop={(e) => handleDrop(e, i)}
               >
                 <span className={s.order_num}>{i + 1}</span>
                 <span className={s.order_title_text}>{item.title}</span>

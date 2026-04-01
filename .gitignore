@@ -5,6 +5,9 @@ data/
 output/*/*.pdf
 output/display/
 config/*
+/server
+.next/
+craw/.next/
 
 # ai_supporter tools
 tools/.venv/

@@ -31,6 +31,56 @@ var (
 	currentIdx   int
 )
 
+// ── Display 상태 파일 영속화 ──
+
+func displayStatePath() string {
+	execPath := path.ExecutePath("easyPreparation")
+	return filepath.Join(execPath, "data", "display_state.json")
+}
+
+// saveDisplayState — 현재 order+idx를 파일에 저장 (orderMu 잠긴 상태에서 호출하지 말 것)
+func saveDisplayState() {
+	orderMu.RLock()
+	state := map[string]interface{}{
+		"items": currentOrder,
+		"idx":   currentIdx,
+	}
+	orderMu.RUnlock()
+
+	data, err := json.Marshal(state)
+	if err != nil {
+		log.Printf("[display] 상태 저장 실패 (marshal): %v", err)
+		return
+	}
+	if err := os.WriteFile(displayStatePath(), data, 0644); err != nil {
+		log.Printf("[display] 상태 저장 실패 (write): %v", err)
+	}
+}
+
+// LoadDisplayState — 서버 시작 시 파일에서 복원
+func LoadDisplayState() {
+	data, err := os.ReadFile(displayStatePath())
+	if err != nil {
+		return // 파일 없으면 무시
+	}
+	var state struct {
+		Items []map[string]interface{} `json:"items"`
+		Idx   int                      `json:"idx"`
+	}
+	if err := json.Unmarshal(data, &state); err != nil {
+		log.Printf("[display] 상태 복원 실패: %v", err)
+		return
+	}
+	if len(state.Items) == 0 {
+		return
+	}
+	orderMu.Lock()
+	currentOrder = state.Items
+	currentIdx = state.Idx
+	orderMu.Unlock()
+	log.Printf("[display] 상태 복원: %d개 항목, idx=%d", len(state.Items), state.Idx)
+}
+
 // ── 서버 사이드 자동 넘김 타이머 ──
 var (
 	timerMu          sync.Mutex
@@ -309,7 +359,7 @@ function showSlide(i) {
 
   // 성경 본문 → 텍스트 페이지 분할
   if ((item.info || '').startsWith('b_') && item.contents) {
-    subPages = paginate(item.contents, 5);
+    subPages = paginate(item.contents, 3);
   }
   // 신앙고백 본문 → 페이지 분할
   else if (itemTitle === '신앙고백' && item.contents) {
@@ -539,6 +589,7 @@ func UpdateDisplayIdx(newIdx int) {
 	defer orderMu.Unlock()
 	if newIdx >= 0 && newIdx < len(currentOrder) {
 		currentIdx = newIdx
+		go saveDisplayState()
 	}
 }
 
@@ -759,19 +810,41 @@ func OnPositionUpdate(newIdx, newSubPage int) {
 	}
 }
 
-// ── /display/lyrics — OBS 가사 오버레이 전용 ──
+// ── /display/overlay — OBS 방송용 텍스트 오버레이 ──
 
-const displayLyricsHTML = `<!DOCTYPE html>
+const displayOverlayHTML = `<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>Display Lyrics</title>
+<title>Display Overlay</title>
 <style>
+  :root {
+    --overlay-font-size: 42px;
+    --overlay-line-height: 1.7;
+    --overlay-font-weight: 600;
+    --overlay-color: #fff;
+    --overlay-text-shadow: 0 2px 12px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.7);
+    --overlay-position: flex-end;
+    --overlay-padding: 40px 60px;
+    --overlay-bg: rgba(0,0,0,0.75);
+    --overlay-bg-radius: 16px;
+    --overlay-bg-padding: 28px 40px;
+    --title-font-size: 48px;
+    --title-font-weight: 700;
+    --sub-font-size: 32px;
+    --sub-color: rgba(255,255,255,0.8);
+    --ref-font-size: 24px;
+    --ref-color: rgba(255,255,255,0.7);
+    --bible-font-size: 34px;
+    --bible-line-height: 1.8;
+    --transition-speed: 0.4s;
+  }
+
   * { margin:0; padding:0; box-sizing:border-box; }
   html, body {
     width:100%; height:100%;
     background:transparent;
-    color:#fff;
+    color:var(--overlay-color);
     font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif;
     overflow:hidden;
     user-select:none;
@@ -780,43 +853,62 @@ const displayLyricsHTML = `<!DOCTYPE html>
   #slide {
     width:100%; height:100vh;
     display:flex; flex-direction:column;
-    justify-content:center; align-items:center;
-    padding:5vh 6vw;
+    justify-content:var(--overlay-position);
+    align-items:center;
+    padding:var(--overlay-padding);
     position:relative;
     opacity:0;
-    transition:opacity 0.4s ease;
+    transition:opacity var(--transition-speed) ease;
   }
   #slide.visible { opacity:1; }
 
+  .overlay-box {
+    background:var(--overlay-bg);
+    border-radius:var(--overlay-bg-radius);
+    padding:var(--overlay-bg-padding);
+    display:flex; flex-direction:column;
+    align-items:flex-start;
+    width:1500px;
+  }
+  .overlay-box.center { align-items:center; }
+
   .lyrics-overlay {
-    font-size:5.5vh; line-height:1.8;
-    text-align:center; color:#fff;
+    font-size:var(--overlay-font-size);
+    line-height:var(--overlay-line-height);
+    text-align:center;
+    width:100%;
+    color:var(--overlay-color);
     white-space:pre-wrap;
-    font-weight:600;
-    text-shadow:0 2px 12px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.7);
+    font-weight:var(--overlay-font-weight);
+    text-shadow:var(--overlay-text-shadow);
   }
 
   .bible-overlay-ref {
-    font-size:2.6vh; color:rgba(255,255,255,0.7);
-    margin-bottom:2vh; text-align:center;
-    text-shadow:0 1px 6px rgba(0,0,0,0.8);
+    font-size:var(--ref-font-size);
+    color:var(--ref-color);
+    margin-bottom:2vh; text-align:left;
+    text-shadow:var(--overlay-text-shadow);
   }
   .bible-overlay-text {
-    font-size:3.6vh; line-height:1.9;
-    text-align:center; color:#fff;
+    font-size:var(--bible-font-size);
+    line-height:var(--bible-line-height);
+    text-align:left;
+    color:var(--overlay-color);
     white-space:pre-wrap;
-    text-shadow:0 2px 10px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.7);
+    text-shadow:var(--overlay-text-shadow);
   }
 
   .title-overlay {
-    font-size:6vh; font-weight:700;
-    text-align:center;
-    text-shadow:0 3px 14px rgba(0,0,0,0.9);
+    font-size:var(--title-font-size);
+    font-weight:var(--title-font-weight);
+    text-align:left;
+    text-shadow:var(--overlay-text-shadow);
   }
   .sub-overlay {
-    font-size:3.6vh; color:rgba(255,255,255,0.8);
-    margin-top:1.5vh; text-align:center;
-    text-shadow:0 2px 8px rgba(0,0,0,0.8);
+    font-size:var(--sub-font-size);
+    color:var(--sub-color);
+    margin-top:1.5vh; text-align:left;
+    text-shadow:var(--overlay-text-shadow);
   }
 </style>
 </head>
@@ -880,7 +972,7 @@ function showSlide(i) {
   const itemTitle = item.title || '';
 
   if ((item.info || '').startsWith('b_') && item.contents) {
-    subPages = paginate(item.contents, 5);
+    subPages = paginate(item.contents, 3);
   } else if (itemTitle === '신앙고백' && item.contents) {
     subPages = paginate(item.contents, 10);
   } else if (itemTitle === '주기도문' && item.contents) {
@@ -917,52 +1009,67 @@ function renderLyricsItem(item, pageIdx) {
   const title    = item.title    || '';
   const obj      = item.obj      || '';
   const contents = item.contents || '';
+  const lead     = item.lead     || '';
+  const bibleRef = item.bibleRef || '';
   const lyricsMap = item.lyricsMap || [];
 
   slide.className = 'visible';
 
-  // 1. 찬송/헌금봉헌 — lyricsMap 기반 가사 표시
+  // 0. 말씀
+  if (title === '말씀') {
+    var sermonTitle = (obj && obj !== '-') ? obj : '';
+    slide.innerHTML = '<div class="overlay-box">' +
+      '<div class="title-overlay">' + esc(sermonTitle || title) + '</div>' +
+      (lead ? '<div class="sub-overlay">' + esc(lead) + '</div>' : '') +
+      (bibleRef ? '<div class="sub-overlay" style="margin-top:1vh;font-size:2.8vh;color:rgba(255,255,255,0.6);">' + esc(bibleRef) + '</div>' : '') +
+      '</div>';
+    return;
+  }
+
+  // 1. 찬송/헌금봉헌
   if (title === '찬송' || title === '헌금봉헌') {
     if (pageIdx === 0) {
-      // 표지: 곡번호
-      slide.innerHTML = '<div class="title-overlay">' + esc(obj) + '</div>';
+      slide.innerHTML = '<div class="overlay-box center"><div class="title-overlay" style="text-align:center;width:100%">' + esc(obj) + '</div></div>';
       return;
     }
     var lyric = (pageIdx - 1 < lyricsMap.length) ? lyricsMap[pageIdx - 1] : '';
-    slide.innerHTML = '<div class="lyrics-overlay">' + esc(lyric) + '</div>';
+    slide.innerHTML = '<div class="overlay-box center"><div class="lyrics-overlay">' + esc(lyric) + '</div></div>';
     return;
   }
 
   // 2. 가사 슬라이드 (lyrics_display)
   if (info === 'lyrics_display' && subPages.length > 0) {
     var lyricsPage = subPages[pageIdx] || '';
-    slide.innerHTML = '<div class="lyrics-overlay">' + esc(lyricsPage) + '</div>';
+    slide.innerHTML = '<div class="overlay-box center"><div class="lyrics-overlay">' + esc(lyricsPage) + '</div></div>';
     return;
   }
 
   // 3. 성경 본문
   if (info.startsWith('b_') && contents) {
     var page = subPages[pageIdx] || contents;
-    slide.innerHTML =
+    slide.innerHTML = '<div class="overlay-box">' +
       '<div class="bible-overlay-ref">' + esc(obj) + '</div>' +
-      '<div class="bible-overlay-text">' + esc(page) + '</div>';
+      '<div class="bible-overlay-text">' + esc(page) + '</div>' +
+      '</div>';
     return;
   }
 
   // 4. 신앙고백/주기도문
   if ((title === '신앙고백' || title === '주기도문') && contents) {
     var creedPage = subPages.length > 0 ? (subPages[pageIdx] || contents) : contents;
-    slide.innerHTML =
+    slide.innerHTML = '<div class="overlay-box">' +
       '<div class="title-overlay">' + esc(title) + '</div>' +
-      '<div class="sub-overlay" style="white-space:pre-wrap;margin-top:3vh;">' + esc(creedPage) + '</div>';
+      '<div class="sub-overlay" style="white-space:pre-wrap;margin-top:3vh;">' + esc(creedPage) + '</div>' +
+      '</div>';
     return;
   }
 
-  // 5. 기타 — 제목만
+  // 5. 기타
   var subText = (obj && obj !== '-') ? obj : '';
-  slide.innerHTML =
+  slide.innerHTML = '<div class="overlay-box">' +
     '<div class="title-overlay">' + esc(title) + '</div>' +
-    (subText ? '<div class="sub-overlay">' + esc(subText) + '</div>' : '');
+    (subText ? '<div class="sub-overlay">' + esc(subText) + '</div>' : '') +
+    '</div>';
 }
 
 function paginate(text, linesPerPage) {
@@ -985,11 +1092,11 @@ connect();
 </body>
 </html>`
 
-// DisplayLyricsHandler — GET /display/lyrics
-func DisplayLyricsHandler(w http.ResponseWriter, r *http.Request) {
+// DisplayOverlayHandler — GET /display/overlay
+func DisplayOverlayHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
-	_, _ = w.Write([]byte(displayLyricsHTML))
+	_, _ = w.Write([]byte(displayOverlayHTML))
 }
 
 // DisplayHandler — GET /display
@@ -1059,6 +1166,21 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 		order[i] = preprocessItem(item)
 	}
 
+	// 말씀 항목에 직전 성경봉독의 구절 참조를 bibleRef로 주입
+	var lastBibleRef string
+	for i := range order {
+		title, _ := order[i]["title"].(string)
+		info, _ := order[i]["info"].(string)
+		if strings.HasPrefix(info, "b_") && title != "말씀" {
+			if ref, ok := order[i]["obj"].(string); ok && ref != "" && ref != "-" {
+				lastBibleRef = ref
+			}
+		}
+		if title == "말씀" && lastBibleRef != "" {
+			order[i]["bibleRef"] = lastBibleRef
+		}
+	}
+
 	// 새 순서 로드 시 타이머 초기화
 	stopServerTimer()
 
@@ -1073,6 +1195,7 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	BroadcastMessage("order", map[string]interface{}{"items": order})
+	go saveDisplayState()
 
 	// OBS: 첫 항목 씬 전환
 	if len(order) > 0 {
@@ -1249,6 +1372,7 @@ func DisplayLyricsOrderHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	BroadcastMessage("order", map[string]interface{}{"items": order})
+	go saveDisplayState()
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "count": len(order)})
@@ -1371,6 +1495,7 @@ func DisplayAppendHandler(w http.ResponseWriter, r *http.Request) {
 	orderMu.RUnlock()
 
 	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx})
+	go saveDisplayState()
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "count": len(order)})
@@ -1418,6 +1543,7 @@ func DisplayRemoveHandler(w http.ResponseWriter, r *http.Request) {
 	orderMu.Unlock()
 
 	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx})
+	go saveDisplayState()
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "count": len(order)})
@@ -1492,6 +1618,81 @@ func DisplayTimerHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+}
+
+// DisplayReorderHandler — POST /display/reorder
+// 순서 목록에서 항목 위치 이동 (드래그 앤 드롭)
+func DisplayReorderHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var payload struct {
+		From int `json:"from"`
+		To   int `json:"to"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	orderMu.Lock()
+	n := len(currentOrder)
+	if payload.From < 0 || payload.From >= n || payload.To < 0 || payload.To >= n {
+		orderMu.Unlock()
+		http.Error(w, "Index out of range", http.StatusBadRequest)
+		return
+	}
+
+	// 새 슬라이스에 복사 (원본 배열 변경 방지)
+	newOrder := make([]map[string]interface{}, 0, n)
+	item := currentOrder[payload.From]
+	for i, v := range currentOrder {
+		if i == payload.From {
+			continue
+		}
+		if len(newOrder) == payload.To {
+			newOrder = append(newOrder, item)
+		}
+		newOrder = append(newOrder, v)
+	}
+	if len(newOrder) == payload.To {
+		newOrder = append(newOrder, item)
+	}
+	currentOrder = newOrder
+
+	// currentIdx 보정
+	if currentIdx == payload.From {
+		currentIdx = payload.To
+	} else {
+		if payload.From < currentIdx {
+			currentIdx--
+		}
+		if payload.To <= currentIdx {
+			currentIdx++
+		}
+	}
+	if currentIdx < 0 {
+		currentIdx = 0
+	} else if currentIdx >= n {
+		currentIdx = n - 1
+	}
+
+	idx := currentIdx
+	order := make([]map[string]interface{}, len(currentOrder))
+	copy(order, currentOrder)
+	orderMu.Unlock()
+
+	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx})
+	go saveDisplayState()
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "count": len(order)})
 }
 
 // DisplayStatusHandler — GET /display/status
@@ -1606,9 +1807,9 @@ func buildSections(item map[string]interface{}) map[string]interface{} {
 		return item
 	}
 
-	// 1. 성경 본문 → 5줄 단위 페이징
+	// 1. 성경 본문 → 3줄 단위 페이징
 	if strings.HasPrefix(info, "b_") && contents != "" {
-		pages := paginateText(contents, 5)
+		pages := paginateText(contents, 3)
 		if len(pages) > 1 {
 			item["sections"] = buildTextSections(pages)
 		}
@@ -2045,23 +2246,11 @@ func mapLyricsToPages(verses []string, pageCount int) []string {
 		chunks = append(chunks, splitIntoChunks(v, 2)...)
 	}
 
+	// 항상 1개 청크(2줄)만 선택 — 페이지 위치에 맞는 대표 청크
 	result := make([]string, pageCount)
-	if pageCount >= len(chunks) {
-		// 페이지가 청크보다 많거나 같음 → 균등 분배
-		for i := 0; i < pageCount; i++ {
-			chunkIdx := i * len(chunks) / pageCount
-			result[i] = chunks[chunkIdx]
-		}
-	} else {
-		// 청크가 페이지보다 많음 → 여러 청크를 합침
-		for i := 0; i < pageCount; i++ {
-			start := i * len(chunks) / pageCount
-			end := (i + 1) * len(chunks) / pageCount
-			if end > len(chunks) {
-				end = len(chunks)
-			}
-			result[i] = strings.Join(chunks[start:end], "\n")
-		}
+	for i := 0; i < pageCount; i++ {
+		chunkIdx := i * len(chunks) / pageCount
+		result[i] = chunks[chunkIdx]
 	}
 	return result
 }

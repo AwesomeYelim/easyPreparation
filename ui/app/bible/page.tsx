@@ -184,19 +184,32 @@ export default function BiblePage() {
   const lastClickedRef = useRef<number | null>(null);
 
   const handleVerseClick = useCallback((e: React.MouseEvent, verse: number) => {
-    setSelectedVerses((prev) => {
-      const next = new Set(prev);
-      if (e.shiftKey && lastClickedRef.current !== null) {
-        const lo = Math.min(lastClickedRef.current, verse);
-        const hi = Math.max(lastClickedRef.current, verse);
-        for (let v = lo; v <= hi; v++) next.add(v);
-      } else {
+    if (e.shiftKey && lastClickedRef.current !== null) {
+      e.preventDefault();
+      const lo = Math.min(lastClickedRef.current, verse);
+      const hi = Math.max(lastClickedRef.current, verse);
+      setSelectedVerses((prev) => {
+        const next = new Set(prev);
+        // 범위가 모두 선택된 상태면 해제, 아니면 선택
+        let allSelected = true;
+        for (let v = lo; v <= hi; v++) {
+          if (!next.has(v)) { allSelected = false; break; }
+        }
+        for (let v = lo; v <= hi; v++) {
+          if (allSelected) next.delete(v);
+          else next.add(v);
+        }
+        return next;
+      });
+    } else {
+      lastClickedRef.current = verse;
+      setSelectedVerses((prev) => {
+        const next = new Set(prev);
         if (next.has(verse)) next.delete(verse);
         else next.add(verse);
-      }
-      lastClickedRef.current = verse;
-      return next;
-    });
+        return next;
+      });
+    }
   }, []);
 
   const groupRanges = useCallback((verses: number[]): [number, number][] => {

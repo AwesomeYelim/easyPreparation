@@ -342,6 +342,8 @@
   border-radius: 4px;
   cursor: pointer;
   transition: background 0.12s;
+  user-select: none;
+  -webkit-user-select: none;
 
   &:hover { background: #f1f5f9; }
 
@@ -515,6 +517,8 @@
   cursor: pointer;
   transition: background 0.12s;
   align-items: baseline;
+  user-select: none;
+  -webkit-user-select: none;
 
   &:hover { background: #f1f5f9; }
   &.selected {

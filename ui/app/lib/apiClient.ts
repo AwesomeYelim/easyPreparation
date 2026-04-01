@@ -100,6 +100,13 @@ export const apiClient = {
       body: JSON.stringify({ index }),
     }),
 
+  reorderDisplay: (from: number, to: number) =>
+    fetch(`${BASE_URL}/display/reorder`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ from, to }),
+    }),
+
   downloadFile: (fileName: string) => {
     const link = document.createElement("a");
     link.href = `${BASE_URL}/download?target=${fileName}`;

@@ -15,8 +15,36 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true }, // CORS 허용
 }
 
-var clients = make(map[*websocket.Conn]bool)
+// 커넥션별 write mutex — gorilla/websocket은 동시 쓰기 불가
+type wsClient struct {
+	conn *websocket.Conn
+	mu   sync.Mutex
+}
+
+var clients = make(map[*websocket.Conn]*wsClient)
 var clientsMu sync.Mutex
+
+func addClient(conn *websocket.Conn) *wsClient {
+	c := &wsClient{conn: conn}
+	clientsMu.Lock()
+	clients[conn] = c
+	clientsMu.Unlock()
+	return c
+}
+
+func removeClient(conn *websocket.Conn) {
+	clientsMu.Lock()
+	delete(clients, conn)
+	clientsMu.Unlock()
+}
+
+// safeWrite — 커넥션별 mutex로 동시 쓰기 방지
+func (c *wsClient) safeWrite(msg []byte) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	_ = c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	return c.conn.WriteMessage(websocket.TextMessage, msg)
+}
 
 // WebSocket 핸들러
 func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
@@ -27,10 +55,7 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	clientsMu.Lock()
-	clients[conn] = true
-	clientsMu.Unlock()
-
+	wsc := addClient(conn)
 	fmt.Println("WebSocket client connected")
 
 	// 새 클라이언트에게 현재 order + idx 전송 (display 창이 늦게 연결되어도 동작)
@@ -41,7 +66,7 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			"items": currentOrder,
 			"idx":   currentIdx,
 		})
-		_ = conn.WriteMessage(websocket.TextMessage, msg)
+		_ = wsc.safeWrite(msg)
 	}
 	orderMu.RUnlock()
 
@@ -52,9 +77,7 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			clientsMu.Lock()
-			delete(clients, conn)
-			clientsMu.Unlock()
+			removeClient(conn)
 			fmt.Println("WebSocket client disconnected")
 			break
 		}
@@ -92,29 +115,27 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 // broadcastTo — 공통 브로드캐스트 (except가 nil이면 전체 전송)
 func broadcastTo(msgBytes []byte, except *websocket.Conn) {
 	clientsMu.Lock()
-	// 클라이언트 목록 복사 → lock 잡은 채 I/O 하지 않기 위해
-	snapshot := make([]*websocket.Conn, 0, len(clients))
-	for c := range clients {
+	snapshot := make([]*wsClient, 0, len(clients))
+	for _, c := range clients {
 		snapshot = append(snapshot, c)
 	}
 	clientsMu.Unlock()
 
 	var failed []*websocket.Conn
 	for _, c := range snapshot {
-		if c == except {
+		if c.conn == except {
 			continue
 		}
-		_ = c.SetWriteDeadline(time.Now().Add(5 * time.Second))
-		if err := c.WriteMessage(websocket.TextMessage, msgBytes); err != nil {
-			c.Close()
-			failed = append(failed, c)
+		if err := c.safeWrite(msgBytes); err != nil {
+			c.conn.Close()
+			failed = append(failed, c.conn)
 		}
 	}
 
 	if len(failed) > 0 {
 		clientsMu.Lock()
-		for _, c := range failed {
-			delete(clients, c)
+		for _, conn := range failed {
+			delete(clients, conn)
 		}
 		clientsMu.Unlock()
 	}
@@ -169,6 +190,5 @@ func BroadcastProgress(target string, code int, message string) {
 		"code":    code,
 		"message": message,
 	})
-	log.Printf(message)
-
+	log.Print(message)
 }
