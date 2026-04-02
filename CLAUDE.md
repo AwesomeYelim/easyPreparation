@@ -35,10 +35,14 @@ Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF 생성, Google Drive
 `/display` — OBS Browser Source 또는 별도 창으로 예배 슬라이드 표시.
 
 - 항목별 렌더링: 성경본문, 찬송(이미지), 교독(이미지), 대표기도, 신앙고백(사도신경), 참회의기도, 말씀, 교회소식
-- 찬송/교독: Google Drive PDF → Ghostscript PNG 변환 → `data/hymn/`, `data/responsive_reading/` 캐시
+- 찬송/헌금봉헌: Google Drive PDF → Ghostscript PNG 변환 → `data/hymn/` 캐시, 표지+이미지 페이지
+- 성시교독: Google Drive PDF → PNG, 표지 없이 이미지만 바로 표시
 - 성경: DB 자동 조회, 3절 단위 페이징
-- 배경: Figma 이미지 (`output/lyrics/tmp/Frame 1.png`) + 어두운 오버레이
-- **상태 영속화**: `data/display_state.json`에 order+idx 자동 저장, 서버 재시작 시 복원
+- 주기도문: 7줄 축약, 한 화면 표시 (페이지 분할 없음)
+- **배경 이미지**: 기본 Figma 배경 (`output/lyrics/tmp/Frame 1.png`) + 어두운 오버레이
+- **항목별 커스텀 배경**: `output/bulletin/presentation/tmp/{title}.png` — 전주, 찬양, 참회의 기도 3개 자동 매핑
+- **교회명 박스**: 커스텀 배경 항목에 영문 교회명 표시 (JacquesFrancois 폰트, 우하단 opacity 박스)
+- **상태 영속화**: `data/display_state.json`에 order+idx+churchName 자동 저장, 서버 재시작 시 복원
 
 ### 가사 오버레이 (Display Overlay)
 `/display/overlay` — OBS Browser Source로 방송 화면에 가사/성경 텍스트 오버레이.
@@ -57,6 +61,9 @@ Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF 생성, Google Drive
 
 ### OBS WebSocket
 `internal/obs/obs.go` — 싱글턴 매니저, 자동 재연결(5초), `config/obs.json` 없으면 no-op.
+- 씬 매핑: `config/obs.json`의 `scenes` 맵으로 항목 title → OBS 씬 전환
+- 매핑 없는 항목은 씬 전환 스킵 (default fallback 없음)
+- `resolveScene` → `(string, bool)` 반환
 
 ### 제어 패널 UI
 `ui/app/bulletin/components/DisplayControlPanel.tsx` — 예배 순서 목록 + 클릭 점프 + 드래그 앤 드롭 순서 변경 + OBS 상태.
@@ -69,7 +76,8 @@ Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF 생성, Google Drive
 |--------|------|------|
 | GET | /display | 슬라이드 HTML (프로젝터용 — 악보 이미지 포함) |
 | GET | /display/overlay | 텍스트 오버레이 HTML (방송용 — 반투명 배경) |
-| POST | /display/order | 예배 순서 전송 — 전체 교체 (성경/찬송 자동 전처리) |
+| GET | /display/font/{name} | 폰트 파일 서빙 (public/font/) |
+| POST | /display/order | 예배 순서 전송 — `{items, churchName}` 또는 배열 (성경/찬송 자동 전처리) |
 | POST | /display/append | 항목 추가 — 기존 순서 뒤에 추가 (가사/성경 탭 사용) |
 | POST | /display/remove | 항목 삭제 — 인덱스 기반 제거 |
 | POST | /display/reorder | 항목 순서 변경 — 드래그 앤 드롭 ({from, to}) |
@@ -126,7 +134,9 @@ PYTHONUTF8=1 tools/.venv/bin/python tools/output/_tmp.py && rm tools/output/_tmp
 | 찬송 PDF 캐시 | `data/hymn/` |
 | 교독 PDF 캐시 | `data/responsive_reading/` |
 | Figma 이미지 캐시 | `output/bulletin/presentation/tmp/` |
+| 항목별 배경 이미지 | `output/bulletin/presentation/tmp/{title}.png` (전주, 찬양, 참회의 기도) |
 | Display PNG 캐시 | `output/display/tmp/` |
+| Display 상태 파일 | `data/display_state.json` (order + idx + churchName) |
 
 ---
 
