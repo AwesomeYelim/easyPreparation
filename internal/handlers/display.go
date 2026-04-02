@@ -11,6 +11,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,9 +27,10 @@ import (
 
 // 현재 예배 순서 메모리 저장
 var (
-	orderMu      sync.RWMutex
-	currentOrder []map[string]interface{}
-	currentIdx   int
+	orderMu          sync.RWMutex
+	currentOrder     []map[string]interface{}
+	currentIdx       int
+	displayChurchName string
 )
 
 // ── Display 상태 파일 영속화 ──
@@ -42,8 +44,9 @@ func displayStatePath() string {
 func saveDisplayState() {
 	orderMu.RLock()
 	state := map[string]interface{}{
-		"items": currentOrder,
-		"idx":   currentIdx,
+		"items":      currentOrder,
+		"idx":        currentIdx,
+		"churchName": displayChurchName,
 	}
 	orderMu.RUnlock()
 
@@ -64,8 +67,9 @@ func LoadDisplayState() {
 		return // 파일 없으면 무시
 	}
 	var state struct {
-		Items []map[string]interface{} `json:"items"`
-		Idx   int                      `json:"idx"`
+		Items      []map[string]interface{} `json:"items"`
+		Idx        int                      `json:"idx"`
+		ChurchName string                   `json:"churchName"`
 	}
 	if err := json.Unmarshal(data, &state); err != nil {
 		log.Printf("[display] 상태 복원 실패: %v", err)
@@ -77,6 +81,7 @@ func LoadDisplayState() {
 	orderMu.Lock()
 	currentOrder = state.Items
 	currentIdx = state.Idx
+	displayChurchName = state.ChurchName
 	orderMu.Unlock()
 	log.Printf("[display] 상태 복원: %d개 항목, idx=%d", len(state.Items), state.Idx)
 }
@@ -93,18 +98,12 @@ var (
 )
 
 const lordsPrayer = `하늘에 계신 우리 아버지,
-아버지의 이름을 거룩하게 하시며,
-아버지의 나라가 오게 하시며,
-아버지의 뜻이 하늘에서와 같이
-땅에서도 이루어지게 하소서.
+아버지의 이름을 거룩하게 하시며, 아버지의 나라가 오게 하시며,
+아버지의 뜻이 하늘에서와 같이 땅에서도 이루어지게 하소서.
 오늘 우리에게 일용할 양식을 주시고,
-우리가 우리에게 잘못한 사람을
-용서하여 준 것같이
-우리 죄를 용서하여 주시고,
-우리를 시험에 빠지지 않게 하시고,
-악에서 구하소서.
-나라와 권능과 영광이
-영원히 아버지의 것입니다. 아멘.`
+우리가 우리에게 잘못한 사람을 용서하여 준 것같이 우리 죄를 용서하여 주시고,
+우리를 시험에 빠지지 않게 하시고, 악에서 구하소서.
+나라와 권능과 영광이 영원히 아버지의 것입니다. 아멘.`
 
 const apostlesCreed = `나는 전능하신 아버지 하나님, 천지의 창조주를 믿습니다.
 나는 그의 유일하신 아들, 우리 주 예수 그리스도를 믿습니다.
@@ -123,6 +122,11 @@ const displayHTML = `<!DOCTYPE html>
 <meta charset="UTF-8">
 <title>Display</title>
 <style>
+  @font-face {
+    font-family:'JacquesFrancois';
+    src:url('/display/font/JacquesFrancois-regular.ttf') format('truetype');
+    font-weight:400; font-style:normal;
+  }
   * { margin:0; padding:0; box-sizing:border-box; }
   html, body {
     width:100%; height:100%;
@@ -278,6 +282,17 @@ const displayHTML = `<!DOCTYPE html>
     font-size:2vh; color:rgba(255,255,255,0.35);
   }
 
+  /* 교회명 (우하단) */
+  .church-box {
+    position:absolute; right:0; bottom:0;
+    background:rgba(60,55,50,0.55);
+    padding:1.2vh 2vw;
+    font-family:'JacquesFrancois',serif;
+    font-size:3.2vh; color:#fff;
+    font-weight:400;
+    letter-spacing:0.1em;
+  }
+
 </style>
 </head>
 <body>
@@ -290,6 +305,7 @@ let slides = [];
 let idx = 0;
 let subPages = [];   // 성경 본문 or 이미지 페이지
 let subPageIdx = 0;
+let churchName = '';
 
 /* ───── WebSocket ───── */
 function connect() {
@@ -300,7 +316,7 @@ function connect() {
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
     console.log('[Display] WS msg:', msg.type, msg.items ? msg.items.length + ' items' : '');
-    if (msg.type === 'order') loadOrder(msg.items, msg.idx);
+    if (msg.type === 'order') { if (msg.churchName) churchName = msg.churchName; loadOrder(msg.items, msg.idx); }
     if (msg.type === 'navigate') {
       if (msg.direction === 'jump' && typeof msg.idx === 'number') {
         showSlide(msg.idx);
@@ -365,15 +381,15 @@ function showSlide(i) {
   else if (itemTitle === '신앙고백' && item.contents) {
     subPages = paginate(item.contents, 10);
   }
-  // 주기도문 본문 → 페이지 분할
-  else if (itemTitle === '주기도문' && item.contents) {
-    subPages = paginate(item.contents, 10);
-  }
   // 가사 슬라이드 (텍스트 페이지)
   else if ((item.info || '') === 'lyrics_display' && item.pages && item.pages.length > 0) {
     subPages = item.pages;
   }
-  // 찬송/교독 이미지 → 표지 + 이미지 페이지
+  // 성시교독 → 이미지만 (표지 없음)
+  else if (itemTitle === '성시교독' && item.images && item.images.length > 0) {
+    subPages = item.images;
+  }
+  // 찬송/헌금봉헌 이미지 → 표지 + 이미지 페이지
   else if (item.images && item.images.length > 0) {
     subPages = ['__cover__'].concat(item.images);
   }
@@ -424,16 +440,25 @@ function renderItem(item, pageIdx) {
   const lead     = item.lead     || '';
   const contents = item.contents || '';
   const images   = item.images   || [];
+  const bgImage  = item.bgImage  || '';
 
-  slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.4)), url('/display/bg')";
+  // 항목별 배경 이미지 (있으면 사용, 없으면 기본)
+  // 컨텐츠 항목은 어두운 오버레이로 가독성 확보 (default 케이스에서 이미지 전용 항목은 재설정)
+  if (bgImage) {
+    slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.35),rgba(0,0,0,0.35)), url('" + bgImage + "')";
+  } else {
+    slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.4)), url('/display/bg')";
+  }
   slide.className = 'visible';
 
   const posText = slides.length ? (idx + 1) + ' / ' + slides.length : '';
   const pageText = subPages.length > 1 ? (subPageIdx + 1) + ' / ' + subPages.length : '';
+  const churchBox = (bgImage && churchName) ? '<div class="church-box">' + esc(churchName) + '</div>' : '';
   const footer =
     '<div class="divider"></div>' +
     '<div class="slide-pos">' + posText + '</div>' +
-    (pageText ? '<div class="page-indicator">' + pageText + '</div>' : '');
+    (pageText ? '<div class="page-indicator">' + pageText + '</div>' : '') +
+    churchBox;
   const header =
     '<div class="label">' + esc(lead) + '</div>' +
     '<div class="order-title">' + esc(title) + '</div>';
@@ -474,12 +499,12 @@ function renderItem(item, pageIdx) {
     return;
   }
 
-  // ── 3. 성시교독 (표지 + 이미지 페이지) ──
+  // ── 3. 성시교독 (이미지만 — 표지 없이 바로 이미지) ──
   if (title === '성시교독') {
-    if (images.length > 0 && pageIdx > 0) {
+    if (images.length > 0) {
       slide.style.backgroundImage = 'none';
       slide.innerHTML =
-        '<img class="slide-image" src="' + images[pageIdx - 1] + '">' +
+        '<img class="slide-image" src="' + images[Math.min(pageIdx, images.length - 1)] + '">' +
         footer;
       return;
     }
@@ -519,10 +544,10 @@ function renderItem(item, pageIdx) {
     return;
   }
 
-  // ── 6. 참회의 기도 (좌정렬 멀티라인) ──
+  // ── 6. 참회의 기도 (좌정렬 멀티라인, bgImage 있으면 제목 생략) ──
   if (title === '참회의 기도') {
     slide.innerHTML = header +
-      '<div class="title">' + esc(title) + '</div>' +
+      (bgImage ? '' : '<div class="title">' + esc(title) + '</div>') +
       '<div class="confession-text">' + esc(obj !== '-' ? obj : '') + '</div>' +
       footer;
     return;
@@ -546,7 +571,13 @@ function renderItem(item, pageIdx) {
     return;
   }
 
-  // ── 8. 기본 (전주, 개회기도, 신앙고백, 기도, 축도 등) ──
+  // ── 8. 기본 (전주, 예배의 부름, 축도 등) ──
+  // 배경 이미지가 있는 단순 항목은 이미지만 표시 (제목 텍스트가 이미지에 포함)
+  if (bgImage) {
+    slide.style.backgroundImage = "url('" + bgImage + "')";
+    slide.innerHTML = churchBox;
+    return;
+  }
   var mainText = (obj && obj !== '-') ? obj : '';
   slide.innerHTML = header +
     '<div class="title">' + esc(title) + '</div>' +
@@ -631,8 +662,13 @@ func calcSlideDelay() int {
 		return 60
 	}
 
-	// 찬송/교독 이미지: 커버 5초, 나머지 15초
-	if title == "찬송" || title == "헌금봉헌" || title == "성시교독" {
+	// 성시교독: 표지 없음, 이미지만 15초
+	if title == "성시교독" {
+		return 15
+	}
+
+	// 찬송/헌금봉헌 이미지: 커버 5초, 나머지 15초
+	if title == "찬송" || title == "헌금봉헌" {
 		hasImages := false
 		if imgs, ok := item["images"].([]string); ok && len(imgs) > 0 {
 			hasImages = true
@@ -975,10 +1011,10 @@ function showSlide(i) {
     subPages = paginate(item.contents, 3);
   } else if (itemTitle === '신앙고백' && item.contents) {
     subPages = paginate(item.contents, 10);
-  } else if (itemTitle === '주기도문' && item.contents) {
-    subPages = paginate(item.contents, 10);
   } else if ((item.info || '') === 'lyrics_display' && item.pages && item.pages.length > 0) {
     subPages = item.pages;
+  } else if (itemTitle === '성시교독' && item.images && item.images.length > 0) {
+    subPages = item.images;
   } else if (item.images && item.images.length > 0) {
     subPages = ['__cover__'].concat(item.images);
   }
@@ -1018,11 +1054,26 @@ function renderLyricsItem(item, pageIdx) {
   // 0. 말씀
   if (title === '말씀') {
     var sermonTitle = (obj && obj !== '-') ? obj : '';
-    slide.innerHTML = '<div class="overlay-box">' +
-      '<div class="title-overlay">' + esc(sermonTitle || title) + '</div>' +
-      (lead ? '<div class="sub-overlay">' + esc(lead) + '</div>' : '') +
-      (bibleRef ? '<div class="sub-overlay" style="margin-top:1vh;font-size:2.8vh;color:rgba(255,255,255,0.6);">' + esc(bibleRef) + '</div>' : '') +
+    slide.innerHTML = '<div class="overlay-box center">' +
+      '<div class="title-overlay" style="text-align:center;width:100%">' + esc(sermonTitle || title) + '</div>' +
+      (lead ? '<div class="sub-overlay" style="text-align:center;width:100%">' + esc(lead) + '</div>' : '') +
+      (bibleRef ? '<div class="sub-overlay" style="text-align:center;width:100%;margin-top:1vh;font-size:2.8vh;color:rgba(255,255,255,0.6);">' + esc(bibleRef) + '</div>' : '') +
       '</div>';
+    return;
+  }
+
+  // 0b. 대표기도
+  if (title === '대표기도') {
+    slide.innerHTML = '<div class="overlay-box center">' +
+      '<div class="title-overlay" style="text-align:center;width:100%">' + esc(title) + '</div>' +
+      (lead ? '<div class="sub-overlay" style="text-align:center;width:100%;font-size:var(--title-font-size);font-weight:700;margin-top:2vh;">' + esc(lead) + '</div>' : '') +
+      '</div>';
+    return;
+  }
+
+  // 1a. 성시교독 — 오버레이 표시 없음 (이미지만 프로젝터에 표시)
+  if (title === '성시교독') {
+    slide.innerHTML = '';
     return;
   }
 
@@ -1057,18 +1108,18 @@ function renderLyricsItem(item, pageIdx) {
   // 4. 신앙고백/주기도문
   if ((title === '신앙고백' || title === '주기도문') && contents) {
     var creedPage = subPages.length > 0 ? (subPages[pageIdx] || contents) : contents;
-    slide.innerHTML = '<div class="overlay-box">' +
-      '<div class="title-overlay">' + esc(title) + '</div>' +
-      '<div class="sub-overlay" style="white-space:pre-wrap;margin-top:3vh;">' + esc(creedPage) + '</div>' +
+    slide.innerHTML = '<div class="overlay-box center">' +
+      '<div class="title-overlay" style="text-align:center;width:100%">' + esc(title) + '</div>' +
+      '<div class="sub-overlay" style="white-space:pre-wrap;margin-top:3vh;text-align:center;width:100%">' + esc(creedPage) + '</div>' +
       '</div>';
     return;
   }
 
   // 5. 기타
   var subText = (obj && obj !== '-') ? obj : '';
-  slide.innerHTML = '<div class="overlay-box">' +
-    '<div class="title-overlay">' + esc(title) + '</div>' +
-    (subText ? '<div class="sub-overlay">' + esc(subText) + '</div>' : '') +
+  slide.innerHTML = '<div class="overlay-box center">' +
+    '<div class="title-overlay" style="text-align:center;width:100%">' + esc(title) + '</div>' +
+    (subText ? '<div class="sub-overlay" style="text-align:center;width:100%">' + esc(subText) + '</div>' : '') +
     '</div>';
 }
 
@@ -1123,6 +1174,14 @@ func DisplayBgHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, imgPath)
 }
 
+// DisplayFontHandler — GET /display/font/{name}
+func DisplayFontHandler(w http.ResponseWriter, r *http.Request) {
+	name := filepath.Base(r.URL.Path)
+	execPath := path.ExecutePath("easyPreparation")
+	fontPath := filepath.Join(execPath, "public", "font", name)
+	http.ServeFile(w, r, fontPath)
+}
+
 // DisplayTmpHandler — GET /display/tmp/{name}
 // 찬송/교독 변환 PNG 서빙
 func DisplayTmpHandler(w http.ResponseWriter, r *http.Request) {
@@ -1145,7 +1204,20 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var order []map[string]interface{}
-	if err := json.NewDecoder(r.Body).Decode(&order); err != nil {
+	var raw json.RawMessage
+	if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	// wrapper format: {"items": [...], "churchName": "..."} 또는 plain array [...]
+	var wrapper struct {
+		Items      []map[string]interface{} `json:"items"`
+		ChurchName string                   `json:"churchName"`
+	}
+	if err := json.Unmarshal(raw, &wrapper); err == nil && len(wrapper.Items) > 0 {
+		order = wrapper.Items
+		displayChurchName = wrapper.ChurchName
+	} else if err := json.Unmarshal(raw, &order); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
@@ -1194,7 +1266,7 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 		"done":    true,
 	})
 
-	BroadcastMessage("order", map[string]interface{}{"items": order})
+	BroadcastMessage("order", map[string]interface{}{"items": order, "churchName": displayChurchName})
 	go saveDisplayState()
 
 	// OBS: 첫 항목 씬 전환
@@ -1371,7 +1443,7 @@ func DisplayLyricsOrderHandler(w http.ResponseWriter, r *http.Request) {
 		"done":    true,
 	})
 
-	BroadcastMessage("order", map[string]interface{}{"items": order})
+	BroadcastMessage("order", map[string]interface{}{"items": order, "churchName": displayChurchName})
 	go saveDisplayState()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1494,7 +1566,7 @@ func DisplayAppendHandler(w http.ResponseWriter, r *http.Request) {
 	order := currentOrder
 	orderMu.RUnlock()
 
-	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx})
+	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx, "churchName": displayChurchName})
 	go saveDisplayState()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1542,7 +1614,7 @@ func DisplayRemoveHandler(w http.ResponseWriter, r *http.Request) {
 	copy(order, currentOrder)
 	orderMu.Unlock()
 
-	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx})
+	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx, "churchName": displayChurchName})
 	go saveDisplayState()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1688,7 +1760,7 @@ func DisplayReorderHandler(w http.ResponseWriter, r *http.Request) {
 	copy(order, currentOrder)
 	orderMu.Unlock()
 
-	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx})
+	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx, "churchName": displayChurchName})
 	go saveDisplayState()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1751,6 +1823,15 @@ func preprocessItem(item map[string]interface{}) map[string]interface{} {
 	// 주기도문: 본문 자동 삽입
 	if title == "주기도문" {
 		item["contents"] = lordsPrayer
+	}
+
+	// 항목별 배경 이미지 (전주, 찬양, 참회의 기도만)
+	if title == "전주" || title == "찬양" || title == "참회의 기도" {
+		execPath := path.ExecutePath("easyPreparation")
+		bgPath := filepath.Join(execPath, "output", "bulletin", "presentation", "tmp", title+".png")
+		if _, err := os.Stat(bgPath); err == nil {
+			item["bgImage"] = "/display/assets/" + url.PathEscape(title+".png")
+		}
 	}
 
 	// 교회소식: children → contents 계층 텍스트 전처리
@@ -1816,8 +1897,8 @@ func buildSections(item map[string]interface{}) map[string]interface{} {
 		return item
 	}
 
-	// 2. 신앙고백 / 주기도문 → 10줄 단위 페이징
-	if (title == "신앙고백" || title == "주기도문") && contents != "" {
+	// 2. 신앙고백 → 10줄 단위 페이징 (주기도문은 짧아서 분할 불필요)
+	if title == "신앙고백" && contents != "" {
 		pages := paginateText(contents, 10)
 		if len(pages) > 1 {
 			item["sections"] = buildTextSections(pages)
@@ -1825,7 +1906,7 @@ func buildSections(item map[string]interface{}) map[string]interface{} {
 		return item
 	}
 
-	// 3. 찬송/헌금봉헌/성시교독 → 표지 + 이미지 페이지
+	// 3. 찬송/헌금봉헌/성시교독 → 이미지 페이지 (성시교독은 표지 없음)
 	if title == "찬송" || title == "헌금봉헌" || title == "성시교독" {
 		var images []string
 		switch v := item["images"].(type) {
@@ -1845,26 +1926,37 @@ func buildSections(item map[string]interface{}) map[string]interface{} {
 			if lm, ok := item["lyricsMap"].([]string); ok {
 				lyricsMap = lm
 			}
-			sections := []map[string]interface{}{
-				{"label": "표지", "startPage": 0, "text": obj},
-			}
-			for i := range images {
-				preview := ""
-				if i < len(lyricsMap) && lyricsMap[i] != "" {
-					preview = lyricsMap[i]
-					// 60자 truncate
-					runes := []rune(preview)
-					if len(runes) > 60 {
-						preview = string(runes[:60]) + "..."
-					}
-					// 줄바꿈 → 공백으로
-					preview = strings.ReplaceAll(preview, "\n", " ")
+			var sections []map[string]interface{}
+			if title == "성시교독" {
+				// 성시교독: 표지 없이 이미지만
+				for i := range images {
+					sections = append(sections, map[string]interface{}{
+						"label":     fmt.Sprintf("%d", i+1),
+						"startPage": i,
+						"text":      "",
+					})
 				}
-				sections = append(sections, map[string]interface{}{
-					"label":     fmt.Sprintf("%d", i+1),
-					"startPage": i + 1,
-					"text":      preview,
-				})
+			} else {
+				// 찬송/헌금봉헌: 표지 + 이미지
+				sections = []map[string]interface{}{
+					{"label": "표지", "startPage": 0, "text": obj},
+				}
+				for i := range images {
+					preview := ""
+					if i < len(lyricsMap) && lyricsMap[i] != "" {
+						preview = lyricsMap[i]
+						runes := []rune(preview)
+						if len(runes) > 60 {
+							preview = string(runes[:60]) + "..."
+						}
+						preview = strings.ReplaceAll(preview, "\n", " ")
+					}
+					sections = append(sections, map[string]interface{}{
+						"label":     fmt.Sprintf("%d", i+1),
+						"startPage": i + 1,
+						"text":      preview,
+					})
+				}
 			}
 			item["sections"] = sections
 		}
@@ -2234,23 +2326,39 @@ func splitIntoChunks(text string, linesPerChunk int) []string {
 	return chunks
 }
 
-// mapLyricsToPages — 절을 2줄 단위로 쪼갠 후 페이지 수에 균등 배분
+// mapLyricsToPages — 전체 가사를 페이지 수에 맞게 빠짐없이 균등 분배
 func mapLyricsToPages(verses []string, pageCount int) []string {
 	if pageCount <= 0 || len(verses) == 0 {
 		return nil
 	}
 
-	// 절을 2줄 단위 청크로 분할
-	var chunks []string
+	// 전체 가사를 줄 단위로 펼침
+	var allLines []string
 	for _, v := range verses {
-		chunks = append(chunks, splitIntoChunks(v, 2)...)
+		for _, line := range strings.Split(strings.TrimSpace(v), "\n") {
+			if strings.TrimSpace(line) != "" {
+				allLines = append(allLines, line)
+			}
+		}
 	}
 
-	// 항상 1개 청크(2줄)만 선택 — 페이지 위치에 맞는 대표 청크
+	n := len(allLines)
+	if n == 0 {
+		return nil
+	}
+
+	// 각 페이지에 연속된 줄을 균등 배분
 	result := make([]string, pageCount)
 	for i := 0; i < pageCount; i++ {
-		chunkIdx := i * len(chunks) / pageCount
-		result[i] = chunks[chunkIdx]
+		start := i * n / pageCount
+		end := (i + 1) * n / pageCount
+		if start >= n {
+			start = n - 1
+		}
+		if end > n {
+			end = n
+		}
+		result[i] = strings.Join(allLines[start:end], "\n")
 	}
 	return result
 }

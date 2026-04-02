@@ -15,8 +15,7 @@ import (
 type Config struct {
 	Host     string            `json:"host"`     // "localhost:4455"
 	Password string            `json:"password"`
-	Scenes   map[string]string `json:"scenes"`   // "찬송" → "Hymn"
-	Default  string            `json:"default"`  // 매핑 없을 때 fallback 씬
+	Scenes   map[string]string `json:"scenes"`   // "찬송" → "camera"
 }
 
 // Status — OBS 연결 상태
@@ -60,9 +59,6 @@ func Init(configPath string) {
 		if cfg.Host == "" {
 			cfg.Host = "localhost:4455"
 		}
-		if cfg.Default == "" {
-			cfg.Default = "Default"
-		}
 
 		instance.config = cfg
 		instance.enabled = true
@@ -92,7 +88,10 @@ func (m *Manager) SwitchScene(title string) {
 		return
 	}
 
-	sceneName := m.resolveScene(title)
+	sceneName, ok := m.resolveScene(title)
+	if !ok {
+		return // 매핑 없는 항목은 씬 전환 안 함
+	}
 
 	go func() {
 		params := scenes.NewSetCurrentProgramSceneParams().WithSceneName(sceneName)
@@ -137,12 +136,12 @@ func (m *Manager) Disconnect() {
 	log.Println("[obs] 연결 해제")
 }
 
-// resolveScene — title → OBS 씬 이름 매핑
-func (m *Manager) resolveScene(title string) string {
+// resolveScene — title → OBS 씬 이름 매핑 (매핑 없으면 false)
+func (m *Manager) resolveScene(title string) (string, bool) {
 	if scene, ok := m.config.Scenes[title]; ok {
-		return scene
+		return scene, true
 	}
-	return m.config.Default
+	return "", false
 }
 
 // connectLoop — 연결 유지 루프 (5초마다 재연결 시도)

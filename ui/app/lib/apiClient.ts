@@ -45,11 +45,11 @@ export const apiClient = {
       body: JSON.stringify(payload),
     }),
 
-  startDisplay: (order: WorshipOrderItem[]) =>
+  startDisplay: (order: WorshipOrderItem[], churchName?: string) =>
     fetch(`${BASE_URL}/display/order`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(order),
+      body: JSON.stringify({ items: order, churchName: churchName || "" }),
     }),
 
   navigateDisplay: (direction: "next" | "prev") =>

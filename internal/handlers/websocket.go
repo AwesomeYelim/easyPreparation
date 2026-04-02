@@ -58,13 +58,14 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	wsc := addClient(conn)
 	fmt.Println("WebSocket client connected")
 
-	// 새 클라이언트에게 현재 order + idx 전송 (display 창이 늦게 연결되어도 동작)
+	// 새 클라이언트에게 현재 order + idx + churchName 전송
 	orderMu.RLock()
 	if len(currentOrder) > 0 {
 		msg, _ := json.Marshal(map[string]interface{}{
-			"type":  "order",
-			"items": currentOrder,
-			"idx":   currentIdx,
+			"type":       "order",
+			"items":      currentOrder,
+			"idx":        currentIdx,
+			"churchName": displayChurchName,
 		})
 		_ = wsc.safeWrite(msg)
 	}

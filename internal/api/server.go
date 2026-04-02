@@ -22,6 +22,7 @@ func StartServer(dataChan chan types.DataEnvelope) {
 	mux.Handle("/display/bg", middleware.CORS(http.HandlerFunc(handlers.DisplayBgHandler)))
 	mux.Handle("/display/assets/", middleware.CORS(http.HandlerFunc(handlers.DisplayAssetsHandler)))
 	mux.Handle("/display/tmp/", middleware.CORS(http.HandlerFunc(handlers.DisplayTmpHandler)))
+	mux.Handle("/display/font/", middleware.CORS(http.HandlerFunc(handlers.DisplayFontHandler)))
 	mux.Handle("/display/order", middleware.CORS(http.HandlerFunc(handlers.DisplayOrderHandler)))
 	mux.Handle("/display/append", middleware.CORS(http.HandlerFunc(handlers.DisplayAppendHandler)))
 	mux.Handle("/display/remove", middleware.CORS(http.HandlerFunc(handlers.DisplayRemoveHandler)))
