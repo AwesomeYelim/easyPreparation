@@ -99,7 +99,7 @@ export default function Bulletin() {
     try {
       setDisplayLoading(true);
       setDisplayProgress("예배 순서 전송 중...");
-      const res = await apiClient.startDisplay(processedInfo, userInfo.english_name);
+      const res = await apiClient.startDisplay(processedInfo, userInfo.english_name, userInfo.email);
       if (!res.ok) throw new Error("Display 전송 실패");
     } catch (error) {
       console.error("Display 전송 에러:", error);
@@ -155,6 +155,7 @@ export default function Bulletin() {
         targetInfo: processedInfo,
         target: selectedWorshipType,
         figmaInfo: userInfo.figmaInfo,
+        email: userInfo.email,
       });
 
       if (!response.ok) throw new Error("서버 응답 실패");

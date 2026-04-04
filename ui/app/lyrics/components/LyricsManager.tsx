@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRecoilValue, useRecoilState, useSetRecoilState } from "recoil";
-import { userInfoState, lyricsSongsState, displayPanelOpenState } from "@/recoilState";
+import { userInfoState, lyricsSongsState, displayPanelOpenState, userSettingsState } from "@/recoilState";
 import { apiClient, openDisplayWindow } from "@/lib/apiClient";
 import classNames from "classnames";
 import "./LyricsManager.scss";
@@ -15,12 +15,13 @@ export default function LyricsManager() {
   const [dedupResult, setDedupResult] = useState<Record<number, string>>({});
 
   const userInfo = useRecoilValue(userInfoState);
+  const settings = useRecoilValue(userSettingsState);
 
   const handler = {
     add: () => {
       const trimmed = input.trim();
       if (trimmed && !songs.some((s) => s.title === input)) {
-        setSongs([...songs, { title: trimmed, lyrics: "", bpm: 100, expanded: false }]);
+        setSongs([...songs, { title: trimmed, lyrics: "", bpm: settings.default_bpm || 100, expanded: false }]);
         setInput("");
       }
     },
@@ -174,6 +175,7 @@ export default function LyricsManager() {
         figmaInfo: userInfo.figmaInfo,
         mark: userInfo.english_name,
         songs: songs.map(({ title, lyrics }) => ({ title, lyrics })),
+        email: userInfo.email,
       });
 
       if (!response.ok) throw new Error("가사 제출 실패");

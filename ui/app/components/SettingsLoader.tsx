@@ -21,6 +21,10 @@ export default function SettingsLoader() {
           setSettings(data);
           // 테마 적용
           document.documentElement.setAttribute("data-theme", data.theme || "light");
+          // 폰트 크기 적용
+          if (data.font_size) {
+            document.documentElement.style.setProperty("--user-font-size", `${data.font_size}px`);
+          }
         }
       })
       .catch(() => {});

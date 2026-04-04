@@ -91,6 +91,7 @@ export default function Sidebar({ open, onClose, user }: SidebarProps) {
     { title: "주보 생성 내역", action: () => openHistory("bulletin") },
     { title: "PPT 생성 내역", action: () => openHistory("ppt") },
     { title: "가사 PPT 생성 내역", action: () => openHistory("lyrics_ppt") },
+    { title: "Display 생성 내역", action: () => openHistory("display") },
   ];
 
   return (
@@ -107,7 +108,7 @@ export default function Sidebar({ open, onClose, user }: SidebarProps) {
           opacity: open ? 1 : 0,
           visibility: open ? "visible" : "hidden",
           transition: "opacity 0.3s ease, visibility 0.3s ease",
-          zIndex: 998,
+          zIndex: 10499,
         }}
         onClick={onClose}
       />
@@ -127,7 +128,7 @@ export default function Sidebar({ open, onClose, user }: SidebarProps) {
           flexDirection: "column",
           alignItems: "center",
           transition: "right 0.3s ease-in-out",
-          zIndex: 999,
+          zIndex: 10500,
         }}
       >
         <button

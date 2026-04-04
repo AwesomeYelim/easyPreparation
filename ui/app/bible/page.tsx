@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useSetRecoilState } from "recoil";
-import { displayPanelOpenState } from "@/recoilState";
+import { useSetRecoilState, useRecoilValue } from "recoil";
+import { displayPanelOpenState, userSettingsState } from "@/recoilState";
 import { apiClient, openDisplayWindow } from "@/lib/apiClient";
 import "./bible.scss";
 
@@ -39,6 +39,7 @@ export default function BiblePage() {
   const [tab, setTab] = useState<"ot" | "nt">("ot");
   const [selectedVerses, setSelectedVerses] = useState<Set<number>>(new Set());
   const setDisplayPanelOpen = useSetRecoilState(displayPanelOpenState);
+  const settings = useRecoilValue(userSettingsState);
   const versesRef = useRef<HTMLDivElement>(null);
 
   // 비교 모드
@@ -52,7 +53,10 @@ export default function BiblePage() {
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
           setVersions(data);
-          setVersionId(data[0].id);
+          // 선호 버전이 유효하면 적용, 아니면 첫 번째 버전
+          const preferred = settings.preferred_bible_version;
+          const hasPreferred = data.some((v: Version) => v.id === preferred);
+          setVersionId(hasPreferred ? preferred : data[0].id);
           if (data.length > 1) setCompareVersionId(data[1].id);
         }
       })

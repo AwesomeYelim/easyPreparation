@@ -96,4 +96,9 @@ func CreateBulletin(data map[string]interface{}) {
 	handlers.BroadcastProcessDone(target, outputFilename)
 	handlers.BroadcastProgress("Finish Data Process", 1, "주보 생성 완료!")
 
+	// 생성 이력 기록
+	if email, ok := data["email"].(string); ok && email != "" {
+		outputPath := filepath.Join(execPath, "output", "bulletin", outputFilenameExe)
+		handlers.RecordGeneration(email, "bulletin", outputFilenameExe, outputPath, "success")
+	}
 }

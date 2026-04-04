@@ -140,6 +140,37 @@ PYTHONUTF8=1 tools/.venv/bin/python tools/output/_tmp.py && rm tools/output/_tmp
 
 ---
 
+## 에이전트 시스템 (3-Agent Orchestration)
+
+사용자가 계획표를 주면 3개 sub-agent가 자동으로 분업 실행합니다.
+
+| 에이전트 | 역할 | sub-agent 타입 | 프롬프트 |
+|----------|------|----------------|----------|
+| 시행자 (Planner) | 코드 탐색 → 상세 태스크 JSON 생성 | `Plan` | `.claude/agents/planner.md` |
+| 수행자 (Executor) | 태스크별 코드 수정 | `general-purpose` (sonnet) | `.claude/agents/executor.md` |
+| 코드 검증자 (Code Inspector) | 빌드/타입/API/문서/Git | `Bash` | `.claude/agents/inspector.md` |
+| UX 검증자 (UX Inspector) | z-index/반응형/상태흐름/테마 | `general-purpose` | `.claude/agents/ux-inspector.md` |
+| 감시자 (Monitor) | 포트/프로세스 관리, 환경 정리 | `Bash` (haiku) | `.claude/agents/monitor.md` |
+
+**실행 흐름**: 감시자(정리) → 시행자(분석) → 수행자(구현, 병렬) → 감시자(정리) → 코드검증+UX검증(병렬) → Git → [실패 시 수행자 재실행]
+
+**트리거**: 사용자가 "이 계획을 실행해줘" 또는 계획표를 전달하면:
+1. 감시자(haiku)로 포트/프로세스 정리
+2. 시행자로 코드베이스 탐색 → 상세 태스크 JSON
+3. 수행자(sonnet)를 parallel_group별 병렬 실행
+4. 감시자(haiku)로 포트 정리
+5. 코드 검증자 + UX 검증자 **병렬** 실행
+6. 둘 다 pass → Git commit & push → 서버 시작
+7. 하나라도 fail → fix_tasks로 수행자 재실행 (최대 2회)
+
+**모델 배정**: 감시자 = haiku, 수행자 = sonnet, 시행자/검증자 = 기본(opus)
+
+**감시자 단독 호출**: "서버 상태 확인", "포트 정리", 세션 터짐 시 감시자만 실행
+
+상세 프로토콜: `.claude/agents/protocol.md`
+
+---
+
 ## 주의사항
 
 - `internal/presentation/presentation.go` — PDF 텍스트 메서드는 모두 NFC 정규화 래퍼 사용 (macOS NFD 문제)

@@ -27,6 +27,11 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     try {
       await apiClient.saveSettings(userInfo.email, local);
       setSettings(local);
+      // 즉시 반영
+      document.documentElement.setAttribute("data-theme", local.theme || "light");
+      if (local.font_size) {
+        document.documentElement.style.setProperty("--user-font-size", `${local.font_size}px`);
+      }
       onClose();
     } catch (e) {
       console.error("설정 저장 에러:", e);
@@ -143,7 +148,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           display: flex;
           align-items: center;
           justify-content: center;
-          z-index: 1000;
+          z-index: 11000;
         }
         .settings_panel {
           background: #fff;

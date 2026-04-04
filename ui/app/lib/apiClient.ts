@@ -24,7 +24,7 @@ export const apiClient = {
       body: JSON.stringify({ target, targetInfo }),
     }),
 
-  submitBulletin: (payload: { mark: string; targetInfo: WorshipOrderItem[]; target: string; figmaInfo: FigmaInfo }) =>
+  submitBulletin: (payload: { mark: string; targetInfo: WorshipOrderItem[]; target: string; figmaInfo: FigmaInfo; email?: string }) =>
     fetch(`${BASE_URL}/submit`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -38,18 +38,18 @@ export const apiClient = {
       body: JSON.stringify({ songs }),
     }),
 
-  submitLyrics: (payload: { figmaInfo: FigmaInfo; mark: string; songs: SongItem[] }) =>
+  submitLyrics: (payload: { figmaInfo: FigmaInfo; mark: string; songs: SongItem[]; email?: string }) =>
     fetch(`${BASE_URL}/submitLyrics`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }),
 
-  startDisplay: (order: WorshipOrderItem[], churchName?: string) =>
+  startDisplay: (order: WorshipOrderItem[], churchName?: string, email?: string) =>
     fetch(`${BASE_URL}/display/order`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items: order, churchName: churchName || "" }),
+      body: JSON.stringify({ items: order, churchName: churchName || "", email: email || "" }),
     }),
 
   navigateDisplay: (direction: "next" | "prev") =>

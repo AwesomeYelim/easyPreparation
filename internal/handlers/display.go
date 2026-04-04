@@ -1213,10 +1213,13 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 	var wrapper struct {
 		Items      []map[string]interface{} `json:"items"`
 		ChurchName string                   `json:"churchName"`
+		Email      string                   `json:"email"`
 	}
+	var displayEmail string
 	if err := json.Unmarshal(raw, &wrapper); err == nil && len(wrapper.Items) > 0 {
 		order = wrapper.Items
 		displayChurchName = wrapper.ChurchName
+		displayEmail = wrapper.Email
 	} else if err := json.Unmarshal(raw, &order); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
@@ -1274,6 +1277,11 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 		if title, ok := order[0]["title"].(string); ok {
 			go obs.Get().SwitchScene(title)
 		}
+	}
+
+	// 생성 이력 기록
+	if displayEmail != "" {
+		go RecordGeneration(displayEmail, "display", fmt.Sprintf("display_%d_items", len(order)), "", "success")
 	}
 
 	w.Header().Set("Content-Type", "application/json")

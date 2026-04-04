@@ -16,6 +16,7 @@ const typeLabels: Record<string, string> = {
   bulletin: "주보",
   ppt: "PPT",
   lyrics_ppt: "가사 PPT",
+  display: "Display",
 };
 
 export default function HistoryList({ open, onClose, filterType }: HistoryListProps) {
@@ -113,7 +114,7 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
           display: flex;
           align-items: center;
           justify-content: center;
-          z-index: 1000;
+          z-index: 11000;
         }
         .history_panel {
           background: #fff;

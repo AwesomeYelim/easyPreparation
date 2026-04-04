@@ -9,6 +9,7 @@
   --accent-hover: #2d5a8a;
   --selected-bg: #dbeafe;
   --selected-text: #1e40af;
+  --user-font-size: 16px;
 }
 
 [data-theme="dark"] {
@@ -32,6 +33,7 @@ body {
 
 body {
   font-family: Arial, Helvetica, sans-serif;
+  font-size: var(--user-font-size);
   background-color: var(--surface);
   color: var(--text-primary);
   margin: 0;
@@ -81,7 +83,7 @@ h2 {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  z-index: 9999;
+  z-index: 5000;
 }
 
 .spinner {
