@@ -33,6 +33,7 @@ flowchart TD
         SEARCH["/searchLyrics"]
         DL["/download"]
         DISP["/display/*\nDisplay API"]
+        SCHED["Scheduler\n자동 스케줄러"]
     end
 
     subgraph Bulletin["Bulletin Pipeline"]
@@ -70,6 +71,9 @@ flowchart TD
     Server -->|progress| WS
     WS -.->|실시간 알림| Client
     DISP -.->|슬라이드 제어| DISPLAY
+    SCHED -->|T-0 순서 로드| DISP
+    SCHED -->|스트리밍 시작| OBS
+    SCHED -.->|카운트다운| WS
 
     SUB --> B_QUOTE
     B_QUOTE --> PG
@@ -109,6 +113,8 @@ flowchart TD
 | **예배 화면** | OBS Browser Source 연동, 성경/찬송/교독/가사 슬라이드 실시간 표시 |
 | **Display 통합 제어** | 주보/가사/성경 탭에서 append 방식으로 항목 추가, 제어판에서 삭제/점프/자동 넘김 |
 | **실시간 상태** | WebSocket으로 파일 생성 진행 상황 + Display 위치 브로드캐스트 |
+| **자동 스케줄러** | 예배 시간 자동 감지 → 카운트다운 → 순서 로드 → OBS 스트리밍 시작 |
+| **OBS 통합 제어** | 씬 전환 + 스트리밍 시작/종료 + 상태 모니터링, 수동 제어 지원 |
 | **계정 설정** | 교회 정보 편집, 선호 성경 버전/테마/폰트 설정, 생성 이력 조회 |
 | **소셜 로그인** | NextAuth 기반 인증 + 교회 프로필 등록 |
 
@@ -135,6 +141,80 @@ flowchart TD
 
 ---
 
+## OBS 통합 아키텍처
+
+easyPreparation은 **콘텐츠 · 타이밍 · 제어**를 담당하고, OBS는 **인코딩 · 합성 · 송출**만 담당합니다.
+
+```
+┌─ easyPreparation (두뇌) ─────────────────┐      ┌─ OBS Studio (근육) ──────────┐
+│                                           │      │                              │
+│  📅 스케줄러                              │      │                              │
+│  ├─ 예배 시간 자동 감지                   │      │                              │
+│  ├─ T-5분: 카운트다운 시작          ──────┼──ws──┼→ 씬 전환                     │
+│  └─ T-0초: 순서 로드 + 스트리밍     ──────┼──ws──┼→ 스트리밍 시작/종료          │
+│                                           │      │                              │
+│  🖥️ Display 렌더링                       │      │   ┌──────────────────────┐   │
+│  ├─ /display (프로젝터용)           ◀─────┼──────┼── │ Browser Source #1    │   │
+│  ├─ /display/overlay (방송 자막)    ◀─────┼──────┼── │ Browser Source #2    │   │
+│  └─ 카운트다운 오버레이                   │      │   └──────────────────────┘   │
+│                                           │      │                              │
+│  🎛️ 제어판                               │      │   📹 카메라 입력             │
+│  ├─ 항목 점프 / 드래그 재배치             │      │   🎤 오디오 믹싱             │
+│  ├─ LIVE 뱃지 + 수동 방송 시작/종료       │      │   🎬 씬 합성 + 트랜지션      │
+│  └─ 카운트다운 배너                       │      │   📡 RTMP 인코딩 + 송출      │
+│                                           │      │                              │
+└───────────────────────────────────────────┘      └──────────────────────────────┘
+          │                                                     │
+          │              WebSocket (goobs)                       │
+          └─────────────────────────────────────────────────────┘
+```
+
+**왜 OBS 의존인가?**
+
+| 자체 구현 시 | OBS 활용 시 |
+|-------------|-------------|
+| RTMP 인코딩, 오디오 믹싱, 하드웨어 가속 직접 구현 | 10년+ 검증된 인코딩 파이프라인 |
+| 카메라 입력 + 마이크 + 화면 합성 = 수개월 작업 | 이미 완성된 씬 합성 시스템 |
+| 안정성 보장 어려움 (실시간 방송) | 전 세계 방송에서 검증됨 |
+
+easyPreparation은 **예배 자동화 플랫폼**에 집중하고, 방송 인프라는 OBS에 위임합니다.
+
+### 스케줄 자동화 흐름
+
+```mermaid
+sequenceDiagram
+    participant S as 스케줄러
+    participant D as Display / Overlay
+    participant C as 제어판
+    participant O as OBS
+
+    Note over S: 예배 시간 5분 전
+    loop 매초 카운트다운
+        S->>D: schedule_countdown (WS)
+        S->>C: schedule_countdown (WS)
+        D-->>D: 카운트다운 오버레이 표시
+        C-->>C: 빨간 배너 MM:SS
+    end
+
+    Note over S: 예배 시간 도달 (T-0)
+    S->>S: config/{worshipType}.json 로드
+    S->>D: order (WS) — 예배 순서 교체
+    S->>O: StartStream (goobs)
+    S->>O: SwitchScene (goobs)
+    S->>C: schedule_started (WS)
+    D-->>D: 카운트다운 해제 → 첫 슬라이드
+    C-->>C: 카운트다운 해제 → LIVE 뱃지
+```
+
+### OBS 권장 설정
+
+| Source | URL | 용도 |
+|--------|-----|------|
+| Browser Source #1 | `http://localhost:8080/display` | 프로젝터 출력 (악보 이미지 포함) |
+| Browser Source #2 | `http://localhost:8080/display/overlay` | 방송 자막 (반투명 배경, 가사/성경) |
+
+---
+
 ## Project Structure
 
 ```
@@ -149,7 +229,7 @@ easyPreparation/
 │   ├── bulletin/            # 주보 PDF 생성
 │   │   ├── forPresentation/
 │   │   └── forPrint/
-│   ├── handlers/            # HTTP + WebSocket + Display 핸들러
+│   ├── handlers/            # HTTP + WebSocket + Display + 스케줄러 핸들러
 │   ├── lyrics/              # 가사 PDF 생성
 │   ├── presentation/        # gofpdf PDF 렌더러 (NFC 정규화)
 │   ├── googleCloud/         # Google Drive 연동
@@ -179,7 +259,7 @@ easyPreparation/
 │       │       ├── HymnSearch.tsx      # 찬송가 검색/상세/Display 전송
 │       │       └── HymnSearch.scss
 │       ├── bible/           # 성경 검색/열람 (7개 번역판 비교 모드)
-│       ├── components/      # 전역 컴포넌트 (NavBar, SideBar, Settings, History)
+│       ├── components/      # 전역 컴포넌트 (NavBar, SideBar, Settings, History, SchedulePanel)
 │       ├── lib/             # 유틸리티
 │       │   ├── apiClient.ts     # Go 서버 API 호출 중앙화
 │       │   ├── bibleUtils.ts    # 성경 구절 포맷
@@ -290,6 +370,10 @@ apiClient.jumpDisplay(index, subPageIdx?)     // POST {GO}/display/jump
 apiClient.navigateDisplay(direction)          // POST {GO}/display/navigate
 apiClient.getDisplayStatus()                  // GET  {GO}/display/status
 apiClient.timerControl(action, factor?)       // POST {GO}/display/timer
+apiClient.getSchedule()                       // GET  {GO}/api/schedule
+apiClient.saveSchedule(config)                // POST {GO}/api/schedule
+apiClient.scheduleTest(action, worshipType)   // POST {GO}/api/schedule/test
+apiClient.streamControl(action)               // POST {GO}/api/schedule/stream
 openDisplayWindow()                           // Display 창 열기 (중복 reload 방지)
 ```
 
@@ -326,6 +410,9 @@ openDisplayWindow()                           // Display 창 열기 (중복 relo
 | `GET/PUT` | `/api/settings` | 사용자 설정 조회/저장 |
 | `PUT` | `/api/settings/license` | 라이선스 등록 |
 | `GET` | `/api/history` | 생성 이력 조회 |
+| `GET/POST` | `/api/schedule` | 스케줄 설정 조회/저장 |
+| `POST` | `/api/schedule/test` | 스케줄 테스트 (countdown/trigger) |
+| `POST` | `/api/schedule/stream` | OBS 스트리밍 수동 제어 (start/stop/status) |
 
 ---
 
@@ -405,7 +492,7 @@ make build
 | **Figma** | 주보 배경 이미지(PNG) / 프레젠테이션 템플릿 |
 | **Google Drive** | 찬송가 악보 PDF / 성시교독 PDF |
 | **PostgreSQL** | 성경 구절 DB (7개 번역판), 찬송가 DB, 사용자 설정/이력 |
-| **OBS WebSocket** | 방송 씬 전환 |
+| **OBS WebSocket** | 방송 씬 전환 + 스트리밍 시작/종료 + 상태 모니터링 (goobs) |
 | **bugs.co.kr** | 가사 검색 크롤링 |
 
 ---
