@@ -161,33 +161,43 @@ PYTHONUTF8=1 tools/.venv/bin/python tools/output/_tmp.py && rm tools/output/_tmp
 
 ---
 
-## 에이전트 시스템 (6-Agent Orchestration)
+## 에이전트 시스템 (7-Agent Orchestration)
 
-사용자가 계획표를 주면 6개 sub-agent가 자동으로 분업 실행합니다.
+사용자가 계획표를 주면 7개 sub-agent가 자동으로 분업 실행합니다.
 
 | 에이전트 | 역할 | sub-agent 타입 | 프롬프트 |
 |----------|------|----------------|----------|
 | 시행자 (Planner) | 코드 탐색 → 상세 태스크 JSON 생성 | `Plan` | `.claude/agents/planner.md` |
 | 수행자 (Executor) | 태스크별 코드 수정 | `general-purpose` (sonnet) | `.claude/agents/executor.md` |
+| 리뷰어 (Reviewer) | 완성도/일관성/누락 감지 | `general-purpose` | `.claude/agents/reviewer.md` |
 | 코드 검증자 (Code Inspector) | 빌드/타입/API 정합성/서버 시작 | `Bash` | `.claude/agents/inspector.md` |
 | UX 검증자 (UX Inspector) | z-index/반응형/상태흐름/테마 | `general-purpose` | `.claude/agents/ux-inspector.md` |
 | 문서 에이전트 (Documenter) | 개발문서/사용자가이드/테스트체크리스트/Git | `general-purpose` | `.claude/agents/documenter.md` |
 | 감시자 (Monitor) | 포트/프로세스 관리, 환경 정리 | `Bash` (haiku) | `.claude/agents/monitor.md` |
 
-**실행 흐름**: 감시자(정리) → 시행자(분석) → 수행자(구현, 병렬) → 감시자(정리) → 코드검증+UX검증(병렬) → 문서에이전트(문서+가이드+Git) → [실패 시 수행자 재실행]
+**실행 흐름**: 감시자(정리) → 시행자(분석) → 수행자(구현, 병렬) → **리뷰어(완성도 체크)** → 감시자(정리) → 코드검증+UX검증(병렬) → 문서에이전트(문서+가이드+Git)
 
 **트리거**: 사용자가 "이 계획을 실행해줘" 또는 계획표를 전달하면:
 1. 감시자(haiku)로 포트/프로세스 정리
 2. 시행자로 코드베이스 탐색 → 상세 태스크 JSON
 3. 수행자(sonnet)를 parallel_group별 병렬 실행
-4. 감시자(haiku)로 포트 정리
-5. 코드 검증자 + UX 검증자 **병렬** 실행
-6. 둘 다 pass → 문서 에이전트 (개발문서 + 사용자 가이드 + 테스트 체크리스트 + Git commit & push)
-7. 하나라도 fail → fix_tasks로 수행자 재실행 (최대 2회)
+4. **리뷰어가 완성도/일관성/누락 감지** → fix_tasks 있으면 수행자 재실행
+5. 감시자(haiku)로 포트 정리
+6. 코드 검증자 + UX 검증자 **병렬** 실행
+7. 둘 다 pass → 문서 에이전트 (개발문서 + 사용자 가이드 + 테스트 체크리스트 + Git commit & push)
+8. 하나라도 fail → fix_tasks로 수행자 재실행 (최대 2회)
 
-**모델 배정**: 감시자 = haiku, 수행자 = sonnet, 시행자/검증자/문서 = 기본(opus)
+**리뷰어가 잡는 것 (검증자가 못 잡는 것)**:
+- 데이터 파일 누락 (Display 지원 항목 vs fix_data.json 교차검증)
+- UI 중복 메뉴 (같은 모달을 다른 필터로 여는 패턴 → 합치기 제안)
+- API 경로 불일치 (Next.js route를 Go BASE_URL로 호출하는 실수)
+- 코드 안티패턴 (`if (string)` falsy 트랩, nested Recoil setter)
+- 계획 대비 구현 누락
+
+**모델 배정**: 감시자 = haiku, 수행자 = sonnet, 시행자/리뷰어/검증자/문서 = 기본(opus)
 
 **단독 호출**:
+- 리뷰어: "코드 리뷰해줘", "누락 확인해줘", "일관성 체크해줘"
 - 감시자: "서버 상태 확인", "포트 정리", 세션 터짐 시
 - 문서 에이전트: "가이드 업데이트", "테스트 체크리스트 업데이트", "문서 정리"
 

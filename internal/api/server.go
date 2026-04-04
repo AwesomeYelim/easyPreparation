@@ -1,11 +1,15 @@
 package api
 
 import (
+	"encoding/json"
 	"easyPreparation_1.0/internal/handlers"
 	"easyPreparation_1.0/internal/middleware"
+	"easyPreparation_1.0/internal/obs"
 	"easyPreparation_1.0/internal/types"
+	"easyPreparation_1.0/internal/youtube"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 func StartServer(dataChan chan types.DataEnvelope) {
@@ -57,6 +61,86 @@ func StartServer(dataChan chan types.DataEnvelope) {
 	mux.Handle("/api/schedule", middleware.CORS(http.HandlerFunc(handlers.ScheduleHandler)))
 	mux.Handle("/api/schedule/test", middleware.CORS(http.HandlerFunc(handlers.ScheduleTestHandler)))
 	mux.Handle("/api/schedule/stream", middleware.CORS(http.HandlerFunc(handlers.StreamControlHandler)))
+
+	// 썸네일 API
+	mux.Handle("/api/thumbnail/generate", middleware.CORS(http.HandlerFunc(handlers.ThumbnailGenerateHandler)))
+	mux.Handle("/api/thumbnail/preview", middleware.CORS(http.HandlerFunc(handlers.ThumbnailPreviewHandler)))
+	mux.Handle("/api/thumbnail/config", middleware.CORS(http.HandlerFunc(handlers.ThumbnailConfigHandler)))
+	mux.Handle("/api/thumbnail/upload", middleware.CORS(http.HandlerFunc(handlers.ThumbnailUploadHandler)))
+	mux.Handle("/api/thumbnail/image", middleware.CORS(http.HandlerFunc(handlers.ThumbnailImageHandler)))
+
+	// YouTube API
+	mux.Handle("/api/youtube/auth", middleware.CORS(http.HandlerFunc(youtube.AuthHandler)))
+	mux.Handle("/api/youtube/callback", http.HandlerFunc(youtube.CallbackHandler))
+	mux.Handle("/api/youtube/status", middleware.CORS(http.HandlerFunc(youtube.StatusHandler)))
+
+	// YouTube 방송 생성 + 스트림 키 → OBS 자동 세팅
+	mux.Handle("/api/youtube/setup-obs", middleware.CORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+
+		// 제목 + 예배유형 결정
+		title := "라이브 예배"
+		worshipType := "main_worship"
+		var body struct {
+			Title       string `json:"title"`
+			WorshipType string `json:"worshipType"`
+		}
+		if json.NewDecoder(r.Body).Decode(&body) == nil {
+			if body.Title != "" {
+				title = body.Title
+			}
+			if body.WorshipType != "" {
+				worshipType = body.WorshipType
+			}
+		}
+
+		// YouTube 방송 생성 + 스트림 바인딩
+		server, key, broadcastID, err := youtube.CreateBroadcastAndBind(title)
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": err.Error()})
+			return
+		}
+
+		// 방송이 upcoming 상태인 지금 썸네일 생성 + 업로드 (active 되면 YouTube가 덮어씌움)
+		go func() {
+			handlers.GenerateAndUploadThumbnailTo(worshipType, broadcastID)
+		}()
+
+		// OBS 스트리밍 중이면 먼저 중지
+		obsM := obs.Get()
+		streamStatus := obsM.GetStreamStatus()
+		if streamStatus.Active {
+			obsM.StopStreaming()
+			// 중지 대기
+			for i := 0; i < 10; i++ {
+				s := obsM.GetStreamStatus()
+				if !s.Active {
+					break
+				}
+				time.Sleep(500 * time.Millisecond)
+			}
+		}
+
+		// OBS 스트림 설정
+		if err := obsM.SetStreamSettings(server, key); err != nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "방송 생성됨, OBS 설정 실패: " + err.Error()})
+			return
+		}
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"ok":          true,
+			"message":     "YouTube 방송 생성 + OBS 스트림 설정 + 썸네일 업로드 완료",
+			"broadcastId": broadcastID,
+		})
+	})))
 
 	fmt.Println("Server running on http://localhost:8080")
 	if err := http.ListenAndServe("0.0.0.0:8080", mux); err != nil {

@@ -25,6 +25,7 @@ public
 .env
 .env.*
 ui/.env*
+data/youtube_token.json
 
 # Next.js (ui/)
 ui/node_modules/

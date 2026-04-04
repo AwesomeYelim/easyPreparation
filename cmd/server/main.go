@@ -10,6 +10,7 @@ import (
 	"easyPreparation_1.0/internal/path"
 	"easyPreparation_1.0/internal/quote"
 	"easyPreparation_1.0/internal/types"
+	"easyPreparation_1.0/internal/youtube"
 	"log"
 	"path/filepath"
 )
@@ -37,6 +38,9 @@ func main() {
 			m.Disconnect()
 		}
 	}()
+
+	// YouTube API 초기화
+	youtube.Init(youtube.DefaultOAuthPath(), youtube.DefaultTokenPath())
 
 	// Display 상태 복원 (이전 세션)
 	handlers.LoadDisplayState()

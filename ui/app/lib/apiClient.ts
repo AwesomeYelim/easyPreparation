@@ -1,4 +1,4 @@
-import { WorshipOrderItem, UserSettings, ScheduleConfig } from "@/types";
+import { WorshipOrderItem, UserSettings, ScheduleConfig, ThumbnailConfig } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -18,7 +18,7 @@ export function openDisplayWindow() {
 
 export const apiClient = {
   saveBulletin: (target: string, targetInfo: WorshipOrderItem[]) =>
-    fetch(`${BASE_URL}/api/saveBulletin`, {
+    fetch(`/api/saveBulletin`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ target, targetInfo }),
@@ -177,5 +177,50 @@ export const apiClient = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, worshipType }),
+    }).then((r) => r.json()),
+
+  // 썸네일 API
+  getThumbnailConfig: () =>
+    fetch(`${BASE_URL}/api/thumbnail/config`).then((r) => r.json()),
+
+  saveThumbnailConfig: (config: ThumbnailConfig) =>
+    fetch(`${BASE_URL}/api/thumbnail/config`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(config),
+    }).then((r) => r.json()),
+
+  generateThumbnail: (worshipType: string, date?: string, upload?: boolean) =>
+    fetch(`${BASE_URL}/api/thumbnail/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ worshipType, date, upload }),
+    }).then((r) => r.json()),
+
+  getThumbnailPreviewUrl: (worshipType: string, date?: string) =>
+    `${BASE_URL}/api/thumbnail/preview?worshipType=${worshipType}${date ? `&date=${date}` : ""}`,
+
+  uploadThumbnailBg: (file: File, target?: string) => {
+    const fd = new FormData();
+    fd.append("image", file);
+    if (target) fd.append("target", target);
+    return fetch(`${BASE_URL}/api/thumbnail/upload`, { method: "POST", body: fd })
+      .then((r) => r.json());
+  },
+
+  getThumbnailImageUrl: (path: string) =>
+    `${BASE_URL}/api/thumbnail/image?path=${encodeURIComponent(path)}`,
+
+  // YouTube API
+  getYoutubeStatus: () =>
+    fetch(`${BASE_URL}/api/youtube/status`).then((r) => r.json()),
+
+  getYoutubeAuthUrl: () => `${BASE_URL}/api/youtube/auth`,
+
+  setupOBSStream: (worshipType?: string) =>
+    fetch(`${BASE_URL}/api/youtube/setup-obs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ worshipType: worshipType || "main_worship" }),
     }).then((r) => r.json()),
 };

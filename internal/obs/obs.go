@@ -2,20 +2,28 @@ package obs
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/andreykaipov/goobs"
+	"github.com/andreykaipov/goobs/api/requests/config"
 	"github.com/andreykaipov/goobs/api/requests/scenes"
+	"github.com/andreykaipov/goobs/api/requests/transitions"
+	"github.com/andreykaipov/goobs/api/typedefs"
 )
 
 // Config — config/obs.json 구조
 type Config struct {
-	Host     string            `json:"host"`     // "localhost:4455"
-	Password string            `json:"password"`
-	Scenes   map[string]string `json:"scenes"`   // "찬송" → "camera"
+	Host         string            `json:"host"`         // "localhost:4455"
+	Password     string            `json:"password"`
+	Scenes       map[string]string `json:"scenes"`       // "찬송" → "camera"
+	CameraScene  string            `json:"cameraScene"`  // fade-back 복귀 씬 (기본: "camera")
+	DisplayScene string            `json:"displayScene"` // fade-back 시 표시할 씬 (기본: "monitor")
+	FadeMs       int               `json:"fadeMs"`       // fade 트랜지션 길이 ms (기본: 800)
+	FadeDelaySec int               `json:"fadeDelaySec"` // display 표시 후 camera 복귀까지 초 (기본: 3)
 }
 
 // Status — OBS 연결 상태
@@ -41,6 +49,7 @@ type Manager struct {
 	connected    bool
 	currentScene string
 	stopCh       chan struct{}
+	fadeCancel   chan struct{} // 현재 fadeBack 타이머 취소용
 }
 
 var (
@@ -66,6 +75,18 @@ func Init(configPath string) {
 		}
 		if cfg.Host == "" {
 			cfg.Host = "localhost:4455"
+		}
+		if cfg.CameraScene == "" {
+			cfg.CameraScene = "camera"
+		}
+		if cfg.DisplayScene == "" {
+			cfg.DisplayScene = "monitor"
+		}
+		if cfg.FadeMs <= 0 {
+			cfg.FadeMs = 800
+		}
+		if cfg.FadeDelaySec <= 0 {
+			cfg.FadeDelaySec = 3
 		}
 
 		instance.config = cfg
@@ -101,6 +122,14 @@ func (m *Manager) SwitchScene(title string) {
 		return // 매핑 없는 항목은 씬 전환 안 함
 	}
 
+	// 이미 같은 씬이면 스킵
+	m.mu.RLock()
+	current := m.currentScene
+	m.mu.RUnlock()
+	if current == sceneName {
+		return
+	}
+
 	go func() {
 		params := scenes.NewSetCurrentProgramSceneParams().WithSceneName(sceneName)
 		_, err := client.Scenes.SetCurrentProgramScene(params)
@@ -112,6 +141,104 @@ func (m *Manager) SwitchScene(title string) {
 		m.currentScene = sceneName
 		m.mu.Unlock()
 		log.Printf("[obs] 씬 전환: %s → %s", title, sceneName)
+	}()
+}
+
+// CancelFadeBack — 진행 중인 fadeBack 타이머 취소
+func (m *Manager) CancelFadeBack() {
+	if m == nil {
+		return
+	}
+	m.mu.Lock()
+	if m.fadeCancel != nil {
+		select {
+		case <-m.fadeCancel:
+		default:
+			close(m.fadeCancel)
+		}
+		m.fadeCancel = nil
+	}
+	m.mu.Unlock()
+}
+
+// SwitchSceneWithFadeBack — displayScene으로 전환 후 N초 뒤 fade로 camera 복귀
+// 찬양/찬송 항목용: display(가사/악보) 보여줬다가 fade out → camera
+func (m *Manager) SwitchSceneWithFadeBack(title string) {
+	if m == nil || !m.enabled {
+		return
+	}
+
+	m.mu.RLock()
+	client := m.client
+	connected := m.connected
+	m.mu.RUnlock()
+
+	if !connected || client == nil {
+		return
+	}
+
+	// 기존 fadeBack 타이머 취소
+	m.CancelFadeBack()
+
+	// displayScene (monitor)으로 즉시 전환
+	displayScene := m.config.DisplayScene
+	m.mu.RLock()
+	current := m.currentScene
+	m.mu.RUnlock()
+
+	if current != displayScene {
+		params := scenes.NewSetCurrentProgramSceneParams().WithSceneName(displayScene)
+		_, err := client.Scenes.SetCurrentProgramScene(params)
+		if err != nil {
+			log.Printf("[obs] 씬 전환 실패 (%s → %s): %v", title, displayScene, err)
+			return
+		}
+		m.mu.Lock()
+		m.currentScene = displayScene
+		m.mu.Unlock()
+		log.Printf("[obs] 씬 전환: %s → %s (fade-back 예약)", title, displayScene)
+	}
+
+	// N초 후 fade로 camera 복귀
+	cancel := make(chan struct{})
+	m.mu.Lock()
+	m.fadeCancel = cancel
+	m.mu.Unlock()
+
+	go func() {
+		delay := time.Duration(m.config.FadeDelaySec) * time.Second
+		select {
+		case <-cancel:
+			return
+		case <-time.After(delay):
+		}
+
+		m.mu.RLock()
+		c := m.client
+		conn := m.connected
+		m.mu.RUnlock()
+		if !conn || c == nil {
+			return
+		}
+
+		// Fade 트랜지션 설정
+		tParams := transitions.NewSetCurrentSceneTransitionParams().WithTransitionName("Fade")
+		_, _ = c.Transitions.SetCurrentSceneTransition(tParams)
+		dParams := transitions.NewSetCurrentSceneTransitionDurationParams().WithTransitionDuration(float64(m.config.FadeMs))
+		_, _ = c.Transitions.SetCurrentSceneTransitionDuration(dParams)
+
+		// camera 씬으로 전환
+		cameraScene := m.config.CameraScene
+		sParams := scenes.NewSetCurrentProgramSceneParams().WithSceneName(cameraScene)
+		_, err := c.Scenes.SetCurrentProgramScene(sParams)
+		if err != nil {
+			log.Printf("[obs] fade-back 실패 → %s: %v", cameraScene, err)
+			return
+		}
+		m.mu.Lock()
+		m.currentScene = cameraScene
+		m.mu.Unlock()
+		log.Printf("[obs] fade-back: %s → %s (%dms)", displayScene, cameraScene, m.config.FadeMs)
 	}()
 }
 
@@ -128,7 +255,7 @@ func (m *Manager) GetStatus() Status {
 	}
 }
 
-// StartStreaming — OBS 스트리밍 시작 (미연결 시 no-op)
+// StartStreaming — OBS 스트리밍 시작 (미연결 시 no-op, 이미 스트리밍 중이면 스킵)
 func (m *Manager) StartStreaming() error {
 	if m == nil || !m.enabled {
 		return nil
@@ -140,7 +267,15 @@ func (m *Manager) StartStreaming() error {
 	if !connected || client == nil {
 		return nil
 	}
-	_, err := client.Stream.StartStream()
+
+	// 이미 스트리밍 중이면 스킵
+	status, err := client.Stream.GetStreamStatus()
+	if err == nil && status.OutputActive {
+		log.Println("[obs] 이미 스트리밍 중 — 스킵")
+		return nil
+	}
+
+	_, err = client.Stream.StartStream()
 	if err != nil {
 		log.Printf("[obs] 스트리밍 시작 실패: %v", err)
 		return err
@@ -193,6 +328,35 @@ func (m *Manager) GetStreamStatus() StreamStatus {
 		Timecode:     resp.OutputTimecode,
 		BytesSent:    resp.OutputBytes,
 	}
+}
+
+// SetStreamSettings — OBS 스트림 서비스를 커스텀 RTMP로 설정
+func (m *Manager) SetStreamSettings(server, key string) error {
+	if m == nil || !m.enabled {
+		return fmt.Errorf("OBS 미연결")
+	}
+	m.mu.RLock()
+	client := m.client
+	connected := m.connected
+	m.mu.RUnlock()
+	if !connected || client == nil {
+		return fmt.Errorf("OBS 미연결")
+	}
+
+	params := config.NewSetStreamServiceSettingsParams().
+		WithStreamServiceType("rtmp_custom").
+		WithStreamServiceSettings(&typedefs.StreamServiceSettings{
+			Server: server,
+			Key:    key,
+		})
+
+	_, err := client.Config.SetStreamServiceSettings(params)
+	if err != nil {
+		return fmt.Errorf("OBS 스트림 설정 실패: %w", err)
+	}
+
+	log.Printf("[obs] 스트림 설정 완료: server=%s", server)
+	return nil
 }
 
 // Disconnect — 종료 시 정리

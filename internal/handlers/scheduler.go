@@ -3,6 +3,8 @@ package handlers
 import (
 	"easyPreparation_1.0/internal/obs"
 	"easyPreparation_1.0/internal/path"
+	"easyPreparation_1.0/internal/thumbnail"
+	"easyPreparation_1.0/internal/youtube"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -208,11 +210,64 @@ func executeSchedule(entry ScheduleEntry, autoStream bool) {
 		}
 	}
 
-	// OBS 스트리밍 시작
+	// 자동 스트리밍: YouTube 방송 생성 → 썸네일 업로드 → OBS 스트림 설정 → 송출 시작
 	if autoStream {
-		if err := obs.Get().StartStreaming(); err != nil {
-			log.Printf("[scheduler] OBS 스트리밍 시작 실패: %v", err)
+		ytM := youtube.Get()
+		if ytM.IsEnabled() {
+			// 썸네일 설정에서 제목 가져오기
+			cfg, _ := thumbnail.LoadConfig()
+			title := entry.Label
+			if cfg != nil {
+				_, t := cfg.ResolveTheme(entry.WorshipType, time.Now())
+				title = t
+			}
+
+			// YouTube 방송 생성 + 스트림 바인딩
+			server, key, broadcastID, err := youtube.CreateBroadcastAndBind(title)
+			if err != nil {
+				log.Printf("[scheduler] YouTube 방송 생성 실패: %v — 기존 방식으로 스트리밍", err)
+				// YouTube 실패해도 기존 OBS 스트리밍은 시도
+				if err := obs.Get().StartStreaming(); err != nil {
+					log.Printf("[scheduler] OBS 스트리밍 시작 실패: %v", err)
+				}
+			} else {
+				// 썸네일 생성 + 업로드 (upcoming 상태에서 → 확실히 반영)
+				GenerateAndUploadThumbnailTo(entry.WorshipType, broadcastID)
+
+				// OBS 스트리밍 중이면 먼저 중지
+				obsM := obs.Get()
+				streamStatus := obsM.GetStreamStatus()
+				if streamStatus.Active {
+					obsM.StopStreaming()
+					for i := 0; i < 10; i++ {
+						s := obsM.GetStreamStatus()
+						if !s.Active {
+							break
+						}
+						time.Sleep(500 * time.Millisecond)
+					}
+				}
+
+				// OBS 스트림 설정 (커스텀 RTMP)
+				if err := obsM.SetStreamSettings(server, key); err != nil {
+					log.Printf("[scheduler] OBS 스트림 설정 실패: %v", err)
+				}
+
+				// OBS 송출 시작
+				if err := obsM.StartStreaming(); err != nil {
+					log.Printf("[scheduler] OBS 스트리밍 시작 실패: %v", err)
+				}
+			}
+		} else {
+			// YouTube 미연결 → 기존 OBS 스트리밍만
+			GenerateAndUploadThumbnail(entry.WorshipType)
+			if err := obs.Get().StartStreaming(); err != nil {
+				log.Printf("[scheduler] OBS 스트리밍 시작 실패: %v", err)
+			}
 		}
+	} else {
+		// autoStream 꺼져 있으면 썸네일만 생성
+		go GenerateAndUploadThumbnail(entry.WorshipType)
 	}
 
 	BroadcastMessage("schedule_started", map[string]interface{}{

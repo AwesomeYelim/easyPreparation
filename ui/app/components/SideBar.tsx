@@ -88,10 +88,7 @@ export default function Sidebar({ open, onClose, user }: SidebarProps) {
   const menuActions: { title: string; action?: () => void }[] = [
     { title: "설정", action: () => setSettingsOpen(true) },
     { title: "라이선스 정보" },
-    { title: "주보 생성 내역", action: () => openHistory("bulletin") },
-    { title: "PPT 생성 내역", action: () => openHistory("ppt") },
-    { title: "가사 PPT 생성 내역", action: () => openHistory("lyrics_ppt") },
-    { title: "Display 생성 내역", action: () => openHistory("display") },
+    { title: "생성 내역", action: () => openHistory() },
   ];
 
   return (

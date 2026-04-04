@@ -24,6 +24,13 @@ type wsClient struct {
 var clients = make(map[*websocket.Conn]*wsClient)
 var clientsMu sync.Mutex
 
+// OBS 씬 전환 중복 방지 + 디바운스 (빠른 이동 시 마지막 항목에서만 전환)
+var (
+	globalObsIdx      = -1
+	globalObsIdxMu    sync.Mutex
+	sceneDebounceTimer *time.Timer
+)
+
 func addClient(conn *websocket.Conn) *wsClient {
 	c := &wsClient{conn: conn}
 	clientsMu.Lock()
@@ -71,9 +78,6 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	orderMu.RUnlock()
 
-	// OBS 씬 전환은 항목(idx)이 바뀔 때만 수행 (서브페이지 이동 시 스킵)
-	lastObsIdx := -1
-
 	// Keep the connection open + handle incoming messages
 	for {
 		_, msg, err := conn.ReadMessage()
@@ -98,13 +102,26 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 					}
 					// Display 본인 제외, 제어판에만 전달
 					BroadcastMessageExcept("position", posPayload, conn)
-					// OBS 씬 전환 (항목이 바뀔 때만)
-					if newIdx != lastObsIdx {
-						lastObsIdx = newIdx
-						if title := GetCurrentTitle(); title != "" {
-							go obs.Get().SwitchScene(title)
+					// OBS 씬 전환 — 디바운스 300ms (빠른 이동 시 마지막 항목에서만 전환)
+					globalObsIdxMu.Lock()
+					if newIdx != globalObsIdx {
+						globalObsIdx = newIdx
+						if sceneDebounceTimer != nil {
+							sceneDebounceTimer.Stop()
 						}
+						capturedIdx := newIdx
+						sceneDebounceTimer = time.AfterFunc(300*time.Millisecond, func() {
+							globalObsIdxMu.Lock()
+							currentIdx := globalObsIdx
+							globalObsIdxMu.Unlock()
+							if currentIdx == capturedIdx {
+								if title := GetCurrentTitle(); title != "" {
+									obs.Get().SwitchScene(title)
+								}
+							}
+						})
 					}
+					globalObsIdxMu.Unlock()
 					// 서버 타이머 업데이트
 					OnPositionUpdate(newIdx, subPage)
 				}

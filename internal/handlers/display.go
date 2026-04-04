@@ -669,6 +669,11 @@ func GetCurrentTitle() string {
 	return ""
 }
 
+// IsFadeBackItem — fade-back 대상 항목 여부 (현재 사용 안 함)
+func IsFadeBackItem(title string) bool {
+	return false
+}
+
 // ── 서버 사이드 타이머 함수 ──
 
 // calcSlideDelay — 현재 항목/서브페이지에 대한 딜레이(초) 계산
@@ -1145,6 +1150,16 @@ function renderLyricsItem(item, pageIdx) {
     return;
   }
 
+  // 1b. 찬양 — 할렐루야 성가대 표시
+  if (title === '찬양') {
+    var songTitle = (obj && obj !== '-') ? obj : '';
+    slide.innerHTML = '<div class="overlay-box center">' +
+      '<div class="title-overlay" style="text-align:center;width:100%">할렐루야 성가대</div>' +
+      (songTitle ? '<div class="sub-overlay" style="text-align:center;width:100%;font-size:var(--sub-font-size);margin-top:2vh;">' + esc(songTitle) + '</div>' : '') +
+      '</div>';
+    return;
+  }
+
   // 1. 찬송/헌금봉헌
   if (title === '찬송' || title === '헌금봉헌') {
     if (pageIdx === 0) {
@@ -1238,7 +1253,7 @@ func DisplayAssetsHandler(w http.ResponseWriter, r *http.Request) {
 // 공통 배경 이미지 서빙
 func DisplayBgHandler(w http.ResponseWriter, r *http.Request) {
 	execPath := path.ExecutePath("easyPreparation")
-	imgPath := filepath.Join(execPath, "output", "lyrics", "tmp", "Frame 1.png")
+	imgPath := filepath.Join(execPath, "output", "lyrics", "tmp", "Frame 2.png")
 	http.ServeFile(w, r, imgPath)
 }
 
@@ -1456,10 +1471,7 @@ func DisplayJumpHandler(w http.ResponseWriter, r *http.Request) {
 		"info":       info,
 	}
 
-	// OBS 씬 전환
-	if title != "" {
-		go obs.Get().SwitchScene(title)
-	}
+	// OBS 씬 전환은 WS position 핸들러에서 통합 처리 (중복 방지)
 
 	log.Printf("[jump] idx=%d title=%s broadcast to clients", payload.Index, title)
 	BroadcastMessage("navigate", navPayload)

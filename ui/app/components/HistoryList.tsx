@@ -19,18 +19,26 @@ const typeLabels: Record<string, string> = {
   display: "Display",
 };
 
+const filterTabs: { key: string | undefined; label: string }[] = [
+  { key: undefined, label: "전체" },
+  { key: "bulletin", label: "주보" },
+  { key: "lyrics_ppt", label: "가사 PPT" },
+  { key: "display", label: "Display" },
+];
+
 export default function HistoryList({ open, onClose, filterType }: HistoryListProps) {
   const userInfo = useRecoilValue(userInfoState);
   const [items, setItems] = useState<GenerationHistory[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<string | undefined>(filterType);
 
   const loadHistory = useCallback(
-    (p: number) => {
+    (p: number, type?: string) => {
       if (!userInfo.email) return;
       setLoading(true);
       apiClient
-        .getHistory(userInfo.email, filterType, p)
+        .getHistory(userInfo.email, type, p)
         .then((data: { items: GenerationHistory[]; page: number }) => {
           setItems(data.items || []);
           setPage(data.page || 1);
@@ -38,12 +46,20 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
         .catch(() => setItems([]))
         .finally(() => setLoading(false));
     },
-    [userInfo.email, filterType]
+    [userInfo.email]
   );
 
   useEffect(() => {
-    if (open) loadHistory(1);
-  }, [open, loadHistory]);
+    if (open) {
+      setActiveFilter(filterType);
+      loadHistory(1, filterType);
+    }
+  }, [open, filterType, loadHistory]);
+
+  const handleFilterChange = (type?: string) => {
+    setActiveFilter(type);
+    loadHistory(1, type);
+  };
 
   if (!open) return null;
 
@@ -51,10 +67,21 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
     <div className="history_overlay" onClick={onClose}>
       <div className="history_panel" onClick={(e) => e.stopPropagation()}>
         <div className="history_header">
-          <h3>{filterType ? `${typeLabels[filterType] || filterType} 생성 내역` : "전체 생성 내역"}</h3>
+          <h3>생성 내역</h3>
           <button className="history_close" onClick={onClose}>
             &times;
           </button>
+        </div>
+        <div className="history_tabs">
+          {filterTabs.map((tab) => (
+            <button
+              key={tab.label}
+              className={`history_tab${activeFilter === tab.key ? " active" : ""}`}
+              onClick={() => handleFilterChange(tab.key)}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         <div className="history_body">
@@ -88,14 +115,14 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
           <div className="history_footer">
             <button
               disabled={page <= 1 || loading}
-              onClick={() => loadHistory(page - 1)}
+              onClick={() => loadHistory(page - 1, activeFilter)}
             >
               이전
             </button>
             <span>{page} 페이지</span>
             <button
               disabled={items.length < 20 || loading}
-              onClick={() => loadHistory(page + 1)}
+              onClick={() => loadHistory(page + 1, activeFilter)}
             >
               다음
             </button>
@@ -146,6 +173,31 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
           font-size: 24px;
           cursor: pointer;
           color: #6b7280;
+        }
+        .history_tabs {
+          display: flex;
+          gap: 4px;
+          padding: 12px 24px 0;
+          flex-shrink: 0;
+        }
+        .history_tab {
+          padding: 6px 14px;
+          font-size: 12px;
+          font-weight: 600;
+          border: 1px solid #e5e7eb;
+          border-radius: 20px;
+          background: #f9fafb;
+          color: #6b7280;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .history_tab:hover {
+          background: #f3f4f6;
+        }
+        .history_tab.active {
+          background: #1f3f62;
+          color: #fff;
+          border-color: #1f3f62;
         }
         .history_body {
           flex: 1;

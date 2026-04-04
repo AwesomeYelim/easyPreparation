@@ -18,6 +18,8 @@ export default function Detail({
     key: string,
     { newObj, newLead }: { newObj: string; newLead?: string }
   ) => {
+    let updatedDetail: WorshipOrderItem | null = null;
+
     const updateData = (items: WorshipOrderItem[]): WorshipOrderItem[] => {
       return items.map((item) => {
         let updatedItem: WorshipOrderItem = { ...item };
@@ -33,23 +35,25 @@ export default function Detail({
         if (item.key == key) {
           if (["b_edit", "c_edit", "c-edit", "edit"].includes(item.info)) {
             updatedItem.obj = newObj;
-            if (newLead) {
+            if (newLead !== undefined) {
               updatedItem.lead = newLead;
             }
-          } else if (item.info === "r_edit" && newLead) {
+          } else if (item.info === "r_edit" && newLead !== undefined) {
             updatedItem.lead = newLead;
           }
         }
 
-        // selectedDetail과 같은 key면, 전체를 업데이트
         if (item.key === selectedDetail.key) {
-          setSelectedDetail(updatedItem);
+          updatedDetail = updatedItem;
         }
         return updatedItem;
       });
     };
 
     setSelectedItems((prevData) => updateData(prevData));
+    if (updatedDetail) {
+      setSelectedDetail(updatedDetail);
+    }
   };
 
   return (

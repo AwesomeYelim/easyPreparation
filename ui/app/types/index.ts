@@ -83,3 +83,24 @@ export type StreamStatus = {
   timecode: string;
   bytesSent: number;
 };
+
+export type DefaultTheme = {
+  background: string;
+  titleFormat: string;
+};
+
+export type SpecialDate = {
+  date: string;
+  label: string;
+  background: string;
+  titleOverride: string;
+};
+
+export type ThumbnailConfig = {
+  defaults: Record<string, DefaultTheme>;
+  specials: SpecialDate[];
+};
+
+export type YouTubeStatus = {
+  connected: boolean;
+};
