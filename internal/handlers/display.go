@@ -293,10 +293,34 @@ const displayHTML = `<!DOCTYPE html>
     letter-spacing:0.1em;
   }
 
+  /* 카운트다운 오버레이 */
+  #countdown-overlay {
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.85);
+    display:none; flex-direction:column;
+    justify-content:center; align-items:center;
+    z-index:9999;
+  }
+  #countdown-overlay.visible { display:flex; }
+  #countdown-label {
+    font-size:6vh; font-weight:600;
+    color:rgba(255,255,255,0.8);
+    margin-bottom:3vh;
+  }
+  #countdown-time {
+    font-size:15vh; font-weight:700;
+    font-family:'SF Mono','Consolas','Courier New',monospace;
+    color:#fff; letter-spacing:0.1em;
+  }
+
 </style>
 </head>
 <body>
 <div id="slide"></div>
+<div id="countdown-overlay">
+  <div id="countdown-label"></div>
+  <div id="countdown-time"></div>
+</div>
 
 <script>
 const slide = document.getElementById('slide');
@@ -334,6 +358,16 @@ function connect() {
       }
     }
     if (msg.type === 'display') renderSingle(msg);
+    if (msg.type === 'schedule_countdown') {
+      var overlay = document.getElementById('countdown-overlay');
+      document.getElementById('countdown-label').textContent = msg.label;
+      document.getElementById('countdown-time').textContent =
+        String(msg.minutes).padStart(2,'0') + ':' + String(msg.seconds).padStart(2,'0');
+      overlay.classList.add('visible');
+    }
+    if (msg.type === 'schedule_started') {
+      document.getElementById('countdown-overlay').classList.remove('visible');
+    }
   };
   ws.onclose = () => {
     clearTimeout(reconnectTimer);
@@ -946,10 +980,34 @@ const displayOverlayHTML = `<!DOCTYPE html>
     margin-top:1.5vh; text-align:left;
     text-shadow:var(--overlay-text-shadow);
   }
+
+  /* 카운트다운 오버레이 */
+  #countdown-overlay {
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.85);
+    display:none; flex-direction:column;
+    justify-content:center; align-items:center;
+    z-index:9999;
+  }
+  #countdown-overlay.visible { display:flex; }
+  #countdown-label {
+    font-size:6vh; font-weight:600;
+    color:rgba(255,255,255,0.8);
+    margin-bottom:3vh;
+  }
+  #countdown-time {
+    font-size:15vh; font-weight:700;
+    font-family:'SF Mono','Consolas','Courier New',monospace;
+    color:#fff; letter-spacing:0.1em;
+  }
 </style>
 </head>
 <body>
 <div id="slide"></div>
+<div id="countdown-overlay">
+  <div id="countdown-label"></div>
+  <div id="countdown-time"></div>
+</div>
 
 <script>
 const slide = document.getElementById('slide');
@@ -980,6 +1038,16 @@ function connect() {
       } else {
         navigate(msg.direction);
       }
+    }
+    if (msg.type === 'schedule_countdown') {
+      var overlay = document.getElementById('countdown-overlay');
+      document.getElementById('countdown-label').textContent = msg.label;
+      document.getElementById('countdown-time').textContent =
+        String(msg.minutes).padStart(2,'0') + ':' + String(msg.seconds).padStart(2,'0');
+      overlay.classList.add('visible');
+    }
+    if (msg.type === 'schedule_started') {
+      document.getElementById('countdown-overlay').classList.remove('visible');
     }
   };
   ws.onclose = () => {
@@ -1796,13 +1864,16 @@ func DisplayStatusHandler(w http.ResponseWriter, r *http.Request) {
 
 	obsStatus := obs.Get().GetStatus()
 
+	streamStatus := obs.Get().GetStreamStatus()
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"idx":   idx,
-		"count": count,
-		"title": title,
-		"items": items,
-		"obs":   obsStatus,
+		"idx":    idx,
+		"count":  count,
+		"title":  title,
+		"items":  items,
+		"obs":    obsStatus,
+		"stream": streamStatus,
 	})
 }
 

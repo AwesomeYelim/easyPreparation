@@ -53,6 +53,11 @@ func StartServer(dataChan chan types.DataEnvelope) {
 	mux.Handle("/api/settings/license", middleware.CORS(http.HandlerFunc(handlers.LicenseHandler)))
 	mux.Handle("/api/history", middleware.CORS(http.HandlerFunc(handlers.HistoryHandler)))
 
+	// 스케줄러 API
+	mux.Handle("/api/schedule", middleware.CORS(http.HandlerFunc(handlers.ScheduleHandler)))
+	mux.Handle("/api/schedule/test", middleware.CORS(http.HandlerFunc(handlers.ScheduleTestHandler)))
+	mux.Handle("/api/schedule/stream", middleware.CORS(http.HandlerFunc(handlers.StreamControlHandler)))
+
 	fmt.Println("Server running on http://localhost:8080")
 	if err := http.ListenAndServe("0.0.0.0:8080", mux); err != nil {
 		panic(err)

@@ -61,3 +61,25 @@ export type GenerationHistory = {
   metadata?: Record<string, any>;
   created_at: string;
 };
+
+export type ScheduleEntry = {
+  worshipType: string;
+  label: string;
+  weekday: number;
+  hour: number;
+  minute: number;
+  enabled: boolean;
+};
+
+export type ScheduleConfig = {
+  entries: ScheduleEntry[];
+  autoStream: boolean;
+  countdownMinutes: number;
+};
+
+export type StreamStatus = {
+  active: boolean;
+  reconnecting: boolean;
+  timecode: string;
+  bytesSent: number;
+};

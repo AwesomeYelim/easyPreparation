@@ -140,19 +140,20 @@ PYTHONUTF8=1 tools/.venv/bin/python tools/output/_tmp.py && rm tools/output/_tmp
 
 ---
 
-## 에이전트 시스템 (3-Agent Orchestration)
+## 에이전트 시스템 (6-Agent Orchestration)
 
-사용자가 계획표를 주면 3개 sub-agent가 자동으로 분업 실행합니다.
+사용자가 계획표를 주면 6개 sub-agent가 자동으로 분업 실행합니다.
 
 | 에이전트 | 역할 | sub-agent 타입 | 프롬프트 |
 |----------|------|----------------|----------|
 | 시행자 (Planner) | 코드 탐색 → 상세 태스크 JSON 생성 | `Plan` | `.claude/agents/planner.md` |
 | 수행자 (Executor) | 태스크별 코드 수정 | `general-purpose` (sonnet) | `.claude/agents/executor.md` |
-| 코드 검증자 (Code Inspector) | 빌드/타입/API/문서/Git | `Bash` | `.claude/agents/inspector.md` |
+| 코드 검증자 (Code Inspector) | 빌드/타입/API 정합성/서버 시작 | `Bash` | `.claude/agents/inspector.md` |
 | UX 검증자 (UX Inspector) | z-index/반응형/상태흐름/테마 | `general-purpose` | `.claude/agents/ux-inspector.md` |
+| 문서 에이전트 (Documenter) | 개발문서/사용자가이드/테스트체크리스트/Git | `general-purpose` | `.claude/agents/documenter.md` |
 | 감시자 (Monitor) | 포트/프로세스 관리, 환경 정리 | `Bash` (haiku) | `.claude/agents/monitor.md` |
 
-**실행 흐름**: 감시자(정리) → 시행자(분석) → 수행자(구현, 병렬) → 감시자(정리) → 코드검증+UX검증(병렬) → Git → [실패 시 수행자 재실행]
+**실행 흐름**: 감시자(정리) → 시행자(분석) → 수행자(구현, 병렬) → 감시자(정리) → 코드검증+UX검증(병렬) → 문서에이전트(문서+가이드+Git) → [실패 시 수행자 재실행]
 
 **트리거**: 사용자가 "이 계획을 실행해줘" 또는 계획표를 전달하면:
 1. 감시자(haiku)로 포트/프로세스 정리
@@ -160,14 +161,42 @@ PYTHONUTF8=1 tools/.venv/bin/python tools/output/_tmp.py && rm tools/output/_tmp
 3. 수행자(sonnet)를 parallel_group별 병렬 실행
 4. 감시자(haiku)로 포트 정리
 5. 코드 검증자 + UX 검증자 **병렬** 실행
-6. 둘 다 pass → Git commit & push → 서버 시작
+6. 둘 다 pass → 문서 에이전트 (개발문서 + 사용자 가이드 + 테스트 체크리스트 + Git commit & push)
 7. 하나라도 fail → fix_tasks로 수행자 재실행 (최대 2회)
 
-**모델 배정**: 감시자 = haiku, 수행자 = sonnet, 시행자/검증자 = 기본(opus)
+**모델 배정**: 감시자 = haiku, 수행자 = sonnet, 시행자/검증자/문서 = 기본(opus)
 
-**감시자 단독 호출**: "서버 상태 확인", "포트 정리", 세션 터짐 시 감시자만 실행
+**단독 호출**:
+- 감시자: "서버 상태 확인", "포트 정리", 세션 터짐 시
+- 문서 에이전트: "가이드 업데이트", "테스트 체크리스트 업데이트", "문서 정리"
 
 상세 프로토콜: `.claude/agents/protocol.md`
+
+---
+
+## 예배 순서 데이터 규칙 (`ui/app/data/*.json`)
+
+### `info` 필드 — 편집 가능 여부 결정
+| info 값 | 의미 | Detail 컴포넌트 동작 |
+|---------|------|---------------------|
+| `"c_edit"` | 텍스트 편집 (찬송번호, 제목 등) | textarea + lead input |
+| `"b_edit"` | 성경 구절 편집 | BibleSelect + lead input |
+| `"edit"` | 일반 편집 (obj + lead) | textarea + lead input |
+| `"r_edit"` | lead만 편집 (obj 자동) | lead input only |
+| `"notice"` | 교회소식 (ChurchNews 컴포넌트) | ChurchNews UI |
+| `"-"` | **자동 처리 (편집 불가)** | "이 항목은 자동으로 처리됩니다" |
+
+### 편집 가능 여부 판단 기준
+- `info.includes("edit")` → 편집 UI 표시
+- `info === "-"` → 편집 UI 숨김
+- **찬송/찬양/성경 관련 항목**은 반드시 `c_edit` 또는 `b_edit` — `"-"`이면 사용자가 번호/구절 입력 불가
+- **기도자 입력 필요 항목** (대표기도, 합심기도 등) → `edit` 또는 `r_edit`
+- **고정 항목** (전주, 축도, 주기도문, 신앙고백) → `"-"` 정상
+
+### 상태 관리 규칙
+- 예배 순서 편집 데이터는 `worshipOrderState` (Recoil atom)에 저장
+- `useState`로 복사본을 만들어 편집하면 **드롭다운 전환 시 데이터 유실** — 반드시 Recoil 직접 업데이트
+- 새 예배 타입 추가 시: `recoilState.ts`의 `WorshipType` + import + default 모두 추가
 
 ---
 

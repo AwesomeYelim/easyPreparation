@@ -5,6 +5,7 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { userSettingsState, userInfoState } from "@/recoilState";
 import { apiClient } from "@/lib/apiClient";
 import { UserSettings } from "@/types";
+import SchedulePanel from "./SchedulePanel";
 
 interface SettingsPanelProps {
   open: boolean;
@@ -16,6 +17,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [settings, setSettings] = useRecoilState(userSettingsState);
   const [local, setLocal] = useState<UserSettings>(settings);
   const [saving, setSaving] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   useEffect(() => {
     setLocal(settings);
@@ -121,6 +123,18 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               <option value="compact">컴팩트</option>
             </select>
           </label>
+
+          <div className="settings_divider" />
+
+          <div className="settings_row">
+            <span>스트리밍 스케줄</span>
+            <button
+              className="settings_schedule_btn"
+              onClick={() => setScheduleOpen(true)}
+            >
+              설정
+            </button>
+          </div>
         </div>
 
         <div className="settings_footer">
@@ -136,6 +150,8 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           </button>
         </div>
       </div>
+
+      <SchedulePanel open={scheduleOpen} onClose={() => setScheduleOpen(false)} />
 
       <style jsx>{`
         .settings_overlay {
@@ -240,6 +256,24 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         }
         .settings_save_btn:disabled {
           background: #9ca3af;
+        }
+        .settings_divider {
+          height: 1px;
+          background: #e5e7eb;
+          margin: 4px 0;
+        }
+        .settings_schedule_btn {
+          padding: 6px 16px;
+          font-size: 13px;
+          font-weight: 500;
+          background: #f3f4f6;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          cursor: pointer;
+          color: #374151;
+        }
+        .settings_schedule_btn:hover {
+          background: #e5e7eb;
         }
       `}</style>
     </div>

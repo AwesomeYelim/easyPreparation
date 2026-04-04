@@ -41,6 +41,10 @@ func main() {
 	// Display 상태 복원 (이전 세션)
 	handlers.LoadDisplayState()
 
+	// 스케줄러 초기화
+	handlers.InitScheduler()
+	defer handlers.StopScheduler()
+
 	// Google Drive 진행 콜백 연결
 	googleCloud.ProgressFunc = handlers.BroadcastProgress
 

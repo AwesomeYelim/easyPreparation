@@ -24,6 +24,14 @@ type Status struct {
 	CurrentScene string `json:"currentScene"`
 }
 
+// StreamStatus — OBS 스트리밍 상태
+type StreamStatus struct {
+	Active       bool    `json:"active"`
+	Reconnecting bool    `json:"reconnecting"`
+	Timecode     string  `json:"timecode"`
+	BytesSent    float64 `json:"bytesSent"`
+}
+
 // Manager — OBS WebSocket 매니저 (싱글턴)
 type Manager struct {
 	mu           sync.RWMutex
@@ -117,6 +125,73 @@ func (m *Manager) GetStatus() Status {
 	return Status{
 		Connected:    m.connected,
 		CurrentScene: m.currentScene,
+	}
+}
+
+// StartStreaming — OBS 스트리밍 시작 (미연결 시 no-op)
+func (m *Manager) StartStreaming() error {
+	if m == nil || !m.enabled {
+		return nil
+	}
+	m.mu.RLock()
+	client := m.client
+	connected := m.connected
+	m.mu.RUnlock()
+	if !connected || client == nil {
+		return nil
+	}
+	_, err := client.Stream.StartStream()
+	if err != nil {
+		log.Printf("[obs] 스트리밍 시작 실패: %v", err)
+		return err
+	}
+	log.Println("[obs] 스트리밍 시작")
+	return nil
+}
+
+// StopStreaming — OBS 스트리밍 중지 (미연결 시 no-op)
+func (m *Manager) StopStreaming() error {
+	if m == nil || !m.enabled {
+		return nil
+	}
+	m.mu.RLock()
+	client := m.client
+	connected := m.connected
+	m.mu.RUnlock()
+	if !connected || client == nil {
+		return nil
+	}
+	_, err := client.Stream.StopStream()
+	if err != nil {
+		log.Printf("[obs] 스트리밍 중지 실패: %v", err)
+		return err
+	}
+	log.Println("[obs] 스트리밍 중지")
+	return nil
+}
+
+// GetStreamStatus — OBS 스트리밍 상태 조회
+func (m *Manager) GetStreamStatus() StreamStatus {
+	if m == nil || !m.enabled {
+		return StreamStatus{}
+	}
+	m.mu.RLock()
+	client := m.client
+	connected := m.connected
+	m.mu.RUnlock()
+	if !connected || client == nil {
+		return StreamStatus{}
+	}
+	resp, err := client.Stream.GetStreamStatus()
+	if err != nil {
+		log.Printf("[obs] 스트리밍 상태 조회 실패: %v", err)
+		return StreamStatus{}
+	}
+	return StreamStatus{
+		Active:       resp.OutputActive,
+		Reconnecting: resp.OutputReconnecting,
+		Timecode:     resp.OutputTimecode,
+		BytesSent:    resp.OutputBytes,
 	}
 }
 

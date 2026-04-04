@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import { displayItemsState, displayPanelOpenState } from "@/recoilState";
 import { apiClient } from "@/lib/apiClient";
-import { WorshipOrderItem, OBSStatus } from "@/types";
+import { WorshipOrderItem, OBSStatus, StreamStatus } from "@/types";
 import { useWS } from "@/components/WebSocketProvider";
 import s from "./DisplayControlPanel.module.scss";
 
@@ -13,6 +13,12 @@ type TimerState = {
   countdown: number;
   speedFactor: number;
 };
+
+type ScheduleCountdown = {
+  label: string;
+  minutes: number;
+  seconds: number;
+} | null;
 
 export default function DisplayControlPanel() {
   const [items, setItems] = useRecoilState(displayItemsState);
@@ -24,6 +30,8 @@ export default function DisplayControlPanel() {
   const [timer, setTimer] = useState<TimerState>({ enabled: false, countdown: 0, speedFactor: 1.0 });
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
   const [loadingMsg, setLoadingMsg] = useState("");
+  const [schedCountdown, setSchedCountdown] = useState<ScheduleCountdown>(null);
+  const [streamStatus, setStreamStatus] = useState<StreamStatus>({ active: false, reconnecting: false, timecode: "", bytesSent: 0 });
   const { subscribe } = useWS();
   const listRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef(items);
@@ -66,6 +74,16 @@ export default function DisplayControlPanel() {
           setLoadingMsg(msg.message || "준비 중...");
         }
       }
+      if (msg.type === "schedule_countdown") {
+        setSchedCountdown({
+          label: msg.label,
+          minutes: msg.minutes,
+          seconds: msg.seconds,
+        });
+      }
+      if (msg.type === "schedule_started") {
+        setSchedCountdown(null);
+      }
     });
   }, [subscribe, setItems]);
 
@@ -75,6 +93,7 @@ export default function DisplayControlPanel() {
       apiClient.getDisplayStatus()
         .then((data: any) => {
           if (data.obs) setObsStatus(data.obs);
+          if (data.stream) setStreamStatus(data.stream);
           if (Array.isArray(data.items) && data.items.length > 0 && itemsRef.current.length === 0) {
             setItems(data.items as WorshipOrderItem[]);
             if (typeof data.idx === "number") setIdx(data.idx);
@@ -167,6 +186,13 @@ export default function DisplayControlPanel() {
     apiClient.timerControl("speed", factor);
   }, []);
 
+  const handleStreamToggle = useCallback(() => {
+    const action = streamStatus.active ? "stop" : "start";
+    apiClient.streamControl(action).then(() => {
+      // 상태 폴링에서 자동 갱신됨
+    });
+  }, [streamStatus.active]);
+
   // 키보드 ← → 제어 (디바운스)
   useEffect(() => {
     let blocked = false;
@@ -196,9 +222,29 @@ export default function DisplayControlPanel() {
           <span className={s.dcp_title}>
             OBS {obsStatus.connected ? obsStatus.currentScene : "Disconnected"}
           </span>
+          {streamStatus.active && (
+            <span className={s.live_badge}>LIVE</span>
+          )}
         </div>
-        <button className={s.dcp_close} onClick={onClose}>✕</button>
+        <div className={s.dcp_header_actions}>
+          <button
+            className={`${s.stream_btn} ${streamStatus.active ? s.stop : s.start}`}
+            onClick={handleStreamToggle}
+          >
+            {streamStatus.active ? "방송 종료" : "방송 시작"}
+          </button>
+          <button className={s.dcp_close} onClick={onClose}>✕</button>
+        </div>
       </div>
+
+      {schedCountdown && (
+        <div className={s.dcp_schedule_countdown}>
+          <span className={s.sched_label}>{schedCountdown.label}</span>
+          <span className={s.sched_time}>
+            {String(schedCountdown.minutes).padStart(2, "0")}:{String(schedCountdown.seconds).padStart(2, "0")}
+          </span>
+        </div>
+      )}
 
       <div className={s.dcp_nav}>
         <button onClick={() => handleNav("prev")}>◀</button>

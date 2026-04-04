@@ -1,4 +1,4 @@
-import { WorshipOrderItem, UserSettings } from "@/types";
+import { WorshipOrderItem, UserSettings, ScheduleConfig } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -153,4 +153,29 @@ export const apiClient = {
   getHistory: (email: string, type?: string, page = 1) =>
     fetch(`${BASE_URL}/api/history?email=${encodeURIComponent(email)}${type ? `&type=${type}` : ""}&page=${page}`)
       .then((r) => r.json()),
+
+  // 스케줄러 API
+  getSchedule: () =>
+    fetch(`${BASE_URL}/api/schedule`).then((r) => r.json()),
+
+  saveSchedule: (config: ScheduleConfig) =>
+    fetch(`${BASE_URL}/api/schedule`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(config),
+    }).then((r) => r.json()),
+
+  streamControl: (action: "start" | "stop" | "status") =>
+    fetch(`${BASE_URL}/api/schedule/stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    }).then((r) => r.json()),
+
+  scheduleTest: (action: "countdown" | "trigger", worshipType: string) =>
+    fetch(`${BASE_URL}/api/schedule/test`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, worshipType }),
+    }).then((r) => r.json()),
 };

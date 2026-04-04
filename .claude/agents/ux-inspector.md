@@ -67,7 +67,44 @@
 - `--user-font-size` 등 사용자 설정 변수가 올바르게 적용되는지
 - 하드코딩된 색상이 CSS 변수를 우회하고 있지 않은지 (다크 테마 깨짐 위험)
 
-### 5단계: 접근성 기본 검증
+### 5단계: 상태 관리 검증
+
+**Recoil / React 상태 흐름에서 데이터 유실이 발생하지 않는지 확인합니다.**
+
+**검증 규칙:**
+- 드롭다운/탭 전환 시 편집 내용이 날아가지 않는지:
+  - `useState`로 파생 상태를 만들고 있으면서 원본(recoil atom)에 반영하지 않는 패턴 → **fail**
+  - 올바른 패턴: `useRecoilState`로 직접 읽기/쓰기, 또는 setter가 atom을 업데이트
+- 모달/패널 열 때 이전 상태 리셋 여부:
+  - `useEffect([open])`에서 매번 서버 fetch하면 OK
+  - 로컬 state만 초기화하면서 저장 안 하면 → **warning**
+- `setSelectedItems` 등 부모→자식 prop이 올바른 타입인지 (React.Dispatch 호환)
+
+**검색 방법:**
+- 변경된 TSX 파일에서 `useState` + `useRecoilValue` 조합 검색
+- `useEffect`에서 recoil 값을 로컬 state로 복사하는 패턴 검색
+
+### 6단계: 데이터 파일 규칙 검증
+
+**예배 순서 JSON 파일(`ui/app/data/*.json`)의 `info` 필드가 올바른지 확인합니다.**
+
+**`info` 필드 규칙:**
+| info 값 | 의미 | 편집 UI |
+|---------|------|---------|
+| `"c_edit"` | 텍스트 편집 (찬송번호, 제목 등) | textarea + lead input |
+| `"b_edit"` | 성경 구절 편집 | BibleSelect + lead input |
+| `"edit"` | 일반 편집 (obj + lead) | textarea + lead input |
+| `"r_edit"` | lead만 편집 | lead input only |
+| `"c-edit"` | 교회소식 하위 항목 편집 | textarea |
+| `"notice"` | 교회소식 (ChurchNews 컴포넌트) | ChurchNews UI |
+| `"-"` | 자동 처리 (편집 불가) | "이 항목은 자동으로 처리됩니다" |
+
+**검증 규칙:**
+- 사용자가 내용을 입력해야 하는 항목(찬송, 찬양, 성경, 기도자 등)이 `info: "-"`이면 → **fail**
+- 특히 `title`이 "찬송", "찬양", "성경봉독", "예배의 부름" 등인데 `info: "-"`이면 사용자가 편집 불가 → 반드시 `c_edit` 또는 `b_edit`으로 설정
+- `title`이 "전주", "봉헌기도", "축도", "주기도문", "신앙고백" 등 고정 항목은 `info: "-"`이 정상
+
+### 7단계: 접근성 기본 검증
 
 **확인 항목**:
 - `button`에 텍스트 또는 `aria-label`이 있는지

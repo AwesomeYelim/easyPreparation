@@ -8,8 +8,9 @@
 |----------|------|----------|------|
 | 시행자 (Planner) | `Plan` | `.claude/agents/planner.md` | 계획 분석 → 상세 태스크 JSON |
 | 수행자 (Executor) | `general-purpose` | `.claude/agents/executor.md` | 태스크별 코드 수정 |
-| 코드 검증자 (Code Inspector) | `Bash` | `.claude/agents/inspector.md` | 빌드/타입/API 정합성/문서/Git |
+| 코드 검증자 (Code Inspector) | `Bash` | `.claude/agents/inspector.md` | 빌드/타입/API 정합성/서버 시작 |
 | UX 검증자 (UX Inspector) | `general-purpose` | `.claude/agents/ux-inspector.md` | z-index/반응형/상태흐름/테마 |
+| 문서 에이전트 (Documenter) | `general-purpose` | `.claude/agents/documenter.md` | 개발문서/사용자가이드/테스트체크리스트/Git |
 | 감시자 (Monitor) | `Bash` | `.claude/agents/monitor.md` | 포트/프로세스 관리 |
 
 ## 실행 흐름
@@ -41,11 +42,16 @@
 └────┬─────┘
      ▼
 ┌──────────────┐  병렬 실행
-│ 코드 검증자   │  (Bash) 빌드/타입/API/문서
+│ 코드 검증자   │  (Bash) 빌드/타입/API/서버 시작
 │ UX 검증자    │  (general-purpose) z-index/반응형/상태흐름
 └──────┬───────┘
        │
-       ├─ 둘 다 pass → Git commit & push → 서버 시작 → 완료
+       ├─ 둘 다 pass ──▼
+       │         ┌────────────┐
+       │         │ 문서 에이전트 │  개발문서 + 가이드 + 체크리스트 + Git
+       │         │ documenter  │
+       │         └─────────────┘
+       │                → 완료
        │
        └─ 하나라도 fail → fix_tasks 합산
                 │
@@ -125,6 +131,19 @@ if all_fixes:
   // 재검증 (코드/UX 다시 병렬)
 ```
 
+### Phase 4: 문서 에이전트 실행
+
+```
+// 코드검증 + UX검증 모두 pass 후에만 실행
+if 코드검증.status == "pass" and UX검증.status == "pass":
+  문서 = Task(
+    subagent_type: "general-purpose",
+    prompt: [.claude/agents/documenter.md 내용] +
+            "\n\n## 원래 계획:\n" + [계획표 요약] +
+            "\n\n## 변경된 파일:\n" + [git diff --name-only]
+  )
+```
+
 ## 사용법
 
 사용자가 아래 형태로 계획을 전달:
@@ -146,7 +165,8 @@ if all_fixes:
 2. `.claude/agents/planner.md` 읽고 시행자 sub-agent 실행
 3. `.claude/agents/executor.md` 읽고 수행자 sub-agent 실행 (병렬)
 4. `.claude/agents/monitor.md` 읽고 감시자로 포트 정리
-5. `.claude/agents/inspector.md` 읽고 검사자 sub-agent 실행
+5. `.claude/agents/inspector.md` + `.claude/agents/ux-inspector.md` 읽고 검증자 병렬 실행
+6. `.claude/agents/documenter.md` 읽고 문서 에이전트 실행 (검증 pass 후)
 
 ## 감시자 단독 호출
 
@@ -163,6 +183,21 @@ if all_fixes:
 )
 ```
 
+## 문서 에이전트 단독 호출
+
+사용자가 아래 요청 시 문서 에이전트만 단독 실행:
+- "가이드 업데이트해줘"
+- "사용자 가이드 만들어줘"
+- "테스트 체크리스트 업데이트해줘"
+- "문서 정리해줘"
+
+```
+문서 = Task(
+  subagent_type: "general-purpose",
+  prompt: [.claude/agents/documenter.md 내용] + "\n\n## 요청:\n" + [사용자 요청]
+)
+```
+
 ## 재시도 정책
 
 - 검사자 fail → 최대 2회 재시도
@@ -172,7 +207,7 @@ if all_fixes:
 
 ## 주의사항
 
-- 커밋/푸시는 전체 프로세스 완료 후 사용자가 직접 요청할 때만 수행
+- 커밋/푸시는 문서 에이전트가 최종 단계에서 수행
 - Go 서버 코드 수정 시 `make dev` 재시작은 검사자 단계에서 수행
 - 감시자는 kill 전 항상 프로세스 확인 — 무차별 kill 금지
 - 각 에이전트의 응답은 JSON 형식이어야 파싱 가능

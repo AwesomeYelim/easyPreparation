@@ -3,14 +3,14 @@
     "key": "1",
     "title": "찬송",
     "obj": "-",
-    "info": "-",
+    "info": "c_edit",
     "lead": "함께"
   },
   {
     "key": "2",
     "title": "합심기도",
     "obj": "-",
-    "info": "-",
+    "info": "edit",
     "lead": "함께"
   },
   {

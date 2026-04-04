@@ -8,7 +8,7 @@ import classNames from "classnames";
 import { WorshipType, userInfoState, worshipOrderState, displayPanelOpenState, displayItemsState } from "@/recoilState";
 import { WorshipOrderItem } from "@/types";
 import { apiClient, openDisplayWindow } from "@/lib/apiClient";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { ResultPart } from "./components/ResultPage";
 import { useWS } from "@/components/WebSocketProvider";
 import s from "./bulletin.module.scss";
@@ -16,10 +16,14 @@ import s from "./bulletin.module.scss";
 export default function Bulletin() {
   const [selectedWorshipType, setSelectedWorshipType] =
     useState<WorshipType>("main_worship");
-  const worshipOrder = useRecoilValue(worshipOrderState);
-  const [selectedInfo, setSelectedInfo] = useState<WorshipOrderItem[]>(
-    worshipOrder[selectedWorshipType]
-  );
+  const [worshipOrder, setWorshipOrder] = useRecoilState(worshipOrderState);
+  const selectedInfo = worshipOrder[selectedWorshipType];
+  const setSelectedInfo: React.Dispatch<React.SetStateAction<WorshipOrderItem[]>> = (updater) => {
+    setWorshipOrder((prev) => ({
+      ...prev,
+      [selectedWorshipType]: typeof updater === "function" ? updater(prev[selectedWorshipType]) : updater,
+    }));
+  };
   const userInfo = useRecoilValue(userInfoState);
   const { subscribe } = useWS();
   const setDisplayItems = useSetRecoilState(displayItemsState);
@@ -53,11 +57,8 @@ export default function Bulletin() {
     flushQueue();
   };
 
-  useEffect(() => {
-    if (worshipOrder[selectedWorshipType]) {
-      setSelectedInfo(worshipOrder[selectedWorshipType]);
-    }
-  }, [selectedWorshipType, worshipOrder]);
+  // selectedInfo는 worshipOrder[selectedWorshipType]에서 직접 파생
+  // — 드롭다운 전환 시 자동으로 해당 타입의 데이터를 보여줌
 
   useEffect(() => {
     const ignored = new Set(["navigate", "order", "keepalive", "position"]);
@@ -197,6 +198,7 @@ export default function Bulletin() {
           <option value="main_worship">주일예배</option>
           <option value="after_worship">오후예배</option>
           <option value="wed_worship">수요예배</option>
+          <option value="fri_worship">금요예배</option>
         </select>
 
         <button
