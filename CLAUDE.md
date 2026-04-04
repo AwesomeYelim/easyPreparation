@@ -64,6 +64,18 @@ Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF 생성, Google Drive
 - 씬 매핑: `config/obs.json`의 `scenes` 맵으로 항목 title → OBS 씬 전환
 - 매핑 없는 항목은 씬 전환 스킵 (default fallback 없음)
 - `resolveScene` → `(string, bool)` 반환
+- **스트리밍 제어**: `StartStreaming()`, `StopStreaming()`, `GetStreamStatus()` — 스케줄러 자동 시작 + 수동 제어
+
+### 자동 스케줄러
+`internal/handlers/scheduler.go` — 예배 시간 자동 감지 + OBS 스트리밍 자동 시작.
+
+- **스케줄 설정**: `data/schedule.json`에 영속화 (서버 시작 시 자동 로드)
+- **기본 스케줄**: 주일 11:00 / 오후 14:00 / 수요 19:30 / 금요 20:30
+- **카운트다운**: 예배 시작 N분 전부터 매초 WS `schedule_countdown` 브로드캐스트 → Display/Overlay에 카운트다운 오버레이
+- **자동 실행**: T-0초에 `config/{worshipType}.json` 로드 → 전처리 → Display 순서 교체 + OBS 스트리밍 시작(설정 시)
+- **테스트 API**: `/api/schedule/test` — 카운트다운 10초 테스트 또는 즉시 실행 테스트
+- **중복 방지**: `lastExecuted` 맵으로 동일 스케줄 하루 1회만 실행
+- **UI**: `SchedulePanel.tsx` (설정 모달) + `DisplayControlPanel.tsx` (카운트다운 배너, LIVE 뱃지, 스트리밍 제어)
 
 ### 제어 패널 UI
 `ui/app/bulletin/components/DisplayControlPanel.tsx` — 예배 순서 목록 + 클릭 점프 + 드래그 앤 드롭 순서 변경 + OBS 상태.
@@ -84,7 +96,15 @@ Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF 생성, Google Drive
 | POST | /display/navigate | next/prev 이동 |
 | POST | /display/jump | 특정 항목으로 점프 (subPageIdx 지원) |
 | POST | /display/timer | 자동 넘김 타이머 제어 (enable/disable/speed) |
-| GET | /display/status | 현재 상태 (items, idx, OBS) |
+| GET | /display/status | 현재 상태 (items, idx, OBS, stream) |
+
+### 스케줄러 API
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | /api/schedule | 스케줄 설정 조회 |
+| POST | /api/schedule | 스케줄 설정 저장 |
+| POST | /api/schedule/test | 스케줄 테스트 — `{action: "countdown"\|"trigger", worshipType}` |
+| POST | /api/schedule/stream | OBS 스트리밍 수동 제어 — `{action: "start"\|"stop"\|"status"}` |
 
 ### Display 통합 구조
 - **주보 탭**: `/display/order` — 전체 교체 (예배 순서 일괄 전송)
@@ -137,6 +157,7 @@ PYTHONUTF8=1 tools/.venv/bin/python tools/output/_tmp.py && rm tools/output/_tmp
 | 항목별 배경 이미지 | `output/bulletin/presentation/tmp/{title}.png` (전주, 찬양, 참회의 기도) |
 | Display PNG 캐시 | `output/display/tmp/` |
 | Display 상태 파일 | `data/display_state.json` (order + idx + churchName) |
+| 스케줄 설정 파일 | `data/schedule.json` (entries + autoStream + countdownMinutes) |
 
 ---
 
