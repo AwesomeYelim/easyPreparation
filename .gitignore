@@ -41,3 +41,14 @@ yarn-error.log*
 
 # Python cache
 tools/__pycache__/
+cmd/server/frontend/
+cmd/desktop/frontend/
+cmd/desktop/build/
+
+# Wails 생성 파일
+ui/wailsjs/
+ui/out/
+ui/package.json.md5
+
+# 빌드 바이너리
+desktop

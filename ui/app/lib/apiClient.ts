@@ -1,6 +1,7 @@
-import { WorshipOrderItem, UserSettings, ScheduleConfig, ThumbnailConfig } from "@/types";
+import { WorshipOrderItem, UserSettings, ScheduleConfig, ThumbnailConfig, LicenseStatus } from "@/types";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+  || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8080');
 
 type FigmaInfo = { key: string; token: string };
 type SongItem = { title: string; lyrics: string };
@@ -17,11 +18,16 @@ export function openDisplayWindow() {
 }
 
 export const apiClient = {
-  saveBulletin: (target: string, targetInfo: WorshipOrderItem[]) =>
-    fetch(`/api/saveBulletin`, {
-      method: "POST",
+  // 예배 순서 API (Go 서버 마스터)
+  getWorshipOrder: (type: string) =>
+    fetch(`${BASE_URL}/api/worship-order?type=${type}`)
+      .then((r) => r.json()) as Promise<WorshipOrderItem[]>,
+
+  saveWorshipOrder: (type: string, items: WorshipOrderItem[]) =>
+    fetch(`${BASE_URL}/api/worship-order`, {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ target, targetInfo }),
+      body: JSON.stringify({ type, items }),
     }),
 
   submitBulletin: (payload: { mark: string; targetInfo: WorshipOrderItem[]; target: string; figmaInfo: FigmaInfo; email?: string }) =>
@@ -45,11 +51,11 @@ export const apiClient = {
       body: JSON.stringify(payload),
     }),
 
-  startDisplay: (order: WorshipOrderItem[], churchName?: string, email?: string) =>
+  startDisplay: (order: WorshipOrderItem[], churchName?: string, email?: string, preprocessed?: boolean) =>
     fetch(`${BASE_URL}/display/order`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items: order, churchName: churchName || "", email: email || "" }),
+      body: JSON.stringify({ items: order, churchName: churchName || "", email: email || "", ...(preprocessed ? { preprocessed: true } : {}) }),
     }),
 
   navigateDisplay: (direction: "next" | "prev") =>
@@ -86,11 +92,15 @@ export const apiClient = {
       body: JSON.stringify({ songs }),
     }),
 
-  appendToDisplay: (items: any[]) =>
+  appendToDisplay: (items: any[], source?: string, afterIdx?: number) =>
     fetch(`${BASE_URL}/display/append`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items }),
+      body: JSON.stringify({
+        items,
+        ...(source ? { source } : {}),
+        ...(afterIdx !== undefined ? { afterIdx } : {}),
+      }),
     }),
 
   removeFromDisplay: (index: number) =>
@@ -210,6 +220,50 @@ export const apiClient = {
 
   getThumbnailImageUrl: (path: string) =>
     `${BASE_URL}/api/thumbnail/image?path=${encodeURIComponent(path)}`,
+
+  // 버전 + 업데이트 API
+  getVersion: () =>
+    fetch(`${BASE_URL}/api/version`).then((r) => r.json()) as Promise<{
+      version: string;
+      commit: string;
+      buildTime: string;
+    }>,
+
+  checkUpdate: () =>
+    fetch(`${BASE_URL}/api/update/check`).then((r) => r.json()) as Promise<{
+      ok: boolean;
+      current: string;
+      latest?: string;
+      updateUrl?: string;
+      notes?: string;
+      hasUpdate?: boolean;
+      error?: string;
+    }>,
+
+  // 라이선스 API
+  getLicenseStatus: async (): Promise<LicenseStatus> => {
+    const res = await fetch(`${BASE_URL}/api/license`);
+    return res.json();
+  },
+
+  activateLicense: async (licenseKey: string) => {
+    const res = await fetch(`${BASE_URL}/api/license/activate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ license_key: licenseKey }),
+    });
+    return res.json();
+  },
+
+  deactivateLicense: async () => {
+    const res = await fetch(`${BASE_URL}/api/license/deactivate`, { method: 'POST' });
+    return res.json();
+  },
+
+  verifyLicense: async () => {
+    const res = await fetch(`${BASE_URL}/api/license/verify`, { method: 'POST' });
+    return res.json();
+  },
 
   // YouTube API
   getYoutubeStatus: () =>

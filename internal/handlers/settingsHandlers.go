@@ -19,15 +19,8 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getSettingsHandler(w http.ResponseWriter, r *http.Request) {
-	email := r.URL.Query().Get("email")
-	if email == "" {
-		http.Error(w, `{"error":"email required"}`, http.StatusBadRequest)
-		return
-	}
-
-	var churchID int
-	err := apiDB.QueryRow("SELECT id FROM churches WHERE email = $1", email).Scan(&churchID)
-	if err != nil {
+	churchID := resolveChurchID(r.URL.Query().Get("email"))
+	if churchID == 0 {
 		http.Error(w, `{"error":"church not found"}`, http.StatusNotFound)
 		return
 	}
@@ -35,9 +28,9 @@ func getSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	var preferredBibleVersion, fontSize, defaultBpm int
 	var theme, displayLayout string
 
-	err = apiDB.QueryRow(`
+	err := apiDB.QueryRow(`
 		SELECT preferred_bible_version, theme, font_size, default_bpm, display_layout
-		FROM user_settings WHERE church_id = $1
+		FROM user_settings WHERE church_id = ?
 	`, churchID).Scan(&preferredBibleVersion, &theme, &fontSize, &defaultBpm, &displayLayout)
 
 	if err != nil {
@@ -72,14 +65,13 @@ func putSettingsHandler(w http.ResponseWriter, r *http.Request) {
 		DefaultBpm            int    `json:"default_bpm"`
 		DisplayLayout         string `json:"display_layout"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Email == "" {
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
 		return
 	}
 
-	var churchID int
-	err := apiDB.QueryRow("SELECT id FROM churches WHERE email = $1", body.Email).Scan(&churchID)
-	if err != nil {
+	churchID := resolveChurchID(body.Email)
+	if churchID == 0 {
 		http.Error(w, `{"error":"church not found"}`, http.StatusNotFound)
 		return
 	}
@@ -101,16 +93,16 @@ func putSettingsHandler(w http.ResponseWriter, r *http.Request) {
 		body.DisplayLayout = "default"
 	}
 
-	_, err = apiDB.Exec(`
+	_, err := apiDB.Exec(`
 		INSERT INTO user_settings (church_id, preferred_bible_version, theme, font_size, default_bpm, display_layout, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW())
+		VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
 		ON CONFLICT (church_id) DO UPDATE SET
-			preferred_bible_version = EXCLUDED.preferred_bible_version,
-			theme = EXCLUDED.theme,
-			font_size = EXCLUDED.font_size,
-			default_bpm = EXCLUDED.default_bpm,
-			display_layout = EXCLUDED.display_layout,
-			updated_at = NOW()
+			preferred_bible_version = excluded.preferred_bible_version,
+			theme = excluded.theme,
+			font_size = excluded.font_size,
+			default_bpm = excluded.default_bpm,
+			display_layout = excluded.display_layout,
+			updated_at = datetime('now')
 	`, churchID, body.PreferredBibleVersion, body.Theme, body.FontSize, body.DefaultBpm, body.DisplayLayout)
 
 	if err != nil {
@@ -129,15 +121,8 @@ func HistoryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email := r.URL.Query().Get("email")
-	if email == "" {
-		http.Error(w, `{"error":"email required"}`, http.StatusBadRequest)
-		return
-	}
-
-	var churchID int
-	err := apiDB.QueryRow("SELECT id FROM churches WHERE email = $1", email).Scan(&churchID)
-	if err != nil {
+	churchID := resolveChurchID(r.URL.Query().Get("email"))
+	if churchID == 0 {
 		http.Error(w, `{"error":"church not found"}`, http.StatusNotFound)
 		return
 	}
@@ -156,14 +141,14 @@ func HistoryHandler(w http.ResponseWriter, r *http.Request) {
 	var args []interface{}
 
 	if genType != "" {
-		query = `SELECT id, type, filename, status, metadata, created_at
-				 FROM generation_history WHERE church_id = $1 AND type = $2
-				 ORDER BY created_at DESC LIMIT $3 OFFSET $4`
+		query = `SELECT id, type, filename, status, metadata, created_at, order_data
+				 FROM generation_history WHERE church_id = ? AND type = ?
+				 ORDER BY created_at DESC LIMIT ? OFFSET ?`
 		args = []interface{}{churchID, genType, limit, offset}
 	} else {
-		query = `SELECT id, type, filename, status, metadata, created_at
-				 FROM generation_history WHERE church_id = $1
-				 ORDER BY created_at DESC LIMIT $2 OFFSET $3`
+		query = `SELECT id, type, filename, status, metadata, created_at, order_data
+				 FROM generation_history WHERE church_id = ?
+				 ORDER BY created_at DESC LIMIT ? OFFSET ?`
 		args = []interface{}{churchID, limit, offset}
 	}
 
@@ -181,8 +166,9 @@ func HistoryHandler(w http.ResponseWriter, r *http.Request) {
 		var filename *string
 		var metadata *string
 		var createdAt string
+		var orderData *string
 
-		if err := rows.Scan(&id, &genTypeVal, &filename, &status, &metadata, &createdAt); err != nil {
+		if err := rows.Scan(&id, &genTypeVal, &filename, &status, &metadata, &createdAt, &orderData); err != nil {
 			continue
 		}
 		item := map[string]interface{}{
@@ -196,6 +182,9 @@ func HistoryHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		if metadata != nil {
 			item["metadata"] = json.RawMessage(*metadata)
+		}
+		if orderData != nil {
+			item["order_data"] = json.RawMessage(*orderData)
 		}
 		items = append(items, item)
 	}
@@ -223,25 +212,24 @@ func LicenseHandler(w http.ResponseWriter, r *http.Request) {
 		LicenseKey string `json:"license_key"`
 		Token      string `json:"token"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Email == "" {
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
 		return
 	}
 
-	var churchID int
-	err := apiDB.QueryRow("SELECT id FROM churches WHERE email = $1", body.Email).Scan(&churchID)
-	if err != nil {
+	churchID := resolveChurchID(body.Email)
+	if churchID == 0 {
 		http.Error(w, `{"error":"church not found"}`, http.StatusNotFound)
 		return
 	}
 
-	_, err = apiDB.Exec(`
+	_, err := apiDB.Exec(`
 		INSERT INTO licenses (church_id, license_key, license_token, issued_at)
-		VALUES ($1, $2, $3, NOW())
+		VALUES (?, ?, ?, datetime('now'))
 		ON CONFLICT (church_id) DO UPDATE SET
-			license_key = EXCLUDED.license_key,
-			license_token = EXCLUDED.license_token,
-			issued_at = NOW()
+			license_key = excluded.license_key,
+			license_token = excluded.license_token,
+			issued_at = datetime('now')
 	`, churchID, body.LicenseKey, body.Token)
 
 	if err != nil {
@@ -253,18 +241,53 @@ func LicenseHandler(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }
 
+// resolveChurchID — email로 church_id 조회, 없으면 church_id=1 기본값 (Desktop 앱)
+func resolveChurchID(email string) int {
+	if apiDB == nil {
+		return 0
+	}
+	var churchID int
+	if email != "" {
+		err := apiDB.QueryRow("SELECT id FROM churches WHERE email = ?", email).Scan(&churchID)
+		if err == nil {
+			return churchID
+		}
+	}
+	// fallback: church_id=1 (Desktop 로컬 단일 교회)
+	err := apiDB.QueryRow("SELECT id FROM churches WHERE id = 1").Scan(&churchID)
+	if err != nil {
+		return 0
+	}
+	return churchID
+}
+
 // RecordGeneration — 생성 이력 기록 (내부 호출용)
-func RecordGeneration(churchEmail, genType, filename, filePath, status string) {
+func RecordGeneration(churchEmail, genType, filename, filePath, status string, orderData ...interface{}) {
 	if apiDB == nil {
 		return
 	}
-	var churchID int
-	err := apiDB.QueryRow("SELECT id FROM churches WHERE email = $1", churchEmail).Scan(&churchID)
-	if err != nil {
+	// email 없으면 "local@localhost" 사용 (Desktop 앱)
+	if churchEmail == "" {
+		churchEmail = "local@localhost"
+	}
+	churchID := resolveChurchID(churchEmail)
+	if churchID == 0 {
 		return
 	}
+
+	if len(orderData) > 0 && orderData[0] != nil {
+		orderJSON, err := json.Marshal(orderData[0])
+		if err == nil {
+			_, _ = apiDB.Exec(`
+				INSERT INTO generation_history (church_id, type, filename, status, file_path, order_data, created_at)
+				VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+			`, churchID, genType, filename, status, filePath, string(orderJSON))
+			return
+		}
+	}
+
 	_, _ = apiDB.Exec(`
 		INSERT INTO generation_history (church_id, type, filename, status, file_path, created_at)
-		VALUES ($1, $2, $3, $4, $5, NOW())
+		VALUES (?, ?, ?, ?, ?, datetime('now'))
 	`, churchID, genType, filename, status, filePath)
 }

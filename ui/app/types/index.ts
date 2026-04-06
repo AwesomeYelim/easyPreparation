@@ -10,6 +10,7 @@ export type WorshipOrderItem = {
   pages?: string[];
   lyricsMap?: string[];
   sections?: { label: string; startPage: number; text: string }[];
+  source?: string;
 };
 
 export type OBSStatus = { connected: boolean; currentScene: string };
@@ -59,6 +60,7 @@ export type GenerationHistory = {
   filename?: string;
   status: string;
   metadata?: Record<string, any>;
+  order_data?: WorshipOrderItem[];
   created_at: string;
 };
 
@@ -104,3 +106,23 @@ export type ThumbnailConfig = {
 export type YouTubeStatus = {
   connected: boolean;
 };
+
+export type LicensePlan = 'free' | 'pro' | 'enterprise';
+
+export type LicenseFeature =
+  | 'obs_control'
+  | 'auto_scheduler'
+  | 'youtube_integration'
+  | 'thumbnail'
+  | 'multi_worship'
+  | 'cloud_backup';
+
+export interface LicenseStatus {
+  plan: LicensePlan;
+  features: LicenseFeature[];
+  expires_at: string | null;
+  days_remaining: number;
+  device_id: string;
+  grace_period: boolean;
+  is_active: boolean;
+}

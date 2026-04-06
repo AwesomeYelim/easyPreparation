@@ -1,27 +1,23 @@
 import { atom } from "recoil";
-import main_worship from "@/data/main_worship.json";
-import after_worship from "@/data/after_worship.json";
-import wed_worship from "@/data/wed_worship.json";
-import fri_worship from "@/data/fri_worship.json";
-import { WorshipOrderItem, UserChurchInfo, SongBlock, UserSettings } from "@/types";
+import { WorshipOrderItem, UserChurchInfo, SongBlock, UserSettings, LicenseStatus } from "@/types";
 
 // 예배 타입 키만 모아두기
 export type WorshipType = "main_worship" | "after_worship" | "wed_worship" | "fri_worship";
 
-// 예배 순서 상태
+// 예배 순서 상태 (API에서 로드)
 export const worshipOrderState = atom<Record<WorshipType, WorshipOrderItem[]>>({
   key: "worshipOrderState",
   default: {
-    main_worship,
-    after_worship,
-    wed_worship,
-    fri_worship,
+    main_worship: [],
+    after_worship: [],
+    wed_worship: [],
+    fri_worship: [],
   },
 });
 
 export const selectedDetailState = atom<WorshipOrderItem>({
   key: "selectedDetailState",
-  default: main_worship[0],
+  default: { key: "", title: "", obj: "", info: "-", lead: "" },
 });
 
 // 가사 곡 목록 (페이지 이동해도 유지)
@@ -66,5 +62,18 @@ export const userSettingsState = atom<UserSettings>({
     font_size: 16,
     default_bpm: 100,
     display_layout: "default",
+  },
+});
+
+export const licenseState = atom<LicenseStatus>({
+  key: "licenseState",
+  default: {
+    plan: "free",
+    features: [],
+    expires_at: null,
+    days_remaining: 0,
+    device_id: "",
+    grace_period: false,
+    is_active: false,
   },
 });

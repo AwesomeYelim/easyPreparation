@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRecoilValue } from "recoil";
-import { userInfoState } from "@/recoilState";
-import { apiClient } from "@/lib/apiClient";
-import { GenerationHistory } from "@/types";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { userInfoState, displayPanelOpenState } from "@/recoilState";
+import { apiClient, openDisplayWindow } from "@/lib/apiClient";
+import { GenerationHistory, WorshipOrderItem } from "@/types";
 
 interface HistoryListProps {
   open: boolean;
@@ -28,10 +28,12 @@ const filterTabs: { key: string | undefined; label: string }[] = [
 
 export default function HistoryList({ open, onClose, filterType }: HistoryListProps) {
   const userInfo = useRecoilValue(userInfoState);
+  const setDisplayPanelOpen = useSetRecoilState(displayPanelOpenState);
   const [items, setItems] = useState<GenerationHistory[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string | undefined>(filterType);
+  const [sending, setSending] = useState<number | null>(null);
 
   const loadHistory = useCallback(
     (p: number, type?: string) => {
@@ -60,6 +62,20 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
     setActiveFilter(type);
     loadHistory(1, type);
   };
+
+  const handleSendToDisplay = useCallback(async (orderData: WorshipOrderItem[], historyId: number) => {
+    setSending(historyId);
+    try {
+      setDisplayPanelOpen(true);
+      openDisplayWindow();
+      await apiClient.startDisplay(orderData, userInfo.english_name || "", userInfo.email, true);
+      onClose();
+    } catch (e) {
+      console.error("Display 전송 에러:", e);
+    } finally {
+      setSending(null);
+    }
+  }, [setDisplayPanelOpen, userInfo.english_name, userInfo.email, onClose]);
 
   if (!open) return null;
 
@@ -103,8 +119,19 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
                 {item.filename && (
                   <div className="history_filename">{item.filename}</div>
                 )}
-                <div className={`history_status ${item.status}`}>
-                  {item.status === "success" ? "성공" : "실패"}
+                <div className="history_item_bottom">
+                  <span className={`history_status ${item.status}`}>
+                    {item.status === "success" ? "성공" : "실패"}
+                  </span>
+                  {item.order_data && Array.isArray(item.order_data) && item.order_data.length > 0 && (
+                    <button
+                      className="history_send_btn"
+                      onClick={() => handleSendToDisplay(item.order_data!, item.id)}
+                      disabled={sending === item.id}
+                    >
+                      {sending === item.id ? "전송 중..." : "전송"}
+                    </button>
+                  )}
                 </div>
               </div>
             ))
@@ -144,7 +171,7 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
           z-index: 11000;
         }
         .history_panel {
-          background: #fff;
+          background: var(--surface-elevated);
           border-radius: 16px;
           width: 500px;
           max-width: 90vw;
@@ -158,21 +185,21 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
           justify-content: space-between;
           align-items: center;
           padding: 20px 24px 16px;
-          border-bottom: 1px solid #e5e7eb;
+          border-bottom: 1px solid var(--border);
           flex-shrink: 0;
         }
         .history_header h3 {
           margin: 0;
           font-size: 18px;
           font-weight: 700;
-          color: #1f2937;
+          color: var(--text-primary);
         }
         .history_close {
           background: none;
           border: none;
           font-size: 24px;
           cursor: pointer;
-          color: #6b7280;
+          color: var(--text-secondary);
         }
         .history_tabs {
           display: flex;
@@ -184,20 +211,20 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
           padding: 6px 14px;
           font-size: 12px;
           font-weight: 600;
-          border: 1px solid #e5e7eb;
+          border: 1px solid var(--border);
           border-radius: 20px;
-          background: #f9fafb;
-          color: #6b7280;
+          background: var(--surface-input);
+          color: var(--text-secondary);
           cursor: pointer;
           transition: all 0.15s;
         }
         .history_tab:hover {
-          background: #f3f4f6;
+          background: var(--surface-hover);
         }
         .history_tab.active {
-          background: #1f3f62;
-          color: #fff;
-          border-color: #1f3f62;
+          background: var(--accent);
+          color: var(--surface-elevated);
+          border-color: var(--accent);
         }
         .history_body {
           flex: 1;
@@ -207,13 +234,13 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
         .history_loading,
         .history_empty {
           text-align: center;
-          color: #9ca3af;
+          color: var(--text-muted);
           padding: 40px 0;
           font-size: 14px;
         }
         .history_item {
           padding: 12px 0;
-          border-bottom: 1px solid #f1f5f9;
+          border-bottom: 1px solid var(--border-light);
         }
         .history_item_top {
           display: flex;
@@ -226,27 +253,49 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
           font-weight: 700;
           padding: 2px 8px;
           border-radius: 4px;
-          background: #eef2ff;
-          color: #1f3f62;
+          background: var(--badge-bg);
+          color: var(--accent);
         }
         .history_date {
           font-size: 12px;
-          color: #9ca3af;
+          color: var(--text-muted);
         }
         .history_filename {
           font-size: 13px;
-          color: #374151;
+          color: var(--text-primary);
+          margin-top: 4px;
+        }
+        .history_item_bottom {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
           margin-top: 4px;
         }
         .history_status {
           font-size: 11px;
-          margin-top: 4px;
+        }
+        .history_send_btn {
+          padding: 3px 10px;
+          font-size: 11px;
+          font-weight: 600;
+          background: var(--accent);
+          color: var(--surface-elevated);
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+        .history_send_btn:hover {
+          background: var(--accent-hover);
+        }
+        .history_send_btn:disabled {
+          background: var(--text-muted);
+          cursor: default;
         }
         .history_status.success {
-          color: #059669;
+          color: var(--success);
         }
         .history_status.failed {
-          color: #dc2626;
+          color: var(--error);
         }
         .history_footer {
           display: flex;
@@ -254,13 +303,13 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
           justify-content: center;
           gap: 12px;
           padding: 12px 24px 16px;
-          border-top: 1px solid #e5e7eb;
+          border-top: 1px solid var(--border);
         }
         .history_footer button {
           padding: 6px 14px;
           font-size: 12px;
-          background: #f3f4f6;
-          border: 1px solid #d1d5db;
+          background: var(--surface-hover);
+          border: 1px solid var(--border-input);
           border-radius: 6px;
           cursor: pointer;
         }
@@ -270,7 +319,7 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
         }
         .history_footer span {
           font-size: 13px;
-          color: #6b7280;
+          color: var(--text-secondary);
         }
       `}</style>
     </div>

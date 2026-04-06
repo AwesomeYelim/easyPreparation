@@ -15,11 +15,15 @@ Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF 생성, Google Drive
 | `internal/lyrics` | 찬양 PDF 생성 |
 | `internal/presentation` | gofpdf 래퍼 (NFC 정규화 포함) |
 | `internal/googleCloud` | Google Drive 파일 다운로드 |
-| `internal/handlers` | HTTP + WebSocket + Display 핸들러 |
+| `internal/handlers` | HTTP + WebSocket + Display + 모바일 리모컨 핸들러 |
 | `internal/obs` | OBS WebSocket 매니저 (goobs) |
 | `internal/types` | 공유 데이터 타입 |
 | `internal/utils` | 유틸리티 함수 |
-| `internal/middleware` | CORS 미들웨어 |
+| `internal/middleware` | CORS + 라이선스 기능 게이팅 미들웨어 |
+| `internal/license` | 라이선스 관리 (플랜/기능 게이팅/오프라인 캐시) |
+| `internal/selfupdate` | GitHub Releases API 기반 업데이트 체커 |
+| `internal/version` | 빌드 시 ldflags로 주입되는 버전 정보 |
+| `internal/path` | 실행 파일 기준 경로 해석 유틸리티 |
 
 ### 설정 파일
 - `config/auth.json` — Google Drive 서비스 계정 키
@@ -158,6 +162,10 @@ PYTHONUTF8=1 tools/.venv/bin/python tools/output/_tmp.py && rm tools/output/_tmp
 | Display PNG 캐시 | `output/display/tmp/` |
 | Display 상태 파일 | `data/display_state.json` (order + idx + churchName) |
 | 스케줄 설정 파일 | `data/schedule.json` (entries + autoStream + countdownMinutes) |
+| 라이선스 캐시 파일 | `data/license.json` (LicenseInfo JSON, 권한 0600) |
+| Desktop 앱 빌드 출력 | `build/bin/easyPreparation.app` (macOS) |
+| Desktop 프론트엔드 embed | `cmd/desktop/frontend/` (build 시 ui/out 복사) |
+| Server 프론트엔드 embed | `cmd/server/frontend/` (build 시 ui/out 복사) |
 
 ---
 
@@ -238,3 +246,219 @@ PYTHONUTF8=1 tools/.venv/bin/python tools/output/_tmp.py && rm tools/output/_tmp
 - Ghostscript 경로: `/opt/homebrew/bin/gs` 직접 지정 (fallback: `gs`). `bash -c "gs ..."` 사용 금지
 - `config/*`, `output/display/` 는 `.gitignore`에 포함됨
 - Figma PNG 캐시가 있으면 API 호출 스킵 — 새 이미지 필요 시 tmp 폴더 비우기
+
+---
+
+## Desktop 앱 (Wails v2)
+
+### 빌드 명령
+
+```bash
+# Desktop 앱 빌드 (macOS — Next.js 빌드 + Wails 패키징)
+make build-desktop
+# 결과물: build/bin/easyPreparation.app
+
+# Desktop 개발 모드 (Wails dev — 핫리로드)
+make dev-desktop
+```
+
+### 아키텍처
+
+```
+easyPreparation.app
+└── Wails WebView
+    └── http://localhost:8080  ←→  Go HTTP 서버 (내장)
+                                   ├── cmd/desktop/main.go  (진입점)
+                                   └── internal/api/server.go (동일 라우터)
+```
+
+- **진입점**: `cmd/desktop/main.go`
+- Wails WebView는 내장 asset server를 사용하지 않고 `http://localhost:8080`을 직접 로드
+- `startup()` — DB/OBS/YouTube/스케줄러 초기화 → goroutine으로 HTTP 서버 시작 → 서버 준비 완료 후 `WindowShow`
+- `shutdown()` — HTTP graceful shutdown (5초 타임아웃) → 스케줄러 중지 → OBS/DB 닫기
+- `StopServer()` — `internal/api/server.go`의 `http.Server.Shutdown()` 래퍼
+
+### CGO_LDFLAGS (macOS 필수)
+
+```bash
+CGO_LDFLAGS="-framework UniformTypeIdentifiers" wails build -o easyPreparation
+CGO_LDFLAGS="-framework UniformTypeIdentifiers" wails dev
+```
+
+Wails가 macOS UniformTypeIdentifiers 프레임워크를 필요로 하므로 반드시 설정해야 함.
+
+### embed_dev.go / embed_prod.go 빌드 태그 분리
+
+| 파일 | 빌드 태그 | 동작 |
+|------|-----------|------|
+| `cmd/server/embed_dev.go` | `//go:build dev` | `getFrontendFS()` → `nil` (Next.js dev server 사용) |
+| `cmd/server/embed_prod.go` | `//go:build !dev` | `//go:embed all:frontend` → `embed.FS` 서빙 |
+
+- 개발 모드(`go run -tags dev` / `make dev`): embed 없음, Next.js dev server(:3000) 프록시
+- 프로덕션(`go build` / `make build`): `cmd/server/frontend/`에 `ui/out` 복사 후 embed
+- Desktop 앱도 동일 패턴: `cmd/desktop/` 아래에 별도 `embed_dev.go` / `embed_prod.go` 존재
+
+---
+
+## 버전 관리 + 자동 업데이트
+
+### ldflags 주입 (Makefile)
+
+```makefile
+VERSION   ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+COMMIT    ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_TIME ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS    = -X main.Version=$(VERSION) -X main.Commit=$(COMMIT) -X main.BuildTime=$(BUILD_TIME)
+```
+
+- `cmd/server/main.go`, `cmd/desktop/main.go` 모두 `var Version/Commit/BuildTime` 선언 후 `version.Set()` 호출
+- `internal/version/version.go` — 싱글턴으로 버전 정보 보관 (thread-safe)
+- 태그 없이 빌드하면 `Version="dev"`, 자동 업데이트 알림 항상 표시됨
+
+### 버전 + 업데이트 API
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | `/api/version` | `{version, commit, buildTime}` JSON 반환 |
+| GET | `/api/update/check` | GitHub Releases 최신 버전과 비교 → `{hasUpdate, latest, current, url}` |
+
+- `internal/selfupdate/checker.go` — `CheckLatest()` (GitHub API), `IsNewer()` (semver 비교)
+- GitHub 저장소: `AwesomeYelim/easyPreparation`
+- dev 빌드는 `IsNewer()` 항상 true → 개발 중 업데이트 알림 항상 노출
+
+### GitHub Release 워크플로우
+
+`.github/workflows/release.yml` — `v*` 태그 push 시 자동 트리거:
+
+1. 4개 플랫폼 병렬 빌드: `darwin/arm64`, `darwin/amd64`, `linux/amd64`, `windows/amd64`
+2. Next.js static export → `cmd/server/frontend/` 복사 → Go binary 빌드 (CGO_ENABLED=0)
+3. `softprops/action-gh-release@v2`로 GitHub Release 자동 생성 (릴리즈 노트 자동 생성)
+4. 아티팩트: `easyPreparation_darwin_arm64`, `easyPreparation_linux_amd64`, `easyPreparation_windows_amd64.exe` 등
+
+`.github/workflows/test.yml` — PR 시 자동 트리거:
+
+1. `go vet -tags dev ./cmd/server/`
+2. `go build -tags dev -o /dev/null ./cmd/server/`
+
+### UpdateChecker.tsx 동작
+
+- 앱 로드 시 `/api/update/check` 폴링 → `hasUpdate: true`이면 헤더에 업데이트 배너 표시
+- 배너 클릭 → GitHub Release 페이지(`url`)로 이동
+- 업데이트 확인 실패 시 무시 (네트워크 오류 등)
+
+---
+
+## 라이선스 시스템
+
+### 패키지: `internal/license/`
+
+| 파일 | 역할 |
+|------|------|
+| `types.go` | Plan/Feature 상수 + LicenseInfo 구조체 + PlanFeatures 맵 |
+| `manager.go` | 싱글턴 Manager (DB + 파일 캐시 이중 저장, 만료/grace period 관리) |
+| `offline.go` | 파일 캐시 (`data/license.json`), 디바이스 ID 생성 (MAC 주소 기반 SHA256) |
+| `keygen.go` | 라이선스 키 서명 검증 로직 |
+
+### 플랜별 기능 맵
+
+| 기능 상수 | Free | Pro | Enterprise |
+|-----------|------|-----|------------|
+| `FeatureOBSControl` | | V | V |
+| `FeatureAutoScheduler` | | V | V |
+| `FeatureYouTube` | | V | V |
+| `FeatureThumbnail` | | V | V |
+| `FeatureMultiWorship` | | V | V |
+| `FeatureCloudBackup` | | | V |
+
+### middleware.FeatureGate() 사용법
+
+```go
+// CORS + Pro 기능 게이팅 조합 — server.go에서 라우트 등록 시 사용
+mux.Handle("/api/schedule", middleware.FeatureGate(license.FeatureAutoScheduler, handlers.ScheduleHandler))
+```
+
+- 기능 없으면 HTTP 403 + `{"error":"feature_locked","feature":"...","plan":"free","message":"이 기능은 Pro 플랜에서 사용할 수 있습니다."}` 반환
+- OPTIONS 요청은 게이팅 없이 통과 (CORS preflight)
+
+### 라이선스 API
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | `/api/license` | 현재 라이선스 상태 조회 (plan, deviceId, daysUntilExpiry 등) |
+| POST | `/api/license/activate` | 라이선스 키 활성화 — `{licenseKey}` |
+| POST | `/api/license/deactivate` | 라이선스 비활성화 (무료 플랜으로 복귀) |
+| POST | `/api/license/verify` | 서버 측 라이선스 재검증 |
+
+### 프론트엔드 컴포넌트
+
+| 컴포넌트 | 경로 | 역할 |
+|----------|------|------|
+| `LicensePanel.tsx` | `ui/app/components/LicensePanel.tsx` | 라이선스 키 입력 + 상태 표시 모달 |
+| `FeatureGate.tsx` | `ui/app/components/FeatureGate.tsx` | Pro 전용 UI 영역 래퍼 (잠금 오버레이) |
+| `LicenseContext.tsx` | `ui/app/lib/LicenseContext.tsx` | 라이선스 상태 전역 Context (React) |
+
+### 캐시 파일
+
+- `data/license.json` — `LicenseInfo` JSON 직렬화 (권한 0600)
+- DB (`licenses` 테이블)와 이중 저장 — DB 없는 환경(Desktop 앱)에서도 라이선스 유지
+- 만료 후 30일 grace period (`GracePeriodDays = 30`) — 오프라인 환경 대응
+
+### MVP 동작 방식
+
+현재 구현: 올바른 형식의 키를 입력하면 서명 검증 통과 시 Pro 활성화 (별도 중앙 서버 검증 없음). 추후 서버 검증 엔드포인트 추가 예정.
+
+---
+
+## 모바일 PWA 리모컨
+
+### 접근 경로
+
+- 같은 WiFi에서: `http://{로컬IP}:8080/mobile`
+- QR 코드: `http://{로컬IP}:8080/mobile/qr.png` (서버가 로컬 IP 자동 감지)
+- 제어판 UI에서 QR 아이콘 클릭 → QR 이미지 표시
+
+### 구현 구조
+
+- **`/mobile`** — `MobileRemoteHandler` (인라인 HTML Go 문자열 리터럴)
+  - 예배 슬라이드 next/prev 버튼, 현재 항목 표시
+  - WebSocket(`/ws`)으로 서버와 실시간 동기화
+- **`/mobile/manifest.json`** — `MobileManifestHandler` (PWA 설치 메타데이터)
+- **`/mobile/sw.js`** — `MobileServiceWorkerHandler` (오프라인 캐시 Service Worker)
+- **`/mobile/icon-192.svg`** — `MobileIconHandler` (SVG 앱 아이콘, EP 텍스트)
+- **`/mobile/qr.png`** — `MobileQRHandler` (`github.com/skip2/go-qrcode` PNG 생성)
+
+### 로컬 IP 감지 (`getLocalIP()`)
+
+사설 IP 대역(`192.168.x.x`, `10.x.x.x`, `172.16-31.x.x`) 중 첫 번째 활성 인터페이스 IP 반환. 감지 실패 시 `localhost` fallback.
+
+### PWA 설치
+
+iOS/Android Chrome에서 `/mobile` 접속 → 홈 화면에 추가 → 전체화면 앱으로 실행.
+
+---
+
+## CI/CD
+
+### `.github/workflows/release.yml`
+
+- **트리거**: `v*` 패턴 태그 push (`git tag v1.0.0 && git push origin v1.0.0`)
+- **빌드 매트릭스**: 4개 플랫폼 병렬 실행 (macOS arm64/amd64, Linux amd64, Windows amd64)
+- **단계**: checkout → Go setup → Node 22 setup → Next.js 빌드 → frontend 복사 → Go binary 빌드 (ldflags 주입) → artifact upload → GitHub Release 생성
+- **릴리즈 노트**: `generate_release_notes: true` (커밋 메시지 자동 수집)
+- CGO_ENABLED=0 (크로스 컴파일, cgo 의존성 없음)
+
+### `.github/workflows/test.yml`
+
+- **트리거**: Pull Request
+- **단계**: `go vet -tags dev ./cmd/server/` → `go build -tags dev -o /dev/null ./cmd/server/`
+- Desktop 앱은 CI 빌드 대상 아님 (Wails + CGO 환경 구성 복잡성으로 제외)
+
+### 릴리즈 절차
+
+```bash
+# 1. 변경사항 커밋 + push
+git add -p && git commit -m "feat: ..." && git push
+
+# 2. 태그 생성 + push → GitHub Actions 자동 빌드 + Release 생성
+git tag v1.2.0 && git push origin v1.2.0
+```

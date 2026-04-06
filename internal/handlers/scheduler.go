@@ -39,6 +39,8 @@ var (
 	lastExecuted   = map[string]bool{}
 	lastExecutedMu sync.Mutex
 	schedulerStop  chan struct{}
+	// 수동 방송 시작 중복 방지
+	streamStartMu sync.Mutex
 )
 
 func schedulePath() string {
@@ -257,6 +259,13 @@ func executeSchedule(entry ScheduleEntry, autoStream bool) {
 				if err := obsM.StartStreaming(); err != nil {
 					log.Printf("[scheduler] OBS 스트리밍 시작 실패: %v", err)
 				}
+
+				// EnableAutoStart 미작동 대비 — 수동 live 전환
+				go func(bid string) {
+					if err := youtube.TransitionToLive(bid); err != nil {
+						log.Printf("[scheduler] YouTube live 전환 실패: %v", err)
+					}
+				}(broadcastID)
 			}
 		} else {
 			// YouTube 미연결 → 기존 OBS 스트리밍만
@@ -409,12 +418,75 @@ func StreamControlHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch body.Action {
 	case "start":
-		err := obs.Get().StartStreaming()
-		if err != nil {
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": err.Error()})
+		if !streamStartMu.TryLock() {
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "이미 방송 시작 중"})
 			return
 		}
+		log.Println("[stream] 방송 시작 요청")
+
+		// 응답 먼저 보내고 백그라운드에서 처리
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+		go func() {
+			defer streamStartMu.Unlock()
+			obsM := obs.Get()
+			ytM := youtube.Get()
+
+			if ytM.IsEnabled() {
+				// 0. 기존 방송 정리
+				log.Println("[stream] 기존 방송 정리 중...")
+				youtube.CleanupBroadcasts()
+
+				// 제목 결정
+				title := "라이브 예배"
+				cfg, err := thumbnail.LoadConfig()
+				if err == nil {
+					_, t := cfg.ResolveTheme("main_worship", time.Now())
+					title = t
+				}
+
+				// 1. YouTube 방송 생성
+				server, key, broadcastID, err := youtube.CreateBroadcastAndBind(title)
+				if err != nil {
+					log.Printf("[stream] YouTube 방송 생성 실패: %v — OBS만 시작", err)
+					obsM.StartStreaming()
+					return
+				}
+				log.Printf("[stream] YouTube 방송 준비 완료: %s", broadcastID)
+
+				// 2. 썸네일 (동기 — upcoming 상태에서 업로드해야 반영됨)
+				GenerateAndUploadThumbnailTo("main_worship", broadcastID)
+
+				// 3. OBS 스트리밍 중이면 중지
+				if obsM.GetStreamStatus().Active {
+					log.Println("[stream] 기존 OBS 스트리밍 중지...")
+					obsM.StopStreaming()
+					for i := 0; i < 10; i++ {
+						if !obsM.GetStreamStatus().Active {
+							break
+						}
+						time.Sleep(500 * time.Millisecond)
+					}
+				}
+
+				// 4. OBS 스트림 설정
+				if err := obsM.SetStreamSettings(server, key); err != nil {
+					log.Printf("[stream] OBS 스트림 설정 실패: %v", err)
+				}
+				time.Sleep(2 * time.Second)
+
+				// 5. OBS 스트리밍 시작
+				if err := obsM.StartStreaming(); err != nil {
+					log.Printf("[stream] OBS 스트리밍 시작 실패: %v", err)
+					return
+				}
+				log.Println("[stream] OBS 스트리밍 시작 완료")
+
+				// 6. YouTube live 전환
+				youtube.TransitionToLive(broadcastID)
+			} else {
+				obsM.StartStreaming()
+			}
+		}()
 
 	case "stop":
 		err := obs.Get().StopStreaming()

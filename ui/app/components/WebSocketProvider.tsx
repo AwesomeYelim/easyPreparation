@@ -16,7 +16,10 @@ export const WebSocketProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const baseUrl = process.env.NEXT_PUBLIC_WS_URL!;
+  const baseUrl = process.env.NEXT_PUBLIC_WS_URL
+    || (typeof window !== 'undefined'
+      ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`
+      : 'ws://localhost:8080/ws');
   const wsData = useGlobalWebSocket(baseUrl);
 
   return (

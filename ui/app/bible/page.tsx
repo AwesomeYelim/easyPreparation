@@ -255,7 +255,7 @@ export default function BiblePage() {
         title: "성경",
         info: "b_edit",
         obj,
-      }]);
+      }], "bible");
     } catch (e) {
       console.error("Display 전송 에러:", e);
     }

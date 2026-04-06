@@ -3,8 +3,8 @@ package forPresentation
 import (
 	"easyPreparation_1.0/internal/bulletin/define"
 	"easyPreparation_1.0/internal/extract"
-	"easyPreparation_1.0/internal/gui"
 	"easyPreparation_1.0/internal/presentation"
+	"easyPreparation_1.0/internal/types"
 	"easyPreparation_1.0/internal/utils"
 	"encoding/json"
 	"fmt"
@@ -20,7 +20,7 @@ type PdfInfo struct {
 
 func (pi PdfInfo) Create() {
 	config := extract.ConfigMem
-	outputDir := filepath.Join(pi.ExecPath, config.OutputPath.Bulletin, "presentation", "tmp")
+	outputDir := filepath.Join(pi.ExecPath, "data", "templates", "display")
 	_ = utils.CheckDirIs(outputDir)
 
 	pi.FigmaInfo.GetFigmaImage(outputDir, "forShowing")
@@ -42,7 +42,7 @@ func (pi PdfInfo) Create() {
 	objPdf.Config = config.Classification.Bulletin.Presentation
 	objPdf.PdfInfo = pi.PdfInfo
 
-	var contents []gui.WorshipInfo
+	var contents []types.WorshipInfo
 
 	worshipContents, err := os.ReadFile(filepath.Join(pi.ExecPath, "config", pi.Target+".json"))
 	err = json.Unmarshal(worshipContents, &contents)

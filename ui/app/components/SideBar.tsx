@@ -2,28 +2,28 @@
 
 import { useState, useEffect } from "react";
 import { userInfoState } from "@/recoilState";
-import { signOut } from "next-auth/react";
+import { useAuth } from "@/lib/LocalAuthContext";
 import { useRecoilState } from "recoil";
 import SettingsPanel from "./SettingsPanel";
 import HistoryList from "./HistoryList";
+import YouTubePanel from "./YouTubePanel";
+import LicensePanel from "./LicensePanel";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 interface SidebarProps {
   open: boolean;
   onClose: () => void;
-  user: {
-    name?: string | null;
-    email?: string | null;
-    image?: string | null;
-  };
 }
 
-export default function Sidebar({ open, onClose, user }: SidebarProps) {
+export default function Sidebar({ open, onClose }: SidebarProps) {
+  const { church } = useAuth();
   const [userInfo, setUserInfo] = useRecoilState(userInfoState);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyType, setHistoryType] = useState<string | undefined>();
+  const [youtubeOpen, setYoutubeOpen] = useState(false);
+  const [licenseOpen, setLicenseOpen] = useState(false);
 
   // 교회 정보 편집
   const [editingChurch, setEditingChurch] = useState(false);
@@ -46,14 +46,14 @@ export default function Sidebar({ open, onClose, user }: SidebarProps) {
   };
 
   const handleSaveChurch = async () => {
-    if (!user.email) return;
+    const email = church?.email || userInfo?.email || "local@localhost";
     setSaving(true);
     try {
       const res = await fetch(`${BASE_URL}/api/user`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: user.email,
+          email,
           name: churchName.trim(),
           english_name: churchEngName.trim(),
         }),
@@ -87,7 +87,8 @@ export default function Sidebar({ open, onClose, user }: SidebarProps) {
 
   const menuActions: { title: string; action?: () => void }[] = [
     { title: "설정", action: () => setSettingsOpen(true) },
-    { title: "라이선스 정보" },
+    { title: "YouTube", action: () => setYoutubeOpen(true) },
+    { title: "라이선스 정보", action: () => setLicenseOpen(true) },
     { title: "생성 내역", action: () => openHistory() },
   ];
 
@@ -142,16 +143,23 @@ export default function Sidebar({ open, onClose, user }: SidebarProps) {
           ✕
         </button>
 
-        <img
-          src={user.image || "/default-profile.png"}
-          alt="profile"
+        <div
           style={{
             width: "80px",
             height: "80px",
             borderRadius: "50%",
             marginTop: "10px",
+            background: "#204d87",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "28px",
+            color: "#fff",
+            fontWeight: "bold",
           }}
-        />
+        >
+          {(church?.name || userInfo?.name || "EP").charAt(0)}
+        </div>
         <div
           style={{
             fontWeight: "bold",
@@ -160,10 +168,10 @@ export default function Sidebar({ open, onClose, user }: SidebarProps) {
             marginTop: "10px",
           }}
         >
-          {user.name}
+          {church?.name || userInfo?.name || "교회명 미설정"}
         </div>
         <div style={{ fontSize: "12px", color: "#ddd", marginBottom: "20px" }}>
-          {user.email}
+          {church?.email || userInfo?.email || "local@localhost"}
         </div>
 
         <div
@@ -275,21 +283,6 @@ export default function Sidebar({ open, onClose, user }: SidebarProps) {
             </div>
           ))}
         </div>
-
-        <div
-          style={{
-            marginTop: "auto",
-            color: "#b65050",
-            fontWeight: "bold",
-            cursor: "pointer",
-          }}
-          onClick={() => {
-            onClose();
-            signOut();
-          }}
-        >
-          logout
-        </div>
       </div>
 
       {/* Settings Modal */}
@@ -301,6 +294,12 @@ export default function Sidebar({ open, onClose, user }: SidebarProps) {
         onClose={() => setHistoryOpen(false)}
         filterType={historyType}
       />
+
+      {/* YouTube Modal */}
+      <YouTubePanel open={youtubeOpen} onClose={() => setYoutubeOpen(false)} />
+
+      {/* License Modal */}
+      <LicensePanel open={licenseOpen} onClose={() => setLicenseOpen(false)} />
     </>
   );
 }

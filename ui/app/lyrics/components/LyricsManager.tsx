@@ -230,7 +230,7 @@ export default function LyricsManager() {
       setDisplayPanelOpen(true);
       openDisplayWindow();
 
-      const res = await apiClient.appendToDisplay(appendItems);
+      const res = await apiClient.appendToDisplay(appendItems, "lyrics");
       if (!res.ok) throw new Error("전송 실패");
     } catch (error) {
       console.error("Display 전송 에러:", error);

@@ -76,10 +76,12 @@ func (c *ThumbnailConfig) ResolveTheme(worshipType string, date time.Time) (bgPa
 						bg = d.Background
 					}
 				}
-				t := s.TitleOverride
-				if t == "" {
-					t = s.Label
+				label := s.TitleOverride
+				if label == "" {
+					label = s.Label
 				}
+				// "N월 N째주 {기념예배}" 형식
+				t := FormatTitle("{month}월 {weekOrd} "+label, date)
 				return bg, t
 			}
 		}
@@ -104,24 +106,24 @@ func FormatTitle(format string, date time.Time) string {
 	return r.Replace(format)
 }
 
-// weekOrdinal — 해당 월의 N째주 반환 ("첫째", "둘째", ...)
+// weekOrdinal — 해당 월의 N째주 반환 ("첫째주", "둘째주", ...)
 func weekOrdinal(date time.Time) string {
 	day := date.Day()
 	week := (day-1)/7 + 1
-	ordinals := []string{"첫째", "둘째", "셋째", "넷째", "다섯째"}
+	ordinals := []string{"첫째주", "둘째주", "셋째주", "넷째주", "다섯째주"}
 	if week >= 1 && week <= 5 {
 		return ordinals[week-1]
 	}
-	return fmt.Sprintf("%d째", week)
+	return fmt.Sprintf("%d째주", week)
 }
 
 func defaultConfig() *ThumbnailConfig {
 	return &ThumbnailConfig{
 		Defaults: map[string]DefaultTheme{
-			"main_worship":  {Background: "data/thumbnail/main_worship.png", TitleFormat: "{month}월 {weekOrd} 주일예배"},
-			"after_worship": {Background: "data/thumbnail/after_worship.png", TitleFormat: "{month}월 {weekOrd} 오후예배"},
-			"wed_worship":   {Background: "data/thumbnail/wed_worship.png", TitleFormat: "{month}월 {weekOrd} 수요예배"},
-			"fri_worship":   {Background: "data/thumbnail/fri_worship.png", TitleFormat: "{month}월 {weekOrd} 금요예배"},
+			"main_worship":  {Background: "data/templates/thumbnail/main_worship.png", TitleFormat: "{month}월 {weekOrd} 주일예배"},
+			"after_worship": {Background: "data/templates/thumbnail/after_worship.png", TitleFormat: "{month}월 {weekOrd} 오후예배"},
+			"wed_worship":   {Background: "data/templates/thumbnail/wed_worship.png", TitleFormat: "{month}월 {weekOrd} 수요예배"},
+			"fri_worship":   {Background: "data/templates/thumbnail/fri_worship.png", TitleFormat: "{month}월 {weekOrd} 금요예배"},
 		},
 		Specials: []SpecialDate{},
 	}

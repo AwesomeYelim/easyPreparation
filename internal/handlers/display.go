@@ -669,6 +669,17 @@ func GetCurrentTitle() string {
 	return ""
 }
 
+// GetCurrentInfo — 현재 항목의 info 필드 조회
+func GetCurrentInfo() string {
+	orderMu.RLock()
+	defer orderMu.RUnlock()
+	if currentIdx >= 0 && currentIdx < len(currentOrder) {
+		info, _ := currentOrder[currentIdx]["info"].(string)
+		return info
+	}
+	return ""
+}
+
 // IsFadeBackItem — fade-back 대상 항목 여부 (현재 사용 안 함)
 func IsFadeBackItem(title string) bool {
 	return false
@@ -816,9 +827,8 @@ func restartServerTimer() {
 		delay = 1
 	}
 	timerCountdown = delay
-	timerMu.Unlock()
-	broadcastTimerState()
 
+	// goroutine 시작 후 Unlock — 빠른 호출 시 다중 goroutine 누수 방지
 	go func() {
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
@@ -842,6 +852,9 @@ func restartServerTimer() {
 			}
 		}
 	}()
+
+	timerMu.Unlock()
+	broadcastTimerState()
 }
 
 // stopServerTimer — 타이머 정지
@@ -1245,7 +1258,7 @@ func DisplayHandler(w http.ResponseWriter, r *http.Request) {
 func DisplayAssetsHandler(w http.ResponseWriter, r *http.Request) {
 	name := filepath.Base(r.URL.Path)
 	execPath := path.ExecutePath("easyPreparation")
-	imgPath := filepath.Join(execPath, "output", "bulletin", "presentation", "tmp", name)
+	imgPath := filepath.Join(execPath, "data", "templates", "display", name)
 	http.ServeFile(w, r, imgPath)
 }
 
@@ -1253,7 +1266,7 @@ func DisplayAssetsHandler(w http.ResponseWriter, r *http.Request) {
 // 공통 배경 이미지 서빙
 func DisplayBgHandler(w http.ResponseWriter, r *http.Request) {
 	execPath := path.ExecutePath("easyPreparation")
-	imgPath := filepath.Join(execPath, "output", "lyrics", "tmp", "Frame 2.png")
+	imgPath := filepath.Join(execPath, "data", "templates", "lyrics", "Frame 2.png")
 	http.ServeFile(w, r, imgPath)
 }
 
@@ -1270,7 +1283,7 @@ func DisplayFontHandler(w http.ResponseWriter, r *http.Request) {
 func DisplayTmpHandler(w http.ResponseWriter, r *http.Request) {
 	name := filepath.Base(r.URL.Path)
 	execPath := path.ExecutePath("easyPreparation")
-	imgPath := filepath.Join(execPath, "output", "display", "tmp", name)
+	imgPath := filepath.Join(execPath, "data", "cache", "hymn_pages", name)
 	http.ServeFile(w, r, imgPath)
 }
 
@@ -1294,15 +1307,18 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// wrapper format: {"items": [...], "churchName": "..."} 또는 plain array [...]
 	var wrapper struct {
-		Items      []map[string]interface{} `json:"items"`
-		ChurchName string                   `json:"churchName"`
-		Email      string                   `json:"email"`
+		Items        []map[string]interface{} `json:"items"`
+		ChurchName   string                   `json:"churchName"`
+		Email        string                   `json:"email"`
+		Preprocessed bool                     `json:"preprocessed"`
 	}
 	var displayEmail string
+	var skipPreprocess bool
 	if err := json.Unmarshal(raw, &wrapper); err == nil && len(wrapper.Items) > 0 {
 		order = wrapper.Items
 		displayChurchName = wrapper.ChurchName
 		displayEmail = wrapper.Email
+		skipPreprocess = wrapper.Preprocessed
 	} else if err := json.Unmarshal(raw, &order); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
@@ -1313,15 +1329,17 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 		"total":   len(order),
 	})
 
-	// 항목별 전처리
-	for i, item := range order {
-		title, _ := item["title"].(string)
-		BroadcastMessage("display_loading", map[string]interface{}{
-			"message": fmt.Sprintf("%s 처리 중... (%d/%d)", title, i+1, len(order)),
-			"current": i + 1,
-			"total":   len(order),
-		})
-		order[i] = preprocessItem(item)
+	// 항목별 전처리 (이미 전처리된 이력 데이터는 스킵)
+	if !skipPreprocess {
+		for i, item := range order {
+			title, _ := item["title"].(string)
+			BroadcastMessage("display_loading", map[string]interface{}{
+				"message": fmt.Sprintf("%s 처리 중... (%d/%d)", title, i+1, len(order)),
+				"current": i + 1,
+				"total":   len(order),
+			})
+			order[i] = preprocessItem(item)
+		}
 	}
 
 	// 말씀 항목에 직전 성경봉독의 구절 참조를 bibleRef로 주입
@@ -1337,6 +1355,20 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 		if title == "말씀" && lastBibleRef != "" {
 			order[i]["bibleRef"] = lastBibleRef
 		}
+	}
+
+	// 기존 order에서 lyrics/bible source 항목 보존
+	orderMu.RLock()
+	var preserved []map[string]interface{}
+	for _, item := range currentOrder {
+		if src, ok := item["source"].(string); ok && (src == "lyrics" || src == "bible") {
+			preserved = append(preserved, item)
+		}
+	}
+	orderMu.RUnlock()
+
+	if len(preserved) > 0 {
+		order = append(order, preserved...)
 	}
 
 	// 새 순서 로드 시 타이머 초기화
@@ -1362,10 +1394,8 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 생성 이력 기록
-	if displayEmail != "" {
-		go RecordGeneration(displayEmail, "display", fmt.Sprintf("display_%d_items", len(order)), "", "success")
-	}
+	// 생성 이력 기록 (order 포함) — email 없으면 RecordGeneration 내부에서 "local@localhost" 사용
+	go RecordGeneration(displayEmail, "display", time.Now().Format("060102"), "", "success", order)
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "count": len(order)})
@@ -1605,7 +1635,9 @@ func DisplayAppendHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var payload struct {
-		Items []map[string]interface{} `json:"items"`
+		Items    []map[string]interface{} `json:"items"`
+		Source   string                   `json:"source"`
+		AfterIdx *int                     `json:"afterIdx"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
@@ -1621,7 +1653,7 @@ func DisplayAppendHandler(w http.ResponseWriter, r *http.Request) {
 		"total":   len(payload.Items),
 	})
 
-	// 항목별 전처리
+	// 항목별 전처리 + source 태깅
 	var processed []map[string]interface{}
 	for i, item := range payload.Items {
 		info, _ := item["info"].(string)
@@ -1633,15 +1665,30 @@ func DisplayAppendHandler(w http.ResponseWriter, r *http.Request) {
 			"total":   len(payload.Items),
 		})
 
+		var result map[string]interface{}
 		if info == "lyrics_display" {
-			processed = append(processed, preprocessLyricsItem(item))
+			result = preprocessLyricsItem(item)
 		} else {
-			processed = append(processed, preprocessItem(item))
+			result = preprocessItem(item)
 		}
+		// source 태깅 (lyrics/bible)
+		if payload.Source != "" {
+			result["source"] = payload.Source
+		}
+		processed = append(processed, result)
 	}
 
 	orderMu.Lock()
-	currentOrder = append(currentOrder, processed...)
+	// afterIdx가 지정되면 해당 위치 뒤에 삽입, 아니면 끝에 추가
+	if payload.AfterIdx != nil && *payload.AfterIdx >= 0 && *payload.AfterIdx < len(currentOrder) {
+		insertAt := *payload.AfterIdx + 1
+		tail := make([]map[string]interface{}, len(currentOrder[insertAt:]))
+		copy(tail, currentOrder[insertAt:])
+		currentOrder = append(currentOrder[:insertAt], processed...)
+		currentOrder = append(currentOrder, tail...)
+	} else {
+		currentOrder = append(currentOrder, processed...)
+	}
 	idx := currentIdx
 	orderMu.Unlock()
 
@@ -1919,7 +1966,7 @@ func preprocessItem(item map[string]interface{}) map[string]interface{} {
 	// 항목별 배경 이미지 (전주, 찬양, 참회의 기도만)
 	if title == "전주" || title == "찬양" || title == "참회의 기도" {
 		execPath := path.ExecutePath("easyPreparation")
-		bgPath := filepath.Join(execPath, "output", "bulletin", "presentation", "tmp", title+".png")
+		bgPath := filepath.Join(execPath, "data", "templates", "display", title+".png")
 		if _, err := os.Stat(bgPath); err == nil {
 			item["bgImage"] = "/display/assets/" + url.PathEscape(title+".png")
 		}
@@ -2113,8 +2160,9 @@ func preprocessLyricsItem(song map[string]interface{}) map[string]interface{} {
 	rawLines := strings.Split(strings.TrimSpace(lyrics), "\n")
 	var lines []string
 	for _, l := range rawLines {
-		if strings.TrimSpace(l) != "" {
-			lines = append(lines, l)
+		trimmed := strings.TrimSpace(l)
+		if trimmed != "" {
+			lines = append(lines, trimmed)
 		}
 	}
 
@@ -2233,7 +2281,7 @@ func fetchDisplayImages(title, obj string) []string {
 	}
 
 	execPath := path.ExecutePath("easyPreparation")
-	baseDir := filepath.Join(execPath, "output", "display", "tmp")
+	baseDir := filepath.Join(execPath, "data", "cache", "hymn_pages")
 	_ = utils.CheckDirIs(baseDir)
 
 	// 숫자 0-패딩
@@ -2251,10 +2299,10 @@ func fetchDisplayImages(title, obj string) []string {
 		return cached
 	}
 
-	// 고정 디렉토리에 PDF 캐시 (data/hymn/, data/responsive_reading/)
-	dataDir := filepath.Join(execPath, "data")
-	_ = utils.CheckDirIs(dataDir)
-	cacheDir := filepath.Join(dataDir, category)
+	// 고정 디렉토리에 PDF 캐시 (data/pdf/hymn/, data/pdf/responsive_reading/)
+	pdfDir := filepath.Join(execPath, "data", "pdf")
+	_ = utils.CheckDirIs(pdfDir)
+	cacheDir := filepath.Join(pdfDir, category)
 	_ = utils.CheckDirIs(cacheDir)
 
 	pdfPath := filepath.Join(cacheDir, targetNum)
@@ -2349,7 +2397,7 @@ func fetchHymnLyrics(number int) string {
 		return ""
 	}
 	var lyrics string
-	err := apiDB.QueryRow("SELECT lyrics FROM hymns WHERE hymnbook='new' AND number=$1", number).Scan(&lyrics)
+	err := apiDB.QueryRow("SELECT lyrics FROM hymns WHERE hymnbook='new' AND number=?", number).Scan(&lyrics)
 	if err != nil {
 		return ""
 	}

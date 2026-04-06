@@ -6,9 +6,9 @@ import (
 	"easyPreparation_1.0/internal/colorPalette"
 	"easyPreparation_1.0/internal/date"
 	"easyPreparation_1.0/internal/extract"
-	"easyPreparation_1.0/internal/gui"
 	"easyPreparation_1.0/internal/presentation"
 	"easyPreparation_1.0/internal/sorted"
+	"easyPreparation_1.0/internal/types"
 	"easyPreparation_1.0/internal/utils"
 	"encoding/json"
 	"fmt"
@@ -54,8 +54,8 @@ func (pi PdfInfo) Create() {
 
 	sorted.ToIntSort(files, "- ", ".png", 0)
 
-	var elements []gui.WorshipInfo
-	var newsCon gui.WorshipInfo
+	var elements []types.WorshipInfo
+	var newsCon types.WorshipInfo
 
 	worshipContents, err := os.ReadFile(filepath.Join(pi.ExecPath, "config", pi.Target+".json"))
 	err = json.Unmarshal(worshipContents, &elements)

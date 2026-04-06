@@ -1,19 +1,34 @@
 "use client";
 
 import { useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/LocalAuthContext";
 import { useSetRecoilState } from "recoil";
-import { userSettingsState } from "@/recoilState";
+import { userSettingsState, userInfoState } from "@/recoilState";
 import { apiClient } from "@/lib/apiClient";
 
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+
 export default function SettingsLoader() {
-  const { data: session } = useSession();
+  const { church, isLoading } = useAuth();
   const setSettings = useSetRecoilState(userSettingsState);
+  const setUserInfo = useSetRecoilState(userInfoState);
 
   useEffect(() => {
-    const email = session?.user?.email;
-    if (!email) return;
+    if (isLoading) return;
 
+    const email = church?.email || "local@localhost";
+
+    // userInfo 로드 (교회 정보)
+    fetch(`${BASE_URL}/api/user?email=${encodeURIComponent(email)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && !data.error) {
+          setUserInfo(data);
+        }
+      })
+      .catch(() => {});
+
+    // settings 로드
     apiClient
       .getSettings(email)
       .then((data) => {
@@ -28,7 +43,7 @@ export default function SettingsLoader() {
         }
       })
       .catch(() => {});
-  }, [session?.user?.email, setSettings]);
+  }, [church, isLoading, setSettings, setUserInfo]);
 
   return null;
 }

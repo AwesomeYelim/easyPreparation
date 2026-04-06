@@ -1,14 +1,14 @@
--- 찬송가 테이블
+-- 찬송가 테이블 (마스터 스키마: data/schema.sql)
 CREATE TABLE IF NOT EXISTS hymns (
-    id SERIAL PRIMARY KEY,
-    hymnbook VARCHAR(20) NOT NULL DEFAULT 'new',
-    number INT NOT NULL,
-    title VARCHAR(200) NOT NULL,
-    first_line VARCHAR(500),
-    category VARCHAR(100),
-    lyrics TEXT,
-    has_pdf BOOLEAN DEFAULT false,
-    created_at TIMESTAMP DEFAULT NOW(),
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    hymnbook TEXT NOT NULL DEFAULT 'new',
+    number INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    first_line TEXT DEFAULT '',
+    category TEXT DEFAULT '',
+    lyrics TEXT DEFAULT '',
+    has_pdf INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
     UNIQUE(hymnbook, number)
 );
 CREATE INDEX IF NOT EXISTS idx_hymns_title ON hymns(title);

@@ -32,6 +32,8 @@ export default function Bulletin() {
   const [loading, setLoading] = useState(false);
   const [wsMessage, setWsMessage] = useState("");
   const [wsLogs, setWsLogs] = useState<string[]>([]);
+  const [displayLoading, setDisplayLoading] = useState(false);
+  const [displayProgress, setDisplayProgress] = useState("");
   const msgQueueRef = useRef<string[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastMsgRef = useRef("");
@@ -57,8 +59,14 @@ export default function Bulletin() {
     flushQueue();
   };
 
-  // selectedInfo는 worshipOrder[selectedWorshipType]에서 직접 파생
-  // — 드롭다운 전환 시 자동으로 해당 타입의 데이터를 보여줌
+  // 예배 순서 API에서 로드
+  useEffect(() => {
+    apiClient.getWorshipOrder(selectedWorshipType).then((data) => {
+      if (Array.isArray(data) && data.length > 0) {
+        setWorshipOrder((prev) => ({ ...prev, [selectedWorshipType]: data }));
+      }
+    }).catch((err) => console.error("예배 순서 로드 실패:", err));
+  }, [selectedWorshipType]);
 
   useEffect(() => {
     const ignored = new Set(["navigate", "order", "keepalive", "position"]);
@@ -88,9 +96,6 @@ export default function Bulletin() {
   }, [subscribe]);
 
   const downloadZip = (fileName: string) => apiClient.downloadFile(fileName);
-
-  const [displayLoading, setDisplayLoading] = useState(false);
-  const [displayProgress, setDisplayProgress] = useState("");
 
   const sendToDisplay = async () => {
     const processedInfo = processSelectedInfo(selectedInfo);
@@ -148,7 +153,7 @@ export default function Bulletin() {
 
       const processedInfo = processSelectedInfo(selectedInfo);
 
-      const saverRes = await apiClient.saveBulletin(selectedWorshipType, processedInfo);
+      const saverRes = await apiClient.saveWorshipOrder(selectedWorshipType, processedInfo);
       if (!saverRes.ok) throw new Error("저장 실패");
 
       const response = await apiClient.submitBulletin({

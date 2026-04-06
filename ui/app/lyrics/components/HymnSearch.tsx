@@ -47,7 +47,7 @@ export default function HymnSearch() {
           info: "c_edit",
           obj: `${selected.number}장`,
         },
-      ]);
+      ], "lyrics");
     } catch (e) {
       console.error("Display 전송 에러:", e);
     }

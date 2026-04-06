@@ -8,9 +8,9 @@ import (
 	"easyPreparation_1.0/internal/font"
 	"easyPreparation_1.0/internal/format"
 	"easyPreparation_1.0/internal/googleCloud"
-	"easyPreparation_1.0/internal/gui"
 	"easyPreparation_1.0/internal/handlers"
 	"easyPreparation_1.0/internal/parser"
+	"easyPreparation_1.0/internal/types"
 	"easyPreparation_1.0/internal/utils"
 	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
@@ -200,7 +200,7 @@ func (pdf *PDF) TextSpacingFormat(text string, targetWidth, x, y float64) {
 	}
 }
 
-func (pdf *PDF) ForComposeBuiltin(elements []gui.WorshipInfo) (ym float64) {
+func (pdf *PDF) ForComposeBuiltin(elements []types.WorshipInfo) (ym float64) {
 	// figma 디자인 기준
 	var xm float64 = 95
 	ym = 202
@@ -250,7 +250,7 @@ func (pdf *PDF) ForComposeBuiltin(elements []gui.WorshipInfo) (ym float64) {
 	return ym
 }
 
-func (pdf *PDF) ForReferNext(elements []gui.WorshipInfo, nextStart float64) {
+func (pdf *PDF) ForReferNext(elements []types.WorshipInfo, nextStart float64) {
 
 	pdf.Config.FontSize *= 0.8
 	fontInfo := pdf.Config.FontInfo
@@ -279,7 +279,7 @@ func (pdf *PDF) ForReferNext(elements []gui.WorshipInfo, nextStart float64) {
 	}
 }
 
-func (pdf *PDF) ForTodayVerse(element gui.WorshipInfo) {
+func (pdf *PDF) ForTodayVerse(element types.WorshipInfo) {
 	pdf.Config.FontInfo.FontSize = pdf.Config.FontInfo.FontSize * 0.9
 	fontInfo := pdf.Config.FontInfo
 
@@ -296,7 +296,7 @@ func (pdf *PDF) ForTodayVerse(element gui.WorshipInfo) {
 	pdf.MultiCell(innerBoxW, fontInfo.FontSize/2, element.Contents, "", "C", false)
 }
 
-func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config) {
+func (pdf *PDF) ForEdit(con types.WorshipInfo, config extract.Config) {
 	hLColor := colorPalette.HexToRGBA(pdf.Config.Color.BoxColor) // 박스 색상 설정
 	fontInfo := config.Classification.Bulletin.Presentation.FontInfo
 
@@ -347,14 +347,14 @@ func (pdf *PDF) MarkName() {
 	pdf.SetXY(x, y)
 	pdf.MultiCell(labelW, 0, pdf.PdfInfo.MarkName, "", "R", false)
 }
-func (pdf *PDF) DrawChurchNews(fontInfo classification.FontInfo, con gui.WorshipInfo, hLColor color.RGBA, x, y float64) {
+func (pdf *PDF) DrawChurchNews(fontInfo classification.FontInfo, con types.WorshipInfo, hLColor color.RGBA, x, y float64) {
 	// 재귀적으로 교회소식과 그 내부 children 데이터를 처리하는 함수
-	var draw func(items []gui.WorshipInfo, depth int)
+	var draw func(items []types.WorshipInfo, depth int)
 
 	var tmpData string
 	pdf.SetText(fontInfo, false, hLColor)
 
-	draw = func(items []gui.WorshipInfo, depth int) {
+	draw = func(items []types.WorshipInfo, depth int) {
 		for i, item := range items {
 			tab := strings.Repeat("\t", depth-1)
 
@@ -389,7 +389,7 @@ func (pdf *PDF) DrawChurchNews(fontInfo classification.FontInfo, con gui.Worship
 	pdf.MultiCell(pdf.Config.InnerRectangle.Width, fontInfo.FontSize/2.3, tmpData, "", "L", false)
 }
 
-func (pdf *PDF) setBegin(con gui.WorshipInfo, lines int) {
+func (pdf *PDF) setBegin(con types.WorshipInfo, lines int) {
 	var tmpEl string
 
 	for i, _ := range pdf.BibleVerse {
@@ -461,11 +461,11 @@ func (pdf *PDF) setOutDirFiles(category, target string) {
 	case "responsive_reading":
 		splitNum = strings.Split(target, ".")[0]
 	}
-	baseDir := filepath.Join(pdf.FigmaInfo.ExecPath, "data")
-	_ = utils.CheckDirIs(baseDir)
+	pdfDir := filepath.Join(pdf.FigmaInfo.ExecPath, "data", "pdf")
+	_ = utils.CheckDirIs(pdfDir)
 
-	// 고정 디렉토리에 PDF 캐시 (data/hymn/, data/responsive_reading/)
-	cacheDir := filepath.Join(baseDir, category)
+	// 고정 디렉토리에 PDF 캐시 (data/pdf/hymn/, data/pdf/responsive_reading/)
+	cacheDir := filepath.Join(pdfDir, category)
 	_ = utils.CheckDirIs(cacheDir)
 
 	// %03d 로 숫자 0-패딩 ("31" → "031.pdf")

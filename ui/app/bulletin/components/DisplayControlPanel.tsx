@@ -6,6 +6,7 @@ import { displayItemsState, displayPanelOpenState } from "@/recoilState";
 import { apiClient } from "@/lib/apiClient";
 import { WorshipOrderItem, OBSStatus, StreamStatus } from "@/types";
 import { useWS } from "@/components/WebSocketProvider";
+import FeatureGate from "@/components/FeatureGate";
 import s from "./DisplayControlPanel.module.scss";
 
 type TimerState = {
@@ -36,8 +37,10 @@ export default function DisplayControlPanel() {
   const listRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef(items);
   itemsRef.current = items;
-  const dragRef = useRef<{ from: number } | null>(null);
-  const [dragOver, setDragOver] = useState<number | null>(null);
+  const dragRef = useRef<{ from: number; wasDragging: boolean } | null>(null);
+  const schedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reorderLockRef = useRef(false);
+  const reorderSuppressRef = useRef(false);
 
   // WS: position, timer_state, order, display_loading 동기화
   useEffect(() => {
@@ -57,14 +60,17 @@ export default function DisplayControlPanel() {
       }
       if (msg.type === "order" && Array.isArray(msg.items)) {
         setLoadingMsg("");
-        setItems(msg.items as WorshipOrderItem[]);
-        setExpandedItems(new Set());
-        if (typeof msg.idx === "number") {
-          setIdx(msg.idx);
-          setSubPageIdx(0);
-        } else {
-          setIdx(0);
-          setSubPageIdx(0);
+        // reorder 진행 중이면 WS order로 로컬 상태 덮어쓰기 방지
+        if (!reorderSuppressRef.current) {
+          setItems(msg.items as WorshipOrderItem[]);
+          setExpandedItems(new Set());
+          if (typeof msg.idx === "number") {
+            setIdx(msg.idx);
+            setSubPageIdx(0);
+          } else {
+            setIdx(0);
+            setSubPageIdx(0);
+          }
         }
       }
       if (msg.type === "display_loading") {
@@ -80,9 +86,13 @@ export default function DisplayControlPanel() {
           minutes: msg.minutes,
           seconds: msg.seconds,
         });
+        // 3초 내 새 countdown 없으면 자동 해제
+        if (schedTimeoutRef.current) clearTimeout(schedTimeoutRef.current);
+        schedTimeoutRef.current = setTimeout(() => setSchedCountdown(null), 3000);
       }
       if (msg.type === "schedule_started") {
         setSchedCountdown(null);
+        if (schedTimeoutRef.current) clearTimeout(schedTimeoutRef.current);
       }
     });
   }, [subscribe, setItems]);
@@ -132,33 +142,71 @@ export default function DisplayControlPanel() {
     apiClient.removeFromDisplay(index);
   }, []);
 
+  const clearDragHighlight = useCallback(() => {
+    listRef.current?.querySelectorAll(`.${s.drag_over}`).forEach((el) => el.classList.remove(s.drag_over));
+  }, []);
+
   const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
-    dragRef.current = { from: index };
+    dragRef.current = { from: index, wasDragging: true };
     e.dataTransfer.effectAllowed = "move";
     (e.target as HTMLElement).style.opacity = "0.4";
   }, []);
 
   const handleDragEnd = useCallback((e: React.DragEvent) => {
     (e.target as HTMLElement).style.opacity = "1";
-    dragRef.current = null;
-    setDragOver(null);
-  }, []);
+    clearDragHighlight();
+    // wasDragging 플래그 짧게 유지 (click 방지)
+    setTimeout(() => { dragRef.current = null; }, 50);
+  }, [clearDragHighlight]);
 
   const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    setDragOver(index);
+    // DOM 직접 조작 (re-render 방지)
+    const target = (e.currentTarget as HTMLElement);
+    if (!target.classList.contains(s.drag_over)) {
+      clearDragHighlight();
+      target.classList.add(s.drag_over);
+    }
+  }, [clearDragHighlight]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    (e.currentTarget as HTMLElement).classList.remove(s.drag_over);
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent, toIndex: number) => {
     e.preventDefault();
-    setDragOver(null);
+    clearDragHighlight();
     if (!dragRef.current) return;
     const fromIndex = dragRef.current.from;
     dragRef.current = null;
     if (fromIndex === toIndex) return;
-    apiClient.reorderDisplay(fromIndex, toIndex);
-  }, []);
+    if (reorderLockRef.current) return;
+
+    // Optimistic local reorder
+    reorderLockRef.current = true;
+    reorderSuppressRef.current = true;
+    setItems((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+    // currentIdx 보정
+    setIdx((prev) => {
+      if (prev === fromIndex) return toIndex;
+      let newIdx = prev;
+      if (fromIndex < prev) newIdx--;
+      if (toIndex <= newIdx) newIdx++;
+      return Math.max(0, Math.min(newIdx, items.length - 1));
+    });
+
+    apiClient.reorderDisplay(fromIndex, toIndex).finally(() => {
+      reorderLockRef.current = false;
+      // suppress 해제 약간 지연 (WS broadcast 수신 대기)
+      setTimeout(() => { reorderSuppressRef.current = false; }, 500);
+    });
+  }, [clearDragHighlight, items.length, setItems]);
 
   const toggleItemExpand = useCallback((index: number) => {
     setExpandedItems((prev) => {
@@ -222,17 +270,28 @@ export default function DisplayControlPanel() {
           <span className={s.dcp_title}>
             OBS {obsStatus.connected ? obsStatus.currentScene : "Disconnected"}
           </span>
-          {streamStatus.active && (
-            <span className={s.live_badge}>LIVE</span>
-          )}
+          <FeatureGate feature="obs_control" fallback={null}>
+            {streamStatus.active && (
+              <span className={s.live_badge}>LIVE</span>
+            )}
+          </FeatureGate>
         </div>
         <div className={s.dcp_header_actions}>
-          <button
-            className={`${s.stream_btn} ${streamStatus.active ? s.stop : s.start}`}
-            onClick={handleStreamToggle}
+          <FeatureGate
+            feature="obs_control"
+            fallback={
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", padding: "4px 10px" }}>
+                Pro
+              </span>
+            }
           >
-            {streamStatus.active ? "방송 종료" : "방송 시작"}
-          </button>
+            <button
+              className={`${s.stream_btn} ${streamStatus.active ? s.stop : s.start}`}
+              onClick={handleStreamToggle}
+            >
+              {streamStatus.active ? "방송 종료" : "방송 시작"}
+            </button>
+          </FeatureGate>
           <button className={s.dcp_close} onClick={onClose}>✕</button>
         </div>
       </div>
@@ -313,12 +372,13 @@ export default function DisplayControlPanel() {
           return (
             <div key={item.key || i}>
               <div
-                className={`${s.order_item} ${i === idx ? s.active : ""}${dragOver === i ? ` ${s.drag_over}` : ""}`}
-                onClick={() => handleJump(i)}
+                className={`${s.order_item} ${i === idx ? s.active : ""}`}
+                onClick={() => { if (!dragRef.current?.wasDragging) handleJump(i); }}
                 draggable
                 onDragStart={(e) => handleDragStart(e, i)}
                 onDragEnd={handleDragEnd}
                 onDragOver={(e) => handleDragOver(e, i)}
+                onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, i)}
               >
                 <span className={s.order_num}>{i + 1}</span>

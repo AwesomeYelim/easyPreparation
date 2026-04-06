@@ -19,11 +19,11 @@ $img: "/images/image.svg";
       margin: 20px 10px;
       padding-bottom: 10px;
       text-decoration: none;
-      color: #888888;
+      color: var(--text-muted);
       white-space: nowrap;
       &:global(.active) {
-        color: #1f3f62;
-        border-bottom: 4px solid #1f3f62;
+        color: var(--accent);
+        border-bottom: 4px solid var(--accent);
         border-radius: 4px;
       }
     }
@@ -52,17 +52,17 @@ $img: "/images/image.svg";
       }
     }
 
-    .login {
-      display: block;
-      background: url($img) no-repeat -120px -6px;
-      width: 17px;
-      height: 20px;
+    .menu_btn {
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      background: var(--surface-hover, #f0f0f0);
+      color: var(--text-primary, #333);
+      border: 1px solid var(--border-input, #ddd);
+      border-radius: 6px;
       cursor: pointer;
-      &.logout {
-        background: url($img) no-repeat -158px -6px;
-        width: 17px;
-        height: 20px;
-      }
+      transition: background 0.15s;
+      &:hover { background: var(--border, #e0e0e0); }
     }
   }
 }

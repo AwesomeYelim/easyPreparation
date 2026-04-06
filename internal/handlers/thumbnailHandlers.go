@@ -96,7 +96,7 @@ func ThumbnailPreviewHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	execPath := path.ExecutePath("easyPreparation")
-	imgPath := filepath.Join(execPath, "data", "thumbnail", "generated",
+	imgPath := filepath.Join(execPath, "data", "templates", "thumbnail", "generated",
 		fmt.Sprintf("%s_%s.png", date.Format("2006-01-02"), worshipType))
 
 	if _, err := os.Stat(imgPath); os.IsNotExist(err) {
@@ -159,7 +159,7 @@ func generateThumbnail(worshipType string, date time.Time) (string, error) {
 	bgPath, title := cfg.ResolveTheme(worshipType, date)
 
 	execPath := path.ExecutePath("easyPreparation")
-	outPath := filepath.Join(execPath, "data", "thumbnail", "generated",
+	outPath := filepath.Join(execPath, "data", "templates", "thumbnail", "generated",
 		fmt.Sprintf("%s_%s.png", date.Format("2006-01-02"), worshipType))
 
 	// 배경 경로가 상대 경로이면 절대 경로로 변환
@@ -177,7 +177,7 @@ func generateThumbnail(worshipType string, date time.Time) (string, error) {
 }
 
 // ThumbnailUploadHandler — POST /api/thumbnail/upload (multipart)
-// 배경 이미지를 data/thumbnail/special/ 에 저장하고 상대 경로 반환
+// 배경 이미지를 data/templates/thumbnail/special/ 에 저장하고 상대 경로 반환
 func ThumbnailUploadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
@@ -199,7 +199,7 @@ func ThumbnailUploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 저장 경로 결정
 	execPath := path.ExecutePath("easyPreparation")
-	specialDir := filepath.Join(execPath, "data", "thumbnail", "special")
+	specialDir := filepath.Join(execPath, "data", "templates", "thumbnail", "special")
 	os.MkdirAll(specialDir, 0755)
 
 	// 파일명 정리 (확장자 유지)
@@ -216,15 +216,15 @@ func ThumbnailUploadHandler(w http.ResponseWriter, r *http.Request) {
 		saveName = header.Filename
 	}
 
-	// default_ 접두사면 data/thumbnail/ 에 저장 (기본 배경 교체)
+	// default_ 접두사면 data/templates/thumbnail/ 에 저장 (기본 배경 교체)
 	var savePath, relPath string
 	if len(target) > 8 && target[:8] == "default_" {
 		typeName := target[8:] // "main_worship" 등
-		savePath = filepath.Join(execPath, "data", "thumbnail", typeName+ext)
-		relPath = "data/thumbnail/" + typeName + ext
+		savePath = filepath.Join(execPath, "data", "templates", "thumbnail", typeName+ext)
+		relPath = "data/templates/thumbnail/" + typeName + ext
 	} else {
 		savePath = filepath.Join(specialDir, saveName)
-		relPath = "data/thumbnail/special/" + saveName
+		relPath = "data/templates/thumbnail/special/" + saveName
 	}
 
 	dst, err := os.Create(savePath)
@@ -253,7 +253,7 @@ func ThumbnailUploadHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ThumbnailImageHandler — GET /api/thumbnail/image?path=data/thumbnail/special/easter.png
+// ThumbnailImageHandler — GET /api/thumbnail/image?path=data/templates/thumbnail/special/easter.png
 // 배경 이미지 서빙 (미리보기용)
 func ThumbnailImageHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
@@ -270,8 +270,8 @@ func ThumbnailImageHandler(w http.ResponseWriter, r *http.Request) {
 	execPath := path.ExecutePath("easyPreparation")
 	absPath := filepath.Join(execPath, relPath)
 
-	// 보안: data/thumbnail/ 하위만 허용
-	thumbDir := filepath.Join(execPath, "data", "thumbnail")
+	// 보안: data/templates/thumbnail/ 하위만 허용
+	thumbDir := filepath.Join(execPath, "data", "templates", "thumbnail")
 	if !isSubPath(thumbDir, absPath) {
 		http.Error(w, "허용되지 않는 경로", http.StatusForbidden)
 		return

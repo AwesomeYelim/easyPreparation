@@ -78,6 +78,19 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	orderMu.RUnlock()
 
+	// 새 클라이언트에게 현재 timer_state 전송
+	timerMu.Lock()
+	timerMsg, _ := json.Marshal(map[string]interface{}{
+		"type":        "timer_state",
+		"enabled":     timerEnabled,
+		"countdown":   timerCountdown,
+		"idx":         timerCurIdx,
+		"subPageIdx":  timerCurSubPage,
+		"speedFactor": timerSpeedFactor,
+	})
+	timerMu.Unlock()
+	_ = wsc.safeWrite(timerMsg)
+
 	// Keep the connection open + handle incoming messages
 	for {
 		_, msg, err := conn.ReadMessage()
@@ -115,7 +128,10 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 							currentIdx := globalObsIdx
 							globalObsIdxMu.Unlock()
 							if currentIdx == capturedIdx {
-								if title := GetCurrentTitle(); title != "" {
+								// lyrics_display 항목은 항상 camera 씬
+								if info := GetCurrentInfo(); info == "lyrics_display" {
+									obs.Get().SwitchScene("찬양")
+								} else if title := GetCurrentTitle(); title != "" {
 									obs.Get().SwitchScene(title)
 								}
 							}

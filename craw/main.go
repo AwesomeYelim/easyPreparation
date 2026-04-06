@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
-	_ "github.com/lib/pq"
+	_ "modernc.org/sqlite"
 )
 
 // GoodTV API 버전 코드 → DB 버전 ID 매핑
@@ -60,40 +60,30 @@ type BibleBook struct {
 	Chapters []int  `json:"chapters"`
 }
 
-// loadDSN — config/db.json에서 DSN 읽기
-func loadDSN(configPath string) (string, error) {
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return "", fmt.Errorf("db.json 읽기 실패: %v", err)
+// loadDBPath — 환경변수 DB_PATH 또는 기본값 data/easyprep.db 반환
+func loadDBPath() string {
+	if p := os.Getenv("DB_PATH"); p != "" {
+		return p
 	}
-	var cfg struct {
-		DSN string `json:"dsn"`
-	}
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return "", fmt.Errorf("db.json 파싱 오류: %v", err)
-	}
-	if cfg.DSN == "" {
-		return "", fmt.Errorf("db.json에 dsn 필드가 없습니다")
-	}
-	return cfg.DSN, nil
+	return "data/easyprep.db"
 }
 
 func main() {
 	versionFlag := flag.String("version", "all", "크롤링할 버전: all 또는 DB ID (예: 2)")
-	configFlag := flag.String("config", "../config/db.json", "DB 설정 파일 경로")
 	bibleInfoFlag := flag.String("bible-info", "bible_info.json", "bible_info.json 경로")
 	flag.Parse()
 
 	// DB 연결
-	dsn, err := loadDSN(*configFlag)
-	if err != nil {
-		log.Fatalf("DB 설정 로드 실패: %v", err)
-	}
-	db, err := sql.Open("postgres", dsn)
+	dbPath := loadDBPath()
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
+
+	// SQLite 성능 및 안전성 설정
+	db.Exec("PRAGMA journal_mode=WAL")
+	db.Exec("PRAGMA foreign_keys=ON")
 
 	bibleBooks, err := LoadBibleBooksFromJSON(*bibleInfoFlag)
 	if err != nil {
@@ -147,7 +137,7 @@ func ensureBibleVersions(db *sql.DB) {
 	}
 	for _, v := range versions {
 		_, err := db.Exec(
-			`INSERT INTO bible_versions (id, name, code) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING`,
+			`INSERT INTO bible_versions (id, name, code) VALUES (?, ?, ?) ON CONFLICT (id) DO NOTHING`,
 			v.ID, v.Name, v.Code,
 		)
 		if err != nil {
@@ -190,7 +180,7 @@ func crawlVersion(db *sql.DB, bibleBooks map[string]BibleBook, vm VersionMapping
 			for _, verse := range contents {
 				_, err := db.Exec(`
 					INSERT INTO verses (version_id, book_id, chapter, verse, text)
-					VALUES ($1, $2, $3, $4, $5)
+					VALUES (?, ?, ?, ?, ?)
 					ON CONFLICT DO NOTHING
 				`, vm.DBID, book.Index, chapter, verse.Jul, verse.Text)
 				if err != nil {

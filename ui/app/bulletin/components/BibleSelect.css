@@ -3,12 +3,12 @@
   margin-top: 10px;
   max-width: 600px;
   padding: 15px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-input);
   border-radius: 6px;
-  background-color: #f9f9f9;
+  background-color: var(--surface-input);
 
   .title {
-    color: #333;
+    color: var(--text-primary);
     margin-bottom: 15px;
     font-size: 1em;
     font-weight: bold;
@@ -24,34 +24,34 @@
     display: flex;
     flex-direction: column;
     font-size: 0.9em;
-    color: #555;
+    color: var(--text-secondary);
   }
 
   .select-box {
     padding: 8px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border-input);
     border-radius: 4px;
     font-size: 0.9em;
     margin-top: 5px;
   }
 
   .select-box:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 3px #007bff;
+    border-color: var(--accent);
+    box-shadow: 0 0 3px var(--accent);
     outline: none;
   }
 
   .result-container {
     margin-top: 15px;
     padding: 10px;
-    border: 1px solid #007bff;
+    border: 1px solid var(--accent);
     border-radius: 6px;
-    background-color: #eef7ff;
+    background-color: var(--accent-light);
   }
 
   .result-text {
     font-size: 1em;
-    color: #333;
+    color: var(--text-primary);
     font-weight: bold;
     text-align: center;
   }
@@ -83,12 +83,12 @@
 }
 
 .verse-chip {
-  background-color: #f0f4ff;
-  border: 1px solid #b3cfff;
+  background-color: var(--accent-light);
+  border: 1px solid var(--accent-border);
   border-radius: 20px;
   padding: 6px 12px;
   font-size: 14px;
-  color: #333;
+  color: var(--text-primary);
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   white-space: nowrap;
   transition: background-color 0.2s ease;
@@ -96,12 +96,12 @@
   .delete-button {
     margin-left: 8px;
     cursor: pointer;
-    border: 1px solid #555;
+    border: 1px solid var(--text-secondary);
     border-radius: 50%;
     width: 20px;
     height: 20px;
-    background-color: white;
-    color: #333;
+    background-color: var(--surface-elevated);
+    color: var(--text-primary);
     align-items: center;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     transition: background-color 0.2s, color 0.2s;

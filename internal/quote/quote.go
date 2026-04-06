@@ -13,41 +13,84 @@ import (
 	"strconv"
 	"strings"
 
-	_ "github.com/lib/pq" // PostgreSQL 드라이버
+	_ "modernc.org/sqlite" // SQLite 드라이버
 )
 
-// LoadDSN은 환경변수 DB_DSN → config/db.json 순서로 DSN을 읽습니다.
+// LoadDSN은 환경변수 DB_PATH → config/db.json 순서로 SQLite DB 경로를 읽습니다.
 func LoadDSN(configPath string) (string, error) {
-	if dsn := os.Getenv("DB_DSN"); dsn != "" {
-		return dsn, nil
+	if dbPath := os.Getenv("DB_PATH"); dbPath != "" {
+		return dbPath, nil
 	}
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return "", fmt.Errorf("DB_DSN 환경변수가 없고 설정 파일을 읽을 수 없습니다: %v", err)
+		// 설정 파일이 없으면 기본 경로 사용
+		execPath := path.ExecutePath("easyPreparation")
+		return filepath.Join(execPath, "data", "easyprep.db"), nil
 	}
 	var cfg struct {
-		DSN string `json:"dsn"`
+		Path string `json:"path"`
 	}
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return "", fmt.Errorf("db.json 파싱 오류: %v", err)
 	}
-	if cfg.DSN == "" {
-		return "", fmt.Errorf("db.json에 dsn 필드가 없습니다")
+	if cfg.Path == "" {
+		execPath := path.ExecutePath("easyPreparation")
+		return filepath.Join(execPath, "data", "easyprep.db"), nil
 	}
-	return cfg.DSN, nil
+	execPath := path.ExecutePath("easyPreparation")
+	return filepath.Join(execPath, cfg.Path), nil
 }
 
 // DB 연결 변수 (전역 또는 의존성 주입으로 관리)
 var db *sql.DB
 
-// InitDB initializes the database connection
+// InitDB initializes the database connection and applies schema if needed
 func InitDB(dataSourceName string) error {
 	var err error
-	db, err = sql.Open("postgres", dataSourceName)
+	db, err = sql.Open("sqlite", dataSourceName)
 	if err != nil {
 		return err
 	}
-	return db.Ping()
+	if err = db.Ping(); err != nil {
+		return err
+	}
+	db.Exec("PRAGMA journal_mode=WAL")
+	db.Exec("PRAGMA foreign_keys=ON")
+	db.Exec("PRAGMA busy_timeout=5000")
+
+	// 스키마 자동 초기화 — churches 테이블 존재 여부로 판단
+	var name string
+	err = db.QueryRow("SELECT name FROM sqlite_master WHERE type='table' AND name='churches'").Scan(&name)
+	if err != nil {
+		execPath := path.ExecutePath("easyPreparation")
+		schemaPath := filepath.Join(execPath, "data", "schema.sql")
+		schema, readErr := os.ReadFile(schemaPath)
+		if readErr != nil {
+			log.Printf("[DB] schema.sql 없음: %v (수동 초기화 필요)", readErr)
+		} else {
+			if _, execErr := db.Exec(string(schema)); execErr != nil {
+				log.Printf("[DB] 스키마 초기화 실패: %v", execErr)
+			} else {
+				log.Println("[DB] 스키마 자동 초기화 완료")
+			}
+		}
+	}
+
+	// 기존 DB 마이그레이션 — 누락된 컬럼 추가 (ALTER TABLE은 이미 존재하면 무시)
+	migrations := []string{
+		"ALTER TABLE licenses ADD COLUMN last_verified TEXT",
+		"ALTER TABLE licenses ADD COLUMN signature TEXT DEFAULT ''",
+	}
+	for _, m := range migrations {
+		if _, execErr := db.Exec(m); execErr != nil {
+			// "duplicate column name" 에러는 이미 존재하므로 무시
+			if !strings.Contains(execErr.Error(), "duplicate column") {
+				log.Printf("[DB] 마이그레이션 실패: %v", execErr)
+			}
+		}
+	}
+
+	return nil
 }
 
 // CloseDB closes the database connection
@@ -232,20 +275,20 @@ func getBibleVersesFromDB(versionID, bookOrder, startChapter, startVerse, endCha
 		SELECT v.chapter, v.verse, v.text, b.name_kor
 		FROM verses v
 		JOIN books b ON v.book_id = b.id
-		WHERE v.version_id = $1 
-		  AND b.book_order = $2
+		WHERE v.version_id = ?
+		  AND b.book_order = ?
 		  AND (
-		    (v.chapter > $3) OR 
-		    (v.chapter = $3 AND v.verse >= $4)
+		    (v.chapter > ?) OR
+		    (v.chapter = ? AND v.verse >= ?)
 		  )
 		  AND (
-		    (v.chapter < $5) OR 
-		    (v.chapter = $5 AND v.verse <= $6)
+		    (v.chapter < ?) OR
+		    (v.chapter = ? AND v.verse <= ?)
 		  )
 		ORDER BY v.chapter, v.verse
 	`
 
-	rows, err := db.Query(query, versionID, bookOrder, startChapter, startVerse, endChapter, endVerse)
+	rows, err := db.Query(query, versionID, bookOrder, startChapter, startChapter, startVerse, endChapter, endChapter, endVerse)
 	if err != nil {
 		return "", fmt.Errorf("쿼리 실행 오류: %v", err)
 	}
@@ -367,9 +410,9 @@ func SearchBibleVerses(keyword string, versionID int, limit int) ([]map[string]i
 		SELECT b.name_kor, b.book_order, v.chapter, v.verse, v.text
 		FROM verses v
 		JOIN books b ON v.book_id = b.id
-		WHERE v.version_id = $1 AND v.text LIKE '%' || $2 || '%'
+		WHERE v.version_id = ? AND v.text LIKE '%' || ? || '%'
 		ORDER BY b.book_order, v.chapter, v.verse
-		LIMIT $3
+		LIMIT ?
 	`
 	rows, err := db.Query(query, versionID, keyword, limit)
 	if err != nil {
@@ -406,7 +449,7 @@ func GetChapterVerses(versionID, bookOrder, chapter int) ([]map[string]interface
 		SELECT v.verse, v.text
 		FROM verses v
 		JOIN books b ON v.book_id = b.id
-		WHERE v.version_id = $1 AND b.book_order = $2 AND v.chapter = $3
+		WHERE v.version_id = ? AND b.book_order = ? AND v.chapter = ?
 		ORDER BY v.verse
 	`
 	rows, err := db.Query(query, versionID, bookOrder, chapter)
@@ -440,7 +483,7 @@ func GetBookChapterCount(versionID, bookOrder int) (int, error) {
 		SELECT MAX(v.chapter)
 		FROM verses v
 		JOIN books b ON v.book_id = b.id
-		WHERE v.version_id = $1 AND b.book_order = $2
+		WHERE v.version_id = ? AND b.book_order = ?
 	`
 	var maxChapter int
 	err := db.QueryRow(query, versionID, bookOrder).Scan(&maxChapter)
@@ -457,20 +500,20 @@ func GetBibleVersesWithVersion(versionID, bookOrder, startChapter, startVerse, e
 		SELECT v.chapter, v.verse, v.text, b.name_kor
 		FROM verses v
 		JOIN books b ON v.book_id = b.id
-		WHERE v.version_id = $1 
-		  AND b.book_order = $2
+		WHERE v.version_id = ?
+		  AND b.book_order = ?
 		  AND (
-		    (v.chapter > $3) OR 
-		    (v.chapter = $3 AND v.verse >= $4)
+		    (v.chapter > ?) OR
+		    (v.chapter = ? AND v.verse >= ?)
 		  )
 		  AND (
-		    (v.chapter < $5) OR 
-		    (v.chapter = $5 AND v.verse <= $6)
+		    (v.chapter < ?) OR
+		    (v.chapter = ? AND v.verse <= ?)
 		  )
 		ORDER BY v.chapter, v.verse
 	`
 
-	rows, err := db.Query(query, versionID, bookOrder, startChapter, startVerse, endChapter, endVerse)
+	rows, err := db.Query(query, versionID, bookOrder, startChapter, startChapter, startVerse, endChapter, endChapter, endVerse)
 	if err != nil {
 		return "", fmt.Errorf("쿼리 실행 오류: %v", err)
 	}

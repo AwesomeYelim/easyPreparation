@@ -39,11 +39,11 @@ func HymnListHandler(w http.ResponseWriter, r *http.Request) {
 
 	if hymnbook != "" {
 		query = `SELECT id, hymnbook, number, title, first_line, category, has_pdf
-				 FROM hymns WHERE hymnbook = $1 ORDER BY number LIMIT $2 OFFSET $3`
+				 FROM hymns WHERE hymnbook = ? ORDER BY number LIMIT ? OFFSET ?`
 		args = []interface{}{hymnbook, limit, offset}
 	} else {
 		query = `SELECT id, hymnbook, number, title, first_line, category, has_pdf
-				 FROM hymns ORDER BY hymnbook, number LIMIT $1 OFFSET $2`
+				 FROM hymns ORDER BY hymnbook, number LIMIT ? OFFSET ?`
 		args = []interface{}{limit, offset}
 	}
 
@@ -87,7 +87,7 @@ func HymnListHandler(w http.ResponseWriter, r *http.Request) {
 	// 전체 수 조회
 	var total int
 	if hymnbook != "" {
-		_ = apiDB.QueryRow("SELECT COUNT(*) FROM hymns WHERE hymnbook = $1", hymnbook).Scan(&total)
+		_ = apiDB.QueryRow("SELECT COUNT(*) FROM hymns WHERE hymnbook = ?", hymnbook).Scan(&total)
 	} else {
 		_ = apiDB.QueryRow("SELECT COUNT(*) FROM hymns").Scan(&total)
 	}
@@ -136,17 +136,17 @@ func HymnSearchHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		query = `SELECT id, hymnbook, number, title, first_line, category, lyrics, has_pdf
-				 FROM hymns WHERE number = $1 ORDER BY hymnbook LIMIT 10`
+				 FROM hymns WHERE number = ? ORDER BY hymnbook LIMIT 10`
 		args = []interface{}{num}
 	case "lyrics":
 		query = `SELECT id, hymnbook, number, title, first_line, category, lyrics, has_pdf
-				 FROM hymns WHERE lyrics ILIKE '%' || $1 || '%' ORDER BY number LIMIT 50`
+				 FROM hymns WHERE lyrics LIKE '%' || ? || '%' ORDER BY number LIMIT 50`
 		args = []interface{}{q}
 	default: // title
 		query = `SELECT id, hymnbook, number, title, first_line, category, lyrics, has_pdf
-				 FROM hymns WHERE title ILIKE '%' || $1 || '%' OR first_line ILIKE '%' || $1 || '%'
+				 FROM hymns WHERE title LIKE '%' || ? || '%' OR first_line LIKE '%' || ? || '%'
 				 ORDER BY number LIMIT 50`
-		args = []interface{}{q}
+		args = []interface{}{q, q}
 	}
 
 	rows, err := apiDB.Query(query, args...)
@@ -223,7 +223,7 @@ func HymnDetailHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = apiDB.QueryRow(`
 		SELECT id, title, first_line, category, lyrics, has_pdf
-		FROM hymns WHERE hymnbook = $1 AND number = $2
+		FROM hymns WHERE hymnbook = ? AND number = ?
 	`, hymnbook, number).Scan(&id, &title, &firstLine, &category, &lyrics, &hasPdf)
 
 	if err != nil {

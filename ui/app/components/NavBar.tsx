@@ -1,17 +1,16 @@
 "use client";
 
-import { signIn, useSession } from "next-auth/react";
 import { useState } from "react";
 import { useRecoilState } from "recoil";
 import { displayPanelOpenState } from "@/recoilState";
+import { useAuth } from "@/lib/LocalAuthContext";
 import NavLink from "./NavLink";
 import Sidebar from "./SideBar";
-import ProfileButton from "./ProfileButton";
 import s from "./NavBar.module.scss";
 
 export default function NavBar() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { data: session } = useSession();
+  const { church } = useAuth();
   const [panelOpen, setPanelOpen] = useRecoilState(displayPanelOpenState);
 
   const handleDisplayClick = () => {
@@ -38,21 +37,17 @@ export default function NavBar() {
         >
           Display
         </button>
-        {!session?.user ? (
-          <i title="login" className={s.login} onClick={() => signIn()} />
-        ) : (
-          <>
-            <ProfileButton
-              image={session.user.image!}
-              onClick={() => setSidebarOpen(true)}
-            />
-            <Sidebar
-              open={sidebarOpen}
-              onClose={() => setSidebarOpen(false)}
-              user={session.user}
-            />
-          </>
-        )}
+        <button
+          className={s.menu_btn}
+          onClick={() => setSidebarOpen(true)}
+          title="메뉴"
+        >
+          {church?.name || "설정"}
+        </button>
+        <Sidebar
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
       </div>
     </div>
   );
