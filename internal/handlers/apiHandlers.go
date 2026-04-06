@@ -49,25 +49,17 @@ func getUserHandler(w http.ResponseWriter, r *http.Request) {
 	var row *sql.Row
 	if email == "" {
 		row = apiDB.QueryRow(`
-			SELECT c.id, c.name, c.english_name, c.email,
-			       COALESCE(l.license_key, '') AS figma_key,
-			       COALESCE(l.license_token, '') AS figma_token
-			FROM churches c
-			LEFT JOIN licenses l ON c.id = l.church_id
-			WHERE c.id = 1
-			ORDER BY l.issued_at DESC
-			LIMIT 1
+			SELECT id, name, english_name, email,
+			       COALESCE(figma_key, '') AS figma_key,
+			       COALESCE(figma_token, '') AS figma_token
+			FROM churches WHERE id = 1 LIMIT 1
 		`)
 	} else {
 		row = apiDB.QueryRow(`
-			SELECT c.id, c.name, c.english_name, c.email,
-			       COALESCE(l.license_key, '') AS figma_key,
-			       COALESCE(l.license_token, '') AS figma_token
-			FROM churches c
-			LEFT JOIN licenses l ON c.id = l.church_id
-			WHERE c.email = ?
-			ORDER BY l.issued_at DESC
-			LIMIT 1
+			SELECT id, name, english_name, email,
+			       COALESCE(figma_key, '') AS figma_key,
+			       COALESCE(figma_token, '') AS figma_token
+			FROM churches WHERE email = ? LIMIT 1
 		`, email)
 	}
 
@@ -96,6 +88,10 @@ func upsertUserHandler(w http.ResponseWriter, r *http.Request) {
 		Name        string `json:"name"`
 		EnglishName string `json:"english_name"`
 		Email       string `json:"email"`
+		FigmaInfo   *struct {
+			Key   string `json:"key"`
+			Token string `json:"token"`
+		} `json:"figmaInfo"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Email == "" {
 		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
@@ -106,11 +102,21 @@ func upsertUserHandler(w http.ResponseWriter, r *http.Request) {
 	_ = apiDB.QueryRow("SELECT 1 FROM churches WHERE email=? LIMIT 1", body.Email).Scan(&exists)
 
 	if exists == 1 {
-		_, _ = apiDB.Exec("UPDATE churches SET name=?, english_name=? WHERE email=?",
-			body.Name, body.EnglishName, body.Email)
+		if body.FigmaInfo != nil {
+			_, _ = apiDB.Exec("UPDATE churches SET name=?, english_name=?, figma_key=?, figma_token=? WHERE email=?",
+				body.Name, body.EnglishName, body.FigmaInfo.Key, body.FigmaInfo.Token, body.Email)
+		} else {
+			_, _ = apiDB.Exec("UPDATE churches SET name=?, english_name=? WHERE email=?",
+				body.Name, body.EnglishName, body.Email)
+		}
 	} else {
-		_, _ = apiDB.Exec("INSERT INTO churches (name, english_name, email) VALUES (?,?,?)",
-			body.Name, body.EnglishName, body.Email)
+		figmaKey, figmaToken := "", ""
+		if body.FigmaInfo != nil {
+			figmaKey = body.FigmaInfo.Key
+			figmaToken = body.FigmaInfo.Token
+		}
+		_, _ = apiDB.Exec("INSERT INTO churches (name, english_name, email, figma_key, figma_token) VALUES (?,?,?,?,?)",
+			body.Name, body.EnglishName, body.Email, figmaKey, figmaToken)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

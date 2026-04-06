@@ -1902,6 +1902,40 @@ func DisplayReorderHandler(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "count": len(order)})
 }
 
+// DisplayChurchNameHandler — POST /display/church-name
+// 교회명 변경 시 Display에 즉시 반영
+func DisplayChurchNameHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var body struct {
+		ChurchName string `json:"churchName"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	orderMu.Lock()
+	displayChurchName = body.ChurchName
+	order := make([]map[string]interface{}, len(currentOrder))
+	copy(order, currentOrder)
+	idx := currentIdx
+	orderMu.Unlock()
+
+	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx, "churchName": displayChurchName})
+	go saveDisplayState()
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+}
+
 // DisplayStatusHandler — GET /display/status
 // 현재 상태 반환 (idx, 항목 목록, OBS 상태)
 func DisplayStatusHandler(w http.ResponseWriter, r *http.Request) {

@@ -53,6 +53,7 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/display/append", middleware.CORS(http.HandlerFunc(handlers.DisplayAppendHandler)))
 	mux.Handle("/display/remove", middleware.CORS(http.HandlerFunc(handlers.DisplayRemoveHandler)))
 	mux.Handle("/display/reorder", middleware.CORS(http.HandlerFunc(handlers.DisplayReorderHandler)))
+	mux.Handle("/display/church-name", middleware.CORS(http.HandlerFunc(handlers.DisplayChurchNameHandler)))
 	mux.Handle("/display/navigate", middleware.CORS(http.HandlerFunc(handlers.DisplayNavigateHandler)))
 	mux.Handle("/display/push", middleware.CORS(http.HandlerFunc(handlers.DisplayPushHandler)))
 	mux.Handle("/display/jump", middleware.CORS(http.HandlerFunc(handlers.DisplayJumpHandler)))

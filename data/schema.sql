@@ -68,6 +68,8 @@ CREATE TABLE IF NOT EXISTS churches (
     name         VARCHAR(200) NOT NULL DEFAULT '',
     english_name VARCHAR(200) NOT NULL DEFAULT '',
     email        VARCHAR(255) NOT NULL UNIQUE,
+    figma_key    VARCHAR(500) NOT NULL DEFAULT '',
+    figma_token  VARCHAR(500) NOT NULL DEFAULT '',
     created_at   DATETIME     NOT NULL DEFAULT (datetime('now'))
 );
 

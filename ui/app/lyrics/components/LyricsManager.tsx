@@ -276,11 +276,7 @@ export default function LyricsManager() {
               </button>
               {songs.every((song) => song.lyrics.trim() !== "") && (
                 <button
-                  disabled={!userInfo.figmaInfo.key || !userInfo.figmaInfo.token}
-                  className={classNames("submit_btn", {
-                    disabled:
-                      !userInfo.figmaInfo.key || !userInfo.figmaInfo.token,
-                  })}
+                  className="submit_btn"
                   onClick={handleSubmitLyrics}
                 >
                   가사 제출 <span>✓</span>

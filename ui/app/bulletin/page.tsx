@@ -207,11 +207,8 @@ export default function Bulletin() {
         </select>
 
         <button
-          disabled={!userInfo.figmaInfo.key || !userInfo.figmaInfo.token}
           onClick={sendDataToGoServer}
-          className={classNames(s.send_button, {
-            [s.disabled]: !userInfo.figmaInfo.key || !userInfo.figmaInfo.token,
-          })}
+          className={s.send_button}
         >
           예배 자료 생성하기
         </button>

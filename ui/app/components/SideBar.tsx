@@ -17,7 +17,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ open, onClose }: SidebarProps) {
-  const { church } = useAuth();
+  const { church, updateChurch } = useAuth();
   const [userInfo, setUserInfo] = useRecoilState(userInfoState);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -59,11 +59,22 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         }),
       });
       if (res.ok) {
+        const newName = churchName.trim();
+        const newEngName = churchEngName.trim();
         setUserInfo((prev) => ({
           ...prev,
-          name: churchName.trim(),
-          english_name: churchEngName.trim(),
+          name: newName,
+          english_name: newEngName,
         }));
+        updateChurch({ name: newName, englishName: newEngName });
+
+        // Display 교회명도 즉시 업데이트
+        fetch(`${BASE_URL}/display/church-name`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ churchName: newEngName }),
+        }).catch(() => {});
+
         setEditingChurch(false);
       }
     } catch (e) {

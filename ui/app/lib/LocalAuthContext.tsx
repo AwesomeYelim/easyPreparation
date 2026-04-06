@@ -14,6 +14,7 @@ interface AuthContextType {
   isLoading: boolean;
   setupError: string | null;
   completeSetup: (name: string, englishName: string) => Promise<void>;
+  updateChurch: (patch: Partial<Church>) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -22,6 +23,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   setupError: null,
   completeSetup: async () => {},
+  updateChurch: () => {},
 });
 
 export function useAuth() {
@@ -77,8 +79,12 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
     await fetchStatus();
   };
 
+  const updateChurch = (patch: Partial<Church>) => {
+    setChurch((prev) => prev ? { ...prev, ...patch } : prev);
+  };
+
   return (
-    <AuthContext.Provider value={{ church, needsSetup, isLoading, setupError, completeSetup }}>
+    <AuthContext.Provider value={{ church, needsSetup, isLoading, setupError, completeSetup, updateChurch }}>
       {children}
     </AuthContext.Provider>
   );

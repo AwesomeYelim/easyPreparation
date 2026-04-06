@@ -80,6 +80,8 @@ func InitDB(dataSourceName string) error {
 	migrations := []string{
 		"ALTER TABLE licenses ADD COLUMN last_verified TEXT",
 		"ALTER TABLE licenses ADD COLUMN signature TEXT DEFAULT ''",
+		"ALTER TABLE churches ADD COLUMN figma_key VARCHAR(500) NOT NULL DEFAULT ''",
+		"ALTER TABLE churches ADD COLUMN figma_token VARCHAR(500) NOT NULL DEFAULT ''",
 	}
 	for _, m := range migrations {
 		if _, execErr := db.Exec(m); execErr != nil {
