@@ -1,0 +1,7 @@
+# TODO: 아이콘 파일을 이 경로에 배치하세요
+# 기존 macOS 아이콘: cmd/desktop/build/appicon.png (132625 bytes)
+# 변환 방법:
+#   1. ImageMagick: convert appicon.png -define icon:auto-resize=256,128,64,48,32,16 icon.ico
+#   2. 온라인 변환: https://convertio.co/png-ico/ (256x256 PNG → ICO)
+#   3. Wails CLI: wails generate icons -input appicon.png (Windows 환경에서 실행)
+# 이 텍스트 파일을 실제 .ico 바이너리로 교체해야 Windows 빌드에 아이콘이 적용됩니다.

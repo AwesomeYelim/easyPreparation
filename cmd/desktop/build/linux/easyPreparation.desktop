@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=easyPreparation
+Comment=예배 준비 자동화 도구
+Exec=easyPreparation
+Icon=easyPreparation
+Terminal=false
+Categories=Utility;Office;
+StartupWMClass=easyPreparation
+MimeType=

@@ -1,6 +1,6 @@
 *.pdf
-bin/
-build/
+/bin/
+/build/
 data/
 !data/bible.db
 output/*/*.pdf
@@ -46,7 +46,7 @@ cmd/server/frontend/
 cmd/server/data/
 cmd/desktop/frontend/
 cmd/desktop/data/
-cmd/desktop/build/
+cmd/desktop/build/bin/
 
 # Wails 생성 파일
 ui/wailsjs/
