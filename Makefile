@@ -5,7 +5,7 @@ COMMIT    ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_TIME ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS    = -X main.Version=$(VERSION) -X main.Commit=$(COMMIT) -X main.BuildTime=$(BUILD_TIME)
 
-.PHONY: dev restart build clean build-desktop build-desktop-macos build-desktop-windows build-desktop-linux dev-desktop build-go build-go-dev build-ui build-frontend
+.PHONY: dev restart build clean build-desktop build-desktop-macos build-desktop-windows build-desktop-linux dev-desktop build-go build-go-dev build-ui build-frontend build-landing upload-r2
 
 # 개발 모드: Go 서버 + Next.js dev server 동시 실행
 dev:
@@ -110,6 +110,15 @@ build-desktop-linux:
 	@cd cmd/desktop && export PATH="$$HOME/go/bin:/usr/local/go/bin:$$PATH" && \
 	wails build -o easyPreparation -ldflags="$(LDFLAGS)" -platform linux/amd64
 	@echo "Done: cmd/desktop/build/bin/easyPreparation"
+
+# 랜딩 페이지 빌드
+build-landing:
+	@echo "Building landing page..."
+	@. ~/.nvm/nvm.sh && nvm use 22 --silent && cd landing && npm ci && npm run build
+
+# R2에 PDF 에셋 업로드
+upload-r2:
+	bash tools/upload-r2.sh
 
 # Desktop 개발 모드
 dev-desktop:

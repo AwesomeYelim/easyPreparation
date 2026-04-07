@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { apiClient } from "@/lib/apiClient";
-import { useWS } from "@/app/components/WebSocketProvider";
+import { useWS } from "@/components/WebSocketProvider";
 
 const DISMISS_KEY = "update_dismissed_version";
 const CHECK_INTERVAL_MS = 30 * 60 * 1000; // 30분

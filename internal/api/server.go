@@ -119,6 +119,9 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/api/update/apply", middleware.CORS(http.HandlerFunc(handlers.UpdateApplyHandler)))
 	mux.Handle("/api/update/cancel", middleware.CORS(http.HandlerFunc(handlers.UpdateCancelHandler)))
 
+	// PDF 에셋 서빙 (138 서버에서 R2 역할 — data/pdf/ 디렉토리 서빙)
+	mux.Handle("/api/assets/", middleware.CORS(http.HandlerFunc(handlers.AssetServeHandler)))
+
 	// 썸네일 API (generate/upload = Pro, 나머지 = 무료)
 	mux.Handle("/api/thumbnail/generate", middleware.FeatureGate(license.FeatureThumbnail, handlers.ThumbnailGenerateHandler))
 	mux.Handle("/api/thumbnail/preview", middleware.CORS(http.HandlerFunc(handlers.ThumbnailPreviewHandler)))

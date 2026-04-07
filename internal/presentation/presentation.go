@@ -7,7 +7,7 @@ import (
 	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/font"
 	"easyPreparation_1.0/internal/format"
-	"easyPreparation_1.0/internal/googleCloud"
+	"easyPreparation_1.0/internal/assets"
 	"easyPreparation_1.0/internal/handlers"
 	"easyPreparation_1.0/internal/parser"
 	"easyPreparation_1.0/internal/types"
@@ -479,16 +479,16 @@ func (pdf *PDF) setOutDirFiles(category, target string) {
 
 	pdfPath := filepath.Join(cacheDir, targetNum)
 
-	// PDF 캐시 확인 → 없으면 Google Drive에서 다운로드
+	// PDF 캐시 확인 → 없으면 R2에서 다운로드
 	if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
-		handlers.BroadcastProgress("Drive download", 1, fmt.Sprintf("Google Drive에서 %s/%s 다운로드 중...", category, targetNum))
-		if err := googleCloud.GetGoogleCloudInfo(category, targetNum, cacheDir); err != nil {
-			handlers.BroadcastProgress("Drive error", -1, fmt.Sprintf("Google Drive 파일 없음 — %v", err))
+		handlers.BroadcastProgress("PDF download", 1, fmt.Sprintf("%s/%s 다운로드 중...", category, targetNum))
+		if err := assets.DownloadPDF(category, targetNum, cacheDir); err != nil {
+			handlers.BroadcastProgress("PDF error", -1, fmt.Sprintf("PDF 다운로드 실패 — %v", err))
 			return
 		}
-		handlers.BroadcastProgress("Drive done", 1, fmt.Sprintf("%s/%s 다운로드 완료", category, targetNum))
+		handlers.BroadcastProgress("PDF done", 1, fmt.Sprintf("%s/%s 다운로드 완료", category, targetNum))
 	} else {
-		handlers.BroadcastProgress("Drive cache", 1, fmt.Sprintf("[캐시] %s/%s 사용", category, targetNum))
+		handlers.BroadcastProgress("PDF cache", 1, fmt.Sprintf("[캐시] %s/%s 사용", category, targetNum))
 	}
 
 	// PNG 변환용 임시 디렉토리

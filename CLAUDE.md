@@ -2,7 +2,7 @@
 
 ## 프로젝트 개요
 
-Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF 생성, Google Drive 연동, OBS 방송 송출을 지원하는 도구.
+Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF 생성, Cloudflare R2 에셋 연동, OBS 방송 송출을 지원하는 도구.
 
 ### 진입점
 - 서버: `cmd/server/main.go`
@@ -14,7 +14,8 @@ Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF 생성, Google Drive
 | `internal/bulletin` | 주보 PDF 생성 |
 | `internal/lyrics` | 찬양 PDF 생성 |
 | `internal/presentation` | gofpdf 래퍼 (NFC 정규화 포함) |
-| `internal/googleCloud` | Google Drive 파일 다운로드 |
+| `internal/assets` | PDF 에셋 다운로더 — Cloudflare R2 + 로컬 캐시 |
+| `internal/googleCloud` | Google Drive 파일 다운로드 (deprecated — assets 패키지로 대체) |
 | `internal/handlers` | HTTP + WebSocket + Display + 모바일 리모컨 핸들러 |
 | `internal/obs` | OBS WebSocket 매니저 (goobs) |
 | `internal/types` | 공유 데이터 타입 |
@@ -26,7 +27,7 @@ Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF 생성, Google Drive
 | `internal/path` | 실행 파일 기준 경로 해석 유틸리티 |
 
 ### 설정 파일
-- `config/auth.json` — Google Drive 서비스 계정 키
+- `config/auth.json` — Google Drive 서비스 계정 키 (deprecated — R2 전환으로 미사용)
 - `config/db.json` — PostgreSQL DSN
 - `config/main_worship.json` — 주예배 순서 데이터
 - `config/obs.json` — OBS WebSocket 씬 매핑 (없으면 OBS 비활성)
@@ -40,8 +41,8 @@ Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF 생성, Google Drive
 `/display` — OBS Browser Source 또는 별도 창으로 예배 슬라이드 표시.
 
 - 항목별 렌더링: 성경본문, 찬송(이미지), 교독(이미지), 대표기도, 신앙고백(사도신경), 참회의기도, 말씀, 교회소식
-- 찬송/헌금봉헌: Google Drive PDF → Ghostscript PNG 변환 → `data/hymn/` 캐시, 표지+이미지 페이지
-- 성시교독: Google Drive PDF → PNG, 표지 없이 이미지만 바로 표시
+- 찬송/헌금봉헌: R2 PDF 다운로드 → Ghostscript PNG 변환 → `data/hymn/` 캐시, 표지+이미지 페이지
+- 성시교독: R2 PDF 다운로드 → PNG, 표지 없이 이미지만 바로 표시
 - 성경: DB 자동 조회, 3절 단위 페이징
 - 주기도문: 7줄 축약, 한 화면 표시 (페이지 분할 없음)
 - **배경 이미지**: 기본 Figma 배경 (`output/lyrics/tmp/Frame 1.png`) + 어두운 오버레이
@@ -102,6 +103,7 @@ Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF 생성, Google Drive
 | POST | /display/jump | 특정 항목으로 점프 (subPageIdx 지원) |
 | POST | /display/timer | 자동 넘김 타이머 제어 (enable/disable/speed) |
 | GET | /display/status | 현재 상태 (items, idx, OBS, stream) |
+| GET | /api/assets/{category}/{filename} | PDF 에셋 서빙 (R2 캐시 파일) |
 
 ### 스케줄러 API
 | 메서드 | 경로 | 설명 |
@@ -172,6 +174,9 @@ PYTHONUTF8=1 tools/.venv/bin/python tools/output/_tmp.py && rm tools/output/_tmp
 | Desktop Linux 빌드 설정 | `cmd/desktop/build/linux/easyPreparation.desktop` |
 | Desktop 프론트엔드 embed | `cmd/desktop/frontend/` (build 시 ui/out 복사) |
 | Server 프론트엔드 embed | `cmd/server/frontend/` (build 시 ui/out 복사) |
+| 토스페이먼츠 가맹점 가이드 | `docs/TOSS_SETUP.md` |
+| 홍보 랜딩 페이지 | `landing/` (Next.js 14 정적 사이트, Cloudflare Pages 배포) |
+| R2 PDF 업로드 스크립트 | `tools/upload-r2.sh` (찬송/교독 PDF 일괄 업로드) |
 
 ---
 
@@ -248,7 +253,7 @@ PYTHONUTF8=1 tools/.venv/bin/python tools/output/_tmp.py && rm tools/output/_tmp
 ## 주의사항
 
 - `internal/presentation/presentation.go` — PDF 텍스트 메서드는 모두 NFC 정규화 래퍼 사용 (macOS NFD 문제)
-- Google Drive 파일 검색 시 NFC 변환 금지 (Drive에 저장된 파일명이 NFD일 수 있음)
+- R2/로컬 캐시 파일명은 NFC 정규화 적용 (기존 Google Drive NFD 문제 해소)
 - Ghostscript 경로: `/opt/homebrew/bin/gs` 직접 지정 (fallback: `gs`). `bash -c "gs ..."` 사용 금지
 - `config/*`, `output/display/` 는 `.gitignore`에 포함됨
 - Figma PNG 캐시가 있으면 API 호출 스킵 — 새 이미지 필요 시 tmp 폴더 비우기
@@ -420,6 +425,8 @@ mux.Handle("/api/schedule", middleware.FeatureGate(license.FeatureAutoScheduler,
 | `src/kv.ts` | KV 스토리지 CRUD (lic:/dev:/sess: 키 네임스페이스) |
 | `src/crypto.ts` | HMAC-SHA256 서명 + 라이선스 키 + 주문번호 생성 |
 
+- R2 바인딩: `/api/assets/:category/:filename` — 찬송/교독 PDF 에셋 서빙 (Go 앱이 다운로드)
+
 **결제 흐름**: Go 앱 → CF Worker `/api/checkout` → 토스페이먼츠 SDK 결제 페이지 → `/api/confirm` 승인 → 키 생성 → Go 앱 폴링 `/api/activate` → 로컬 활성화
 
 ### 라이선스 패키지 구조
@@ -511,6 +518,11 @@ iOS/Android Chrome에서 `/mobile` 접속 → 홈 화면에 추가 → 전체화
 - **트리거**: Pull Request
 - **단계**: `go vet -tags dev ./cmd/server/` → `go build -tags dev -o /dev/null ./cmd/server/`
 - Desktop 앱은 CI 빌드 대상 아님 (Wails + CGO 환경 구성 복잡성으로 제외)
+
+### `.github/workflows/landing.yml`
+
+- **트리거**: `landing/` 디렉토리 변경 push (main/master 브랜치)
+- **동작**: `landing/` 디렉토리에서 Next.js static export → Cloudflare Pages 배포
 
 ### 릴리즈 절차
 

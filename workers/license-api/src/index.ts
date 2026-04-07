@@ -131,6 +131,34 @@ function htmlLayout(title: string, bodyContent: string): string {
 </html>`
 }
 
+// ─── GET /api/assets/:category/:filename ──────────────────────────────────────
+// R2 버킷에서 PDF 에셋을 서빙합니다.
+
+app.get('/api/assets/:category/:filename', async (c) => {
+  const category = c.req.param('category')
+  const filename = c.req.param('filename')
+
+  // 허용 카테고리 제한
+  if (category !== 'hymn' && category !== 'responsive_reading') {
+    return c.json({ error: 'Not Found' }, 404)
+  }
+
+  // R2 키: hymn/032.pdf, responsive_reading/001.pdf
+  const key = `${category}/${filename}`
+  const object = await c.env.ASSETS_BUCKET.get(key)
+
+  if (!object) {
+    return c.json({ error: 'Not Found' }, 404)
+  }
+
+  const headers = new Headers()
+  headers.set('Content-Type', 'application/pdf')
+  headers.set('Cache-Control', 'public, max-age=86400')
+  object.writeHttpMetadata(headers)
+
+  return new Response(object.body, { headers })
+})
+
 // ─── POST /api/checkout ───────────────────────────────────────────────────────
 
 app.post('/api/checkout', async (c) => {

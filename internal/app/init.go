@@ -4,7 +4,6 @@ package app
 import (
 	"context"
 	"easyPreparation_1.0/internal/api"
-	"easyPreparation_1.0/internal/googleCloud"
 	"easyPreparation_1.0/internal/handlers"
 	"easyPreparation_1.0/internal/license"
 	"easyPreparation_1.0/internal/obs"
@@ -107,9 +106,6 @@ func Initialize(cfg Config) *App {
 	selfupdate.GetUpdater().SetDownloadDir(filepath.Join(execPath, "data", "update"))
 	// 이전 업데이트로 남은 .bak 파일 정리
 	selfupdate.GetUpdater().CleanupBackup()
-
-	// Google Drive 진행 콜백 연결
-	googleCloud.ProgressFunc = handlers.BroadcastProgress
 
 	// 프론트엔드 정적 파일 서빙 설정
 	api.FrontendFS = cfg.FrontendFS

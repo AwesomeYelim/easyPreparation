@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"easyPreparation_1.0/internal/googleCloud"
+	"easyPreparation_1.0/internal/assets"
 	"easyPreparation_1.0/internal/obs"
 	"easyPreparation_1.0/internal/path"
 	"easyPreparation_1.0/internal/quote"
@@ -2349,13 +2349,13 @@ func fetchDisplayImages(title, obj string) []string {
 
 	pdfPath := filepath.Join(cacheDir, targetNum)
 
-	// PDF 캐시 확인 → 없으면 Google Drive에서 다운로드
+	// PDF 캐시 확인 → 없으면 R2에서 다운로드
 	if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
 		BroadcastMessage("display_loading", map[string]interface{}{
-			"message": fmt.Sprintf("Google Drive: %s/%s 다운로드 중...", category, targetNum),
+			"message": fmt.Sprintf("%s/%s 다운로드 중...", category, targetNum),
 		})
-		if err := googleCloud.GetGoogleCloudInfo(category, targetNum, cacheDir); err != nil {
-			log.Printf("[display] Google Drive 파일 없음 — %v (건너뜀)", err)
+		if err := assets.DownloadPDF(category, targetNum, cacheDir); err != nil {
+			log.Printf("[display] PDF 다운로드 실패 — %v (건너뜀)", err)
 			return nil
 		}
 	} else {
