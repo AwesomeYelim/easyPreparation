@@ -113,7 +113,11 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev build-essential pkg-config
+      - name: Install NSIS (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install nsis -y
       - uses: actions/download-artifact@v4
         with:
           name: frontend-dist
@@ -138,13 +142,16 @@ jobs:
           }
       - name: Build desktop app (macOS arm64)
         if: matrix.os == 'macos-latest'
+        env:
+          CGO_ENABLED: '1'
+          CGO_LDFLAGS: '-framework UniformTypeIdentifiers'
         run: |
           VERSION=${GITHUB_REF_NAME}
           COMMIT=$(git rev-parse --short HEAD)
           BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           LDFLAGS="-X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildTime=${BUILD_TIME}"
           cd cmd/desktop
-          CGO_LDFLAGS="-framework UniformTypeIdentifiers" wails build -o easyPreparation -ldflags "${LDFLAGS}"
+          wails build -o easyPreparation -ldflags "${LDFLAGS}"
           cd build/bin
           zip -r ../../../easyPreparation_desktop_darwin_arm64.zip easyPreparation.app
       - name: Build desktop app (Windows amd64)
@@ -171,7 +178,7 @@ jobs:
           BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           LDFLAGS="-X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildTime=${BUILD_TIME}"
           cd cmd/desktop
-          wails build -o easyPreparation -ldflags "${LDFLAGS}" -platform linux/amd64
+          wails build -o easyPreparation -ldflags "${LDFLAGS}" -tags webkit2_41 -platform linux/amd64
           cp build/bin/easyPreparation ../../easyPreparation_desktop_linux_amd64
       - uses: actions/upload-artifact@v4
         with:
