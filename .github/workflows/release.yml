@@ -156,7 +156,7 @@ jobs:
           cd cmd/desktop
           wails build -s -o easyPreparation -ldflags "${LDFLAGS}"
           cd build/bin
-          zip -r ../../../easyPreparation_desktop_darwin_arm64.zip easyPreparation.app
+          zip -r ../../../../easyPreparation_desktop_darwin_arm64.zip easyPreparation.app
       - name: Build desktop app (Windows amd64)
         if: matrix.os == 'windows-latest'
         shell: pwsh
