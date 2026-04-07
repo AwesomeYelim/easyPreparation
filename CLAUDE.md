@@ -180,9 +180,9 @@ PYTHONUTF8=1 tools/.venv/bin/python tools/output/_tmp.py && rm tools/output/_tmp
 
 ---
 
-## 에이전트 시스템 (7-Agent Orchestration)
+## 에이전트 시스템 (8-Agent Orchestration)
 
-사용자가 계획표를 주면 7개 sub-agent가 자동으로 분업 실행합니다.
+사용자가 계획표를 주면 8개 sub-agent가 자동으로 분업 실행합니다.
 
 | 에이전트 | 역할 | sub-agent 타입 | 프롬프트 |
 |----------|------|----------------|----------|
@@ -193,6 +193,7 @@ PYTHONUTF8=1 tools/.venv/bin/python tools/output/_tmp.py && rm tools/output/_tmp
 | UX 검증자 (UX Inspector) | z-index/반응형/상태흐름/테마 | `general-purpose` | `.claude/agents/ux-inspector.md` |
 | 문서 에이전트 (Documenter) | 개발문서/사용자가이드/테스트체크리스트/Git | `general-purpose` | `.claude/agents/documenter.md` |
 | 감시자 (Monitor) | 포트/프로세스 관리, 환경 정리 | `Bash` (haiku) | `.claude/agents/monitor.md` |
+| 배포자 (Deployer) | GitHub Release/태그/릴리즈노트/CI 모니터링 | `Bash` | `.claude/agents/deployer.md` |
 
 **실행 흐름**: 감시자(정리) → 시행자(분석) → 수행자(구현, 병렬) → **리뷰어(완성도 체크)** → 감시자(정리) → 코드검증+UX검증(병렬) → 문서에이전트(문서+가이드+Git)
 
@@ -219,6 +220,7 @@ PYTHONUTF8=1 tools/.venv/bin/python tools/output/_tmp.py && rm tools/output/_tmp
 - 리뷰어: "코드 리뷰해줘", "누락 확인해줘", "일관성 체크해줘"
 - 감시자: "서버 상태 확인", "포트 정리", 세션 터짐 시
 - 문서 에이전트: "가이드 업데이트", "테스트 체크리스트 업데이트", "문서 정리"
+- 배포자: "릴리즈 배포", "릴리즈 노트 작성", "CI 상태 확인", "태그 정리"
 
 상세 프로토콜: `.claude/agents/protocol.md`
 

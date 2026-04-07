@@ -9,6 +9,7 @@ require (
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/gorilla/websocket v1.5.3
 	github.com/jung-kurt/gofpdf/v2 v2.17.3
+	github.com/lib/pq v1.12.3
 	github.com/nsf/termbox-go v1.1.1
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/timshannon/bolthold v0.0.0-20240314194003-30aac6950928
@@ -48,7 +49,6 @@ require (
 	github.com/leaanthony/gosod v1.0.4 // indirect
 	github.com/leaanthony/slicer v1.6.0 // indirect
 	github.com/leaanthony/u v1.1.1 // indirect
-	github.com/lib/pq v1.12.3 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect

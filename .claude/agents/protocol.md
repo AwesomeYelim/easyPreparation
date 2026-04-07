@@ -13,6 +13,7 @@
 | UX 검증자 (UX Inspector) | `general-purpose` | `.claude/agents/ux-inspector.md` | z-index/반응형/상태흐름/테마 |
 | 문서 에이전트 (Documenter) | `general-purpose` | `.claude/agents/documenter.md` | 개발문서/사용자가이드/테스트체크리스트/Git |
 | 감시자 (Monitor) | `Bash` | `.claude/agents/monitor.md` | 포트/프로세스 관리 |
+| 배포자 (Deployer) | `Bash` | `.claude/agents/deployer.md` | GitHub Release/태그/릴리즈노트/CI 모니터링 |
 
 ## 실행 흐름
 
@@ -246,6 +247,22 @@ if 코드검증.status == "pass" and UX검증.status == "pass":
 문서 = Task(
   subagent_type: "general-purpose",
   prompt: [.claude/agents/documenter.md 내용] + "\n\n## 요청:\n" + [사용자 요청]
+)
+```
+
+## 배포 에이전트 단독 호출
+
+사용자가 아래 요청 시 배포 에이전트만 단독 실행:
+- "릴리즈 배포해줘", "v1.0.0 배포해줘"
+- "릴리즈 노트 작성해줘"
+- "이전 릴리즈 삭제해줘"
+- "CI 상태 확인해줘", "빌드 확인해줘"
+- "태그 정리해줘"
+
+```
+배포자 = Task(
+  subagent_type: "Bash",
+  prompt: [.claude/agents/deployer.md 내용] + "\n\n## 요청:\n" + [사용자 요청]
 )
 ```
 
