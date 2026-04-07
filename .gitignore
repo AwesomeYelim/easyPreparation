@@ -2,6 +2,7 @@
 bin/
 build/
 data/
+!data/bible.db
 output/*/*.pdf
 output/display/
 config/*
