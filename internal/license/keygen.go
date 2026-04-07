@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-// hmacSecret — 개발/테스트용 서명 시크릿 (프로덕션에서는 환경변수로 오버라이드)
-const hmacSecret = "easyPrep-license-secret-2024"
+// defaultHMACSecret — 개발/테스트용 서명 시크릿 (프로덕션에서는 config/license.json으로 오버라이드)
+const defaultHMACSecret = "easyPrep-license-secret-2024"
 
 // keyPattern — 라이선스 키 형식: EP-XXXX-XXXX-XXXX-XXXX (X: 대문자 알파벳 or 숫자)
 var keyPattern = regexp.MustCompile(`^EP-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$`)
@@ -51,7 +51,7 @@ func GenerateTestKey(plan Plan, expiresAt time.Time) (key string, signature stri
 		ExpiresAt:  expiresAt,
 	}
 
-	signature = signLicense(info, hmacSecret)
+	signature = signLicense(info, GetHMACSecret())
 	return key, signature
 }
 
@@ -61,7 +61,7 @@ func ValidateSignature(info *LicenseInfo, secret string) bool {
 		return false
 	}
 	if secret == "" {
-		secret = hmacSecret
+		secret = GetHMACSecret()
 	}
 	expected := signLicense(info, secret)
 	// hmac.Equal은 타이밍 공격 방지를 위한 상수 시간 비교

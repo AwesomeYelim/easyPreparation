@@ -204,6 +204,35 @@ func (m *Manager) SetLicense(info *LicenseInfo) error {
 	return nil
 }
 
+// UpdateVerification — 서버 검증 응답으로 플랜/만료일/lastVerified 업데이트
+// verifier.go에서 사용
+func (m *Manager) UpdateVerification(plan Plan, expiresAt time.Time) error {
+	if m == nil {
+		return nil
+	}
+	m.mu.Lock()
+	if m.license == nil {
+		m.mu.Unlock()
+		return nil
+	}
+	m.license.Plan = plan
+	m.license.ExpiresAt = expiresAt
+	m.license.LastVerified = time.Now()
+	info := *m.license
+	m.mu.Unlock()
+
+	// DB + 캐시 저장
+	if m.db != nil {
+		if err := m.saveToDB(&info); err != nil {
+			log.Printf("[license] DB 저장 실패: %v", err)
+		}
+	}
+	if err := saveCache(&info); err != nil {
+		log.Printf("[license] 파일 캐시 저장 실패: %v", err)
+	}
+	return nil
+}
+
 // loadFromDB — DB의 licenses 테이블에서 church_id=1 기준으로 라이선스 로드
 func (m *Manager) loadFromDB() (*LicenseInfo, error) {
 	var (

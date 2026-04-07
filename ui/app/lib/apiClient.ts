@@ -240,6 +240,33 @@ export const apiClient = {
       error?: string;
     }>,
 
+  startUpdateDownload: async () => {
+    const res = await fetch(`${BASE_URL}/api/update/download`, { method: 'POST' });
+    return res.json() as Promise<{ ok: boolean; version?: string; error?: string }>;
+  },
+
+  applyUpdate: async () => {
+    const res = await fetch(`${BASE_URL}/api/update/apply`, { method: 'POST' });
+    return res.json() as Promise<{ ok: boolean; restartRequired?: boolean; error?: string }>;
+  },
+
+  getUpdateStatus: async () => {
+    const res = await fetch(`${BASE_URL}/api/update/status`);
+    return res.json() as Promise<{
+      state: 'idle' | 'checking' | 'downloading' | 'downloaded' | 'applying' | 'restart_required' | 'error';
+      percent: number;
+      totalBytes: number;
+      downloadedBytes: number;
+      version: string;
+      error?: string;
+    }>;
+  },
+
+  cancelUpdateDownload: async () => {
+    const res = await fetch(`${BASE_URL}/api/update/cancel`, { method: 'POST' });
+    return res.json() as Promise<{ ok: boolean }>;
+  },
+
   // 라이선스 API
   getLicenseStatus: async (): Promise<LicenseStatus> => {
     const res = await fetch(`${BASE_URL}/api/license`);
@@ -263,6 +290,33 @@ export const apiClient = {
   verifyLicense: async () => {
     const res = await fetch(`${BASE_URL}/api/license/verify`, { method: 'POST' });
     return res.json();
+  },
+
+  // 결제 API
+  createCheckoutSession: async (plan: 'pro_monthly' | 'pro_annual') => {
+    const res = await fetch(`${BASE_URL}/api/license/checkout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan }),
+    });
+    return res.json() as Promise<{ checkoutUrl: string; sessionId: string }>;
+  },
+
+  pollActivation: async (sessionId: string) => {
+    const res = await fetch(`${BASE_URL}/api/license/callback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId }),
+    });
+    return res.json() as Promise<{ status: 'pending' | 'completed'; plan?: string; licenseKey?: string }>;
+  },
+
+  getPortalUrl: async () => {
+    const res = await fetch(`${BASE_URL}/api/license/portal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return res.json() as Promise<{ portalUrl: string }>;
   },
 
   // YouTube API

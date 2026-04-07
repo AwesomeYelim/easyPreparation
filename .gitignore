@@ -42,7 +42,9 @@ yarn-error.log*
 # Python cache
 tools/__pycache__/
 cmd/server/frontend/
+cmd/server/data/
 cmd/desktop/frontend/
+cmd/desktop/data/
 cmd/desktop/build/
 
 # Wails 생성 파일

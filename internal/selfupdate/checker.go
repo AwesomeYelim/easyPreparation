@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -11,12 +12,57 @@ import (
 
 const githubRepo = "AwesomeYelim/easyPreparation"
 
+// ReleaseAsset — GitHub Release 첨부 파일
+type ReleaseAsset struct {
+	Name               string `json:"name"`
+	BrowserDownloadURL string `json:"browser_download_url"`
+	Size               int64  `json:"size"`
+	ContentType        string `json:"content_type"`
+}
+
 // Release — GitHub Releases API 응답 구조
 type Release struct {
-	TagName string `json:"tag_name"`
-	HTMLURL string `json:"html_url"`
-	Body    string `json:"body"`
-	Name    string `json:"name"`
+	TagName string         `json:"tag_name"`
+	HTMLURL string         `json:"html_url"`
+	Body    string         `json:"body"`
+	Name    string         `json:"name"`
+	Assets  []ReleaseAsset `json:"assets"`
+}
+
+// FindAsset — 현재 실행 플랫폼에 맞는 바이너리 Asset을 반환합니다.
+// 플랫폼 매핑:
+//
+//	darwin/arm64  → easyPreparation_darwin_arm64
+//	darwin/amd64  → easyPreparation_darwin_amd64
+//	linux/amd64   → easyPreparation_linux_amd64
+//	windows/amd64 → easyPreparation_windows_amd64.exe
+func (r *Release) FindAsset() *ReleaseAsset {
+	goos := runtime.GOOS
+	goarch := runtime.GOARCH
+
+	var targetName string
+	if goos == "windows" {
+		targetName = fmt.Sprintf("easyPreparation_%s_%s.exe", goos, goarch)
+	} else {
+		targetName = fmt.Sprintf("easyPreparation_%s_%s", goos, goarch)
+	}
+
+	for i := range r.Assets {
+		if r.Assets[i].Name == targetName {
+			return &r.Assets[i]
+		}
+	}
+	return nil
+}
+
+// ChecksumsAsset — checksums.txt Asset을 반환합니다.
+func (r *Release) ChecksumsAsset() *ReleaseAsset {
+	for i := range r.Assets {
+		if r.Assets[i].Name == "checksums.txt" {
+			return &r.Assets[i]
+		}
+	}
+	return nil
 }
 
 // CheckLatest — GitHub Releases API로 최신 릴리즈를 조회합니다.

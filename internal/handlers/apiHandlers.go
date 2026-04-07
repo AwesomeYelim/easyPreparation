@@ -10,11 +10,17 @@ import (
 	"strconv"
 )
 
-var apiDB *sql.DB
+var apiDB *sql.DB     // 앱 DB (SQLite — churches, licenses, settings)
+var bibleDB *sql.DB   // 성경 DB (PostgreSQL — verses, books, hymns)
 
-// InitAPIDB — handlers 패키지에서 사용할 DB 연결 설정
+// InitAPIDB — handlers 패키지에서 사용할 앱 DB 연결 설정
 func InitAPIDB(db *sql.DB) {
 	apiDB = db
+}
+
+// InitBibleDB — handlers 패키지에서 사용할 Bible DB 연결 설정
+func InitBibleDB(db *sql.DB) {
+	bibleDB = db
 }
 
 // BibleBooksHandler — GET /api/bible/books

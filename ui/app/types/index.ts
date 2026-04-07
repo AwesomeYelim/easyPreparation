@@ -11,6 +11,7 @@ export type WorshipOrderItem = {
   lyricsMap?: string[];
   sections?: { label: string; startPage: number; text: string }[];
   source?: string;
+  versionId?: number;
 };
 
 export type OBSStatus = { connected: boolean; currentScene: string };

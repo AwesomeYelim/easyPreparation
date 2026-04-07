@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
-	_ "modernc.org/sqlite"
+	_ "github.com/lib/pq"
 )
 
 // GoodTV API 버전 코드 → DB 버전 ID 매핑
@@ -60,30 +60,23 @@ type BibleBook struct {
 	Chapters []int  `json:"chapters"`
 }
 
-// loadDBPath — 환경변수 DB_PATH 또는 기본값 data/easyprep.db 반환
-func loadDBPath() string {
-	if p := os.Getenv("DB_PATH"); p != "" {
-		return p
-	}
-	return "data/easyprep.db"
-}
-
 func main() {
 	versionFlag := flag.String("version", "all", "크롤링할 버전: all 또는 DB ID (예: 2)")
 	bibleInfoFlag := flag.String("bible-info", "bible_info.json", "bible_info.json 경로")
+	dsnFlag := flag.String("dsn", "postgres://postgres:02031122@138.2.119.220:5432/bible_db?sslmode=disable", "PostgreSQL DSN")
 	flag.Parse()
 
-	// DB 연결
-	dbPath := loadDBPath()
-	db, err := sql.Open("sqlite", dbPath)
+	// PostgreSQL 연결
+	db, err := sql.Open("postgres", *dsnFlag)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
-
-	// SQLite 성능 및 안전성 설정
-	db.Exec("PRAGMA journal_mode=WAL")
-	db.Exec("PRAGMA foreign_keys=ON")
+	if err := db.Ping(); err != nil {
+		log.Fatalf("DB 연결 실패: %v", err)
+	}
+	db.SetMaxOpenConns(5)
+	log.Println("PostgreSQL 연결 성공")
 
 	bibleBooks, err := LoadBibleBooksFromJSON(*bibleInfoFlag)
 	if err != nil {
@@ -114,7 +107,14 @@ func main() {
 	ensureBibleVersions(db)
 
 	for _, vm := range targets {
-		log.Printf("=== 버전 크롤링 시작: [%d] %s (GoodTV code=%d) ===", vm.DBID, vm.Name, vm.GoodTVCode)
+		// 이미 크롤링된 절 수 확인
+		var existing int
+		db.QueryRow("SELECT COUNT(*) FROM verses WHERE version_id = $1", vm.DBID).Scan(&existing)
+		if existing >= 30000 {
+			log.Printf("=== [%d] %s — 이미 %d절 존재, 스킵 ===", vm.DBID, vm.Name, existing)
+			continue
+		}
+		log.Printf("=== 버전 크롤링 시작: [%d] %s (GoodTV code=%d, 기존 %d절) ===", vm.DBID, vm.Name, vm.GoodTVCode, existing)
 		crawlVersion(db, bibleBooks, vm)
 	}
 
@@ -137,7 +137,7 @@ func ensureBibleVersions(db *sql.DB) {
 	}
 	for _, v := range versions {
 		_, err := db.Exec(
-			`INSERT INTO bible_versions (id, name, code) VALUES (?, ?, ?) ON CONFLICT (id) DO NOTHING`,
+			`INSERT INTO bible_versions (id, name, code) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING`,
 			v.ID, v.Name, v.Code,
 		)
 		if err != nil {
@@ -147,8 +147,26 @@ func ensureBibleVersions(db *sql.DB) {
 }
 
 func crawlVersion(db *sql.DB, bibleBooks map[string]BibleBook, vm VersionMapping) {
+	stmt, err := db.Prepare(`
+		INSERT INTO verses (version_id, book_id, chapter, verse, text)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (version_id, book_id, chapter, verse) DO NOTHING
+	`)
+	if err != nil {
+		log.Fatalf("prepared statement 실패: %v", err)
+	}
+	defer stmt.Close()
+
 	for _, book := range bibleBooks {
 		for chapter := 1; chapter <= len(book.Chapters); chapter++ {
+			// 이미 해당 장이 크롤링되었는지 확인
+			var cnt int
+			db.QueryRow("SELECT COUNT(*) FROM verses WHERE version_id=$1 AND book_id=$2 AND chapter=$3",
+				vm.DBID, book.Index, chapter).Scan(&cnt)
+			if cnt > 0 {
+				continue
+			}
+
 			url := fmt.Sprintf(
 				"https://goodtvbible.goodtv.co.kr/api/onlinebible/bibleread/read-all?version1=%d&version2=&version3=&bible_code=%d&jang=%d",
 				vm.GoodTVCode, book.Index, chapter,
@@ -157,7 +175,7 @@ func crawlVersion(db *sql.DB, bibleBooks map[string]BibleBook, vm VersionMapping
 			resp, err := http.Get(url)
 			if err != nil {
 				log.Printf("  요청 실패 (%s %d장): %v", book.Kor, chapter, err)
-				time.Sleep(200 * time.Millisecond)
+				time.Sleep(300 * time.Millisecond)
 				continue
 			}
 
@@ -165,31 +183,27 @@ func crawlVersion(db *sql.DB, bibleBooks map[string]BibleBook, vm VersionMapping
 			resp.Body.Close()
 			if err != nil {
 				log.Printf("  응답 읽기 실패: %v", err)
-				time.Sleep(200 * time.Millisecond)
+				time.Sleep(300 * time.Millisecond)
 				continue
 			}
 
 			var res BibleAPIResponse
 			if err := json.Unmarshal(body, &res); err != nil {
 				log.Printf("  JSON 파싱 실패 (%s %d장): %v", book.Kor, chapter, err)
-				time.Sleep(200 * time.Millisecond)
+				time.Sleep(300 * time.Millisecond)
 				continue
 			}
 
 			contents := res.Data.Data.Version1.Content
 			for _, verse := range contents {
-				_, err := db.Exec(`
-					INSERT INTO verses (version_id, book_id, chapter, verse, text)
-					VALUES (?, ?, ?, ?, ?)
-					ON CONFLICT DO NOTHING
-				`, vm.DBID, book.Index, chapter, verse.Jul, verse.Text)
+				_, err := stmt.Exec(vm.DBID, book.Index, chapter, verse.Jul, verse.Text)
 				if err != nil {
 					log.Printf("  DB 저장 실패 (%s %d:%d): %v", book.Kor, chapter, verse.Jul, err)
 				}
 			}
 
 			log.Printf("  [%s] %s %d장 — %d절 저장", vm.Name, book.Kor, chapter, len(contents))
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(150 * time.Millisecond)
 		}
 	}
 }

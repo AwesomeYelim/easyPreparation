@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"strings"
 
-	_ "modernc.org/sqlite" // SQLite 드라이버
+	_ "modernc.org/sqlite"  // SQLite 드라이버 (앱 DB + Bible DB)
 )
 
 // LoadDSN은 환경변수 DB_PATH → config/db.json 순서로 SQLite DB 경로를 읽습니다.
@@ -41,10 +41,32 @@ func LoadDSN(configPath string) (string, error) {
 	return filepath.Join(execPath, cfg.Path), nil
 }
 
-// DB 연결 변수 (전역 또는 의존성 주입으로 관리)
-var db *sql.DB
+// LoadBibleDSN은 config/db.json에서 bible_dsn을 읽습니다.
+func LoadBibleDSN(configPath string) (string, error) {
+	if dsn := os.Getenv("BIBLE_DB_DSN"); dsn != "" {
+		return dsn, nil
+	}
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return "", fmt.Errorf("config/db.json 없음: %v", err)
+	}
+	var cfg struct {
+		BibleDSN string `json:"bible_dsn"`
+	}
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return "", fmt.Errorf("db.json 파싱 오류: %v", err)
+	}
+	if cfg.BibleDSN == "" {
+		return "", fmt.Errorf("db.json에 bible_dsn 필드가 없습니다")
+	}
+	return cfg.BibleDSN, nil
+}
 
-// InitDB initializes the database connection and applies schema if needed
+// DB 연결 변수
+var db *sql.DB      // 앱 DB (SQLite — churches, licenses, settings, history)
+var bibleDB *sql.DB // 성경 DB (SQLite — bible_versions, books, verses, hymns)
+
+// InitDB initializes the app database connection (SQLite)
 func InitDB(dataSourceName string) error {
 	var err error
 	db, err = sql.Open("sqlite", dataSourceName)
@@ -76,7 +98,7 @@ func InitDB(dataSourceName string) error {
 		}
 	}
 
-	// 기존 DB 마이그레이션 — 누락된 컬럼 추가 (ALTER TABLE은 이미 존재하면 무시)
+	// 기존 DB 마이그레이션 — 누락된 컬럼 추가
 	migrations := []string{
 		"ALTER TABLE licenses ADD COLUMN last_verified TEXT",
 		"ALTER TABLE licenses ADD COLUMN signature TEXT DEFAULT ''",
@@ -85,7 +107,6 @@ func InitDB(dataSourceName string) error {
 	}
 	for _, m := range migrations {
 		if _, execErr := db.Exec(m); execErr != nil {
-			// "duplicate column name" 에러는 이미 존재하므로 무시
 			if !strings.Contains(execErr.Error(), "duplicate column") {
 				log.Printf("[DB] 마이그레이션 실패: %v", execErr)
 			}
@@ -95,17 +116,43 @@ func InitDB(dataSourceName string) error {
 	return nil
 }
 
-// CloseDB closes the database connection
+// InitBibleDB initializes the Bible database connection (로컬 SQLite)
+func InitBibleDB(dbPath string) error {
+	var err error
+	bibleDB, err = sql.Open("sqlite", dbPath)
+	if err != nil {
+		return fmt.Errorf("Bible DB 연결 실패: %v", err)
+	}
+	if err = bibleDB.Ping(); err != nil {
+		bibleDB = nil
+		return fmt.Errorf("Bible DB 핑 실패: %v", err)
+	}
+	bibleDB.Exec("PRAGMA journal_mode=WAL")
+	bibleDB.Exec("PRAGMA foreign_keys=ON")
+	bibleDB.Exec("PRAGMA busy_timeout=5000")
+	log.Println("[BibleDB] SQLite 연결 성공")
+	return nil
+}
+
+// CloseDB closes all database connections
 func CloseDB() error {
+	if bibleDB != nil {
+		bibleDB.Close()
+	}
 	if db != nil {
 		return db.Close()
 	}
 	return nil
 }
 
-// GetDB returns the shared DB connection
+// GetDB returns the shared app DB connection (SQLite)
 func GetDB() *sql.DB {
 	return db
+}
+
+// GetBibleDB returns the Bible DB connection (SQLite)
+func GetBibleDB() *sql.DB {
+	return bibleDB
 }
 
 func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
@@ -118,7 +165,6 @@ func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 		obj, oOk := el["obj"].(string)
 
 		if !tOk || !oOk {
-			// title 또는 obj가 string이 아닐 경우 다음으로
 			i++
 			continue
 		}
@@ -133,7 +179,6 @@ func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 					"info":  "c_edit",
 					"obj":   "-",
 				}
-
 				*bulletin = append((*bulletin)[:i+1], append([]map[string]interface{}{newItem}, (*bulletin)[i+1:]...)...)
 			}
 
@@ -146,16 +191,13 @@ func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 					qObj = strings.TrimSpace(qObj)
 					parts := strings.SplitN(qObj, "_", 2)
 					if len(parts) != 2 {
-						continue // 포맷 이상 시 무시
+						continue
 					}
 					korName, codeAndRange := parts[0], parts[1]
-
-					// codeAndRange에서 책 번호 추출 (예: "45/8:1" -> "45")
 					codeParts := strings.SplitN(codeAndRange, "/", 2)
 					if len(codeParts) != 2 {
 						continue
 					}
-
 					quoteText, err := GetQuote(codeAndRange)
 					if err != nil {
 						log.Printf("성경 구절 조회 오류 (%s): %v", codeAndRange, err)
@@ -163,20 +205,16 @@ func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 					}
 					sb.WriteString(quoteText)
 					sb.WriteString("\n")
-
 					objRange += fmt.Sprintf(", %s %s", korName, parser.CompressVerse(codeParts[1]))
 				}
 			} else {
 				parts := strings.SplitN(obj, "_", 2)
 				if len(parts) == 2 {
 					korName, codeAndRange := parts[0], parts[1]
-
-					// codeAndRange에서 책 번호 추출 (예: "45/8:1" -> "45")
 					codeParts := strings.SplitN(codeAndRange, "/", 2)
 					if len(codeParts) != 2 {
 						continue
 					}
-
 					quoteText, err := GetQuote(codeAndRange)
 					if err != nil {
 						log.Printf("성경 구절 조회 오류 (%s): %v", codeAndRange, err)
@@ -192,7 +230,6 @@ func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 			(*bulletin)[i]["obj"] = objRange
 		}
 
-		// "말씀내용"으로 끝나는 title은 바로 앞 항목의 contents 복사 (범위 검사 포함)
 		if strings.HasSuffix(title, "말씀내용") {
 			if i-1 >= 0 {
 				if prevContents, ok := (*bulletin)[i-1]["contents"]; ok {
@@ -205,7 +242,6 @@ func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 	}
 
 	execPath := path.ExecutePath("easyPreparation")
-
 	sample, _ := json.MarshalIndent(bulletin, "", "  ")
 	_ = utils.CheckDirIs(filepath.Join(execPath, "config"))
 	_ = os.WriteFile(filepath.Join(execPath, "config", worshipTitle+".json"), sample, 0644)
@@ -220,16 +256,14 @@ func GetQuote(codeAndRange string) (string, error) {
 func GetQuoteWithVersion(codeAndRange string, versionID int) (string, error) {
 	var startChapter, startVerse, endChapter, endVerse int
 
-	// codeAndRange 형태: "45/8:1" 또는 "45/8:1-3"
 	referBible := strings.Split(codeAndRange, "/")
 	if len(referBible) < 2 {
 		return "", fmt.Errorf("잘못된 입력 형식: %s (예: 45/8:1-3)", codeAndRange)
 	}
 
-	bookOrder := referBible[0]  // "45" (book_order)
-	quoteRange := referBible[1] // "8:1" 또는 "8:1-3"
+	bookOrder := referBible[0]
+	quoteRange := referBible[1]
 
-	// book_order를 정수로 변환
 	bookOrderInt, err := strconv.Atoi(bookOrder)
 	if err != nil {
 		return "", fmt.Errorf("잘못된 책 번호: %s", bookOrder)
@@ -239,16 +273,12 @@ func GetQuoteWithVersion(codeAndRange string, versionID int) (string, error) {
 		qCVs := strings.Split(quoteRange, "-")
 		start := strings.Split(qCVs[0], ":")
 		end := strings.Split(qCVs[1], ":")
-
 		startChapter, _ = strconv.Atoi(start[0])
 		startVerse, _ = strconv.Atoi(start[1])
-
 		if len(end) == 2 {
-			// "8:1-10:5" 형태
 			endChapter, _ = strconv.Atoi(end[0])
 			endVerse, _ = strconv.Atoi(end[1])
 		} else {
-			// "8:1-5" 형태 (같은 장 내)
 			endChapter = startChapter
 			endVerse, _ = strconv.Atoi(end[0])
 		}
@@ -268,9 +298,10 @@ func GetQuoteWithVersion(codeAndRange string, versionID int) (string, error) {
 	return versesText, nil
 }
 
+// getBibleVersesFromDB — SQLite (bibleDB) 에서 성경 구절 조회
 func getBibleVersesFromDB(versionID, bookOrder, startChapter, startVerse, endChapter, endVerse int) (string, error) {
-	if db == nil {
-		return "", fmt.Errorf("데이터베이스 연결이 초기화되지 않았습니다")
+	if bibleDB == nil {
+		return "", fmt.Errorf("Bible DB 연결이 초기화되지 않았습니다")
 	}
 
 	query := `
@@ -290,7 +321,7 @@ func getBibleVersesFromDB(versionID, bookOrder, startChapter, startVerse, endCha
 		ORDER BY v.chapter, v.verse
 	`
 
-	rows, err := db.Query(query, versionID, bookOrder, startChapter, startChapter, startVerse, endChapter, endChapter, endVerse)
+	rows, err := bibleDB.Query(query, versionID, bookOrder, startChapter, startChapter, startVerse, endChapter, endChapter, endVerse)
 	if err != nil {
 		return "", fmt.Errorf("쿼리 실행 오류: %v", err)
 	}
@@ -302,23 +333,18 @@ func getBibleVersesFromDB(versionID, bookOrder, startChapter, startVerse, endCha
 	for rows.Next() {
 		var chapter, verse int
 		var text, name string
-
-		err := rows.Scan(&chapter, &verse, &text, &name)
-		if err != nil {
+		if err := rows.Scan(&chapter, &verse, &text, &name); err != nil {
 			return "", fmt.Errorf("데이터 스캔 오류: %v", err)
 		}
-
 		if bookName == "" {
 			bookName = name
 		}
-
 		result = append(result, fmt.Sprintf("%d:%d %s", chapter, verse, text))
 	}
 
 	if err = rows.Err(); err != nil {
 		return "", fmt.Errorf("행 반복 오류: %v", err)
 	}
-
 	if len(result) == 0 {
 		return "", fmt.Errorf("해당 구절을 찾을 수 없습니다: %s %d:%d", bookName, startChapter, startVerse)
 	}
@@ -326,14 +352,14 @@ func getBibleVersesFromDB(versionID, bookOrder, startChapter, startVerse, endCha
 	return strings.Join(result, "\n"), nil
 }
 
+// === 아래 함수들은 모두 bibleDB (SQLite) 사용 ===
+
 // GetBibleVersions 사용 가능한 성경 번역본 목록을 반환
 func GetBibleVersions() ([]map[string]interface{}, error) {
-	if db == nil {
-		return nil, fmt.Errorf("데이터베이스 연결이 초기화되지 않았습니다")
+	if bibleDB == nil {
+		return nil, fmt.Errorf("Bible DB 연결이 초기화되지 않았습니다")
 	}
-
-	query := "SELECT id, name, code FROM bible_versions ORDER BY id"
-	rows, err := db.Query(query)
+	rows, err := bibleDB.Query("SELECT id, name, code FROM bible_versions ORDER BY id")
 	if err != nil {
 		return nil, err
 	}
@@ -343,34 +369,22 @@ func GetBibleVersions() ([]map[string]interface{}, error) {
 	for rows.Next() {
 		var id int
 		var name, code string
-
-		err := rows.Scan(&id, &name, &code)
-		if err != nil {
+		if err := rows.Scan(&id, &name, &code); err != nil {
 			return nil, err
 		}
-
 		versions = append(versions, map[string]interface{}{
-			"id":   id,
-			"name": name,
-			"code": code,
+			"id": id, "name": name, "code": code,
 		})
 	}
-
 	return versions, rows.Err()
 }
 
 // GetBooks 성경 책 목록을 반환
 func GetBooks() ([]map[string]interface{}, error) {
-	if db == nil {
-		return nil, fmt.Errorf("데이터베이스 연결이 초기화되지 않았습니다")
+	if bibleDB == nil {
+		return nil, fmt.Errorf("Bible DB 연결이 초기화되지 않았습니다")
 	}
-
-	query := `
-		SELECT id, name_kor, name_eng, abbr_kor, abbr_eng, book_order 
-		FROM books 
-		ORDER BY book_order
-	`
-	rows, err := db.Query(query)
+	rows, err := bibleDB.Query(`SELECT id, name_kor, name_eng, abbr_kor, abbr_eng, book_order FROM books ORDER BY book_order`)
 	if err != nil {
 		return nil, err
 	}
@@ -380,34 +394,25 @@ func GetBooks() ([]map[string]interface{}, error) {
 	for rows.Next() {
 		var id, bookOrder int
 		var nameKor, nameEng, abbrKor, abbrEng string
-
-		err := rows.Scan(&id, &nameKor, &nameEng, &abbrKor, &abbrEng, &bookOrder)
-		if err != nil {
+		if err := rows.Scan(&id, &nameKor, &nameEng, &abbrKor, &abbrEng, &bookOrder); err != nil {
 			return nil, err
 		}
-
 		books = append(books, map[string]interface{}{
-			"id":         id,
-			"name_kor":   nameKor,
-			"name_eng":   nameEng,
-			"abbr_kor":   abbrKor,
-			"abbr_eng":   abbrEng,
-			"book_order": bookOrder,
+			"id": id, "name_kor": nameKor, "name_eng": nameEng,
+			"abbr_kor": abbrKor, "abbr_eng": abbrEng, "book_order": bookOrder,
 		})
 	}
-
 	return books, rows.Err()
 }
 
 // SearchBibleVerses 키워드로 성경 본문 검색
 func SearchBibleVerses(keyword string, versionID int, limit int) ([]map[string]interface{}, error) {
-	if db == nil {
-		return nil, fmt.Errorf("데이터베이스 연결이 초기화되지 않았습니다")
+	if bibleDB == nil {
+		return nil, fmt.Errorf("Bible DB 연결이 초기화되지 않았습니다")
 	}
 	if limit <= 0 {
 		limit = 50
 	}
-
 	query := `
 		SELECT b.name_kor, b.book_order, v.chapter, v.verse, v.text
 		FROM verses v
@@ -416,7 +421,7 @@ func SearchBibleVerses(keyword string, versionID int, limit int) ([]map[string]i
 		ORDER BY b.book_order, v.chapter, v.verse
 		LIMIT ?
 	`
-	rows, err := db.Query(query, versionID, keyword, limit)
+	rows, err := bibleDB.Query(query, versionID, keyword, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -431,11 +436,8 @@ func SearchBibleVerses(keyword string, versionID int, limit int) ([]map[string]i
 			return nil, err
 		}
 		results = append(results, map[string]interface{}{
-			"book_name":  bookName,
-			"book_order": bookOrder,
-			"chapter":    chapter,
-			"verse":      verse,
-			"text":       text,
+			"book_name": bookName, "book_order": bookOrder,
+			"chapter": chapter, "verse": verse, "text": text,
 		})
 	}
 	return results, rows.Err()
@@ -443,10 +445,9 @@ func SearchBibleVerses(keyword string, versionID int, limit int) ([]map[string]i
 
 // GetChapterVerses 특정 장의 모든 절 조회
 func GetChapterVerses(versionID, bookOrder, chapter int) ([]map[string]interface{}, error) {
-	if db == nil {
-		return nil, fmt.Errorf("데이터베이스 연결이 초기화되지 않았습니다")
+	if bibleDB == nil {
+		return nil, fmt.Errorf("Bible DB 연결이 초기화되지 않았습니다")
 	}
-
 	query := `
 		SELECT v.verse, v.text
 		FROM verses v
@@ -454,7 +455,7 @@ func GetChapterVerses(versionID, bookOrder, chapter int) ([]map[string]interface
 		WHERE v.version_id = ? AND b.book_order = ? AND v.chapter = ?
 		ORDER BY v.verse
 	`
-	rows, err := db.Query(query, versionID, bookOrder, chapter)
+	rows, err := bibleDB.Query(query, versionID, bookOrder, chapter)
 	if err != nil {
 		return nil, err
 	}
@@ -468,8 +469,7 @@ func GetChapterVerses(versionID, bookOrder, chapter int) ([]map[string]interface
 			return nil, err
 		}
 		results = append(results, map[string]interface{}{
-			"verse": verse,
-			"text":  text,
+			"verse": verse, "text": text,
 		})
 	}
 	return results, rows.Err()
@@ -477,76 +477,19 @@ func GetChapterVerses(versionID, bookOrder, chapter int) ([]map[string]interface
 
 // GetBookChapterCount 특정 책의 장 수 조회
 func GetBookChapterCount(versionID, bookOrder int) (int, error) {
-	if db == nil {
-		return 0, fmt.Errorf("데이터베이스 연결이 초기화되지 않았습니다")
+	if bibleDB == nil {
+		return 0, fmt.Errorf("Bible DB 연결이 초기화되지 않았습니다")
 	}
-
-	query := `
-		SELECT MAX(v.chapter)
-		FROM verses v
+	var maxChapter int
+	err := bibleDB.QueryRow(`
+		SELECT MAX(v.chapter) FROM verses v
 		JOIN books b ON v.book_id = b.id
 		WHERE v.version_id = ? AND b.book_order = ?
-	`
-	var maxChapter int
-	err := db.QueryRow(query, versionID, bookOrder).Scan(&maxChapter)
+	`, versionID, bookOrder).Scan(&maxChapter)
 	return maxChapter, err
 }
 
 // GetBibleVersesWithVersion 특정 번역본의 성경 구절을 가져오는 함수
 func GetBibleVersesWithVersion(versionID, bookOrder, startChapter, startVerse, endChapter, endVerse int) (string, error) {
-	if db == nil {
-		return "", fmt.Errorf("데이터베이스 연결이 초기화되지 않았습니다")
-	}
-
-	query := `
-		SELECT v.chapter, v.verse, v.text, b.name_kor
-		FROM verses v
-		JOIN books b ON v.book_id = b.id
-		WHERE v.version_id = ?
-		  AND b.book_order = ?
-		  AND (
-		    (v.chapter > ?) OR
-		    (v.chapter = ? AND v.verse >= ?)
-		  )
-		  AND (
-		    (v.chapter < ?) OR
-		    (v.chapter = ? AND v.verse <= ?)
-		  )
-		ORDER BY v.chapter, v.verse
-	`
-
-	rows, err := db.Query(query, versionID, bookOrder, startChapter, startChapter, startVerse, endChapter, endChapter, endVerse)
-	if err != nil {
-		return "", fmt.Errorf("쿼리 실행 오류: %v", err)
-	}
-	defer rows.Close()
-
-	var result []string
-	var bookName string
-
-	for rows.Next() {
-		var chapter, verse int
-		var text, name string
-
-		err := rows.Scan(&chapter, &verse, &text, &name)
-		if err != nil {
-			return "", fmt.Errorf("데이터 스캔 오류: %v", err)
-		}
-
-		if bookName == "" {
-			bookName = name
-		}
-
-		result = append(result, fmt.Sprintf("%d:%d %s", chapter, verse, text))
-	}
-
-	if err = rows.Err(); err != nil {
-		return "", fmt.Errorf("행 반복 오류: %v", err)
-	}
-
-	if len(result) == 0 {
-		return "", fmt.Errorf("해당 구절을 찾을 수 없습니다: %s %d:%d", bookName, startChapter, startVerse)
-	}
-
-	return strings.Join(result, "\n"), nil
+	return getBibleVersesFromDB(versionID, bookOrder, startChapter, startVerse, endChapter, endVerse)
 }

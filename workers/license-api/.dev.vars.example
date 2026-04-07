@@ -1,0 +1,11 @@
+# Cloudflare Workers 로컬 개발용 시크릿 (이 파일을 .dev.vars로 복사 후 실제 값 입력)
+# .dev.vars는 gitignore됨 — 절대 커밋하지 말 것
+
+# 토스페이먼츠 시크릿 키 (test: test_gsk_..., live: live_gsk_...)
+TOSS_SECRET_KEY=test_gsk_your_toss_secret_key_here
+
+# 토스페이먼츠 클라이언트 키 (test: test_gck_..., live: live_gck_...)
+TOSS_CLIENT_KEY=test_gck_your_toss_client_key_here
+
+# HMAC 서명 시크릿 (최소 32자, Go 앱의 HMAC_SECRET과 동일해야 함)
+HMAC_SECRET=your-hmac-secret-minimum-32-characters-long

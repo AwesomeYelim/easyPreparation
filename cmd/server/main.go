@@ -23,7 +23,8 @@ func main() {
 	version.Set(Version, Commit, BuildTime)
 	log.Printf("easyPreparation %s (commit: %s, built: %s)", Version, Commit, BuildTime)
 	a := app.Initialize(app.Config{
-		FrontendFS: getFrontendFS(),
+		FrontendFS:     getFrontendFS(),
+		EmbeddedDataFS: getEmbeddedDataFS(),
 	})
 	defer a.Shutdown()
 

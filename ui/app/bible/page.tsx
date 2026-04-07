@@ -129,6 +129,20 @@ export default function BiblePage() {
     [versionId, compareMode, compareVersionId]
   );
 
+  // 메인 버전 변경 시 현재 장 다시 로드
+  useEffect(() => {
+    if (selectedBook && selectedChapter > 0) {
+      fetch(
+        `${BASE_URL}/api/bible/verses?book=${selectedBook.book_order}&chapter=${selectedChapter}&version=${versionId}`
+      )
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) setVerses(data);
+        })
+        .catch((e) => console.error("bible fetch 에러:", e));
+    }
+  }, [versionId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // 비교 모드 토글 시 / 비교 버전 변경 시 비교 데이터 fetch
   useEffect(() => {
     if (compareMode && compareVersionId && selectedBook && selectedChapter > 0) {
@@ -255,6 +269,7 @@ export default function BiblePage() {
         title: "성경",
         info: "b_edit",
         obj,
+        versionId,
       }], "bible");
     } catch (e) {
       console.error("Display 전송 에러:", e);

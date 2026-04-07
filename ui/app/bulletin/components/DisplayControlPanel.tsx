@@ -41,6 +41,21 @@ export default function DisplayControlPanel() {
   const schedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reorderLockRef = useRef(false);
   const reorderSuppressRef = useRef(false);
+  const keyCounterRef = useRef(0);
+
+  // 아이템에 고유 key 보장 (중복 key 방지)
+  const ensureUniqueKeys = useCallback((rawItems: WorshipOrderItem[]) => {
+    const seen = new Set<string>();
+    return rawItems.map((item) => {
+      let k = item.key;
+      if (!k || seen.has(k)) {
+        k = `_auto_${keyCounterRef.current++}`;
+        return { ...item, key: k };
+      }
+      seen.add(k);
+      return item;
+    });
+  }, []);
 
   // WS: position, timer_state, order, display_loading 동기화
   useEffect(() => {
@@ -62,7 +77,7 @@ export default function DisplayControlPanel() {
         setLoadingMsg("");
         // reorder 진행 중이면 WS order로 로컬 상태 덮어쓰기 방지
         if (!reorderSuppressRef.current) {
-          setItems(msg.items as WorshipOrderItem[]);
+          setItems(ensureUniqueKeys(msg.items as WorshipOrderItem[]));
           setExpandedItems(new Set());
           if (typeof msg.idx === "number") {
             setIdx(msg.idx);
@@ -95,7 +110,7 @@ export default function DisplayControlPanel() {
         if (schedTimeoutRef.current) clearTimeout(schedTimeoutRef.current);
       }
     });
-  }, [subscribe, setItems]);
+  }, [subscribe, setItems, ensureUniqueKeys]);
 
   // 마운트 시 현재 상태 fetch + OBS 폴링 (5초)
   useEffect(() => {
@@ -105,7 +120,7 @@ export default function DisplayControlPanel() {
           if (data.obs) setObsStatus(data.obs);
           if (data.stream) setStreamStatus(data.stream);
           if (Array.isArray(data.items) && data.items.length > 0 && itemsRef.current.length === 0) {
-            setItems(data.items as WorshipOrderItem[]);
+            setItems(ensureUniqueKeys(data.items as WorshipOrderItem[]));
             if (typeof data.idx === "number") setIdx(data.idx);
           }
         })
@@ -203,8 +218,8 @@ export default function DisplayControlPanel() {
 
     apiClient.reorderDisplay(fromIndex, toIndex).finally(() => {
       reorderLockRef.current = false;
-      // suppress 해제 약간 지연 (WS broadcast 수신 대기)
-      setTimeout(() => { reorderSuppressRef.current = false; }, 500);
+      // suppress 해제 지연 (WS broadcast 수신 대기)
+      setTimeout(() => { reorderSuppressRef.current = false; }, 1500);
     });
   }, [clearDragHighlight, items.length, setItems]);
 

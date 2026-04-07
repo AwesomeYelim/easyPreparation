@@ -93,6 +93,11 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/api/license/deactivate", middleware.CORS(http.HandlerFunc(handlers.LicenseDeactivateHandler)))
 	mux.Handle("/api/license/verify", middleware.CORS(http.HandlerFunc(handlers.LicenseVerifyHandler)))
 
+	// 결제 연동 API (CF Workers + Stripe)
+	mux.Handle("/api/license/checkout", middleware.CORS(http.HandlerFunc(handlers.LicenseCheckoutHandler)))
+	mux.Handle("/api/license/callback", middleware.CORS(http.HandlerFunc(handlers.LicenseCallbackHandler)))
+	mux.Handle("/api/license/portal", middleware.CORS(http.HandlerFunc(handlers.LicensePortalHandler)))
+
 	// 스케줄러 API (Pro)
 	mux.Handle("/api/schedule", middleware.FeatureGate(license.FeatureAutoScheduler, handlers.ScheduleHandler))
 	mux.Handle("/api/schedule/test", middleware.FeatureGate(license.FeatureAutoScheduler, handlers.ScheduleTestHandler))
@@ -109,6 +114,10 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 		})
 	})))
 	mux.Handle("/api/update/check", middleware.CORS(http.HandlerFunc(handlers.UpdateCheckHandler)))
+	mux.Handle("/api/update/status", middleware.CORS(http.HandlerFunc(handlers.UpdateStatusHandler)))
+	mux.Handle("/api/update/download", middleware.CORS(http.HandlerFunc(handlers.UpdateDownloadHandler)))
+	mux.Handle("/api/update/apply", middleware.CORS(http.HandlerFunc(handlers.UpdateApplyHandler)))
+	mux.Handle("/api/update/cancel", middleware.CORS(http.HandlerFunc(handlers.UpdateCancelHandler)))
 
 	// 썸네일 API (generate/upload = Pro, 나머지 = 무료)
 	mux.Handle("/api/thumbnail/generate", middleware.FeatureGate(license.FeatureThumbnail, handlers.ThumbnailGenerateHandler))

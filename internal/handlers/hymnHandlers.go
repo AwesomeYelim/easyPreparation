@@ -47,7 +47,7 @@ func HymnListHandler(w http.ResponseWriter, r *http.Request) {
 		args = []interface{}{limit, offset}
 	}
 
-	rows, err := apiDB.Query(query, args...)
+	rows, err := bibleDB.Query(query, args...)
 	if err != nil {
 		http.Error(w, `{"error":"query failed"}`, http.StatusInternalServerError)
 		return
@@ -87,9 +87,9 @@ func HymnListHandler(w http.ResponseWriter, r *http.Request) {
 	// 전체 수 조회
 	var total int
 	if hymnbook != "" {
-		_ = apiDB.QueryRow("SELECT COUNT(*) FROM hymns WHERE hymnbook = ?", hymnbook).Scan(&total)
+		_ = bibleDB.QueryRow("SELECT COUNT(*) FROM hymns WHERE hymnbook = ?", hymnbook).Scan(&total)
 	} else {
-		_ = apiDB.QueryRow("SELECT COUNT(*) FROM hymns").Scan(&total)
+		_ = bibleDB.QueryRow("SELECT COUNT(*) FROM hymns").Scan(&total)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -114,12 +114,11 @@ func HymnSearchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	searchType := r.URL.Query().Get("type") // "number", "title", "lyrics", 또는 빈 문자열(자동)
+	searchType := r.URL.Query().Get("type")
 
 	var query string
 	var args []interface{}
 
-	// 숫자만이면 번호 검색 우선
 	if searchType == "" {
 		if _, err := strconv.Atoi(q); err == nil {
 			searchType = "number"
@@ -149,7 +148,7 @@ func HymnSearchHandler(w http.ResponseWriter, r *http.Request) {
 		args = []interface{}{q, q}
 	}
 
-	rows, err := apiDB.Query(query, args...)
+	rows, err := bibleDB.Query(query, args...)
 	if err != nil {
 		http.Error(w, `{"error":"search failed"}`, http.StatusInternalServerError)
 		return
@@ -221,7 +220,7 @@ func HymnDetailHandler(w http.ResponseWriter, r *http.Request) {
 	var firstLine, category, lyrics *string
 	var hasPdf bool
 
-	err = apiDB.QueryRow(`
+	err = bibleDB.QueryRow(`
 		SELECT id, title, first_line, category, lyrics, has_pdf
 		FROM hymns WHERE hymnbook = ? AND number = ?
 	`, hymnbook, number).Scan(&id, &title, &firstLine, &category, &lyrics, &hasPdf)

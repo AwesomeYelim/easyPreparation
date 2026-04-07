@@ -2,110 +2,202 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
+
+permissions:
+  contents: write
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        include:
-          - os: macos-latest
-            goos: darwin
-            goarch: arm64
-            artifact: easyPreparation_darwin_arm64
-          - os: macos-latest
-            goos: darwin
-            goarch: amd64
-            artifact: easyPreparation_darwin_amd64
-          - os: ubuntu-latest
-            goos: linux
-            goarch: amd64
-            artifact: easyPreparation_linux_amd64
-          - os: windows-latest
-            goos: windows
-            goarch: amd64
-            artifact: easyPreparation_windows_amd64.exe
-
-    runs-on: ${{ matrix.os }}
-
+  # 1단계: 프론트엔드 빌드 (1회)
+  build-frontend:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: 'go.mod'
-
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-
+          cache: 'npm'
+          cache-dependency-path: ui/package-lock.json
       - name: Build frontend
         run: cd ui && npm ci && npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: ui/out/
 
-      - name: Copy frontend (Unix)
-        if: runner.os != 'Windows'
-        run: rm -rf cmd/server/frontend && cp -r ui/out cmd/server/frontend
-
-      - name: Copy frontend (Windows)
-        if: runner.os == 'Windows'
+  # 2단계: Server 바이너리 빌드 (4 플랫폼 병렬, CGO_ENABLED=0)
+  build-server:
+    needs: build-frontend
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: darwin
+            goarch: arm64
+            artifact: easyPreparation_server_darwin_arm64
+          - os: ubuntu-latest
+            goos: darwin
+            goarch: amd64
+            artifact: easyPreparation_server_darwin_amd64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            artifact: easyPreparation_server_linux_amd64
+          - os: ubuntu-latest
+            goos: windows
+            goarch: amd64
+            artifact: easyPreparation_server_windows_amd64.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: cmd/server/frontend/
+      - name: Copy embedded data
         run: |
-          if (Test-Path cmd/server/frontend) { Remove-Item -Recurse -Force cmd/server/frontend }
-          Copy-Item -Recurse ui/out cmd/server/frontend
-
-      - name: Get version
-        id: ver
-        shell: bash
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-
-      - name: Build server (Unix)
-        if: runner.os != 'Windows'
+          mkdir -p cmd/server/data/defaults
+          cp data/bible.db cmd/server/data/bible.db 2>/dev/null || true
+          for f in bible_info main_worship after_worship wed_worship fri_worship; do
+            [ -f "config/${f}.json" ] && cp "config/${f}.json" "cmd/server/data/defaults/${f}.json" || true
+          done
+      - name: Build server binary
         env:
+          CGO_ENABLED: '0'
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 0
         run: |
+          VERSION=${GITHUB_REF_NAME}
+          COMMIT=$(git rev-parse --short HEAD)
           BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          go build \
-            -ldflags="-X main.Version=${{ steps.ver.outputs.VERSION }} -X main.Commit=${{ github.sha }} -X main.BuildTime=${BUILD_TIME}" \
-            -o ${{ matrix.artifact }} \
-            ./cmd/server/
-
-      - name: Build server (Windows)
-        if: runner.os == 'Windows'
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 0
-        shell: pwsh
-        run: |
-          $BUILD_TIME = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
-          go build `
-            -ldflags="-X main.Version=${{ steps.ver.outputs.VERSION }} -X main.Commit=${{ github.sha }} -X main.BuildTime=$BUILD_TIME" `
-            -o ${{ matrix.artifact }} `
-            ./cmd/server/
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+          LDFLAGS="-X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildTime=${BUILD_TIME}"
+          go build -ldflags "${LDFLAGS}" -o ${{ matrix.artifact }} ./cmd/server/
+      - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifact }}
 
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+  # 3단계: Desktop 앱 빌드 (3 플랫폼, 네이티브 OS별 빌드)
+  build-desktop:
+    needs: build-frontend
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            platform: darwin/arm64
+            artifact: easyPreparation_desktop_darwin_arm64.zip
+          - os: windows-latest
+            platform: windows/amd64
+            artifact: easyPreparation_desktop_windows_amd64_setup.exe
+          - os: ubuntu-latest
+            platform: linux/amd64
+            artifact: easyPreparation_desktop_linux_amd64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: cmd/desktop/frontend/
+      - name: Copy embedded data (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p cmd/desktop/data/defaults
+          cp data/bible.db cmd/desktop/data/bible.db 2>/dev/null || true
+          for f in bible_info main_worship after_worship wed_worship fri_worship; do
+            [ -f "config/${f}.json" ] && cp "config/${f}.json" "cmd/desktop/data/defaults/${f}.json" || true
+          done
+      - name: Copy embedded data (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force cmd/desktop/data/defaults | Out-Null
+          if (Test-Path data/bible.db) { Copy-Item data/bible.db cmd/desktop/data/bible.db }
+          foreach ($f in @('bible_info','main_worship','after_worship','wed_worship','fri_worship')) {
+            $src = "config/${f}.json"
+            if (Test-Path $src) { Copy-Item $src "cmd/desktop/data/defaults/${f}.json" }
+          }
+      - name: Build desktop app (macOS arm64)
+        if: matrix.os == 'macos-latest'
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          COMMIT=$(git rev-parse --short HEAD)
+          BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          LDFLAGS="-X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildTime=${BUILD_TIME}"
+          cd cmd/desktop
+          CGO_LDFLAGS="-framework UniformTypeIdentifiers" wails build -o easyPreparation -ldflags "${LDFLAGS}"
+          cd build/bin
+          zip -r ../../../easyPreparation_desktop_darwin_arm64.zip easyPreparation.app
+      - name: Build desktop app (Windows amd64)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $VERSION = $env:GITHUB_REF_NAME
+          $COMMIT = git rev-parse --short HEAD
+          $BUILD_TIME = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+          $LDFLAGS = "-X main.Version=$VERSION -X main.Commit=$COMMIT -X main.BuildTime=$BUILD_TIME"
+          Set-Location cmd/desktop
+          wails build -o easyPreparation.exe -nsis -ldflags $LDFLAGS -platform windows/amd64
+          $installer = Get-ChildItem build/bin -Filter "*installer*.exe" | Select-Object -First 1
+          if ($installer) {
+            Copy-Item $installer.FullName "../../easyPreparation_desktop_windows_amd64_setup.exe"
+          } else {
+            Copy-Item build/bin/easyPreparation.exe "../../easyPreparation_desktop_windows_amd64_setup.exe"
+          }
+      - name: Build desktop app (Linux amd64)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          COMMIT=$(git rev-parse --short HEAD)
+          BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          LDFLAGS="-X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildTime=${BUILD_TIME}"
+          cd cmd/desktop
+          wails build -o easyPreparation -ldflags "${LDFLAGS}" -platform linux/amd64
+          cp build/bin/easyPreparation ../../easyPreparation_desktop_linux_amd64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
 
+  # 4단계: Release 생성 (8 아티팩트 + checksums.txt)
+  release:
+    needs: [build-server, build-desktop]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
+        with:
+          path: artifacts/
+      - name: Flatten artifacts and generate checksums
+        run: |
+          cd artifacts
+          find . -mindepth 2 -type f -name "easyPreparation_*" -exec mv {} . \;
+          sha256sum easyPreparation_* > checksums.txt
+          cat checksums.txt
+      - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
-            easyPreparation_darwin_arm64/*
-            easyPreparation_darwin_amd64/*
-            easyPreparation_linux_amd64/*
-            easyPreparation_windows_amd64.exe/*
+            artifacts/easyPreparation_server_darwin_arm64
+            artifacts/easyPreparation_server_darwin_amd64
+            artifacts/easyPreparation_server_linux_amd64
+            artifacts/easyPreparation_server_windows_amd64.exe
+            artifacts/easyPreparation_desktop_darwin_arm64.zip
+            artifacts/easyPreparation_desktop_windows_amd64_setup.exe
+            artifacts/easyPreparation_desktop_linux_amd64
+            artifacts/checksums.txt

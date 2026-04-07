@@ -1450,7 +1450,11 @@ func DisplayPushHandler(w http.ResponseWriter, r *http.Request) {
 	obj, _ := payload["obj"].(string)
 
 	if strings.HasPrefix(info, "b_") && strings.TrimSpace(contents) == "" && obj != "" {
-		text, humanRef := fetchBibleText(obj)
+		versionID := 1
+		if vid, ok := payload["versionId"].(float64); ok && vid > 0 {
+			versionID = int(vid)
+		}
+		text, humanRef := fetchBibleTextWithVersion(obj, versionID)
 		if text != "" {
 			payload["contents"] = text
 		}
@@ -1978,7 +1982,11 @@ func preprocessItem(item map[string]interface{}) map[string]interface{} {
 
 	// b_edit: 성경 본문 자동 조회
 	if strings.HasPrefix(info, "b_") && obj != "" {
-		text, humanRef := fetchBibleText(obj)
+		versionID := 1
+		if vid, ok := item["versionId"].(float64); ok && vid > 0 {
+			versionID = int(vid)
+		}
+		text, humanRef := fetchBibleTextWithVersion(obj, versionID)
 		if text != "" {
 			item["contents"] = text
 		}
@@ -2425,13 +2433,13 @@ func findCachedImages(baseDir, prefix string) []string {
 
 // ── 가사↔페이지 매핑 ──
 
-// fetchHymnLyrics — hymns 테이블에서 가사 텍스트 조회
+// fetchHymnLyrics — hymns 테이블에서 가사 텍스트 조회 (PostgreSQL bibleDB)
 func fetchHymnLyrics(number int) string {
-	if apiDB == nil {
+	if bibleDB == nil {
 		return ""
 	}
 	var lyrics string
-	err := apiDB.QueryRow("SELECT lyrics FROM hymns WHERE hymnbook='new' AND number=?", number).Scan(&lyrics)
+	err := bibleDB.QueryRow("SELECT lyrics FROM hymns WHERE hymnbook='new' AND number=?", number).Scan(&lyrics)
 	if err != nil {
 		return ""
 	}

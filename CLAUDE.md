@@ -30,6 +30,7 @@ Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF 생성, Google Drive
 - `config/db.json` — PostgreSQL DSN
 - `config/main_worship.json` — 주예배 순서 데이터
 - `config/obs.json` — OBS WebSocket 씬 매핑 (없으면 OBS 비활성)
+- `config/license.json` — 라이선스 서버 URL + HMAC 시크릿 (없으면 오프라인 모드)
 
 ---
 
@@ -163,7 +164,12 @@ PYTHONUTF8=1 tools/.venv/bin/python tools/output/_tmp.py && rm tools/output/_tmp
 | Display 상태 파일 | `data/display_state.json` (order + idx + churchName) |
 | 스케줄 설정 파일 | `data/schedule.json` (entries + autoStream + countdownMinutes) |
 | 라이선스 캐시 파일 | `data/license.json` (LicenseInfo JSON, 권한 0600) |
+| 업데이트 다운로드 | `data/update/` (다운로드 바이너리 임시 저장) |
+| 라이선스 서버 설정 | `config/license.json` (server_url + hmac_secret, 없으면 오프라인) |
+| CF Workers 라이선스 서버 | `workers/license-api/` (Hono + 토스페이먼츠 + KV) |
 | Desktop 앱 빌드 출력 | `build/bin/easyPreparation.app` (macOS) |
+| Desktop Windows 빌드 설정 | `cmd/desktop/build/windows/` (manifest, info.json, icon.ico) |
+| Desktop Linux 빌드 설정 | `cmd/desktop/build/linux/easyPreparation.desktop` |
 | Desktop 프론트엔드 embed | `cmd/desktop/frontend/` (build 시 ui/out 복사) |
 | Server 프론트엔드 embed | `cmd/server/frontend/` (build 시 ui/out 복사) |
 
@@ -385,15 +391,64 @@ mux.Handle("/api/schedule", middleware.FeatureGate(license.FeatureAutoScheduler,
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
 | GET | `/api/license` | 현재 라이선스 상태 조회 (plan, deviceId, daysUntilExpiry 등) |
-| POST | `/api/license/activate` | 라이선스 키 활성화 — `{licenseKey}` |
+| POST | `/api/license/activate` | 라이선스 키 활성화 — 서버 검증 우선 + 오프라인 fallback |
 | POST | `/api/license/deactivate` | 라이선스 비활성화 (무료 플랜으로 복귀) |
 | POST | `/api/license/verify` | 서버 측 라이선스 재검증 |
+| POST | `/api/license/checkout` | 토스페이먼츠 결제 세션 생성 → `{checkoutUrl, sessionId}` |
+| POST | `/api/license/callback` | 결제 완료 폴링 (orderId) → `{status, plan, licenseKey}` |
+| POST | `/api/license/portal` | 결제 정보 조회 + 구독 관리 |
+
+### 업데이트 API
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | `/api/update/check` | 최신 버전 확인 |
+| GET | `/api/update/status` | 다운로드/적용 상태 조회 |
+| POST | `/api/update/download` | GitHub Release 바이너리 다운로드 시작 |
+| POST | `/api/update/apply` | 바이너리 교체 + 재시작 안내 |
+| POST | `/api/update/cancel` | 다운로드 취소 |
+
+### CF Workers 라이선스 서버
+
+`workers/license-api/` — Hono 기반 Cloudflare Workers 라이선스 서버
+
+| 파일 | 역할 |
+|------|------|
+| `src/index.ts` | API 라우터 (checkout/confirm/activate/verify/portal/cancel/webhook) |
+| `src/toss.ts` | 토스페이먼츠 REST API 래퍼 (결제 승인/취소/조회/빌링키) |
+| `src/webhook.ts` | 토스페이먼츠 Webhook 이벤트 처리 |
+| `src/kv.ts` | KV 스토리지 CRUD (lic:/dev:/sess: 키 네임스페이스) |
+| `src/crypto.ts` | HMAC-SHA256 서명 + 라이선스 키 + 주문번호 생성 |
+
+**결제 흐름**: Go 앱 → CF Worker `/api/checkout` → 토스페이먼츠 SDK 결제 페이지 → `/api/confirm` 승인 → 키 생성 → Go 앱 폴링 `/api/activate` → 로컬 활성화
+
+### 라이선스 패키지 구조
+
+| 파일 | 역할 |
+|------|------|
+| `internal/license/types.go` | Plan/Feature 상수, LicenseInfo 구조체 |
+| `internal/license/manager.go` | 싱글턴 Manager (DB + 파일 캐시 이중 저장) |
+| `internal/license/offline.go` | 파일 캐시, 디바이스 ID 생성 (MAC SHA256) |
+| `internal/license/keygen.go` | HMAC-SHA256 서명 검증 |
+| `internal/license/config.go` | `config/license.json` 서버 설정 로드 |
+| `internal/license/verifier.go` | 24시간 주기 백그라운드 서버 검증 |
+
+### 자동 업데이트 패키지 구조
+
+| 파일 | 역할 |
+|------|------|
+| `internal/selfupdate/checker.go` | GitHub Release 최신 버전 확인 + Asset 매칭 |
+| `internal/selfupdate/updater.go` | 다운로드 + WS 진행률 브로드캐스트 |
+| `internal/selfupdate/updater_unix.go` | macOS/Linux 바이너리 교체 (rename) |
+| `internal/selfupdate/updater_windows.go` | Windows batch script 방식 교체 |
+| `internal/selfupdate/signature.go` | SHA256 checksums.txt 검증 |
 
 ### 프론트엔드 컴포넌트
 
 | 컴포넌트 | 경로 | 역할 |
 |----------|------|------|
-| `LicensePanel.tsx` | `ui/app/components/LicensePanel.tsx` | 라이선스 키 입력 + 상태 표시 모달 |
+| `LicensePanel.tsx` | `ui/app/components/LicensePanel.tsx` | 결제 UI + 키 입력 + 구독 관리 모달 |
+| `UpdateChecker.tsx` | `ui/app/components/UpdateChecker.tsx` | 다운로드 프로그레스 + 적용/재시작 배너 |
 | `FeatureGate.tsx` | `ui/app/components/FeatureGate.tsx` | Pro 전용 UI 영역 래퍼 (잠금 오버레이) |
 | `LicenseContext.tsx` | `ui/app/lib/LicenseContext.tsx` | 라이선스 상태 전역 Context (React) |
 
@@ -403,9 +458,12 @@ mux.Handle("/api/schedule", middleware.FeatureGate(license.FeatureAutoScheduler,
 - DB (`licenses` 테이블)와 이중 저장 — DB 없는 환경(Desktop 앱)에서도 라이선스 유지
 - 만료 후 30일 grace period (`GracePeriodDays = 30`) — 오프라인 환경 대응
 
-### MVP 동작 방식
+### 동작 방식
 
-현재 구현: 올바른 형식의 키를 입력하면 서명 검증 통과 시 Pro 활성화 (별도 중앙 서버 검증 없음). 추후 서버 검증 엔드포인트 추가 예정.
+- **결제 활성화**: 토스페이먼츠 결제 → CF Worker 키 생성 → Go 앱 폴링으로 수신 → 로컬 저장
+- **키 직접 입력**: CF Worker 검증 우선, 실패 시 오프라인 fallback (형식 유효하면 Pro 1년)
+- **24시간 검증**: 백그라운드 고루틴이 CF Worker에 라이선스 유효성 확인, 실패 시 Free 전환
+- **오프라인 지원**: `config/license.json` 없으면 서버 검증 스킵, grace period 30일
 
 ---
 
@@ -442,10 +500,11 @@ iOS/Android Chrome에서 `/mobile` 접속 → 홈 화면에 추가 → 전체화
 ### `.github/workflows/release.yml`
 
 - **트리거**: `v*` 패턴 태그 push (`git tag v1.0.0 && git push origin v1.0.0`)
-- **빌드 매트릭스**: 4개 플랫폼 병렬 실행 (macOS arm64/amd64, Linux amd64, Windows amd64)
-- **단계**: checkout → Go setup → Node 22 setup → Next.js 빌드 → frontend 복사 → Go binary 빌드 (ldflags 주입) → artifact upload → GitHub Release 생성
+- **4-job 파이프라인**: `build-frontend`(1회) → `build-server`(4플랫폼) + `build-desktop`(3플랫폼) → `release`
+- **Server 빌드**: ubuntu-latest에서 CGO_ENABLED=0 크로스컴파일 (darwin arm64/amd64, linux amd64, windows amd64)
+- **Desktop 빌드**: macOS arm64 (.app→.zip), Windows amd64 (NSIS 인스톨러), Linux amd64 (raw binary)
+- **8개 아티팩트 + checksums.txt** → GitHub Release 자동 생성
 - **릴리즈 노트**: `generate_release_notes: true` (커밋 메시지 자동 수집)
-- CGO_ENABLED=0 (크로스 컴파일, cgo 의존성 없음)
 
 ### `.github/workflows/test.yml`
 
