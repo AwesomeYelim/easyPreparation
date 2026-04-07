@@ -54,4 +54,4 @@ ui/out/
 ui/package.json.md5
 
 # 빌드 바이너리
-desktop
+/desktop
