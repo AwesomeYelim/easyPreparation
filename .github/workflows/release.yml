@@ -178,7 +178,7 @@ jobs:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifact }}
 
-  # 4단계: Release 생성 (8 아티팩트 + checksums.txt)
+  # 4단계: Release 생성 (아티팩트 + checksums.txt)
   release:
     needs: [build-server, build-desktop]
     if: always() && needs.build-server.result == 'success'
@@ -187,22 +187,18 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts/
-      - name: Flatten artifacts and generate checksums
+          pattern: easyPreparation_*
+          merge-multiple: true
+      - name: Generate checksums
         run: |
           cd artifacts
-          find . -mindepth 2 -type f -name "easyPreparation_*" -exec mv {} . \;
-          # Desktop 아티팩트가 없을 수 있으므로 존재하는 파일만 checksum
-          ls easyPreparation_* 2>/dev/null && sha256sum easyPreparation_* > checksums.txt && cat checksums.txt || echo "No artifacts found"
+          ls -la
+          sha256sum easyPreparation_* > checksums.txt
+          cat checksums.txt
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           fail_on_unmatched_files: false
           files: |
-            artifacts/easyPreparation_server_darwin_arm64
-            artifacts/easyPreparation_server_darwin_amd64
-            artifacts/easyPreparation_server_linux_amd64
-            artifacts/easyPreparation_server_windows_amd64.exe
-            artifacts/easyPreparation_desktop_darwin_arm64.zip
-            artifacts/easyPreparation_desktop_windows_amd64_setup.exe
-            artifacts/easyPreparation_desktop_linux_amd64
+            artifacts/easyPreparation_*
             artifacts/checksums.txt
