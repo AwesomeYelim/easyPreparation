@@ -140,6 +140,9 @@ jobs:
             $src = "config/${f}.json"
             if (Test-Path $src) { Copy-Item $src "cmd/desktop/data/defaults/${f}.json" }
           }
+      - name: Select Xcode (macOS)
+        if: runner.os == 'macOS'
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
       - name: Build desktop app (macOS arm64)
         if: matrix.os == 'macos-latest'
         env:
@@ -151,7 +154,7 @@ jobs:
           BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           LDFLAGS="-X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildTime=${BUILD_TIME}"
           cd cmd/desktop
-          wails build -s -o easyPreparation -ldflags "${LDFLAGS}"
+          wails build -skipfrontend -o easyPreparation -ldflags "${LDFLAGS}"
           cd build/bin
           zip -r ../../../easyPreparation_desktop_darwin_arm64.zip easyPreparation.app
       - name: Build desktop app (Windows amd64)
@@ -163,7 +166,7 @@ jobs:
           $BUILD_TIME = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
           $LDFLAGS = "-X main.Version=$VERSION -X main.Commit=$COMMIT -X main.BuildTime=$BUILD_TIME"
           Set-Location cmd/desktop
-          wails build -s -o easyPreparation.exe -nsis -ldflags $LDFLAGS -platform windows/amd64
+          wails build -skipfrontend -o easyPreparation.exe -nsis -ldflags "$LDFLAGS" -platform windows/amd64
           $installer = Get-ChildItem build/bin -Filter "*installer*.exe" | Select-Object -First 1
           if ($installer) {
             Copy-Item $installer.FullName "../../easyPreparation_desktop_windows_amd64_setup.exe"
@@ -172,13 +175,15 @@ jobs:
           }
       - name: Build desktop app (Linux amd64)
         if: matrix.os == 'ubuntu-latest'
+        env:
+          CGO_ENABLED: '1'
         run: |
           VERSION=${GITHUB_REF_NAME}
           COMMIT=$(git rev-parse --short HEAD)
           BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           LDFLAGS="-X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildTime=${BUILD_TIME}"
           cd cmd/desktop
-          wails build -s -o easyPreparation -ldflags "${LDFLAGS}" -tags webkit2_41 -platform linux/amd64
+          wails build -skipfrontend -o easyPreparation -ldflags "${LDFLAGS}" -tags webkit2_41 -platform linux/amd64
           cp build/bin/easyPreparation ../../easyPreparation_desktop_linux_amd64
       - uses: actions/upload-artifact@v4
         with:
