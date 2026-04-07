@@ -166,13 +166,8 @@ jobs:
           $BUILD_TIME = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
           $LDFLAGS = "-X main.Version=$VERSION -X main.Commit=$COMMIT -X main.BuildTime=$BUILD_TIME"
           Set-Location cmd/desktop
-          wails build -s -o easyPreparation.exe -nsis -ldflags "$LDFLAGS" -platform windows/amd64
-          $installer = Get-ChildItem build/bin -Filter "*installer*.exe" | Select-Object -First 1
-          if ($installer) {
-            Copy-Item $installer.FullName "../../easyPreparation_desktop_windows_amd64_setup.exe"
-          } else {
-            Copy-Item build/bin/easyPreparation.exe "../../easyPreparation_desktop_windows_amd64_setup.exe"
-          }
+          wails build -s -o easyPreparation.exe -ldflags "$LDFLAGS" -platform windows/amd64
+          Copy-Item build/bin/easyPreparation.exe "../../easyPreparation_desktop_windows_amd64_setup.exe"
       - name: Build desktop app (Linux amd64)
         if: matrix.os == 'ubuntu-latest'
         env:
