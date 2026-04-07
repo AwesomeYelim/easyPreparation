@@ -155,8 +155,8 @@ jobs:
           LDFLAGS="-X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildTime=${BUILD_TIME}"
           cd cmd/desktop
           wails build -s -o easyPreparation -ldflags "${LDFLAGS}"
-          cd build/bin
-          zip -r ../../../../easyPreparation_desktop_darwin_arm64.zip easyPreparation.app
+          ls -la build/bin/
+          cd build/bin && zip -r "$GITHUB_WORKSPACE/easyPreparation_desktop_darwin_arm64.zip" easyPreparation.app
       - name: Build desktop app (Windows amd64)
         if: matrix.os == 'windows-latest'
         shell: pwsh
