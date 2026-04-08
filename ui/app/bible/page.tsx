@@ -427,6 +427,9 @@ export default function BiblePage() {
                 <span className="compare_label">{getVersionName(versionId)}</span>
                 <span className="compare_label">{getVersionName(compareVersionId)}</span>
               </div>
+              <p className="verse_hint" style={{fontSize:'11px', color:'var(--text-tertiary, #999)', margin:'0 0 6px 4px'}}>
+                클릭하여 선택 · Shift+클릭으로 범위 선택
+              </p>
               <div className="bible_verses_compare">
                 {verses.map((v) => {
                   const cv = compareVerses.find((c) => c.verse === v.verse);
@@ -484,6 +487,9 @@ export default function BiblePage() {
                   ›
                 </button>
               </div>
+              <p className="verse_hint" style={{fontSize:'11px', color:'var(--text-tertiary, #999)', margin:'0 0 6px 4px'}}>
+                클릭하여 선택 · Shift+클릭으로 범위 선택
+              </p>
               <div className="bible_verses">
                 {verses.map((v) => (
                   <p

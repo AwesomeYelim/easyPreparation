@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"easyPreparation_1.0/internal/path"
@@ -95,6 +96,13 @@ func ThumbnailPreviewHandler(w http.ResponseWriter, r *http.Request) {
 		worshipType = "main_worship"
 	}
 
+	// worshipType에서 경로 순회 방지
+	worshipType = filepath.Base(worshipType)
+	if strings.Contains(worshipType, "..") || worshipType == "." {
+		http.Error(w, "잘못된 worshipType", http.StatusBadRequest)
+		return
+	}
+
 	execPath := path.ExecutePath("easyPreparation")
 	imgPath := filepath.Join(execPath, "data", "templates", "thumbnail", "generated",
 		fmt.Sprintf("%s_%s.png", date.Format("2006-01-02"), worshipType))
@@ -151,6 +159,12 @@ func ThumbnailConfigHandler(w http.ResponseWriter, r *http.Request) {
 
 // generateThumbnail — 내부 공통 생성 함수
 func generateThumbnail(worshipType string, date time.Time) (string, error) {
+	// worshipType 경로 순회 방지
+	worshipType = filepath.Base(worshipType)
+	if strings.Contains(worshipType, "..") || worshipType == "." || worshipType == "" {
+		return "", fmt.Errorf("잘못된 worshipType: %s", worshipType)
+	}
+
 	cfg, err := thumbnail.LoadConfig()
 	if err != nil {
 		return "", fmt.Errorf("설정 로드 실패: %w", err)
@@ -202,7 +216,7 @@ func ThumbnailUploadHandler(w http.ResponseWriter, r *http.Request) {
 	specialDir := filepath.Join(execPath, "data", "templates", "thumbnail", "special")
 	os.MkdirAll(specialDir, 0755)
 
-	// 파일명 정리 (확장자 유지)
+	// 파일명 정리 (확장자 유지, 경로 순회 방지)
 	ext := filepath.Ext(header.Filename)
 	if ext == "" {
 		ext = ".png"
@@ -211,21 +225,42 @@ func ThumbnailUploadHandler(w http.ResponseWriter, r *http.Request) {
 	target := r.FormValue("target")
 	var saveName string
 	if target != "" {
-		saveName = target + ext
+		// target에서 경로 구분자 및 .. 제거
+		saveName = filepath.Base(target) + ext
 	} else {
-		saveName = header.Filename
+		// 업로드 파일명에서 디렉토리 부분 제거
+		saveName = filepath.Base(header.Filename)
+	}
+
+	// 파일명에 경로 순회 문자가 없는지 최종 확인
+	if strings.Contains(saveName, "..") || saveName == "." || saveName == "" {
+		http.Error(w, "잘못된 파일명", http.StatusBadRequest)
+		return
 	}
 
 	// default_ 접두사면 data/templates/thumbnail/ 에 저장 (기본 배경 교체)
 	var savePath, relPath string
 	if len(target) > 8 && target[:8] == "default_" {
-		typeName := target[8:] // "main_worship" 등
+		typeName := filepath.Base(target[8:]) // "main_worship" 등 — Base로 경로 순회 방지
+		if strings.Contains(typeName, "..") || typeName == "." || typeName == "" {
+			http.Error(w, "잘못된 target", http.StatusBadRequest)
+			return
+		}
 		savePath = filepath.Join(execPath, "data", "templates", "thumbnail", typeName+ext)
 		relPath = "data/templates/thumbnail/" + typeName + ext
 	} else {
 		savePath = filepath.Join(specialDir, saveName)
 		relPath = "data/templates/thumbnail/special/" + saveName
 	}
+
+	// 최종 경로가 허용 디렉토리 내에 있는지 검증
+	cleanSavePath := filepath.Clean(savePath)
+	thumbDir := filepath.Clean(filepath.Join(execPath, "data", "templates", "thumbnail"))
+	if !strings.HasPrefix(cleanSavePath, thumbDir+string(filepath.Separator)) {
+		http.Error(w, "허용되지 않는 저장 경로", http.StatusForbidden)
+		return
+	}
+	savePath = cleanSavePath
 
 	dst, err := os.Create(savePath)
 	if err != nil {
@@ -268,10 +303,10 @@ func ThumbnailImageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	execPath := path.ExecutePath("easyPreparation")
-	absPath := filepath.Join(execPath, relPath)
+	absPath := filepath.Clean(filepath.Join(execPath, relPath))
 
 	// 보안: data/templates/thumbnail/ 하위만 허용
-	thumbDir := filepath.Join(execPath, "data", "templates", "thumbnail")
+	thumbDir := filepath.Clean(filepath.Join(execPath, "data", "templates", "thumbnail"))
 	if !isSubPath(thumbDir, absPath) {
 		http.Error(w, "허용되지 않는 경로", http.StatusForbidden)
 		return
@@ -287,13 +322,19 @@ func ThumbnailImageHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func isSubPath(base, target string) bool {
-	absBase, _ := filepath.Abs(base)
-	absTarget, _ := filepath.Abs(target)
-	rel, err := filepath.Rel(absBase, absTarget)
+	absBase, err := filepath.Abs(base)
 	if err != nil {
 		return false
 	}
-	return len(rel) >= 1 && rel[0] != '.'
+	absTarget, err := filepath.Abs(target)
+	if err != nil {
+		return false
+	}
+	// Clean으로 정규화 후 접두사 검사
+	absBase = filepath.Clean(absBase)
+	absTarget = filepath.Clean(absTarget)
+	// target이 base 디렉토리 내의 파일이어야 함 (base 자체는 불허)
+	return strings.HasPrefix(absTarget, absBase+string(filepath.Separator))
 }
 
 // GenerateAndUploadThumbnail — 스케줄러에서 호출하는 공개 함수

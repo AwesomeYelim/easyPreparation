@@ -7,6 +7,7 @@ import { WebSocketProvider } from "./components/WebSocketProvider";
 import GlobalDisplayPanel from "./components/GlobalDisplayPanel";
 import SettingsLoader from "./components/SettingsLoader";
 import UpdateChecker from "./components/UpdateChecker";
+import ToastProvider from "./components/ToastProvider";
 import "@/globals.css";
 import type { Viewport } from "next";
 
@@ -24,6 +25,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body>
+        <ToastProvider />
         <div className="entire-wrap">
           <RecoilProvider>
             <LocalAuthProvider>

@@ -9,14 +9,17 @@ const desktopApps = [
     desc: "M1 / M2 / M3 / M4",
     file: "easyPreparation_desktop_darwin_arm64.zip",
     icon: "\u{f8ff}",
-    install: "압축 해제 → Applications 폴더로 이동",
+    install:
+      '압축 해제 → Applications 이동 → 우클릭 "열기"',
+    note: "첫 실행 시 Gatekeeper 경고가 나타나면: 우클릭 → 열기 → 열기 클릭",
   },
   {
     name: "Windows",
     desc: "Windows 10 / 11 (64-bit)",
     file: "easyPreparation_desktop_windows_amd64_setup.exe",
     icon: "W",
-    install: "실행하여 설치",
+    install: '실행 → SmartScreen 경고 시 "추가 정보 → 실행"',
+    note: "첫 실행 시 SmartScreen 경고가 나타나면: 추가 정보 클릭 → 실행 클릭",
   },
   {
     name: "Linux",
@@ -109,6 +112,57 @@ export default function DownloadPage() {
             모든 릴리즈 보기 &rarr;
           </a>
         </p>
+      </details>
+
+      {/* 보안 경고 안내 */}
+      <details className="mt-10">
+        <summary className="cursor-pointer text-lg font-bold text-navy hover:text-navy-light">
+          첫 실행 시 보안 경고가 나타나는 경우
+        </summary>
+        <div className="mt-3 space-y-4">
+          {/* macOS */}
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-gray-700">
+            <h3 className="font-semibold text-gray-900">macOS — Gatekeeper</h3>
+            <p className="mt-1">
+              Apple 공증을 거치지 않은 앱은 첫 실행 시 차단됩니다.
+            </p>
+            <ol className="mt-2 list-inside list-decimal space-y-1">
+              <li>
+                <strong>우클릭 → 열기</strong>: Finder에서 앱을 우클릭 →
+                &ldquo;열기&rdquo; → 팝업에서 다시 &ldquo;열기&rdquo;
+              </li>
+              <li>
+                <strong>터미널</strong>:{" "}
+                <code className="rounded bg-gray-200 px-1.5 py-0.5 text-xs">
+                  xattr -cr /Applications/easyPreparation.app
+                </code>
+              </li>
+              <li>
+                <strong>시스템 설정</strong>: 개인정보 보호 및 보안 →
+                &ldquo;확인 없이 열기&rdquo;
+              </li>
+            </ol>
+          </div>
+          {/* Windows */}
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-gray-700">
+            <h3 className="font-semibold text-gray-900">Windows — SmartScreen</h3>
+            <p className="mt-1">
+              서명되지 않은 실행 파일은 SmartScreen이 차단할 수 있습니다.
+            </p>
+            <ol className="mt-2 list-inside list-decimal space-y-1">
+              <li>
+                &ldquo;Windows가 PC를 보호했습니다&rdquo; 화면에서{" "}
+                <strong>추가 정보</strong> 클릭
+              </li>
+              <li>
+                <strong>실행</strong> 버튼 클릭
+              </li>
+            </ol>
+          </div>
+          <p className="text-xs text-gray-500">
+            한 번 허용하면 이후에는 경고가 나타나지 않습니다.
+          </p>
+        </div>
       </details>
 
       {/* 설치 후 시작하기 */}

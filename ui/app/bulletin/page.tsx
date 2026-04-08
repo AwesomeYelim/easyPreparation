@@ -8,6 +8,7 @@ import classNames from "classnames";
 import { WorshipType, userInfoState, worshipOrderState, displayPanelOpenState, displayItemsState } from "@/recoilState";
 import { WorshipOrderItem } from "@/types";
 import { apiClient, openDisplayWindow } from "@/lib/apiClient";
+import toast from "react-hot-toast";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { ResultPart } from "./components/ResultPage";
 import { useWS } from "@/components/WebSocketProvider";
@@ -109,7 +110,7 @@ export default function Bulletin() {
       if (!res.ok) throw new Error("Display 전송 실패");
     } catch (error) {
       console.error("Display 전송 에러:", error);
-      alert("Display 전송 중 오류가 발생했습니다.");
+      toast.error("Display 전송 중 오류가 발생했습니다.");
     } finally {
       setDisplayLoading(false);
       setDisplayProgress("");
@@ -166,10 +167,10 @@ export default function Bulletin() {
 
       if (!response.ok) throw new Error("서버 응답 실패");
 
-      alert("서버로 데이터 전송 성공!");
+      toast.success("서버로 데이터 전송 성공!");
     } catch (error) {
       console.error("서버 전송 중 오류 발생:", error);
-      alert("서버 전송 실패");
+      toast.error("서버 전송 실패");
       setLoading(false);
     }
   };
@@ -209,15 +210,24 @@ export default function Bulletin() {
         <button
           onClick={sendDataToGoServer}
           className={s.send_button}
+          title="주보 PDF 파일을 생성하여 다운로드합니다"
         >
-          예배 자료 생성하기
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{verticalAlign: "middle", marginRight: "6px"}}>
+            <path d="M8 2V10M8 10L5 7M8 10L11 7M3 13H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          주보 PDF 생성
         </button>
 
         <button
           onClick={sendToDisplay}
           className={`${s.send_button} ${s.display_send_btn}`}
+          title="예배 순서를 프로젝터 화면에 전송합니다"
         >
-          Display 전송
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{verticalAlign: "middle", marginRight: "6px"}}>
+            <path d="M2 3H14V11H2V3Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M5 14H11M8 11V14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          프로젝터에 보내기
         </button>
       </div>
 

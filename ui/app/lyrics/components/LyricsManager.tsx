@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRecoilValue, useRecoilState, useSetRecoilState } from "recoil";
 import { userInfoState, lyricsSongsState, displayPanelOpenState, userSettingsState } from "@/recoilState";
 import { apiClient, openDisplayWindow } from "@/lib/apiClient";
+import toast from "react-hot-toast";
 import classNames from "classnames";
 import "./LyricsManager.scss";
 
@@ -196,7 +197,7 @@ export default function LyricsManager() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("가사 제출 중 에러:", error);
-      alert("가사 제출 중 오류가 발생했습니다.");
+      toast.error("가사 제출 중 오류가 발생했습니다.");
     } finally {
       setLoadingInfo({ is: false, msg: "" });
     }
@@ -212,7 +213,7 @@ export default function LyricsManager() {
       }));
 
     if (payload.length === 0) {
-      alert("가사가 입력된 곡이 없습니다.");
+      toast("가사가 입력된 곡이 없습니다.");
       return;
     }
 
@@ -234,7 +235,7 @@ export default function LyricsManager() {
       if (!res.ok) throw new Error("전송 실패");
     } catch (error) {
       console.error("Display 전송 에러:", error);
-      alert("Display 전송 중 오류가 발생했습니다.");
+      toast.error("Display 전송 중 오류가 발생했습니다.");
     } finally {
       setLoadingInfo({ is: false, msg: "" });
     }
@@ -253,7 +254,7 @@ export default function LyricsManager() {
           <div className="input_group">
             <input
               type="text"
-              placeholder="검색하세요."
+              placeholder="곡 제목을 입력하세요 (예: 은혜 아니면)"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyUp={(e) => {
@@ -263,7 +264,7 @@ export default function LyricsManager() {
                 }
               }}
             />
-            <button onClick={handler.add}>+</button>
+            <button onClick={handler.add} title="곡 추가">+</button>
           </div>
 
           {songs.length > 0 && (
@@ -300,6 +301,12 @@ export default function LyricsManager() {
       </div>
 
       <div className="tags">
+        {songs.length === 0 && (
+          <div style={{textAlign:'center', padding:'40px 20px', color:'var(--text-tertiary, #999)'}}>
+            <p style={{fontSize:'14px'}}>아직 추가된 곡이 없습니다.</p>
+            <p style={{fontSize:'12px', marginTop:'8px'}}>위 검색창에서 곡 제목을 입력해 추가하세요.</p>
+          </div>
+        )}
         {songs.map((song, idx) => (
           <div key={idx} className="song_block">
             <div

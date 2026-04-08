@@ -159,6 +159,9 @@ jobs:
           cd cmd/desktop
           wails build -s -o easyPreparation -ldflags "${LDFLAGS}"
           ls -la build/bin/
+          # ad-hoc 코드 서명 (Gatekeeper 경고 완화)
+          codesign --force --deep -s - build/bin/easyPreparation.app
+          xattr -cr build/bin/easyPreparation.app
           cd build/bin && zip -r "$GITHUB_WORKSPACE/easyPreparation_desktop_darwin_arm64.zip" easyPreparation.app
       - name: Build desktop app (Windows amd64)
         if: matrix.os == 'windows-latest'

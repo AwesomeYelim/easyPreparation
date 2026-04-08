@@ -43,12 +43,16 @@ func displayStatePath() string {
 // saveDisplayState — 현재 order+idx를 파일에 저장 (orderMu 잠긴 상태에서 호출하지 말 것)
 func saveDisplayState() {
 	orderMu.RLock()
-	state := map[string]interface{}{
-		"items":      currentOrder,
-		"idx":        currentIdx,
-		"churchName": displayChurchName,
-	}
+	snapshot := deepCopyOrder(currentOrder)
+	idx := currentIdx
+	cn := displayChurchName
 	orderMu.RUnlock()
+
+	state := map[string]interface{}{
+		"items":      snapshot,
+		"idx":        idx,
+		"churchName": cn,
+	}
 
 	data, err := json.Marshal(state)
 	if err != nil {
@@ -58,6 +62,33 @@ func saveDisplayState() {
 	if err := os.WriteFile(displayStatePath(), data, 0644); err != nil {
 		log.Printf("[display] 상태 저장 실패 (write): %v", err)
 	}
+}
+
+// deepCopyOrder — slice of maps를 완전한 깊은 복사 (JSON round-trip)
+// orderMu 잠긴 상태에서 호출할 것 (잠금 없이 내부적으로 안전)
+func deepCopyOrder(src []map[string]interface{}) []map[string]interface{} {
+	if len(src) == 0 {
+		return nil
+	}
+	data, err := json.Marshal(src)
+	if err != nil {
+		// fallback: 얕은 복사
+		cp := make([]map[string]interface{}, len(src))
+		copy(cp, src)
+		return cp
+	}
+	var dst []map[string]interface{}
+	if err := json.Unmarshal(data, &dst); err != nil {
+		cp := make([]map[string]interface{}, len(src))
+		copy(cp, src)
+		return cp
+	}
+	return dst
+}
+
+// getOrderSnapshotLocked — orderMu 잠긴 상태에서 호출. 깊은 복사 + idx + churchName 반환.
+func getOrderSnapshotLocked() ([]map[string]interface{}, int, string) {
+	return deepCopyOrder(currentOrder), currentIdx, displayChurchName
 }
 
 // LoadDisplayState — 서버 시작 시 파일에서 복원
@@ -687,15 +718,17 @@ func IsFadeBackItem(title string) bool {
 
 // ── 서버 사이드 타이머 함수 ──
 
-// calcSlideDelay — 현재 항목/서브페이지에 대한 딜레이(초) 계산
-func calcSlideDelay() int {
+// calcSlideDelayLocked — 현재 항목/서브페이지에 대한 딜레이(초) 계산
+// 호출 시점에 timerMu가 이미 잠겨 있어야 하고, orderMu는 잠기지 않은 상태여야 한다.
+// timerCurIdx, timerCurSubPage를 인자로 받아 lock re-entry를 방지.
+func calcSlideDelayLocked(curIdx, curSubPage int) int {
 	orderMu.RLock()
 	defer orderMu.RUnlock()
 
-	if timerCurIdx < 0 || timerCurIdx >= len(currentOrder) {
+	if curIdx < 0 || curIdx >= len(currentOrder) {
 		return 0
 	}
-	item := currentOrder[timerCurIdx]
+	item := currentOrder[curIdx]
 	title, _ := item["title"].(string)
 	info, _ := item["info"].(string)
 
@@ -726,7 +759,7 @@ func calcSlideDelay() int {
 			hasImages = true
 		}
 		if hasImages {
-			if timerCurSubPage == 0 {
+			if curSubPage == 0 {
 				return 5
 			}
 			return 15
@@ -742,14 +775,14 @@ func calcSlideDelay() int {
 
 		// pages에서 현재 슬라이드와 전체 평균 글자 수 계산
 		pages := extractPages(item)
-		if len(pages) > 0 && timerCurSubPage >= 0 && timerCurSubPage < len(pages) {
+		if len(pages) > 0 && curSubPage >= 0 && curSubPage < len(pages) {
 			avgChars := 0.0
 			for _, p := range pages {
 				avgChars += float64(countKoreanChars(p))
 			}
 			avgChars /= float64(len(pages))
 			if avgChars > 0 {
-				curChars := float64(countKoreanChars(pages[timerCurSubPage]))
+				curChars := float64(countKoreanChars(pages[curSubPage]))
 				ratio := curChars / avgChars
 				// 비율 범위 제한 (0.5 ~ 2.0)
 				if ratio < 0.5 {
@@ -813,8 +846,16 @@ func restartServerTimer() {
 		return
 	}
 
-	delay := calcSlideDelay()
+	// timerMu를 잠근 상태에서 timer 변수를 로컬로 복사한 뒤 Unlock → calcSlideDelayLocked 호출
+	// (calcSlideDelayLocked 내부에서 orderMu.RLock을 사용하므로 timerMu를 먼저 풀어야 교착 방지)
+	curIdx := timerCurIdx
+	curSubPage := timerCurSubPage
+	speedFactor := timerSpeedFactor
+	timerMu.Unlock()
+
+	delay := calcSlideDelayLocked(curIdx, curSubPage)
 	if delay <= 0 {
+		timerMu.Lock()
 		timerCountdown = 0
 		timerMu.Unlock()
 		broadcastTimerState()
@@ -822,10 +863,12 @@ func restartServerTimer() {
 	}
 
 	// 속도 적용
-	delay = int(math.Round(float64(delay) / timerSpeedFactor))
+	delay = int(math.Round(float64(delay) / speedFactor))
 	if delay < 1 {
 		delay = 1
 	}
+
+	timerMu.Lock()
 	timerCountdown = delay
 
 	// goroutine 시작 후 Unlock — 빠른 호출 시 다중 goroutine 누수 방지
@@ -841,9 +884,11 @@ func restartServerTimer() {
 				timerCountdown--
 				if timerCountdown <= 0 {
 					timerCountdown = 0
+					curI := timerCurIdx
+					curS := timerCurSubPage
 					timerMu.Unlock()
 					broadcastTimerState()
-					log.Printf("[timer] auto-navigate next (idx=%d subPage=%d)", timerCurIdx, timerCurSubPage)
+					log.Printf("[timer] auto-navigate next (idx=%d subPage=%d)", curI, curS)
 					BroadcastMessage("navigate", map[string]interface{}{"direction": "next"})
 					return
 				}
@@ -1314,9 +1359,10 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var displayEmail string
 	var skipPreprocess bool
+	var newChurchName string
 	if err := json.Unmarshal(raw, &wrapper); err == nil && len(wrapper.Items) > 0 {
 		order = wrapper.Items
-		displayChurchName = wrapper.ChurchName
+		newChurchName = wrapper.ChurchName
 		displayEmail = wrapper.Email
 		skipPreprocess = wrapper.Preprocessed
 	} else if err := json.Unmarshal(raw, &order); err != nil {
@@ -1357,7 +1403,7 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 기존 order에서 lyrics/bible source 항목 보존
+	// 기존 order에서 lyrics/bible source 항목 보존 (깊은 복사로 보존)
 	orderMu.RLock()
 	var preserved []map[string]interface{}
 	for _, item := range currentOrder {
@@ -1377,6 +1423,8 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 	orderMu.Lock()
 	currentOrder = order
 	currentIdx = 0
+	displayChurchName = newChurchName
+	cn := displayChurchName
 	orderMu.Unlock()
 
 	BroadcastMessage("display_loading", map[string]interface{}{
@@ -1384,7 +1432,7 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 		"done":    true,
 	})
 
-	BroadcastMessage("order", map[string]interface{}{"items": order, "churchName": displayChurchName})
+	BroadcastMessage("order", map[string]interface{}{"items": order, "churchName": cn})
 	go saveDisplayState()
 
 	// OBS: 첫 항목 씬 전환
@@ -1558,6 +1606,7 @@ func DisplayLyricsOrderHandler(w http.ResponseWriter, r *http.Request) {
 	orderMu.Lock()
 	currentOrder = order
 	currentIdx = 0
+	cn := displayChurchName
 	orderMu.Unlock()
 
 	BroadcastMessage("display_loading", map[string]interface{}{
@@ -1565,7 +1614,7 @@ func DisplayLyricsOrderHandler(w http.ResponseWriter, r *http.Request) {
 		"done":    true,
 	})
 
-	BroadcastMessage("order", map[string]interface{}{"items": order, "churchName": displayChurchName})
+	BroadcastMessage("order", map[string]interface{}{"items": order, "churchName": cn})
 	go saveDisplayState()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1693,7 +1742,7 @@ func DisplayAppendHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		currentOrder = append(currentOrder, processed...)
 	}
-	idx := currentIdx
+	order, idx, cn := getOrderSnapshotLocked()
 	orderMu.Unlock()
 
 	BroadcastMessage("display_loading", map[string]interface{}{
@@ -1701,11 +1750,7 @@ func DisplayAppendHandler(w http.ResponseWriter, r *http.Request) {
 		"done":    true,
 	})
 
-	orderMu.RLock()
-	order := currentOrder
-	orderMu.RUnlock()
-
-	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx, "churchName": displayChurchName})
+	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx, "churchName": cn})
 	go saveDisplayState()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1748,12 +1793,10 @@ func DisplayRemoveHandler(w http.ResponseWriter, r *http.Request) {
 	if currentIdx < 0 {
 		currentIdx = 0
 	}
-	idx := currentIdx
-	order := make([]map[string]interface{}, len(currentOrder))
-	copy(order, currentOrder)
+	order, idx, cn := getOrderSnapshotLocked()
 	orderMu.Unlock()
 
-	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx, "churchName": displayChurchName})
+	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx, "churchName": cn})
 	go saveDisplayState()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1894,12 +1937,10 @@ func DisplayReorderHandler(w http.ResponseWriter, r *http.Request) {
 		currentIdx = n - 1
 	}
 
-	idx := currentIdx
-	order := make([]map[string]interface{}, len(currentOrder))
-	copy(order, currentOrder)
+	order, idx, cn := getOrderSnapshotLocked()
 	orderMu.Unlock()
 
-	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx, "churchName": displayChurchName})
+	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx, "churchName": cn})
 	go saveDisplayState()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1928,12 +1969,10 @@ func DisplayChurchNameHandler(w http.ResponseWriter, r *http.Request) {
 
 	orderMu.Lock()
 	displayChurchName = body.ChurchName
-	order := make([]map[string]interface{}, len(currentOrder))
-	copy(order, currentOrder)
-	idx := currentIdx
+	order, idx, cn := getOrderSnapshotLocked()
 	orderMu.Unlock()
 
-	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx, "churchName": displayChurchName})
+	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx, "churchName": cn})
 	go saveDisplayState()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1949,13 +1988,12 @@ func DisplayStatusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	orderMu.RLock()
-	idx := currentIdx
-	count := len(currentOrder)
+	items, idx, _ := getOrderSnapshotLocked()
+	count := len(items)
 
 	var title string
-	items := currentOrder
 	if idx >= 0 && idx < count {
-		title, _ = currentOrder[idx]["title"].(string)
+		title, _ = items[idx]["title"].(string)
 	}
 	orderMu.RUnlock()
 

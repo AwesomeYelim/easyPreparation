@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -45,19 +44,19 @@ func GetFont(name, weight string, isB bool) (fontPath string, err error) {
 
 	resp, err := http.Get(gistURL)
 	if err != nil {
-		log.Fatalf("Error fetching the gist: %v", err)
+		return "", fmt.Errorf("error fetching the gist: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatalf("Error reading response body: %v", err)
+		return "", fmt.Errorf("error reading response body: %w", err)
 	}
 
 	var webFontList WebFontList
 	err = json.Unmarshal(body, &webFontList)
 	if err != nil {
-		log.Fatalf("Error unmarshaling JSON: %v", err)
+		return "", fmt.Errorf("error unmarshaling JSON: %w", err)
 	}
 
 	var targetUrl string
@@ -66,7 +65,7 @@ func GetFont(name, weight string, isB bool) (fontPath string, err error) {
 		if font.Family == name {
 			targetUrl = findTargetURL(font.Files, weight, isB)
 			if targetUrl == "" {
-				log.Fatalf("Can not find the weight: %v", weight)
+				return "", fmt.Errorf("can not find the weight: %s", weight)
 			}
 			break
 		}

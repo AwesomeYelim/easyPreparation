@@ -1,15 +1,16 @@
 package db
 
 import (
+	"fmt"
+
 	"github.com/timshannon/bolthold"
-	"log"
 )
 
 // Bolthold 데이터베이스 열기 함수
-func OpenDB(path string) *bolthold.Store {
+func OpenDB(path string) (*bolthold.Store, error) {
 	store, err := bolthold.Open(path, 0666, nil)
 	if err != nil {
-		log.Fatalf("DB 열기 오류: %v", err)
+		return nil, fmt.Errorf("DB 열기 오류: %w", err)
 	}
-	return store
+	return store, nil
 }

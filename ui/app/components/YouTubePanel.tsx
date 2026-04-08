@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 import { apiClient } from "@/lib/apiClient";
 import { YouTubeStatus } from "@/types";
 import FeatureGate from "./FeatureGate";
@@ -42,10 +43,10 @@ export default function YouTubePanel({ open, onClose }: YouTubePanelProps) {
     setSettingUp(true);
     try {
       const res = await apiClient.setupOBSStream("main_worship");
-      if (res.ok) alert(res.message || "OBS 스트림 설정 완료!");
-      else alert(`실패: ${res.error || "알 수 없는 오류"}`);
+      if (res.ok) toast.success(res.message || "OBS 스트림 설정 완료!");
+      else toast.error(`실패: ${res.error || "알 수 없는 오류"}`);
     } catch {
-      alert("요청 실패");
+      toast.error("요청 실패");
     } finally {
       setSettingUp(false);
     }
@@ -55,10 +56,10 @@ export default function YouTubePanel({ open, onClose }: YouTubePanelProps) {
     setUploading(true);
     try {
       const res = await apiClient.generateThumbnail("main_worship", undefined, true);
-      if (res.ok) alert("썸네일 생성 + YouTube 업로드 요청 완료");
-      else alert(`실패: ${res.error || "알 수 없는 오류"}`);
+      if (res.ok) toast.success("썸네일 생성 + YouTube 업로드 요청 완료");
+      else toast.error(`실패: ${res.error || "알 수 없는 오류"}`);
     } catch {
-      alert("요청 실패");
+      toast.error("요청 실패");
     } finally {
       setUploading(false);
     }

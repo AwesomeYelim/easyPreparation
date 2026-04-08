@@ -28,21 +28,25 @@ func AssetServeHandler(w http.ResponseWriter, r *http.Request) {
 	category := parts[0]
 	filename := parts[1]
 
-	// 경로 순회 공격 방지
-	if strings.Contains(category, "..") || strings.Contains(filename, "..") ||
-		strings.Contains(category, "/") || strings.Contains(filename, "/") {
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
-	}
-
 	// 허용 카테고리 제한
 	if category != "hymn" && category != "responsive_reading" {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
 
+	// filepath.Base로 디렉토리 순회 제거 (../etc 방지)
+	category = filepath.Base(category)
+	filename = filepath.Base(filename)
+
 	execPath := path.ExecutePath("easyPreparation")
-	filePath := filepath.Join(execPath, "data", "pdf", category, filename)
+	baseDir := filepath.Join(execPath, "data", "pdf", category)
+	filePath := filepath.Clean(filepath.Join(baseDir, filename))
+
+	// 해석된 경로가 허용 디렉토리 내에 있는지 검증
+	if !strings.HasPrefix(filePath, baseDir+string(filepath.Separator)) && filePath != baseDir {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		http.Error(w, "Not Found", http.StatusNotFound)
