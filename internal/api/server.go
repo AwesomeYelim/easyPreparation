@@ -103,6 +103,16 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/api/schedule/test", middleware.FeatureGate(license.FeatureAutoScheduler, handlers.ScheduleTestHandler))
 	mux.Handle("/api/schedule/stream", middleware.FeatureGate(license.FeatureAutoScheduler, handlers.StreamControlHandler))
 
+	// OBS 소스 관리 API (Pro)
+	mux.Handle("/api/obs/scenes", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSScenesHandler))
+	mux.Handle("/api/obs/sources", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSSourcesHandler))
+	mux.Handle("/api/obs/logo/upload", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSLogoUploadHandler))
+	mux.Handle("/api/obs/logo/apply", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSLogoApplyHandler))
+	mux.Handle("/api/obs/camera/devices", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSCameraDevicesHandler))
+	mux.Handle("/api/obs/camera/add", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSCameraAddHandler))
+	mux.Handle("/api/obs/sources/toggle", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSSourceToggleHandler))
+	mux.Handle("/api/obs/sources/remove", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSSourceRemoveHandler))
+
 	// 버전 + 업데이트 체크 API
 	mux.Handle("/api/version", middleware.CORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -121,6 +131,10 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 
 	// PDF 에셋 서빙 (138 서버에서 R2 역할 — data/pdf/ 디렉토리 서빙)
 	mux.Handle("/api/assets/", middleware.CORS(http.HandlerFunc(handlers.AssetServeHandler)))
+
+	// 배경 템플릿 관리 API
+	mux.Handle("/api/templates", middleware.CORS(http.HandlerFunc(handlers.TemplateHandler)))
+	mux.Handle("/api/templates/", middleware.CORS(http.HandlerFunc(handlers.TemplateHandler)))
 
 	// 썸네일 API (generate/upload = Pro, 나머지 = 무료)
 	mux.Handle("/api/thumbnail/generate", middleware.FeatureGate(license.FeatureThumbnail, handlers.ThumbnailGenerateHandler))

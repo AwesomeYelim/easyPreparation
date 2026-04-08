@@ -24,80 +24,37 @@ export default function SetupWizard() {
   };
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100vh",
-        backgroundColor: "rgba(0, 0, 0, 0.4)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 20000,
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "420px",
-          width: "90%",
-          padding: "28px",
-          border: "1px solid #ccc",
-          borderRadius: "12px",
-          backgroundColor: "#fff",
-          display: "flex",
-          flexDirection: "column",
-          gap: "14px",
-          boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
-        }}
-      >
-        <h2 style={{ textAlign: "center", marginBottom: "4px", fontSize: "20px" }}>
-          교회 정보 설정
-        </h2>
-        <p style={{ textAlign: "center", fontSize: "14px", color: "#666", margin: 0 }}>
+    <div className="fixed inset-0 z-[20000] flex items-center justify-center bg-black/40">
+      <div className="w-[90%] max-w-[420px] bg-white rounded-xl shadow-2xl flex flex-col gap-4 p-7 border border-[#ccc]">
+        <h2 className="text-center text-xl font-bold mb-1">교회 정보 설정</h2>
+        <p className="text-center text-sm text-[#666] m-0">
           처음 사용하시나요? 교회 정보를 입력해주세요.
         </p>
         <input
           placeholder="교회 이름 (한글)"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          style={{
-            padding: "10px 12px",
-            borderRadius: "6px",
-            border: "1px solid #ccc",
-            fontSize: "14px",
-          }}
+          className="w-full px-3 py-2.5 border border-outline rounded-lg bg-surface-low text-on-surface text-sm focus:ring-2 focus:ring-electric-blue focus:outline-none"
         />
         <input
           placeholder="영문 이름 (예: Sarang Church)"
           value={englishName}
           onChange={(e) => setEnglishName(e.target.value)}
-          style={{
-            padding: "10px 12px",
-            borderRadius: "6px",
-            border: "1px solid #ccc",
-            fontSize: "14px",
-          }}
+          className="w-full px-3 py-2.5 border border-outline rounded-lg bg-surface-low text-on-surface text-sm focus:ring-2 focus:ring-electric-blue focus:outline-none"
         />
         <button
           onClick={handleSubmit}
           disabled={saving || !name.trim() || !englishName.trim()}
-          style={{
-            padding: "12px",
-            backgroundColor: saving ? "#999" : "#0070f3",
-            color: "#fff",
-            border: "none",
-            borderRadius: "6px",
-            fontWeight: "bold",
-            cursor: saving ? "default" : "pointer",
-            fontSize: "14px",
-          }}
+          className={`w-full py-3 font-bold text-white rounded-lg text-sm transition-colors ${
+            saving
+              ? "bg-[#999] cursor-default"
+              : "bg-electric-blue hover:bg-secondary cursor-pointer"
+          } disabled:opacity-60`}
         >
           {saving ? "저장 중..." : "시작하기"}
         </button>
         {setupError && (
-          <p style={{ color: "#e00", fontSize: "13px", margin: 0, textAlign: "center" }}>
+          <p className="text-[#e00] text-xs text-center m-0">
             오류: {setupError}
           </p>
         )}

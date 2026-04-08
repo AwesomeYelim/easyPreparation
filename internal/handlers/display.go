@@ -1299,7 +1299,7 @@ func DisplayHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // DisplayAssetsHandler — GET /display/assets/{name}.png
-// Figma 배경 이미지 서빙
+// 배경 이미지 서빙
 func DisplayAssetsHandler(w http.ResponseWriter, r *http.Request) {
 	name := filepath.Base(r.URL.Path)
 	execPath := path.ExecutePath("easyPreparation")
@@ -2043,12 +2043,16 @@ func preprocessItem(item map[string]interface{}) map[string]interface{} {
 		item["contents"] = lordsPrayer
 	}
 
-	// 항목별 배경 이미지 (전주, 찬양, 참회의 기도만)
-	if title == "전주" || title == "찬양" || title == "참회의 기도" {
+	// 항목별 배경 이미지 — data/templates/display/{title}.png/.jpg 자동 매핑
+	{
 		execPath := path.ExecutePath("easyPreparation")
-		bgPath := filepath.Join(execPath, "data", "templates", "display", title+".png")
-		if _, err := os.Stat(bgPath); err == nil {
-			item["bgImage"] = "/display/assets/" + url.PathEscape(title+".png")
+		displayDir := filepath.Join(execPath, "data", "templates", "display")
+		for _, ext := range []string{".png", ".jpg", ".jpeg"} {
+			bgPath := filepath.Join(displayDir, title+ext)
+			if _, err := os.Stat(bgPath); err == nil {
+				item["bgImage"] = "/display/assets/" + url.PathEscape(title+ext)
+				break
+			}
 		}
 	}
 

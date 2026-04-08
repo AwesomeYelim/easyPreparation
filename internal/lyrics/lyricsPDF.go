@@ -3,7 +3,6 @@ package lyrics
 import (
 	"easyPreparation_1.0/internal/classification"
 	"easyPreparation_1.0/internal/extract"
-	figmapkg "easyPreparation_1.0/internal/figma"
 	"easyPreparation_1.0/internal/handlers"
 	"easyPreparation_1.0/internal/parser"
 	"easyPreparation_1.0/internal/path"
@@ -31,29 +30,13 @@ type stSong struct {
 }
 
 func CreateLyricsPDF(data map[string]interface{}) {
-	execPath := path.ExecutePath("easyPreparation")
-
 	lpm := NewLyricsPresentationManager()
 
-	var key, token string
-	if rawFigma, ok := data["figmaInfo"]; ok {
-		if figmaMap, ok := rawFigma.(map[string]interface{}); ok {
-			if k, ok := figmaMap["key"].(string); ok {
-				key = k
-			}
-			if t, ok := figmaMap["token"].(string); ok {
-				token = t
-			}
-		}
+	// 배경 이미지가 OutputDir에 없으면 경고만 출력하고 계속 진행
+	entries, err := os.ReadDir(lpm.OutputDir)
+	if err != nil || len(entries) == 0 {
+		handlers.BroadcastProgress("Background Warning", 1, "배경 이미지 없음 — 템플릿 폴더를 확인하세요")
 	}
-
-	figmaInfo, err := figmapkg.New(&token, &key, execPath)
-	if err != nil {
-		handlers.BroadcastProgress("Figma Init Error", -1, fmt.Sprintf("Figma 초기화 실패: %s", err))
-		return
-	}
-
-	figmaInfo.GetFigmaImage(lpm.OutputDir, "forLyrics")
 
 	lpm.CreatePresentation(data)
 }
@@ -113,7 +96,22 @@ func (lpm *LyricsPresentationManager) CreatePresentation(data map[string]interfa
 		handlers.BroadcastProgress("Lyrics Error", -1, fmt.Sprintf("배경 이미지 없음: %s", lpm.OutputDir))
 		return
 	}
-	bgImagePath := filepath.Join(lpm.OutputDir, backgroundImages[0].Name())
+	// 이미지 파일만 필터 (PNG/JPG)
+	var bgImagePath string
+	for _, e := range backgroundImages {
+		if e.IsDir() {
+			continue
+		}
+		ext := strings.ToLower(filepath.Ext(e.Name()))
+		if ext == ".png" || ext == ".jpg" || ext == ".jpeg" {
+			bgImagePath = filepath.Join(lpm.OutputDir, e.Name())
+			break
+		}
+	}
+	if bgImagePath == "" {
+		handlers.BroadcastProgress("Lyrics Error", -1, fmt.Sprintf("배경 이미지 없음: %s", lpm.OutputDir))
+		return
+	}
 
 	instanceSize := gofpdf.SizeType{
 		Wd: extract.ConfigMem.Classification.Lyrics.Presentation.Width,

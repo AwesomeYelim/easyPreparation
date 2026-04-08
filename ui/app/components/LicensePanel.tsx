@@ -44,31 +44,20 @@ const ALL_FEATURES: LicenseFeature[] = [
 ];
 
 function formatKey(raw: string): string {
-  // 영숫자만 추출 후 대문자 변환
   const stripped = raw.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-  // EP-XXXX-XXXX-XXXX-XXXX 형태로 삽입
   const parts: string[] = [];
-  // 앞 2자리가 EP면 prefix 처리
   let body = stripped;
-  if (body.startsWith("EP")) {
-    body = body.slice(2);
-  }
-  // 최대 16자리를 4글자씩 분할
+  if (body.startsWith("EP")) body = body.slice(2);
   const chunks = body.slice(0, 16).match(/.{1,4}/g) || [];
   const prefix = stripped.startsWith("EP") ? "EP" : "";
-  if (prefix) {
-    parts.push("EP");
-  }
-  for (const c of chunks) {
-    parts.push(c);
-  }
+  if (prefix) parts.push("EP");
+  for (const c of chunks) parts.push(c);
   return parts.join("-");
 }
 
 export default function LicensePanel({ open, onClose }: LicensePanelProps) {
   const { license, refresh } = useLicense();
 
-  // 기존 상태
   const [keyInput, setKeyInput] = useState("");
   const [activating, setActivating] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
@@ -76,14 +65,12 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  // 결제 관련 상태
   const [selectedPlan, setSelectedPlan] = useState<"pro_monthly" | "pro_annual">("pro_annual");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [pollingSessionId, setPollingSessionId] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [showKeyInput, setShowKeyInput] = useState(false);
 
-  // 열릴 때마다 상태 초기화
   useEffect(() => {
     if (open) {
       setKeyInput("");
@@ -97,13 +84,10 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
     }
   }, [open, refresh]);
 
-  // 결제 완료 폴링
   useEffect(() => {
     if (!pollingSessionId) return;
-
     let cancelled = false;
     const startTime = Date.now();
-
     const poll = async () => {
       while (!cancelled && Date.now() - startTime < 60000) {
         try {
@@ -118,44 +102,31 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
         } catch {}
         await new Promise((r) => setTimeout(r, 3000));
       }
-      // 타임아웃
       if (!cancelled) {
         setCheckoutLoading(false);
         setPollingSessionId(null);
         setError("결제 확인에 시간이 걸리고 있습니다. 페이지를 새로고침 해주세요.");
       }
     };
-
     poll();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [pollingSessionId, refresh]);
 
   const handleKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setError("");
-    setSuccessMsg("");
-    const formatted = formatKey(e.target.value);
-    setKeyInput(formatted);
+    setError(""); setSuccessMsg("");
+    setKeyInput(formatKey(e.target.value));
   };
 
   const handleActivate = async () => {
     const raw = keyInput.replace(/-/g, "");
-    if (raw.length < 10) {
-      setError("라이선스 키를 입력해주세요.");
-      return;
-    }
-    setActivating(true);
-    setError("");
-    setSuccessMsg("");
+    if (raw.length < 10) { setError("라이선스 키를 입력해주세요."); return; }
+    setActivating(true); setError(""); setSuccessMsg("");
     try {
       const res = await apiClient.activateLicense(keyInput);
-      if (res.error) {
-        setError(res.error);
-      } else {
+      if (res.error) { setError(res.error); }
+      else {
         setSuccessMsg("라이선스가 성공적으로 활성화되었습니다.");
-        setKeyInput("");
-        setShowKeyInput(false);
+        setKeyInput(""); setShowKeyInput(false);
         await refresh();
       }
     } catch (e: any) {
@@ -166,18 +137,12 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
   };
 
   const handleDeactivate = async () => {
-    if (!confirmDeactivate) {
-      setConfirmDeactivate(true);
-      return;
-    }
-    setDeactivating(true);
-    setError("");
-    setSuccessMsg("");
+    if (!confirmDeactivate) { setConfirmDeactivate(true); return; }
+    setDeactivating(true); setError(""); setSuccessMsg("");
     try {
       const res = await apiClient.deactivateLicense();
-      if (res.error) {
-        setError(res.error);
-      } else {
+      if (res.error) { setError(res.error); }
+      else {
         setSuccessMsg("라이선스가 해제되었습니다.");
         setConfirmDeactivate(false);
         await refresh();
@@ -190,9 +155,7 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
   };
 
   const handleCheckout = async () => {
-    setCheckoutLoading(true);
-    setError("");
-    setSuccessMsg("");
+    setCheckoutLoading(true); setError(""); setSuccessMsg("");
     try {
       const { checkoutUrl, sessionId } = await apiClient.createCheckoutSession(selectedPlan);
       window.open(checkoutUrl, "_blank");
@@ -204,8 +167,7 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
   };
 
   const handlePortal = async () => {
-    setPortalLoading(true);
-    setError("");
+    setPortalLoading(true); setError("");
     try {
       const { portalUrl } = await apiClient.getPortalUrl();
       window.open(portalUrl, "_blank");
@@ -225,10 +187,7 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
   const formatExpiry = (expiresAt: string | null): string => {
     if (!expiresAt) return "-";
     const d = new Date(expiresAt);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}.${m}.${day}`;
+    return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
   };
 
   const isPro = license.plan === "pro" || license.plan === "enterprise";
@@ -236,82 +195,128 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
   if (!open) return null;
 
   return (
-    <div className="lp_overlay" onClick={onClose}>
-      <div className="lp_panel" onClick={(e) => e.stopPropagation()}>
-        {/* 헤더 */}
-        <div className="lp_header">
-          <h3>라이선스 정보</h3>
-          <button className="lp_close" onClick={onClose}>&times;</button>
+    <div
+      className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-[var(--surface-elevated)] rounded-2xl w-[480px] max-w-[92vw] max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 헤더 (sticky) */}
+        <div className="flex justify-between items-center px-6 pt-5 pb-4 border-b border-[var(--border)] sticky top-0 bg-[var(--surface-elevated)] z-10 rounded-t-2xl">
+          <h3 className="m-0 text-lg font-bold text-[var(--text-primary)]">라이선스 정보</h3>
+          <button
+            className="bg-transparent border-none text-2xl cursor-pointer text-[var(--text-secondary)] leading-none p-0 flex items-center justify-center hover:text-[var(--text-primary)] transition-colors"
+            onClick={onClose}
+          >
+            &times;
+          </button>
         </div>
 
-        <div className="lp_body">
+        {/* body */}
+        <div className="px-6 py-5 flex flex-col gap-0">
+
           {/* 플랜 + 기기 ID 요약 행 */}
-          <div className="lp_summary_row">
-            <div className="lp_summary_item">
-              <span className="lp_label">현재 플랜</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-                <span className={`lp_plan_badge lp_plan_${license.plan}`}>
+          <div className="flex gap-4 pb-4">
+            <div className="flex-1">
+              <span className="text-[11px] font-bold uppercase tracking-[0.8px] text-[var(--text-muted)]">
+                현재 플랜
+              </span>
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`inline-block px-3.5 py-1 rounded-[20px] text-xs font-bold tracking-wide ${
+                  license.plan === "free"
+                    ? "bg-[#f3f4f6] text-[#6b7280] border border-[#d1d5db]"
+                    : license.plan === "pro"
+                    ? "bg-[#eff6ff] text-[#1d4ed8] border border-[#93c5fd]"
+                    : "bg-[#f5f3ff] text-[#6d28d9] border border-[#c4b5fd]"
+                }`}>
                   {PLAN_LABELS[license.plan]}
                 </span>
                 {license.is_active && (
-                  <span className="lp_active_badge">활성</span>
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-[10px] bg-[#d1fae5] text-[#065f46]">
+                    활성
+                  </span>
                 )}
                 {license.grace_period && (
-                  <span className="lp_grace_badge">유예 기간</span>
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-[10px] bg-[#fef3c7] text-[#92400e]">
+                    유예 기간
+                  </span>
                 )}
               </div>
             </div>
-            <div className="lp_summary_item lp_summary_item_right">
-              <span className="lp_label">기기 ID</span>
-              <div className="lp_device_id" title={license.device_id}>
+            <div className="flex-none text-right">
+              <span className="text-[11px] font-bold uppercase tracking-[0.8px] text-[var(--text-muted)]">
+                기기 ID
+              </span>
+              <div
+                className="mt-1 text-xs font-mono text-[var(--text-secondary)] bg-[var(--surface-input)] border border-[var(--border)] rounded-md px-2.5 py-1 tracking-[0.5px] cursor-text select-all inline-block"
+                title={license.device_id}
+              >
                 {truncateDeviceId(license.device_id)}
               </div>
             </div>
           </div>
 
-          <div className="lp_divider" />
+          <div className="h-px bg-[var(--border)] mb-4" />
 
           {/* ── Free 플랜: 업그레이드 카드 ── */}
           {!isPro && (
-            <div className="lp_section">
-              <div className="lp_upgrade_box">
-                <div className="lp_upgrade_header">
-                  <span className="lp_upgrade_title">Pro 업그레이드</span>
-                  <span className="lp_upgrade_subtitle">OBS 연동, 스케줄러, YouTube, 썸네일 자동 생성</span>
+            <div className="pb-4">
+              <div className="bg-gradient-to-br from-[#eff6ff] to-[#f5f3ff] border border-[#c7d2fe] rounded-xl p-4 pb-3.5">
+                <div className="flex flex-col gap-0.5 mb-4">
+                  <span className="text-[15px] font-bold text-[#1e40af]">Pro 업그레이드</span>
+                  <span className="text-xs text-[#4b5563] leading-snug">
+                    OBS 연동, 스케줄러, YouTube, 썸네일 자동 생성
+                  </span>
                 </div>
-                <div className="lp_price_cards">
-                  {/* 월간 카드 */}
+
+                {/* 가격 카드 */}
+                <div className="flex gap-2.5 mb-3.5">
+                  {/* 월간 */}
                   <button
-                    className={`lp_price_card ${selectedPlan === "pro_monthly" ? "selected" : ""}`}
-                    onClick={() => setSelectedPlan("pro_monthly")}
                     type="button"
+                    onClick={() => setSelectedPlan("pro_monthly")}
+                    className={`flex-1 relative px-3 py-3.5 rounded-xl border-2 text-center flex flex-col items-center gap-0.5 cursor-pointer transition-all ${
+                      selectedPlan === "pro_monthly"
+                        ? "border-[#4f46e5] shadow-[0_0_0_3px_rgba(79,70,229,0.15)] bg-[#f0f0ff]"
+                        : "border-[#e0e7ff] bg-[var(--surface-elevated)] hover:border-[#818cf8]"
+                    }`}
                   >
-                    <div className="lp_price_amount">₩9,900</div>
-                    <div className="lp_price_period">/ 월</div>
+                    <div className="text-xl font-extrabold text-[#1e1b4b] leading-tight">₩9,900</div>
+                    <div className="text-xs text-[#6b7280] font-medium">/ 월</div>
                   </button>
 
-                  {/* 연간 카드 */}
+                  {/* 연간 */}
                   <button
-                    className={`lp_price_card ${selectedPlan === "pro_annual" ? "selected" : ""}`}
-                    onClick={() => setSelectedPlan("pro_annual")}
                     type="button"
+                    onClick={() => setSelectedPlan("pro_annual")}
+                    className={`flex-1 relative px-3 py-3.5 rounded-xl border-2 text-center flex flex-col items-center gap-0.5 cursor-pointer transition-all ${
+                      selectedPlan === "pro_annual"
+                        ? "border-[#4f46e5] shadow-[0_0_0_3px_rgba(79,70,229,0.15)] bg-[#f0f0ff]"
+                        : "border-[#e0e7ff] bg-[var(--surface-elevated)] hover:border-[#818cf8]"
+                    }`}
                   >
-                    <div className="lp_recommended_badge">추천</div>
-                    <div className="lp_price_amount">₩99,000</div>
-                    <div className="lp_price_period">/ 년</div>
-                    <div className="lp_discount_tag">~17% 할인</div>
+                    <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-[#4f46e5] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-[10px] whitespace-nowrap">
+                      추천
+                    </div>
+                    <div className="text-xl font-extrabold text-[#1e1b4b] leading-tight">₩99,000</div>
+                    <div className="text-xs text-[#6b7280] font-medium">/ 년</div>
+                    <div className="mt-1 text-[11px] font-semibold text-[#059669] bg-[#d1fae5] px-1.5 py-0.5 rounded-md border border-[#a7f3d0]">
+                      ~17% 할인
+                    </div>
                   </button>
                 </div>
 
                 <button
-                  className="lp_checkout_btn"
+                  type="button"
                   onClick={handleCheckout}
                   disabled={checkoutLoading}
-                  type="button"
+                  className="w-full py-3 text-sm font-bold bg-[#4f46e5] text-white border-none rounded-xl cursor-pointer flex items-center justify-center transition-colors hover:bg-[#4338ca] disabled:bg-[#a5b4fc] disabled:cursor-default"
                 >
                   {checkoutLoading ? (
-                    <span className="lp_btn_inner">
-                      <span className="lp_spinner" />
+                    <span className="flex items-center gap-2">
+                      <span className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin flex-shrink-0" />
                       결제 창 열기 대기 중...
                     </span>
                   ) : (
@@ -320,7 +325,7 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
                 </button>
 
                 {checkoutLoading && (
-                  <div className="lp_polling_notice">
+                  <div className="mt-2.5 text-xs text-[#4b5563] text-center px-3 py-2 bg-[rgba(79,70,229,0.06)] rounded-lg">
                     결제 창에서 완료하면 자동으로 활성화됩니다.
                   </div>
                 )}
@@ -330,60 +335,60 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
 
           {/* ── Pro 플랜: 구독 정보 + 관리 ── */}
           {isPro && license.is_active && (
-            <div className="lp_section">
-              <div className="lp_label">구독 정보</div>
-              <div className="lp_info_grid">
-                <div className="lp_info_row">
-                  <span className="lp_info_key">플랜</span>
-                  <span className="lp_info_val">
-                    {PLAN_LABELS[license.plan]}
-                    {license.plan === "pro" ? " (월간)" : ""}
-                  </span>
-                </div>
-                <div className="lp_info_row">
-                  <span className="lp_info_key">만료일</span>
-                  <span className="lp_info_val">{formatExpiry(license.expires_at)}</span>
-                </div>
-                <div className="lp_info_row">
-                  <span className="lp_info_key">남은 일수</span>
-                  <span className={`lp_info_val ${license.days_remaining <= 7 ? "warn" : ""}`}>
-                    {license.days_remaining > 0 ? `${license.days_remaining}일` : "만료됨"}
-                  </span>
-                </div>
+            <div className="pb-4">
+              <div className="text-[11px] font-bold uppercase tracking-[0.8px] text-[var(--text-muted)] mb-2">
+                구독 정보
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {[
+                  { key: "플랜", val: `${PLAN_LABELS[license.plan]}${license.plan === "pro" ? " (월간)" : ""}`, warn: false },
+                  { key: "만료일", val: formatExpiry(license.expires_at), warn: false },
+                  { key: "남은 일수", val: license.days_remaining > 0 ? `${license.days_remaining}일` : "만료됨", warn: license.days_remaining <= 7 },
+                ].map(({ key, val, warn }) => (
+                  <div key={key} className="flex justify-between items-center px-3 py-1.5 bg-[var(--surface-input)] border border-[var(--border)] rounded-lg">
+                    <span className="text-xs text-[var(--text-secondary)] font-medium">{key}</span>
+                    <span className={`text-xs font-semibold ${warn ? "text-[#d97706]" : "text-[var(--text-primary)]"}`}>
+                      {val}
+                    </span>
+                  </div>
+                ))}
               </div>
 
               {license.grace_period && (
-                <div className="lp_grace_notice">
+                <div className="mt-2 px-3 py-2 bg-[#fffbeb] text-[#92400e] border border-[#fcd34d] rounded-lg text-xs font-medium">
                   유예 기간 중입니다. 라이선스를 갱신해주세요.
                 </div>
               )}
 
-              <div className="lp_pro_actions">
+              <div className="mt-3 flex flex-col gap-2">
                 <button
-                  className="lp_portal_btn"
+                  type="button"
                   onClick={handlePortal}
                   disabled={portalLoading}
-                  type="button"
+                  className="self-start px-4 py-2 text-xs font-semibold bg-[var(--accent)] text-[var(--surface-elevated)] border-none rounded-lg cursor-pointer hover:bg-[var(--accent-hover)] disabled:bg-[var(--text-muted)] disabled:cursor-default transition-colors"
                 >
                   {portalLoading ? "로딩 중..." : "구독 관리"}
                 </button>
+
                 {confirmDeactivate ? (
-                  <div className="lp_confirm_box">
-                    <p className="lp_confirm_text">정말 라이선스를 해제하시겠습니까? 해제 후 Pro 기능을 사용할 수 없습니다.</p>
-                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <div className="bg-[#fef2f2] border border-[#fecaca] rounded-lg px-3.5 py-3">
+                    <p className="m-0 mb-3 text-xs text-[#7f1d1d] leading-relaxed">
+                      정말 라이선스를 해제하시겠습니까? 해제 후 Pro 기능을 사용할 수 없습니다.
+                    </p>
+                    <div className="flex gap-2 justify-end">
                       <button
-                        className="lp_cancel_btn"
+                        type="button"
                         onClick={() => setConfirmDeactivate(false)}
                         disabled={deactivating}
-                        type="button"
+                        className="px-3.5 py-1.5 text-xs bg-[var(--surface-hover)] border border-[var(--border-input)] rounded-lg cursor-pointer text-[var(--text-primary)]"
                       >
                         취소
                       </button>
                       <button
-                        className="lp_deactivate_confirm_btn"
+                        type="button"
                         onClick={handleDeactivate}
                         disabled={deactivating}
-                        type="button"
+                        className="px-3.5 py-1.5 text-xs font-semibold bg-[var(--error)] text-white border-none rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-default"
                       >
                         {deactivating ? "처리 중..." : "해제 확인"}
                       </button>
@@ -391,10 +396,10 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
                   </div>
                 ) : (
                   <button
-                    className="lp_deactivate_btn"
+                    type="button"
                     onClick={handleDeactivate}
                     disabled={deactivating}
-                    type="button"
+                    className="self-start px-4 py-1.5 text-xs font-medium bg-[var(--surface-hover)] border border-[var(--border-input)] rounded-lg cursor-pointer text-[var(--error)] hover:bg-[#fef2f2] hover:border-[#fecaca] disabled:opacity-50 disabled:cursor-default transition-colors"
                   >
                     라이선스 해제
                   </button>
@@ -403,18 +408,27 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
             </div>
           )}
 
-          <div className="lp_divider" />
+          <div className="h-px bg-[var(--border)] mb-4" />
 
           {/* 기능 목록 */}
-          <div className="lp_section">
-            <div className="lp_label">기능 목록</div>
-            <div className="lp_feature_list">
+          <div className="pb-4">
+            <div className="text-[11px] font-bold uppercase tracking-[0.8px] text-[var(--text-muted)] mb-2">
+              기능 목록
+            </div>
+            <div className="flex flex-col gap-1">
               {ALL_FEATURES.map((feat) => {
                 const available = license.features.includes(feat);
                 const requiredPlan = FEATURE_PLAN_MAP[feat];
                 return (
-                  <div key={feat} className={`lp_feature_item ${available ? "available" : "locked"}`}>
-                    <span className="lp_feature_icon">
+                  <div
+                    key={feat}
+                    className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg border ${
+                      available
+                        ? "border-[#a7f3d0] bg-[#f0fdf4]"
+                        : "border-[var(--border)] bg-[var(--surface-input)] opacity-70"
+                    }`}
+                  >
+                    <span className="flex items-center flex-shrink-0">
                       {available ? (
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                           <circle cx="8" cy="8" r="8" fill="#059669" fillOpacity="0.15" />
@@ -427,9 +441,15 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
                         </svg>
                       )}
                     </span>
-                    <span className="lp_feature_name">{FEATURE_LABELS[feat]}</span>
+                    <span className={`text-xs font-medium flex-1 ${available ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]"}`}>
+                      {FEATURE_LABELS[feat]}
+                    </span>
                     {!available && (
-                      <span className={`lp_plan_tag lp_plan_tag_${requiredPlan}`}>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-lg tracking-wide ${
+                        requiredPlan === "pro"
+                          ? "bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe]"
+                          : "bg-[#f5f3ff] text-[#6d28d9] border border-[#c4b5fd]"
+                      }`}>
                         {PLAN_LABELS[requiredPlan]}
                       </span>
                     )}
@@ -439,17 +459,17 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
             </div>
           </div>
 
-          <div className="lp_divider" />
+          <div className="h-px bg-[var(--border)] mb-0" />
 
-          {/* 라이선스 키 직접 입력 (접기/펼치기) */}
-          <div className="lp_section">
+          {/* 라이선스 키 직접 입력 */}
+          <div className="pt-0">
             <button
-              className="lp_key_toggle"
-              onClick={() => setShowKeyInput((v) => !v)}
               type="button"
+              onClick={() => setShowKeyInput((v) => !v)}
+              className="flex items-center justify-between w-full py-2 bg-transparent border-none border-t border-dashed border-[var(--border)] cursor-pointer text-[var(--text-secondary)] text-xs font-semibold tracking-wide hover:text-[var(--text-primary)] transition-colors"
             >
               <span>또는 라이선스 키로 직접 활성화</span>
-              <span className={`lp_toggle_arrow ${showKeyInput ? "open" : ""}`}>
+              <span className={`flex items-center transition-transform duration-200 ${showKeyInput ? "rotate-180" : ""}`}>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -457,10 +477,9 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
             </button>
 
             {showKeyInput && (
-              <div className="lp_key_section">
-                <div style={{ display: "flex", gap: 8 }}>
+              <div className="mt-2.5">
+                <div className="flex gap-2">
                   <input
-                    className="lp_key_input"
                     type="text"
                     placeholder="EP-XXXX-XXXX-XXXX-XXXX"
                     value={keyInput}
@@ -468,12 +487,13 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
                     maxLength={24}
                     spellCheck={false}
                     autoComplete="off"
+                    className="flex-1 px-3 py-2 text-xs font-mono tracking-[1px] border border-[var(--border-input)] rounded-lg bg-[var(--surface-input)] text-[var(--text-primary)] outline-none uppercase focus:border-[var(--accent)]"
                   />
                   <button
-                    className="lp_activate_btn"
+                    type="button"
                     onClick={handleActivate}
                     disabled={activating || keyInput.replace(/-/g, "").length < 10}
-                    type="button"
+                    className="px-4 py-2 text-xs font-semibold bg-[var(--accent)] text-[var(--surface-elevated)] border-none rounded-lg cursor-pointer flex-shrink-0 hover:bg-[var(--accent-hover)] disabled:bg-[var(--text-muted)] disabled:cursor-default transition-colors"
                   >
                     {activating ? "확인 중..." : "활성화"}
                   </button>
@@ -481,376 +501,19 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
               </div>
             )}
 
-            {error && <div className="lp_error">{error}</div>}
-            {successMsg && <div className="lp_success">{successMsg}</div>}
+            {error && (
+              <div className="mt-2 px-3 py-2 bg-[var(--error-bg)] text-[var(--error)] border border-[var(--error-border)] rounded-lg text-xs">
+                {error}
+              </div>
+            )}
+            {successMsg && (
+              <div className="mt-2 px-3 py-2 bg-[#f0fdf4] text-[#065f46] border border-[#a7f3d0] rounded-lg text-xs font-medium">
+                {successMsg}
+              </div>
+            )}
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        .lp_overlay {
-          position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-          background: rgba(0,0,0,0.5);
-          display: flex; align-items: center; justify-content: center;
-          z-index: 11000;
-        }
-        .lp_panel {
-          background: var(--surface-elevated); border-radius: 16px;
-          width: 480px; max-width: 92vw; max-height: 90vh;
-          overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.25);
-          display: flex; flex-direction: column;
-        }
-        .lp_header {
-          display: flex; justify-content: space-between; align-items: center;
-          padding: 20px 24px 16px; border-bottom: 1px solid var(--border);
-          position: sticky; top: 0; background: var(--surface-elevated); z-index: 1;
-          border-radius: 16px 16px 0 0;
-        }
-        .lp_header h3 {
-          margin: 0; font-size: 18px; font-weight: 700; color: var(--text-primary);
-        }
-        .lp_close {
-          background: none; border: none; font-size: 24px;
-          cursor: pointer; color: var(--text-secondary); line-height: 1;
-          padding: 0; display: flex; align-items: center; justify-content: center;
-        }
-        .lp_close:hover { color: var(--text-primary); }
-        .lp_body {
-          padding: 20px 24px; display: flex; flex-direction: column; gap: 0;
-        }
-        .lp_section { padding: 4px 0 16px; }
-        .lp_label {
-          font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
-          text-transform: uppercase; color: var(--text-muted); margin-bottom: 2px;
-        }
-        .lp_divider {
-          height: 1px; background: var(--border); margin: 4px 0 16px;
-        }
-
-        /* 요약 행 */
-        .lp_summary_row {
-          display: flex; gap: 16px; padding: 4px 0 16px;
-        }
-        .lp_summary_item {
-          flex: 1;
-        }
-        .lp_summary_item_right {
-          flex: 0 0 auto;
-          text-align: right;
-        }
-
-        /* 플랜 배지 */
-        .lp_plan_badge {
-          display: inline-block; padding: 4px 14px; border-radius: 20px;
-          font-size: 13px; font-weight: 700; letter-spacing: 0.3px;
-        }
-        .lp_plan_free {
-          background: #f3f4f6; color: #6b7280;
-          border: 1.5px solid #d1d5db;
-        }
-        .lp_plan_pro {
-          background: #eff6ff; color: #1d4ed8;
-          border: 1.5px solid #93c5fd;
-        }
-        .lp_plan_enterprise {
-          background: #f5f3ff; color: #6d28d9;
-          border: 1.5px solid #c4b5fd;
-        }
-        .lp_active_badge {
-          font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 10px;
-          background: #d1fae5; color: #065f46;
-        }
-        .lp_grace_badge {
-          font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 10px;
-          background: #fef3c7; color: #92400e;
-        }
-
-        /* 기기 ID */
-        .lp_device_id {
-          margin-top: 4px; font-size: 12px; font-family: monospace;
-          color: var(--text-secondary); background: var(--surface-input);
-          border: 1px solid var(--border); border-radius: 6px;
-          padding: 5px 10px; letter-spacing: 0.5px;
-          user-select: all; cursor: text; display: inline-block;
-        }
-
-        /* ── 업그레이드 박스 ── */
-        .lp_upgrade_box {
-          background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
-          border: 1.5px solid #c7d2fe;
-          border-radius: 12px;
-          padding: 18px 18px 14px;
-        }
-        .lp_upgrade_header {
-          display: flex; flex-direction: column; gap: 3px; margin-bottom: 16px;
-        }
-        .lp_upgrade_title {
-          font-size: 15px; font-weight: 700; color: #1e40af;
-        }
-        .lp_upgrade_subtitle {
-          font-size: 12px; color: #4b5563; line-height: 1.4;
-        }
-
-        /* 가격 카드 */
-        .lp_price_cards {
-          display: flex; gap: 10px; margin-bottom: 14px;
-        }
-        .lp_price_card {
-          flex: 1; position: relative; padding: 14px 12px 12px;
-          border: 2px solid #e0e7ff; border-radius: 10px;
-          background: var(--surface-elevated);
-          cursor: pointer; text-align: center;
-          transition: border-color 0.15s, box-shadow 0.15s;
-          display: flex; flex-direction: column; align-items: center; gap: 2px;
-        }
-        .lp_price_card:hover {
-          border-color: #818cf8;
-        }
-        .lp_price_card.selected {
-          border-color: #4f46e5;
-          box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
-          background: #f0f0ff;
-        }
-        .lp_price_amount {
-          font-size: 20px; font-weight: 800; color: #1e1b4b; line-height: 1.1;
-        }
-        .lp_price_period {
-          font-size: 12px; color: #6b7280; font-weight: 500;
-        }
-        .lp_recommended_badge {
-          position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
-          background: #4f46e5; color: #fff; font-size: 10px; font-weight: 700;
-          padding: 2px 10px; border-radius: 10px; white-space: nowrap;
-        }
-        .lp_discount_tag {
-          margin-top: 4px; font-size: 11px; font-weight: 600;
-          color: #059669; background: #d1fae5; padding: 2px 7px;
-          border-radius: 6px; border: 1px solid #a7f3d0;
-        }
-
-        /* 결제 버튼 */
-        .lp_checkout_btn {
-          width: 100%; padding: 12px; font-size: 14px; font-weight: 700;
-          background: #4f46e5; color: #fff; border: none;
-          border-radius: 9px; cursor: pointer;
-          transition: background 0.15s;
-          display: flex; align-items: center; justify-content: center;
-        }
-        .lp_checkout_btn:hover:not(:disabled) { background: #4338ca; }
-        .lp_checkout_btn:disabled { background: #a5b4fc; cursor: default; }
-        .lp_btn_inner { display: flex; align-items: center; gap: 8px; }
-        .lp_spinner {
-          width: 14px; height: 14px; border-radius: 50%;
-          border: 2px solid rgba(255,255,255,0.3);
-          border-top-color: #fff;
-          animation: lp_spin 0.7s linear infinite;
-          flex-shrink: 0;
-        }
-        @keyframes lp_spin { to { transform: rotate(360deg); } }
-        .lp_polling_notice {
-          margin-top: 10px; font-size: 12px; color: #4b5563;
-          text-align: center; padding: 8px 12px;
-          background: rgba(79, 70, 229, 0.06); border-radius: 7px;
-        }
-
-        /* Pro 구독 정보 */
-        .lp_info_grid {
-          margin-top: 8px; display: flex; flex-direction: column; gap: 6px;
-        }
-        .lp_info_row {
-          display: flex; justify-content: space-between; align-items: center;
-          padding: 7px 12px; background: var(--surface-input);
-          border: 1px solid var(--border); border-radius: 8px;
-        }
-        .lp_info_key { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
-        .lp_info_val { font-size: 13px; color: var(--text-primary); font-weight: 600; }
-        .lp_info_val.warn { color: #d97706; }
-
-        /* 유예 기간 알림 */
-        .lp_grace_notice {
-          margin-top: 8px; padding: 8px 12px;
-          background: #fffbeb; color: #92400e;
-          border: 1px solid #fcd34d; border-radius: 8px;
-          font-size: 12px; font-weight: 500;
-        }
-
-        /* Pro 액션 버튼 그룹 */
-        .lp_pro_actions {
-          margin-top: 12px; display: flex; flex-direction: column; gap: 8px;
-        }
-        .lp_portal_btn {
-          padding: 9px 18px; font-size: 13px; font-weight: 600;
-          background: var(--accent); color: var(--surface-elevated);
-          border: none; border-radius: 8px; cursor: pointer;
-          align-self: flex-start;
-        }
-        .lp_portal_btn:hover:not(:disabled) { background: var(--accent-hover); }
-        .lp_portal_btn:disabled { background: var(--text-muted); cursor: default; }
-
-        /* 라이선스 해제 */
-        .lp_deactivate_btn {
-          padding: 7px 16px; font-size: 13px; font-weight: 500;
-          background: var(--surface-hover); border: 1px solid var(--border-input);
-          border-radius: 8px; cursor: pointer; color: var(--error);
-          align-self: flex-start;
-        }
-        .lp_deactivate_btn:hover { background: #fef2f2; border-color: #fecaca; }
-        .lp_deactivate_btn:disabled { opacity: 0.5; cursor: default; }
-        .lp_confirm_box {
-          background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;
-          padding: 12px 14px;
-        }
-        .lp_confirm_text {
-          margin: 0 0 12px; font-size: 13px; color: #7f1d1d; line-height: 1.5;
-        }
-        .lp_cancel_btn {
-          padding: 6px 14px; font-size: 13px; background: var(--surface-hover);
-          border: 1px solid var(--border-input); border-radius: 7px;
-          cursor: pointer; color: var(--text-primary);
-        }
-        .lp_deactivate_confirm_btn {
-          padding: 6px 14px; font-size: 13px; font-weight: 600;
-          background: var(--error); color: #fff; border: none;
-          border-radius: 7px; cursor: pointer;
-        }
-        .lp_deactivate_confirm_btn:disabled { opacity: 0.5; cursor: default; }
-
-        /* 기능 목록 */
-        .lp_feature_list {
-          margin-top: 8px; display: flex; flex-direction: column; gap: 4px;
-        }
-        .lp_feature_item {
-          display: flex; align-items: center; gap: 10px;
-          padding: 8px 10px; border-radius: 8px;
-          border: 1px solid var(--border);
-          background: var(--surface-input);
-        }
-        .lp_feature_item.available {
-          border-color: #a7f3d0; background: #f0fdf4;
-        }
-        .lp_feature_item.locked {
-          opacity: 0.7;
-        }
-        .lp_feature_icon { display: flex; align-items: center; flex-shrink: 0; }
-        .lp_feature_name {
-          font-size: 13px; font-weight: 500;
-          color: var(--text-primary); flex: 1;
-        }
-        .lp_feature_item.locked .lp_feature_name { color: var(--text-secondary); }
-        .lp_plan_tag {
-          font-size: 10px; font-weight: 700; padding: 2px 7px;
-          border-radius: 8px; letter-spacing: 0.3px;
-        }
-        .lp_plan_tag_pro {
-          background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;
-        }
-        .lp_plan_tag_enterprise {
-          background: #f5f3ff; color: #6d28d9; border: 1px solid #c4b5fd;
-        }
-
-        /* 키 직접 입력 토글 */
-        .lp_key_toggle {
-          display: flex; align-items: center; justify-content: space-between;
-          width: 100%; padding: 8px 0; background: none; border: none;
-          cursor: pointer; color: var(--text-secondary);
-          font-size: 12px; font-weight: 600; letter-spacing: 0.3px;
-          border-top: 1px dashed var(--border);
-        }
-        .lp_key_toggle:hover { color: var(--text-primary); }
-        .lp_toggle_arrow {
-          display: flex; align-items: center; transition: transform 0.2s;
-        }
-        .lp_toggle_arrow.open { transform: rotate(180deg); }
-        .lp_key_section { margin-top: 10px; display: flex; flex-direction: column; gap: 0; }
-
-        /* 키 입력 영역 */
-        .lp_key_input {
-          flex: 1; padding: 8px 12px; font-size: 13px; font-family: monospace;
-          letter-spacing: 1px; border: 1.5px solid var(--border-input);
-          border-radius: 8px; background: var(--surface-input);
-          color: var(--text-primary); outline: none;
-          text-transform: uppercase;
-        }
-        .lp_key_input:focus { border-color: var(--accent); }
-        .lp_activate_btn {
-          padding: 8px 18px; font-size: 13px; font-weight: 600;
-          background: var(--accent); color: var(--surface-elevated);
-          border: none; border-radius: 8px; cursor: pointer; white-space: nowrap;
-          flex-shrink: 0;
-        }
-        .lp_activate_btn:hover { background: var(--accent-hover); }
-        .lp_activate_btn:disabled { background: var(--text-muted); cursor: default; }
-        .lp_error {
-          margin-top: 8px; padding: 8px 12px;
-          background: var(--error-bg); color: var(--error);
-          border: 1px solid var(--error-border); border-radius: 8px;
-          font-size: 13px;
-        }
-        .lp_success {
-          margin-top: 8px; padding: 8px 12px;
-          background: #f0fdf4; color: #065f46;
-          border: 1px solid #a7f3d0; border-radius: 8px;
-          font-size: 13px; font-weight: 500;
-        }
-
-        /* 다크 테마 오버라이드 */
-        :global([data-theme="dark"]) .lp_plan_free {
-          background: #334155; color: #94a3b8; border-color: #475569;
-        }
-        :global([data-theme="dark"]) .lp_plan_pro {
-          background: #1e3a5f; color: #93c5fd; border-color: #2563eb;
-        }
-        :global([data-theme="dark"]) .lp_plan_enterprise {
-          background: #2e1065; color: #c4b5fd; border-color: #7c3aed;
-        }
-        :global([data-theme="dark"]) .lp_active_badge {
-          background: #065f46; color: #a7f3d0;
-        }
-        :global([data-theme="dark"]) .lp_grace_badge {
-          background: #78350f; color: #fcd34d;
-        }
-        :global([data-theme="dark"]) .lp_upgrade_box {
-          background: linear-gradient(135deg, #1e2a4a 0%, #1e1a3a 100%);
-          border-color: #3730a3;
-        }
-        :global([data-theme="dark"]) .lp_upgrade_title { color: #93c5fd; }
-        :global([data-theme="dark"]) .lp_upgrade_subtitle { color: #94a3b8; }
-        :global([data-theme="dark"]) .lp_price_card {
-          border-color: #3730a3; background: #1e1b4b;
-        }
-        :global([data-theme="dark"]) .lp_price_card.selected {
-          border-color: #818cf8; background: #1e1b4b;
-          box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.2);
-        }
-        :global([data-theme="dark"]) .lp_price_card:hover { border-color: #6366f1; }
-        :global([data-theme="dark"]) .lp_price_amount { color: #e0e7ff; }
-        :global([data-theme="dark"]) .lp_price_period { color: #94a3b8; }
-        :global([data-theme="dark"]) .lp_discount_tag {
-          background: #065f46; color: #a7f3d0; border-color: #065f46;
-        }
-        :global([data-theme="dark"]) .lp_polling_notice {
-          background: rgba(129, 140, 248, 0.1); color: #94a3b8;
-        }
-        :global([data-theme="dark"]) .lp_feature_item.available {
-          border-color: #065f46; background: #022c22;
-        }
-        :global([data-theme="dark"]) .lp_plan_tag_pro {
-          background: #1e3a5f; color: #93c5fd; border-color: #2563eb;
-        }
-        :global([data-theme="dark"]) .lp_plan_tag_enterprise {
-          background: #2e1065; color: #c4b5fd; border-color: #7c3aed;
-        }
-        :global([data-theme="dark"]) .lp_grace_notice {
-          background: #451a03; color: #fcd34d; border-color: #92400e;
-        }
-        :global([data-theme="dark"]) .lp_confirm_box {
-          background: #451a1a; border-color: #7f1d1d;
-        }
-        :global([data-theme="dark"]) .lp_confirm_text { color: #fca5a5; }
-        :global([data-theme="dark"]) .lp_success {
-          background: #022c22; color: #a7f3d0; border-color: #065f46;
-        }
-      `}</style>
     </div>
   );
 }

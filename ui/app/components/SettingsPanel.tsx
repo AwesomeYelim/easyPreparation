@@ -40,7 +40,6 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [tab, setTab] = useState<Tab>("general");
   const currentVersion = useCurrentVersion();
 
-  // 기념주일 탭 데이터
   const [thumbConfig, setThumbConfig] = useState<ThumbnailConfig | null>(null);
 
   useEffect(() => {
@@ -88,41 +87,51 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   if (!open) return null;
 
   return (
-    <div className="settings_overlay" onClick={onClose}>
-      <div className="settings_panel" onClick={(e) => e.stopPropagation()}>
-        <div className="settings_header">
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <h3>설정</h3>
+    <div
+      className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-[var(--surface-elevated)] rounded-2xl w-[480px] max-w-[90vw] max-h-[85vh] overflow-y-auto shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* header */}
+        <div className="flex justify-between items-center px-6 pt-5 pb-3">
+          <div className="flex flex-col gap-0.5">
+            <h3 className="m-0 text-lg font-bold text-[var(--text-primary)]">설정</h3>
             {currentVersion && (
-              <span style={{
-                fontSize: 11,
-                color: "var(--text-muted)",
-                fontFamily: "monospace",
-                letterSpacing: "0.3px",
-              }}>
+              <span className="text-[11px] text-[var(--text-muted)] font-mono tracking-[0.3px]">
                 v{currentVersion}
               </span>
             )}
           </div>
-          <button className="settings_close" onClick={onClose}>&times;</button>
-        </div>
-
-        <div className="settings_tabs">
           <button
-            className={`settings_tab ${tab === "general" ? "active" : ""}`}
-            onClick={() => setTab("general")}
+            className="bg-transparent border-none text-2xl cursor-pointer text-[var(--text-secondary)] leading-none"
+            onClick={onClose}
           >
-            일반
-          </button>
-          <button
-            className={`settings_tab ${tab === "special" ? "active" : ""}`}
-            onClick={() => setTab("special")}
-          >
-            기념주일
+            &times;
           </button>
         </div>
 
-        <div className="settings_body">
+        {/* tabs */}
+        <div className="flex gap-0 px-6 border-b border-[var(--border)]">
+          {(["general", "special"] as Tab[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-4 py-2.5 text-xs font-medium bg-transparent border-none border-b-2 cursor-pointer transition-all ${
+                tab === t
+                  ? "text-[var(--accent)] border-b-[var(--accent)] font-semibold"
+                  : "text-[var(--text-secondary)] border-b-transparent hover:text-[var(--text-primary)]"
+              }`}
+            >
+              {t === "general" ? "일반" : "기념주일"}
+            </button>
+          ))}
+        </div>
+
+        {/* body */}
+        <div className="px-6 py-5 flex flex-col gap-4 min-h-[200px]">
           {tab === "general" && (
             <GeneralTab
               local={local}
@@ -135,75 +144,32 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           )}
         </div>
 
-        {error && <div className="settings_error">{error}</div>}
+        {/* error */}
+        {error && (
+          <div className="mx-6 px-3 py-2 bg-[var(--error-bg)] text-[var(--error)] border border-[var(--error-border)] rounded-lg text-xs">
+            {error}
+          </div>
+        )}
 
-        <div className="settings_footer">
-          <button className="settings_cancel_btn" onClick={onClose}>취소</button>
-          <button className="settings_save_btn" onClick={handleSave} disabled={saving}>
+        {/* footer */}
+        <div className="flex justify-end gap-2 px-6 pb-5 pt-4 border-t border-[var(--border)]">
+          <button
+            className="px-5 py-2 text-xs bg-[var(--surface-hover)] border border-[var(--border-input)] rounded-xl cursor-pointer"
+            onClick={onClose}
+          >
+            취소
+          </button>
+          <button
+            className="px-5 py-2 text-xs font-semibold bg-[var(--accent)] text-[var(--surface-elevated)] border-none rounded-xl cursor-pointer hover:bg-[var(--accent-hover)] disabled:bg-[var(--text-muted)]"
+            onClick={handleSave}
+            disabled={saving}
+          >
             {saving ? "저장 중..." : "저장"}
           </button>
         </div>
       </div>
 
       <SchedulePanel open={scheduleOpen} onClose={() => setScheduleOpen(false)} />
-
-      <style jsx>{`
-        .settings_overlay {
-          position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-          background: rgba(0,0,0,0.5);
-          display: flex; align-items: center; justify-content: center;
-          z-index: 11000;
-        }
-        .settings_panel {
-          background: var(--surface-elevated); border-radius: 16px;
-          width: 480px; max-width: 90vw; max-height: 85vh;
-          overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-        }
-        .settings_header {
-          display: flex; justify-content: space-between; align-items: center;
-          padding: 20px 24px 12px;
-        }
-        .settings_header h3 { margin: 0; font-size: 18px; font-weight: 700; color: var(--text-primary); }
-        .settings_close {
-          background: none; border: none; font-size: 24px;
-          cursor: pointer; color: var(--text-secondary); line-height: 1;
-        }
-        .settings_tabs {
-          display: flex; gap: 0; padding: 0 24px; border-bottom: 1px solid var(--border);
-        }
-        .settings_tab {
-          padding: 10px 16px; font-size: 13px; font-weight: 500;
-          color: var(--text-secondary); background: none; border: none;
-          border-bottom: 2px solid transparent; cursor: pointer;
-          transition: all 0.15s;
-        }
-        .settings_tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
-        .settings_tab:hover { color: var(--text-primary); }
-        .settings_body {
-          padding: 20px 24px; display: flex; flex-direction: column; gap: 16px;
-          min-height: 200px;
-        }
-        .settings_footer {
-          display: flex; justify-content: flex-end; gap: 8px;
-          padding: 16px 24px 20px; border-top: 1px solid var(--border);
-        }
-        .settings_cancel_btn {
-          padding: 8px 20px; font-size: 13px; background: var(--surface-hover);
-          border: 1px solid var(--border-input); border-radius: 8px; cursor: pointer;
-        }
-        .settings_save_btn {
-          padding: 8px 20px; font-size: 13px; font-weight: 600;
-          background: var(--accent); color: var(--surface-elevated); border: none;
-          border-radius: 8px; cursor: pointer;
-        }
-        .settings_save_btn:hover { background: var(--accent-hover); }
-        .settings_save_btn:disabled { background: var(--text-muted); }
-        .settings_error {
-          margin: 0 24px; padding: 8px 12px;
-          background: var(--error-bg); color: var(--error); border-radius: 8px;
-          font-size: 13px; border: 1px solid var(--error-border);
-        }
-      `}</style>
     </div>
   );
 }
@@ -220,11 +186,19 @@ function GeneralTab({
 }) {
   const hasScheduler = useFeature("auto_scheduler");
 
+  const rowClass = "flex justify-between items-center gap-3";
+  const labelClass = "text-sm font-medium text-[var(--text-primary)]";
+  const inputClass =
+    "px-3 py-1.5 border border-[var(--border-input)] rounded-lg text-xs bg-[var(--surface-input)] min-w-[140px]";
+  const numberInputClass =
+    "px-3 py-1.5 border border-[var(--border-input)] rounded-lg text-xs bg-[var(--surface-input)] w-20";
+
   return (
     <>
-      <label className="s_row">
-        <span>선호 성경 번역</span>
+      <label className={rowClass}>
+        <span className={labelClass}>선호 성경 번역</span>
         <select
+          className={inputClass}
           value={local.preferred_bible_version}
           onChange={(e) => setLocal({ ...local, preferred_bible_version: Number(e.target.value) })}
         >
@@ -237,70 +211,73 @@ function GeneralTab({
           <option value={7}>우리말성경</option>
         </select>
       </label>
-      <label className="s_row">
-        <span>테마</span>
-        <select value={local.theme} onChange={(e) => setLocal({ ...local, theme: e.target.value })}>
+      <label className={rowClass}>
+        <span className={labelClass}>테마</span>
+        <select
+          className={inputClass}
+          value={local.theme}
+          onChange={(e) => setLocal({ ...local, theme: e.target.value })}
+        >
           <option value="light">라이트</option>
           <option value="dark">다크</option>
         </select>
       </label>
-      <label className="s_row">
-        <span>본문 폰트 크기</span>
-        <input type="number" min={12} max={24} value={local.font_size}
-          onChange={(e) => setLocal({ ...local, font_size: Number(e.target.value) })} />
+      <label className={rowClass}>
+        <span className={labelClass}>본문 폰트 크기</span>
+        <input
+          type="number"
+          min={12}
+          max={24}
+          className={numberInputClass}
+          value={local.font_size}
+          onChange={(e) => setLocal({ ...local, font_size: Number(e.target.value) })}
+        />
       </label>
-      <label className="s_row">
-        <span>기본 BPM</span>
-        <input type="number" min={40} max={200} value={local.default_bpm}
-          onChange={(e) => setLocal({ ...local, default_bpm: Number(e.target.value) })} />
+      <label className={rowClass}>
+        <span className={labelClass}>기본 BPM</span>
+        <input
+          type="number"
+          min={40}
+          max={200}
+          className={numberInputClass}
+          value={local.default_bpm}
+          onChange={(e) => setLocal({ ...local, default_bpm: Number(e.target.value) })}
+        />
       </label>
-      <label className="s_row">
-        <span>Display 레이아웃</span>
-        <select value={local.display_layout}
-          onChange={(e) => setLocal({ ...local, display_layout: e.target.value })}>
+      <label className={rowClass}>
+        <span className={labelClass}>Display 레이아웃</span>
+        <select
+          className={inputClass}
+          value={local.display_layout}
+          onChange={(e) => setLocal({ ...local, display_layout: e.target.value })}
+        >
           <option value="default">기본</option>
           <option value="wide">와이드</option>
           <option value="compact">컴팩트</option>
         </select>
       </label>
-      <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />
-      <div className="s_row">
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+
+      <div className="h-px bg-[var(--border)] my-1" />
+
+      <div className={rowClass}>
+        <span className="flex items-center gap-1.5 text-sm font-medium text-[var(--text-primary)]">
           스트리밍 스케줄
           {!hasScheduler && (
-            <span style={{
-              fontSize: 10, fontWeight: 700, padding: "1px 6px",
-              borderRadius: 8, background: "#7c3aed", color: "#fff",
-              letterSpacing: "0.3px",
-            }}>Pro</span>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-[#7c3aed] text-white tracking-[0.3px]">
+              Pro
+            </span>
           )}
         </span>
         <button
-          className="s_action_btn"
+          className={`px-4 py-1.5 text-xs font-medium bg-[var(--surface-hover)] border border-[var(--border-input)] rounded-lg cursor-pointer text-[var(--text-primary)] hover:bg-[var(--border)] ${
+            !hasScheduler ? "opacity-45 cursor-not-allowed" : ""
+          }`}
           onClick={onScheduleOpen}
           disabled={!hasScheduler}
-          style={!hasScheduler ? { opacity: 0.45, cursor: "not-allowed" } : undefined}
         >
           설정
         </button>
       </div>
-      <style jsx>{`
-        .s_row {
-          display: flex; justify-content: space-between; align-items: center; gap: 12px;
-        }
-        .s_row > span { font-size: 14px; color: var(--text-primary); font-weight: 500; }
-        .s_row select, .s_row input {
-          padding: 6px 12px; border: 1px solid var(--border-input); border-radius: 8px;
-          font-size: 13px; background: var(--surface-input); min-width: 140px;
-        }
-        .s_row input[type="number"] { width: 80px; min-width: 80px; }
-        .s_action_btn {
-          padding: 6px 16px; font-size: 13px; font-weight: 500;
-          background: var(--surface-hover); border: 1px solid var(--border-input); border-radius: 8px;
-          cursor: pointer; color: var(--text-primary);
-        }
-        .s_action_btn:hover:not(:disabled) { background: var(--border); }
-      `}</style>
     </>
   );
 }
@@ -317,7 +294,14 @@ function ImageDropZone({
 
   return (
     <div
-      className={`dz ${dragging ? "drag" : ""} ${imageUrl ? "has" : ""}`}
+      className={`relative border-2 rounded-lg cursor-pointer flex items-center justify-center overflow-hidden transition-all ${
+        dragging
+          ? "border-[#3b82f6] bg-[#eff6ff] border-solid"
+          : imageUrl
+          ? "border-[var(--border)] border-solid"
+          : "border-[var(--border-input)] border-dashed bg-[var(--surface-input)] hover:border-[var(--text-muted)]"
+      }`}
+      style={{ height }}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); if (!dragging) setDragging(true); }}
       onDragLeave={(e) => { e.stopPropagation(); setDragging(false); }}
       onDrop={(e) => {
@@ -326,46 +310,36 @@ function ImageDropZone({
         if (file && file.type.startsWith("image/")) onFile(file);
       }}
       onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
-      style={{ height }}
     >
       {loading ? (
-        <span className="dz_text">업로드 중...</span>
+        <span className="text-xs text-[var(--text-muted)] pointer-events-none text-center px-3">
+          업로드 중...
+        </span>
       ) : imageUrl ? (
         <>
-          <img src={imageUrl} alt="" className="dz_img" />
+          <img src={imageUrl} alt="" className="w-full h-full object-cover" />
           {onClear && (
-            <button className="dz_clear"
+            <button
+              className="absolute top-1 right-1 w-[22px] h-[22px] rounded-full bg-black/55 text-white border-none text-sm leading-none cursor-pointer flex items-center justify-center hover:bg-[rgba(239,68,68,0.8)] transition-colors"
               onClick={(e) => { e.stopPropagation(); onClear(); }}
               title="기본 배경으로"
-            >&times;</button>
+            >
+              &times;
+            </button>
           )}
         </>
       ) : (
-        <span className="dz_text">{placeholder || "이미지를 드래그하거나 클릭"}</span>
+        <span className="text-xs text-[var(--text-muted)] pointer-events-none text-center px-3">
+          {placeholder || "이미지를 드래그하거나 클릭"}
+        </span>
       )}
-      <input ref={inputRef} type="file" accept="image/png,image/jpeg"
-        style={{ display: "none" }}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg"
+        className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ""; }}
       />
-      <style jsx>{`
-        .dz {
-          position: relative; border: 2px dashed var(--border-input); border-radius: 8px;
-          cursor: pointer; display: flex; align-items: center; justify-content: center;
-          overflow: hidden; transition: border-color 0.15s, background 0.15s; background: var(--surface-input);
-        }
-        .dz:hover { border-color: var(--text-muted); }
-        .dz.drag { border-color: #3b82f6; background: #eff6ff; }
-        .dz.has { border-style: solid; border-color: var(--border); }
-        .dz_text { font-size: 12px; color: var(--text-muted); pointer-events: none; text-align: center; padding: 0 12px; }
-        .dz_img { width: 100%; height: 100%; object-fit: cover; }
-        .dz_clear {
-          position: absolute; top: 4px; right: 4px; width: 22px; height: 22px;
-          border-radius: 50%; background: rgba(0,0,0,0.55); color: #fff;
-          border: none; font-size: 14px; line-height: 1; cursor: pointer;
-          display: flex; align-items: center; justify-content: center;
-        }
-        .dz_clear:hover { background: rgba(239,68,68,0.8); }
-      `}</style>
     </div>
   );
 }
@@ -458,45 +432,46 @@ function SpecialTab({
     finally { setGenerating(false); }
   };
 
+  const inputClass = "px-2 py-1 border border-[var(--border-input)] rounded-md text-xs bg-[var(--surface-elevated)]";
+
   return (
     <>
-      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>기본 배경 이미지</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+      <div className="text-xs font-semibold text-[var(--text-primary)]">기본 배경 이미지</div>
+      <div className="grid grid-cols-2 gap-2">
         {Object.entries(WORSHIP_LABELS).map(([type, label]) => {
           const theme = thumbConfig.defaults[type];
           const hasBg = !!theme?.background;
           return (
-            <div key={type} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 12, color: "var(--text-primary)", fontWeight: 500 }}>{label}</span>
-                <span style={{
-                  fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 8,
-                  background: hasBg ? "#d1fae5" : "#fef3c7", color: hasBg ? "#059669" : "#d97706",
-                }}>{hasBg ? "설정됨" : "미설정"}</span>
+            <div key={type} className="flex flex-col gap-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-medium text-[var(--text-primary)]">{label}</span>
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-lg ${
+                  hasBg ? "bg-[#d1fae5] text-[#059669]" : "bg-[#fef3c7] text-[#d97706]"
+                }`}>
+                  {hasBg ? "설정됨" : "미설정"}
+                </span>
               </div>
               <ImageDropZone
                 imageUrl={hasBg ? apiClient.getThumbnailImageUrl(theme.background) : undefined}
                 loading={uploading === `default_${type}`}
                 onFile={(f) => handleDefaultBgUpload(type, f)}
-                height={60} placeholder="드래그 또는 클릭"
+                height={60}
+                placeholder="드래그 또는 클릭"
               />
             </div>
           );
         })}
       </div>
 
-      <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />
+      <div className="h-px bg-[var(--border)] my-1" />
 
-      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>기념 주일</div>
+      <div className="text-xs font-semibold text-[var(--text-primary)]">기념 주일</div>
       {thumbConfig.specials.length === 0 && (
-        <div style={{ fontSize: 13, color: "var(--text-muted)", padding: "4px 0" }}>등록된 기념 주일이 없습니다</div>
+        <div className="text-xs text-[var(--text-muted)] py-1">등록된 기념 주일이 없습니다</div>
       )}
       {thumbConfig.specials.map((s, i) => (
-        <div key={i} style={{
-          display: "flex", gap: 10, padding: "10px 12px",
-          background: "var(--surface-input)", borderRadius: 8, alignItems: "stretch",
-        }}>
-          <div style={{ width: 140, flexShrink: 0 }}>
+        <div key={i} className="flex gap-2.5 px-3 py-2.5 bg-[var(--surface-input)] rounded-lg items-stretch">
+          <div className="w-[140px] flex-shrink-0">
             <ImageDropZone
               imageUrl={s.background ? apiClient.getThumbnailImageUrl(s.background) : undefined}
               loading={uploading === `special_${i}`}
@@ -509,33 +484,34 @@ function SpecialTab({
                   return { ...prev, specials: updated };
                 });
               } : undefined}
-              height={80} placeholder="배경 드래그"
+              height={80}
+              placeholder="배경 드래그"
             />
           </div>
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 4 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>{s.label}</span>
-              <span style={{
-                fontSize: 10, fontWeight: 600, padding: "1px 7px", borderRadius: 8,
-                background: s.background ? "#dbeafe" : "var(--surface-hover)", color: s.background ? "#2563eb" : "var(--text-secondary)",
-              }}>{s.background ? "커스텀" : "기본 배경"}</span>
+          <div className="flex-1 flex flex-col justify-center gap-1">
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-medium text-[var(--text-primary)]">{s.label}</span>
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-lg ${
+                s.background ? "bg-[#dbeafe] text-[#2563eb]" : "bg-[var(--surface-hover)] text-[var(--text-secondary)]"
+              }`}>
+                {s.background ? "커스텀" : "기본 배경"}
+              </span>
             </div>
-            <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{s.date}</span>
+            <span className="text-xs text-[var(--text-secondary)]">{s.date}</span>
           </div>
-          <button onClick={() => removeSpecial(i)} style={{
-            background: "none", border: "none", fontSize: 18, color: "var(--text-muted)",
-            cursor: "pointer", alignSelf: "flex-start", lineHeight: 1, padding: 0,
-          }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#ef4444")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-muted)")}
-          >&times;</button>
+          <button
+            onClick={() => removeSpecial(i)}
+            className="bg-transparent border-none text-lg text-[var(--text-muted)] cursor-pointer self-start leading-none p-0 hover:text-[#ef4444] transition-colors"
+          >
+            &times;
+          </button>
         </div>
       ))}
 
-      <div style={{ height: 1, background: "var(--border)", margin: "2px 0" }} />
-      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>추가</div>
-      <div style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
-        <div style={{ width: 140, flexShrink: 0 }}>
+      <div className="h-px bg-[var(--border)] my-0.5" />
+      <div className="text-xs font-semibold text-[var(--text-primary)]">추가</div>
+      <div className="flex gap-2.5 items-stretch">
+        <div className="w-[140px] flex-shrink-0">
           <ImageDropZone
             imageUrl={newBgPreview || undefined}
             loading={uploading === "new"}
@@ -543,52 +519,76 @@ function SpecialTab({
             onClear={newBgPreview ? () => {
               setNewBgFile(null); URL.revokeObjectURL(newBgPreview); setNewBgPreview(null);
             } : undefined}
-            height={80} placeholder="배경 드래그 (선택)"
+            height={80}
+            placeholder="배경 드래그 (선택)"
           />
         </div>
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, justifyContent: "center" }}>
-          <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)}
-            style={{ padding: "5px 8px", border: "1px solid var(--border-input)", borderRadius: 6, fontSize: 13, background: "var(--surface-elevated)" }}
+        <div className="flex-1 flex flex-col gap-1.5 justify-center">
+          <input
+            type="date"
+            value={newDate}
+            onChange={(e) => setNewDate(e.target.value)}
+            className={inputClass}
           />
-          <div style={{ display: "flex", gap: 6 }}>
-            <input type="text" placeholder="이름 (예: 부활절 예배)" value={newLabel}
+          <div className="flex gap-1.5">
+            <input
+              type="text"
+              placeholder="이름 (예: 부활절 예배)"
+              value={newLabel}
               onChange={(e) => setNewLabel(e.target.value)}
-              style={{ flex: 1, padding: "5px 8px", border: "1px solid var(--border-input)", borderRadius: 6, fontSize: 13, background: "var(--surface-elevated)" }}
+              className={`${inputClass} flex-1`}
             />
-            <button onClick={addSpecial} disabled={!newDate || !newLabel || uploading === "new"}
-              style={{
-                padding: "5px 14px", fontSize: 13, fontWeight: 600,
-                background: "var(--accent)", color: "var(--surface-elevated)", border: "none",
-                borderRadius: 6, cursor: "pointer", whiteSpace: "nowrap",
-                opacity: !newDate || !newLabel ? 0.5 : 1,
-              }}
-            >{uploading === "new" ? "..." : "추가"}</button>
+            <button
+              onClick={addSpecial}
+              disabled={!newDate || !newLabel || uploading === "new"}
+              className={`px-3.5 py-1 text-xs font-semibold bg-[var(--accent)] text-[var(--surface-elevated)] border-none rounded-md cursor-pointer whitespace-nowrap transition-opacity ${
+                !newDate || !newLabel ? "opacity-50" : ""
+              }`}
+            >
+              {uploading === "new" ? "..." : "추가"}
+            </button>
           </div>
         </div>
       </div>
 
-      <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />
-      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>썸네일 미리보기</div>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <select value={previewType} onChange={(e) => setPreviewType(e.target.value)}
-          style={{ padding: "6px 10px", border: "1px solid var(--border-input)", borderRadius: 6, fontSize: 13, background: "var(--surface-input)" }}>
-          {Object.entries(WORSHIP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+      <div className="h-px bg-[var(--border)] my-1" />
+      <div className="text-xs font-semibold text-[var(--text-primary)]">썸네일 미리보기</div>
+      <div className="flex gap-2 items-center flex-wrap">
+        <select
+          value={previewType}
+          onChange={(e) => setPreviewType(e.target.value)}
+          className="px-2.5 py-1.5 border border-[var(--border-input)] rounded-md text-xs bg-[var(--surface-input)]"
+        >
+          {Object.entries(WORSHIP_LABELS).map(([k, v]) => (
+            <option key={k} value={k}>{v}</option>
+          ))}
         </select>
-        <input type="date" value={previewDate} onChange={(e) => setPreviewDate(e.target.value)}
-          style={{ padding: "5px 8px", border: "1px solid var(--border-input)", borderRadius: 6, fontSize: 13, background: "var(--surface-input)" }} />
-        <button onClick={handlePreview} disabled={generating} style={{
-          padding: "6px 14px", fontSize: 13, fontWeight: 600,
-          background: "var(--success)", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer",
-        }}>{generating ? "생성 중..." : "생성"}</button>
+        <input
+          type="date"
+          value={previewDate}
+          onChange={(e) => setPreviewDate(e.target.value)}
+          className="px-2 py-1 border border-[var(--border-input)] rounded-md text-xs bg-[var(--surface-input)]"
+        />
+        <button
+          onClick={handlePreview}
+          disabled={generating}
+          className="px-3.5 py-1.5 text-xs font-semibold bg-[var(--success)] text-white border-none rounded-md cursor-pointer"
+        >
+          {generating ? "생성 중..." : "생성"}
+        </button>
       </div>
       {previewSpecial && (
-        <div style={{ fontSize: 12, color: "#2563eb", background: "#eff6ff", padding: "6px 10px", borderRadius: 6, fontWeight: 500 }}>
+        <div className="text-xs text-[#2563eb] bg-[#eff6ff] px-2.5 py-1.5 rounded-md font-medium">
           기념주일 적용: {previewSpecial.label}{previewSpecial.background ? " (커스텀 배경)" : " (기본 배경)"}
         </div>
       )}
       {previewKey > 0 && (
-        <img key={previewKey} src={apiClient.getThumbnailPreviewUrl(previewType, previewDate)}
-          alt="썸네일 미리보기" style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)" }} />
+        <img
+          key={previewKey}
+          src={apiClient.getThumbnailPreviewUrl(previewType, previewDate)}
+          alt="썸네일 미리보기"
+          className="w-full rounded-lg border border-[var(--border)]"
+        />
       )}
     </>
   );

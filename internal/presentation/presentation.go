@@ -75,11 +75,16 @@ func New(size gofpdf.SizeType) PDF {
 
 func (pdf *PDF) CheckImgPlaced(path string, place float32) {
 	if _, err := os.Stat(path); err == nil {
+		imgType := "PNG"
+		ext := strings.ToLower(filepath.Ext(path))
+		if ext == ".jpg" || ext == ".jpeg" {
+			imgType = "JPG"
+		}
 		switch place {
 		case 0:
-			pdf.ImageOptions(path, 0, 0, pdf.Config.Width, pdf.Config.Height, false, gofpdf.ImageOptions{ImageType: "PNG"}, 0, "")
+			pdf.ImageOptions(path, 0, 0, pdf.Config.Width, pdf.Config.Height, false, gofpdf.ImageOptions{ImageType: imgType}, 0, "")
 		case 0.5:
-			pdf.ImageOptions(path, pdf.Config.Width/2, 0, pdf.Config.Width/2, pdf.Config.Height, false, gofpdf.ImageOptions{ImageType: "PNG"}, 0, "")
+			pdf.ImageOptions(path, pdf.Config.Width/2, 0, pdf.Config.Width/2, pdf.Config.Height, false, gofpdf.ImageOptions{ImageType: imgType}, 0, "")
 		default:
 			log.Print("해당되지 않은 값")
 		}
@@ -201,7 +206,7 @@ func (pdf *PDF) TextSpacingFormat(text string, targetWidth, x, y float64) {
 }
 
 func (pdf *PDF) ForComposeBuiltin(elements []types.WorshipInfo) (ym float64) {
-	// figma 디자인 기준
+	// 디자인 기준
 	var xm float64 = 95
 	ym = 202
 	var line float64 = 272
@@ -461,7 +466,7 @@ func (pdf *PDF) setOutDirFiles(category, target string) {
 	case "responsive_reading":
 		splitNum = strings.Split(target, ".")[0]
 	}
-	pdfDir := filepath.Join(pdf.FigmaInfo.ExecPath, "data", "pdf")
+	pdfDir := filepath.Join(pdf.ExecPath, "data", "pdf")
 	_ = utils.CheckDirIs(pdfDir)
 
 	// 고정 디렉토리에 PDF 캐시 (data/pdf/hymn/, data/pdf/responsive_reading/)

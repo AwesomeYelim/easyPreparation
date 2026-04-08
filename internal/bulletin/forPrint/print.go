@@ -27,8 +27,6 @@ func (pi PdfInfo) Create() {
 	outputDir := filepath.Join(pi.ExecPath, config.OutputPath.Bulletin, "print", "tmp")
 	_ = utils.CheckDirIs(outputDir)
 
-	pi.FigmaInfo.GetFigmaImage(outputDir, "forPrint")
-
 	allFiles, err := os.ReadDir(outputDir)
 	if err != nil {
 		fmt.Printf("[forPrint] 배경 이미지 디렉토리 읽기 실패: %v\n", err)

@@ -30,26 +30,33 @@ type Release struct {
 }
 
 // FindAsset — 현재 실행 플랫폼에 맞는 바이너리 Asset을 반환합니다.
-// 플랫폼 매핑:
-//
-//	darwin/arm64  → easyPreparation_darwin_arm64
-//	darwin/amd64  → easyPreparation_darwin_amd64
-//	linux/amd64   → easyPreparation_linux_amd64
-//	windows/amd64 → easyPreparation_windows_amd64.exe
+// server 바이너리를 우선 탐색하고, 없으면 desktop → legacy 이름 순으로 fallback합니다.
 func (r *Release) FindAsset() *ReleaseAsset {
 	goos := runtime.GOOS
 	goarch := runtime.GOARCH
 
-	var targetName string
+	// 후보 이름 목록 (우선순위순)
+	var candidates []string
 	if goos == "windows" {
-		targetName = fmt.Sprintf("easyPreparation_%s_%s.exe", goos, goarch)
+		candidates = []string{
+			fmt.Sprintf("easyPreparation_server_%s_%s.exe", goos, goarch),
+			fmt.Sprintf("easyPreparation_desktop_%s_%s_setup.exe", goos, goarch),
+			fmt.Sprintf("easyPreparation_%s_%s.exe", goos, goarch), // legacy
+		}
 	} else {
-		targetName = fmt.Sprintf("easyPreparation_%s_%s", goos, goarch)
+		candidates = []string{
+			fmt.Sprintf("easyPreparation_server_%s_%s", goos, goarch),
+			fmt.Sprintf("easyPreparation_desktop_%s_%s.zip", goos, goarch),
+			fmt.Sprintf("easyPreparation_desktop_%s_%s", goos, goarch),
+			fmt.Sprintf("easyPreparation_%s_%s", goos, goarch), // legacy
+		}
 	}
 
-	for i := range r.Assets {
-		if r.Assets[i].Name == targetName {
-			return &r.Assets[i]
+	for _, name := range candidates {
+		for i := range r.Assets {
+			if r.Assets[i].Name == name {
+				return &r.Assets[i]
+			}
 		}
 	}
 	return nil

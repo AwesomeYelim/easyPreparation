@@ -16,7 +16,7 @@ Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF 생성, Cloudflare R
 | `internal/presentation` | gofpdf 래퍼 (NFC 정규화 포함) |
 | `internal/assets` | PDF 에셋 다운로더 — Cloudflare R2 + 로컬 캐시 |
 | `internal/googleCloud` | Google Drive 파일 다운로드 (deprecated — assets 패키지로 대체) |
-| `internal/handlers` | HTTP + WebSocket + Display + 모바일 리모컨 핸들러 |
+| `internal/handlers` | HTTP + WebSocket + Display + OBS 소스 + 템플릿 + 모바일 리모컨 핸들러 |
 | `internal/obs` | OBS WebSocket 매니저 (goobs) |
 | `internal/types` | 공유 데이터 타입 |
 | `internal/utils` | 유틸리티 함수 |
@@ -32,6 +32,51 @@ Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF 생성, Cloudflare R
 - `config/main_worship.json` — 주예배 순서 데이터
 - `config/obs.json` — OBS WebSocket 씬 매핑 (없으면 OBS 비활성)
 - `config/license.json` — 라이선스 서버 URL + HMAC 시크릿 (없으면 오프라인 모드)
+
+---
+
+## 프론트엔드 아키텍처
+
+### 스타일링: Tailwind CSS v3 + SCSS 하이브리드
+
+- `ui/tailwind.config.ts` — 커스텀 디자인 토큰 (Stitch 디자인 시스템)
+- `ui/postcss.config.mjs` — Tailwind PostCSS 플러그인
+- `ui/app/globals.css` — Tailwind directives + Inter 폰트 import + CSS 변수
+
+**디자인 시스템 (Stitch)**:
+| 토큰 | 값 |
+|------|-----|
+| 폰트 | Inter (Google Fonts) |
+| 아이콘 | Material Symbols Outlined |
+| 액센트 | electric-blue `#3B82F6` |
+| 배경 | surface `#F8FAFC` |
+| 텍스트 | navy-dark `#020617` |
+| 카드 | `bg-white rounded-2xl border border-slate-100 shadow-sm` |
+
+### 레이아웃 구조
+
+```
+AppShell (CSS Grid)
+├── LeftSidebar (w-64, 좌측 수직 네비)
+│   ├── EP 로고
+│   ├── 메뉴 (주보/찬양/성경)
+│   └── 예배 화면 토글 + 설정
+├── TopHeader (상단 페이지 헤더)
+│   └── 교회명 + 업데이트 배너
+└── main (콘텐츠 영역)
+    └── { children } + GlobalDisplayPanel(조건부)
+```
+
+### 주요 레이아웃 컴포넌트
+
+| 컴포넌트 | 경로 | 역할 |
+|----------|------|------|
+| `AppShell.tsx` | `ui/app/components/` | CSS Grid 루트 레이아웃 셸 |
+| `LeftSidebar.tsx` | `ui/app/components/` | EP 로고 + 세로 네비게이션 + Display 토글 |
+| `TopHeader.tsx` | `ui/app/components/` | 페이지별 컨텍스트 헤더 |
+| `ConfirmModal.tsx` | `ui/app/components/` | 공용 확인/경고 모달 |
+| `OBSSourcePanel.tsx` | `ui/app/components/` | OBS 소스 관리 패널 |
+| `TemplatePanel.tsx` | `ui/app/components/` | 예배 템플릿 관리 패널 |
 
 ---
 
@@ -258,7 +303,8 @@ PYTHONUTF8=1 tools/.venv/bin/python tools/output/_tmp.py && rm tools/output/_tmp
 - R2/로컬 캐시 파일명은 NFC 정규화 적용 (기존 Google Drive NFD 문제 해소)
 - Ghostscript 경로: `/opt/homebrew/bin/gs` 직접 지정 (fallback: `gs`). `bash -c "gs ..."` 사용 금지
 - `config/*`, `output/display/` 는 `.gitignore`에 포함됨
-- Figma PNG 캐시가 있으면 API 호출 스킵 — 새 이미지 필요 시 tmp 폴더 비우기
+- `internal/figma/` 패키지 삭제됨 — 항목별 커스텀 배경 이미지는 `output/bulletin/presentation/tmp/` 수동 관리
+- Tailwind 커스텀 색상/간격 변경 시 `ui/tailwind.config.ts`에서 수정
 
 ---
 

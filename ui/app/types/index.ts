@@ -30,10 +30,6 @@ export type UserChurchInfo = {
   title: string;
   content: string;
   email: string;
-  figmaInfo: {
-    key: string;
-    token: string;
-  };
 };
 
 export type Hymn = {
@@ -106,6 +102,22 @@ export type ThumbnailConfig = {
 
 export type YouTubeStatus = {
   connected: boolean;
+};
+
+export type OBSSourceItem = {
+  sceneItemId: number;
+  sourceName: string;
+  inputKind: string;
+  enabled: boolean;
+  positionX: number;
+  positionY: number;
+  scaleX: number;
+  scaleY: number;
+};
+
+export type OBSDevice = {
+  name: string;
+  value: string;
 };
 
 export type LicensePlan = 'free' | 'pro' | 'enterprise';

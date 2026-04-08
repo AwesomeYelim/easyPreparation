@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 	"sync"
 	"time"
 
 	"github.com/andreykaipov/goobs"
 	"github.com/andreykaipov/goobs/api/requests/config"
+	"github.com/andreykaipov/goobs/api/requests/inputs"
+	"github.com/andreykaipov/goobs/api/requests/sceneitems"
 	"github.com/andreykaipov/goobs/api/requests/scenes"
 	"github.com/andreykaipov/goobs/api/requests/transitions"
 	"github.com/andreykaipov/goobs/api/typedefs"
@@ -373,6 +376,239 @@ func (m *Manager) Disconnect() {
 	}
 	m.connected = false
 	log.Println("[obs] 연결 해제")
+}
+
+// SceneItemInfo — 씬 내 소스 정보
+type SceneItemInfo struct {
+	SceneItemID int     `json:"sceneItemId"`
+	SourceName  string  `json:"sourceName"`
+	InputKind   string  `json:"inputKind"`
+	Enabled     bool    `json:"enabled"`
+	PositionX   float64 `json:"positionX"`
+	PositionY   float64 `json:"positionY"`
+	ScaleX      float64 `json:"scaleX"`
+	ScaleY      float64 `json:"scaleY"`
+}
+
+// DeviceInfo — 카메라 디바이스 정보
+type DeviceInfo struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+// getClient — 연결 상태 확인 + client 반환 헬퍼
+func (m *Manager) getClient() (*goobs.Client, error) {
+	if m == nil || !m.enabled {
+		return nil, fmt.Errorf("OBS 미연결")
+	}
+	m.mu.RLock()
+	client := m.client
+	connected := m.connected
+	m.mu.RUnlock()
+	if !connected || client == nil {
+		return nil, fmt.Errorf("OBS 미연결")
+	}
+	return client, nil
+}
+
+// GetScenes — 씬 목록 조회
+func (m *Manager) GetScenes() ([]string, error) {
+	client, err := m.getClient()
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Scenes.GetSceneList(scenes.NewGetSceneListParams())
+	if err != nil {
+		return nil, fmt.Errorf("씬 목록 조회 실패: %w", err)
+	}
+	var names []string
+	for _, s := range resp.Scenes {
+		names = append(names, s.SceneName)
+	}
+	return names, nil
+}
+
+// GetSceneItems — 씬 내 소스 목록 조회
+func (m *Manager) GetSceneItems(sceneName string) ([]SceneItemInfo, error) {
+	client, err := m.getClient()
+	if err != nil {
+		return nil, err
+	}
+	params := sceneitems.NewGetSceneItemListParams().WithSceneName(sceneName)
+	resp, err := client.SceneItems.GetSceneItemList(params)
+	if err != nil {
+		return nil, fmt.Errorf("소스 목록 조회 실패: %w", err)
+	}
+	var items []SceneItemInfo
+	for _, si := range resp.SceneItems {
+		items = append(items, SceneItemInfo{
+			SceneItemID: si.SceneItemID,
+			SourceName:  si.SourceName,
+			InputKind:   si.InputKind,
+			Enabled:     si.SceneItemEnabled,
+			PositionX:   si.SceneItemTransform.PositionX,
+			PositionY:   si.SceneItemTransform.PositionY,
+			ScaleX:      si.SceneItemTransform.ScaleX,
+			ScaleY:      si.SceneItemTransform.ScaleY,
+		})
+	}
+	return items, nil
+}
+
+// CreateImageSource — image_source 생성, sceneItemId 반환
+func (m *Manager) CreateImageSource(sceneName, name, filePath string, enabled bool) (int, error) {
+	client, err := m.getClient()
+	if err != nil {
+		return 0, err
+	}
+	params := inputs.NewCreateInputParams().
+		WithInputKind("image_source").
+		WithInputName(name).
+		WithSceneName(sceneName).
+		WithSceneItemEnabled(enabled).
+		WithInputSettings(map[string]any{"file": filePath})
+	resp, err := client.Inputs.CreateInput(params)
+	if err != nil {
+		return 0, fmt.Errorf("이미지 소스 생성 실패: %w", err)
+	}
+	log.Printf("[obs] 이미지 소스 생성: %s (sceneItemId=%d)", name, resp.SceneItemId)
+	return resp.SceneItemId, nil
+}
+
+// CreateCameraSource — 카메라 소스 생성 (macOS: av_capture_input_v2, Windows: dshow_input)
+func (m *Manager) CreateCameraSource(sceneName, name, deviceID string) (int, error) {
+	client, err := m.getClient()
+	if err != nil {
+		return 0, err
+	}
+	inputKind := "av_capture_input_v2"
+	settingsKey := "device"
+	if runtime.GOOS == "windows" {
+		inputKind = "dshow_input"
+		settingsKey = "video_device_id"
+	}
+	params := inputs.NewCreateInputParams().
+		WithInputKind(inputKind).
+		WithInputName(name).
+		WithSceneName(sceneName).
+		WithSceneItemEnabled(true).
+		WithInputSettings(map[string]any{settingsKey: deviceID})
+	resp, err := client.Inputs.CreateInput(params)
+	if err != nil {
+		return 0, fmt.Errorf("카메라 소스 생성 실패: %w", err)
+	}
+	log.Printf("[obs] 카메라 소스 생성: %s (device=%s, sceneItemId=%d)", name, deviceID, resp.SceneItemId)
+	return resp.SceneItemId, nil
+}
+
+// SetItemTransform — 소스 위치/크기 변경
+func (m *Manager) SetItemTransform(sceneName string, itemID int, x, y, scaleX, scaleY float64) error {
+	client, err := m.getClient()
+	if err != nil {
+		return err
+	}
+	transform := &typedefs.SceneItemTransform{
+		PositionX: x,
+		PositionY: y,
+		ScaleX:    scaleX,
+		ScaleY:    scaleY,
+	}
+	params := sceneitems.NewSetSceneItemTransformParams().
+		WithSceneItemId(itemID).
+		WithSceneName(sceneName).
+		WithSceneItemTransform(transform)
+	_, err = client.SceneItems.SetSceneItemTransform(params)
+	if err != nil {
+		return fmt.Errorf("소스 트랜스폼 설정 실패: %w", err)
+	}
+	return nil
+}
+
+// SetItemEnabled — 소스 표시/숨김
+func (m *Manager) SetItemEnabled(sceneName string, itemID int, enabled bool) error {
+	client, err := m.getClient()
+	if err != nil {
+		return err
+	}
+	params := sceneitems.NewSetSceneItemEnabledParams().
+		WithSceneItemId(itemID).
+		WithSceneName(sceneName).
+		WithSceneItemEnabled(enabled)
+	_, err = client.SceneItems.SetSceneItemEnabled(params)
+	if err != nil {
+		return fmt.Errorf("소스 표시 설정 실패: %w", err)
+	}
+	return nil
+}
+
+// RemoveInput — 소스 제거 (모든 씬에서 자동 제거)
+func (m *Manager) RemoveInput(name string) error {
+	client, err := m.getClient()
+	if err != nil {
+		return err
+	}
+	params := inputs.NewRemoveInputParams().WithInputName(name)
+	_, err = client.Inputs.RemoveInput(params)
+	if err != nil {
+		return fmt.Errorf("소스 제거 실패: %w", err)
+	}
+	log.Printf("[obs] 소스 제거: %s", name)
+	return nil
+}
+
+// ListCameraDevices — 임시 입력 생성 → 디바이스 목록 → 정리
+func (m *Manager) ListCameraDevices() ([]DeviceInfo, error) {
+	client, err := m.getClient()
+	if err != nil {
+		return nil, err
+	}
+
+	inputKind := "av_capture_input_v2"
+	propertyName := "device"
+	if runtime.GOOS == "windows" {
+		inputKind = "dshow_input"
+		propertyName = "video_device_id"
+	}
+
+	tmpName := "_ep_tmp_cam_probe"
+	// 임시 입력 생성
+	createParams := inputs.NewCreateInputParams().
+		WithInputKind(inputKind).
+		WithInputName(tmpName).
+		WithSceneName(m.currentScene).
+		WithSceneItemEnabled(false)
+	_, err = client.Inputs.CreateInput(createParams)
+	if err != nil {
+		return nil, fmt.Errorf("카메라 탐지용 임시 입력 생성 실패: %w", err)
+	}
+
+	// 반드시 정리
+	defer func() {
+		rmParams := inputs.NewRemoveInputParams().WithInputName(tmpName)
+		client.Inputs.RemoveInput(rmParams)
+	}()
+
+	// 디바이스 목록 조회
+	propParams := inputs.NewGetInputPropertiesListPropertyItemsParams().
+		WithInputName(tmpName).
+		WithPropertyName(propertyName)
+	resp, err := client.Inputs.GetInputPropertiesListPropertyItems(propParams)
+	if err != nil {
+		return nil, fmt.Errorf("카메라 디바이스 목록 조회 실패: %w", err)
+	}
+
+	var devices []DeviceInfo
+	for _, item := range resp.PropertyItems {
+		val, _ := item.ItemValue.(string)
+		if val == "" {
+			continue
+		}
+		devices = append(devices, DeviceInfo{
+			Name:  item.ItemName,
+			Value: val,
+		})
+	}
+	return devices, nil
 }
 
 // resolveScene — title → OBS 씬 이름 매핑 (매핑 없으면 false)

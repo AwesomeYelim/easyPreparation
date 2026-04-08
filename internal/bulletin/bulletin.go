@@ -6,7 +6,6 @@ import (
 	"easyPreparation_1.0/internal/bulletin/forPrint"
 	"easyPreparation_1.0/internal/date"
 	"easyPreparation_1.0/internal/extract"
-	figmapkg "easyPreparation_1.0/internal/figma"
 	"easyPreparation_1.0/internal/handlers"
 	"easyPreparation_1.0/internal/path"
 	"easyPreparation_1.0/internal/quote"
@@ -18,25 +17,6 @@ import (
 func CreateBulletin(data map[string]interface{}) {
 	execPath := path.ExecutePath("easyPreparation")
 	handlers.BroadcastProgress("Start", 1, "Start Data Process !!")
-
-	// figmaInfo 파싱
-	var key, token string
-	if rawFigma, ok := data["figmaInfo"]; ok {
-		if figmaMap, ok := rawFigma.(map[string]interface{}); ok {
-			if k, ok := figmaMap["key"].(string); ok {
-				key = k
-			}
-			if t, ok := figmaMap["token"].(string); ok {
-				token = t
-			}
-		}
-	}
-
-	figmaInfo, err := figmapkg.New(&token, &key, execPath)
-	if err != nil {
-		handlers.BroadcastProgress("Figma Init Error", -1, fmt.Sprintf("Figma 초기화 실패: %s", err))
-		return
-	}
 
 	// target
 	target, ok := data["target"].(string)
@@ -74,7 +54,6 @@ func CreateBulletin(data map[string]interface{}) {
 	outputFilename := fmt.Sprintf("%s_%s", yearMonth, weekFormatted)
 	outputFilenameExe := fmt.Sprintf("%s.pdf", outputFilename)
 	PdfInfo := &define.PdfInfo{
-		FigmaInfo:      figmaInfo,
 		ExecPath:       execPath,
 		Target:         target,
 		OutputFilename: outputFilenameExe,

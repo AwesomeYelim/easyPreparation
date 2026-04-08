@@ -47,10 +47,6 @@ export const userInfoState = atom<UserChurchInfo>({
     title: "",
     content: "",
     email: "",
-    figmaInfo: {
-      key: "",
-      token: "",
-    },
   },
 });
 

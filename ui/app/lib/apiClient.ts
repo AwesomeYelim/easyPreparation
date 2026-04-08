@@ -1,9 +1,8 @@
-import { WorshipOrderItem, UserSettings, ScheduleConfig, ThumbnailConfig, LicenseStatus } from "@/types";
+import { WorshipOrderItem, UserSettings, ScheduleConfig, ThumbnailConfig, LicenseStatus, OBSSourceItem, OBSDevice } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
   || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8080');
 
-type FigmaInfo = { key: string; token: string };
 type SongItem = { title: string; lyrics: string };
 
 /** Display 창 참조 — 이미 열려있으면 reload 방지 */
@@ -30,7 +29,7 @@ export const apiClient = {
       body: JSON.stringify({ type, items }),
     }),
 
-  submitBulletin: (payload: { mark: string; targetInfo: WorshipOrderItem[]; target: string; figmaInfo: FigmaInfo; email?: string }) =>
+  submitBulletin: (payload: { mark: string; targetInfo: WorshipOrderItem[]; target: string; email?: string }) =>
     fetch(`${BASE_URL}/submit`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -44,7 +43,7 @@ export const apiClient = {
       body: JSON.stringify({ songs }),
     }),
 
-  submitLyrics: (payload: { figmaInfo: FigmaInfo; mark: string; songs: SongItem[]; email?: string }) =>
+  submitLyrics: (payload: { mark: string; songs: SongItem[]; email?: string }) =>
     fetch(`${BASE_URL}/submitLyrics`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -319,6 +318,27 @@ export const apiClient = {
     return res.json() as Promise<{ portalUrl: string }>;
   },
 
+  // 배경 템플릿 API
+  getTemplates: (category: string) =>
+    fetch(`${BASE_URL}/api/templates?category=${category}`)
+      .then((r) => r.json()) as Promise<{ files: { name: string; url: string; size: number }[] }>,
+
+  uploadTemplate: (file: File, category: string, name?: string) => {
+    const fd = new FormData();
+    fd.append("image", file);
+    fd.append("category", category);
+    if (name) fd.append("name", name);
+    return fetch(`${BASE_URL}/api/templates/upload`, { method: "POST", body: fd })
+      .then((r) => r.json()) as Promise<{ ok: boolean; name: string; url: string }>;
+  },
+
+  deleteTemplate: (category: string, filename: string) =>
+    fetch(`${BASE_URL}/api/templates/${category}/${encodeURIComponent(filename)}`, { method: "DELETE" })
+      .then((r) => r.json()) as Promise<{ ok: boolean }>,
+
+  getTemplateUrl: (category: string, filename: string) =>
+    `${BASE_URL}/api/templates/${category}/${encodeURIComponent(filename)}`,
+
   // YouTube API
   getYoutubeStatus: () =>
     fetch(`${BASE_URL}/api/youtube/status`).then((r) => r.json()),
@@ -331,4 +351,54 @@ export const apiClient = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ worshipType: worshipType || "main_worship" }),
     }).then((r) => r.json()),
+
+  // OBS 소스 관리 API
+  getOBSScenes: () =>
+    fetch(`${BASE_URL}/api/obs/scenes`).then((r) => r.json()) as Promise<{
+      connected: boolean; scenes: string[]; currentScene?: string; error?: string;
+    }>,
+
+  getOBSSources: (scene: string) =>
+    fetch(`${BASE_URL}/api/obs/sources?scene=${encodeURIComponent(scene)}`)
+      .then((r) => r.json()) as Promise<{ items: OBSSourceItem[]; error?: string }>,
+
+  uploadOBSLogo: (file: File) => {
+    const fd = new FormData();
+    fd.append("image", file);
+    return fetch(`${BASE_URL}/api/obs/logo/upload`, { method: "POST", body: fd })
+      .then((r) => r.json()) as Promise<{ ok: boolean; path?: string }>;
+  },
+
+  applyOBSLogo: (scene: string, position: string, scale: number, x?: number, y?: number) =>
+    fetch(`${BASE_URL}/api/obs/logo/apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scene, position, scale, x: x ?? 0, y: y ?? 0 }),
+    }).then((r) => r.json()) as Promise<{ ok: boolean; sceneItemId?: number; error?: string }>,
+
+  getOBSCameraDevices: () =>
+    fetch(`${BASE_URL}/api/obs/camera/devices`).then((r) => r.json()) as Promise<{
+      devices: OBSDevice[]; error?: string;
+    }>,
+
+  addOBSCamera: (scene: string, deviceId: string, inputName: string) =>
+    fetch(`${BASE_URL}/api/obs/camera/add`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scene, deviceId, inputName }),
+    }).then((r) => r.json()) as Promise<{ ok: boolean; sceneItemId?: number; error?: string }>,
+
+  toggleOBSSource: (scene: string, sceneItemId: number, enabled: boolean) =>
+    fetch(`${BASE_URL}/api/obs/sources/toggle`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scene, sceneItemId, enabled }),
+    }).then((r) => r.json()) as Promise<{ ok: boolean; error?: string }>,
+
+  removeOBSSource: (inputName: string) =>
+    fetch(`${BASE_URL}/api/obs/sources/remove`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ inputName }),
+    }).then((r) => r.json()) as Promise<{ ok: boolean; error?: string }>,
 };

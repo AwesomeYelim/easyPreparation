@@ -8,6 +8,8 @@ import SettingsPanel from "./SettingsPanel";
 import HistoryList from "./HistoryList";
 import YouTubePanel from "./YouTubePanel";
 import LicensePanel from "./LicensePanel";
+import TemplatePanel from "./TemplatePanel";
+import OBSSourcePanel from "./OBSSourcePanel";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -24,6 +26,8 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const [historyType, setHistoryType] = useState<string | undefined>();
   const [youtubeOpen, setYoutubeOpen] = useState(false);
   const [licenseOpen, setLicenseOpen] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const [obsSourceOpen, setObsSourceOpen] = useState(false);
 
   // 교회 정보 편집
   const [editingChurch, setEditingChurch] = useState(false);
@@ -84,20 +88,10 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
     }
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "6px 10px",
-    border: "1px solid rgba(255,255,255,0.4)",
-    borderRadius: "6px",
-    background: "rgba(255,255,255,0.15)",
-    color: "#fff",
-    fontSize: "13px",
-    outline: "none",
-    marginTop: "4px",
-  };
-
   const menuActions: { title: string; action?: () => void }[] = [
     { title: "설정", action: () => setSettingsOpen(true) },
+    { title: "배경 템플릿", action: () => setTemplateOpen(true) },
+    { title: "OBS 소스", action: () => setObsSourceOpen(true) },
     { title: "YouTube", action: () => setYoutubeOpen(true) },
     { title: "라이선스 정보", action: () => setLicenseOpen(true) },
     { title: "생성 내역", action: () => openHistory() },
@@ -107,140 +101,73 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
     <>
       {/* Background Overlay */}
       <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100vh",
-          backgroundColor: "rgba(0, 0, 0, 0.6)",
-          opacity: open ? 1 : 0,
-          visibility: open ? "visible" : "hidden",
-          transition: "opacity 0.3s ease, visibility 0.3s ease",
-          zIndex: 10499,
-        }}
+        className={`fixed inset-0 bg-black/60 z-[10499] transition-all duration-300 ${
+          open ? "opacity-100 visible" : "opacity-0 invisible"
+        }`}
         onClick={onClose}
       />
 
       {/* Sidebar */}
       <div
-        style={{
-          position: "fixed",
-          top: 0,
-          right: open ? 0 : "-320px",
-          width: "320px",
-          height: "100vh",
-          backgroundColor: "#8a8a8a",
-          padding: "20px",
-          boxShadow: "-2px 0 6px rgba(0,0,0,0.3)",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          transition: "right 0.3s ease-in-out",
-          zIndex: 10500,
-        }}
+        className={`fixed top-0 right-0 w-80 h-screen bg-[#6b7280] flex flex-col items-center p-5 shadow-[-2px_0_6px_rgba(0,0,0,0.3)] transition-all duration-300 ease-in-out z-[10500] ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
       >
+        {/* 닫기 버튼 */}
         <button
-          style={{
-            alignSelf: "flex-end",
-            background: "none",
-            border: "none",
-            fontSize: "20px",
-            color: "#fff",
-            cursor: "pointer",
-          }}
+          className="self-end bg-transparent border-none text-xl text-white cursor-pointer leading-none"
           onClick={onClose}
         >
           ✕
         </button>
 
-        <div
-          style={{
-            width: "80px",
-            height: "80px",
-            borderRadius: "50%",
-            marginTop: "10px",
-            background: "#204d87",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "28px",
-            color: "#fff",
-            fontWeight: "bold",
-          }}
-        >
+        {/* 아바타 */}
+        <div className="w-20 h-20 rounded-full mt-2.5 bg-[#204d87] flex items-center justify-center text-3xl text-white font-bold">
           {(church?.name || userInfo?.name || "EP").charAt(0)}
         </div>
-        <div
-          style={{
-            fontWeight: "bold",
-            fontSize: "16px",
-            color: "#204d87",
-            marginTop: "10px",
-          }}
-        >
+
+        {/* 교회명 */}
+        <div className="font-bold text-base text-[#204d87] mt-2.5">
           {church?.name || userInfo?.name || "교회명 미설정"}
         </div>
-        <div style={{ fontSize: "12px", color: "#ddd", marginBottom: "20px" }}>
+        <div className="text-xs text-[#ddd] mb-5">
           {church?.email || userInfo?.email || "local@localhost"}
         </div>
 
-        <div
-          style={{
-            backgroundColor: "rgba(255, 255, 255, 0.1)",
-            padding: "20px",
-            borderRadius: "12px",
-            width: "100%",
-          }}
-        >
-          {/* 소속교회 / 교회표기 — 편집 가능 */}
+        {/* 메뉴 카드 */}
+        <div className="bg-white/10 p-5 rounded-xl w-full">
+          {/* 교회 정보 편집 */}
           {editingChurch ? (
-            <div style={{ padding: "8px 0 12px", borderBottom: "1px solid rgba(255,255,255,0.2)" }}>
-              <div style={{ marginBottom: "10px" }}>
-                <div style={{ fontWeight: "bold", fontSize: "13px", color: "#fff" }}>소속교회</div>
+            <div className="py-2 pb-3 border-b border-white/20">
+              <div className="mb-2.5">
+                <div className="font-bold text-xs text-white">소속교회</div>
                 <input
-                  style={inputStyle}
+                  className="w-full mt-1 px-2.5 py-1.5 border border-white/40 rounded-md bg-white/15 text-white text-xs outline-none"
                   value={churchName}
                   onChange={(e) => setChurchName(e.target.value)}
                   placeholder="예: 사랑의교회"
                 />
               </div>
-              <div style={{ marginBottom: "10px" }}>
-                <div style={{ fontWeight: "bold", fontSize: "13px", color: "#fff" }}>교회표기 (영문)</div>
+              <div className="mb-2.5">
+                <div className="font-bold text-xs text-white">교회표기 (영문)</div>
                 <input
-                  style={inputStyle}
+                  className="w-full mt-1 px-2.5 py-1.5 border border-white/40 rounded-md bg-white/15 text-white text-xs outline-none"
                   value={churchEngName}
                   onChange={(e) => setChurchEngName(e.target.value)}
                   placeholder="예: Sarang Church"
                 />
               </div>
-              <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+              <div className="flex gap-2 justify-end">
                 <button
-                  style={{
-                    padding: "5px 14px",
-                    fontSize: "12px",
-                    background: "rgba(255,255,255,0.2)",
-                    border: "none",
-                    borderRadius: "6px",
-                    color: "#fff",
-                    cursor: "pointer",
-                  }}
+                  className="px-3.5 py-1 text-xs bg-white/20 border-none rounded-md text-white cursor-pointer"
                   onClick={() => setEditingChurch(false)}
                 >
                   취소
                 </button>
                 <button
-                  style={{
-                    padding: "5px 14px",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    background: "#204d87",
-                    border: "none",
-                    borderRadius: "6px",
-                    color: "#fff",
-                    cursor: saving ? "default" : "pointer",
-                    opacity: saving ? 0.6 : 1,
-                  }}
+                  className={`px-3.5 py-1 text-xs font-semibold bg-[#204d87] border-none rounded-md text-white ${
+                    saving ? "opacity-60 cursor-default" : "cursor-pointer"
+                  }`}
                   onClick={handleSaveChurch}
                   disabled={saving}
                 >
@@ -250,25 +177,17 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             </div>
           ) : (
             <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: "10px 0",
-                borderBottom: "1px solid rgba(255,255,255,0.2)",
-                color: "#fff",
-                cursor: "pointer",
-              }}
+              className="flex justify-between items-center py-2.5 border-b border-white/20 text-white cursor-pointer"
               onClick={() => setEditingChurch(true)}
             >
               <div>
-                <div style={{ fontWeight: "bold", fontSize: "15px" }}>교회 정보</div>
-                <div style={{ fontSize: "13px", opacity: 0.8, marginTop: "2px" }}>
+                <div className="font-bold text-[15px]">교회 정보</div>
+                <div className="text-xs opacity-80 mt-0.5">
                   {userInfo?.name || "미등록"}
                   {userInfo?.english_name ? ` (${userInfo.english_name})` : ""}
                 </div>
               </div>
-              <div style={{ fontSize: "12px", opacity: 0.6, color: "#ccc" }}>수정</div>
+              <div className="text-xs opacity-60 text-[#ccc]">수정</div>
             </div>
           )}
 
@@ -276,20 +195,14 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           {menuActions.map(({ title, action }) => (
             <div
               key={title}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: "10px 0",
-                borderBottom: "1px solid rgba(255,255,255,0.2)",
-                color: "#fff",
-                cursor: action ? "pointer" : "default",
-              }}
+              className={`flex justify-between items-center py-2.5 border-b border-white/20 text-white ${
+                action ? "cursor-pointer" : "cursor-default"
+              }`}
               onClick={action}
             >
-              <div style={{ fontWeight: "bold", fontSize: "15px" }}>{title}</div>
+              <div className="font-bold text-[15px]">{title}</div>
               {action && (
-                <div style={{ fontSize: "18px", opacity: 0.7 }}>›</div>
+                <div className="text-lg opacity-70">›</div>
               )}
             </div>
           ))}
@@ -311,6 +224,12 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 
       {/* License Modal */}
       <LicensePanel open={licenseOpen} onClose={() => setLicenseOpen(false)} />
+
+      {/* Template Modal */}
+      <TemplatePanel open={templateOpen} onClose={() => setTemplateOpen(false)} />
+
+      {/* OBS Source Modal */}
+      <OBSSourcePanel open={obsSourceOpen} onClose={() => setObsSourceOpen(false)} />
     </>
   );
 }

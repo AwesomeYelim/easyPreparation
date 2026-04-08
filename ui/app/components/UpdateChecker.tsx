@@ -56,7 +56,6 @@ export default function UpdateChecker() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { subscribe, isOpen } = useWS();
 
-  // 업데이트 체크
   const checkUpdate = useCallback(async () => {
     try {
       const data = await apiClient.checkUpdate();
@@ -78,14 +77,12 @@ export default function UpdateChecker() {
     }
   }, []);
 
-  // 30분마다 자동 체크
   useEffect(() => {
     checkUpdate();
     const timer = setInterval(checkUpdate, CHECK_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [checkUpdate]);
 
-  // WS 구독: update_progress 메시지 수신
   useEffect(() => {
     const unsubscribe = subscribe((msg) => {
       if (msg.type === 'update_progress') {
@@ -103,7 +100,6 @@ export default function UpdateChecker() {
     return unsubscribe;
   }, [subscribe]);
 
-  // WS가 없을 때 폴링 fallback
   useEffect(() => {
     const isActivePhase = (phase: UpdatePhase) =>
       phase === 'downloading' || phase === 'applying';
@@ -140,7 +136,6 @@ export default function UpdateChecker() {
     };
   }, [isOpen, state.phase]);
 
-  // 핸들러
   const handleStartDownload = async () => {
     setState(s => ({ ...s, phase: 'downloading', percent: 0, error: '' }));
     try {
@@ -173,9 +168,7 @@ export default function UpdateChecker() {
   };
 
   const handleDismiss = () => {
-    if (state.latest) {
-      localStorage.setItem(DISMISS_KEY, state.latest);
-    }
+    if (state.latest) localStorage.setItem(DISMISS_KEY, state.latest);
     setDismissed(true);
   };
 
@@ -184,25 +177,43 @@ export default function UpdateChecker() {
     checkUpdate();
   };
 
-  // 렌더 조건: 알림 없고 idle이거나, 알림 닫힌 상태면 숨김
-  // 다운로드/적용 등 진행 중인 phase는 항상 표시
   if (state.phase === 'idle' && (!state.hasUpdate || dismissed)) return null;
 
   const { phase, percent, totalBytes, downloadedBytes, latest, current, updateUrl, error } = state;
 
+  const bannerBase =
+    "w-full flex items-center gap-2.5 px-5 py-2 text-[13px] box-border flex-wrap border-b";
+  const bannerBg =
+    phase !== 'idle'
+      ? "bg-[var(--surface-elevated,#f8fafc)] border-[var(--accent-border,#c7d2fe)]"
+      : "bg-[var(--accent-light,#eef2ff)] border-[var(--accent-border,#c7d2fe)]";
+
+  const badgeBase =
+    "inline-flex items-center px-2 py-0.5 rounded-[10px] text-[11px] font-bold tracking-wide flex-shrink-0 whitespace-nowrap text-white";
+
+  const btnBase =
+    "px-3 py-0.5 rounded-md text-xs font-semibold cursor-pointer flex-shrink-0 border-none transition-colors whitespace-nowrap";
+
+  const linkBase =
+    "px-3 py-0.5 rounded-md bg-transparent text-xs font-semibold flex-shrink-0 border border-[var(--accent-border,#c7d2fe)] no-underline whitespace-nowrap transition-colors hover:bg-[var(--accent-light,#eef2ff)]";
+
   return (
-    <div className={`update_banner ${phase !== 'idle' ? 'update_banner--active' : ''}`}>
+    <div className={`${bannerBase} ${bannerBg}`}>
 
       {/* 알림 상태 */}
       {phase === 'idle' && state.hasUpdate && (
         <>
-          <span className="update_badge">업데이트 가능</span>
-          <span className="update_text">
-            현재 버전 <span className="update_ver">{current}</span>
+          <span className={`${badgeBase} bg-[var(--accent,#1f3f62)]`}>업데이트 가능</span>
+          <span className="flex-1 min-w-0 text-[var(--text-secondary)] whitespace-nowrap overflow-hidden text-ellipsis">
+            현재 버전{' '}
+            <span className="font-semibold text-[var(--text-primary)] font-mono">{current}</span>
             {' '}→{' '}
-            <span className="update_ver latest">{latest}</span>
+            <span className="font-semibold text-[var(--accent,#1f3f62)] font-mono">{latest}</span>
           </span>
-          <button className="update_btn update_btn--primary" onClick={handleStartDownload}>
+          <button
+            className={`${btnBase} bg-[var(--accent,#1f3f62)] text-white hover:bg-[var(--accent-hover,#2d5a8a)]`}
+            onClick={handleStartDownload}
+          >
             지금 업데이트
           </button>
           {updateUrl && (
@@ -210,12 +221,16 @@ export default function UpdateChecker() {
               href={updateUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="update_link"
+              className={`${linkBase} text-[var(--accent,#1f3f62)]`}
             >
               릴리스 노트
             </a>
           )}
-          <button className="update_dismiss" onClick={handleDismiss} title="닫기">
+          <button
+            className="bg-transparent border-none text-lg leading-none text-[var(--text-muted)] cursor-pointer px-0.5 flex-shrink-0 ml-auto hover:text-[var(--error,#dc2626)] transition-colors"
+            onClick={handleDismiss}
+            title="닫기"
+          >
             &times;
           </button>
         </>
@@ -224,18 +239,24 @@ export default function UpdateChecker() {
       {/* 다운로드 중 */}
       {phase === 'downloading' && (
         <>
-          <span className="update_badge update_badge--progress">다운로드 중...</span>
-          <div className="update_progress_wrap">
-            <div className="update_progress_bar">
-              <div className="update_progress_fill" style={{ width: `${percent}%` }} />
+          <span className={`${badgeBase} bg-[#d97706]`}>다운로드 중...</span>
+          <div className="flex-1 flex items-center gap-2.5 min-w-0">
+            <div className="flex-1 h-1.5 bg-[var(--surface-input,#e2e8f0)] rounded-full overflow-hidden min-w-[80px]">
+              <div
+                className="h-full bg-[var(--accent,#1f3f62)] rounded-full transition-[width] duration-300"
+                style={{ width: `${percent}%` }}
+              />
             </div>
-            <span className="update_progress_text">
+            <span className="text-xs text-[var(--text-secondary)] whitespace-nowrap flex-shrink-0 tabular-nums">
               {totalBytes > 0
                 ? `${formatBytes(downloadedBytes)} / ${formatBytes(totalBytes)} (${Math.round(percent)}%)`
                 : `${Math.round(percent)}%`}
             </span>
           </div>
-          <button className="update_btn update_btn--ghost" onClick={handleCancel}>
+          <button
+            className={`${btnBase} bg-transparent text-[var(--text-secondary)] border border-[var(--accent-border,#c7d2fe)] hover:bg-[var(--accent-light,#eef2ff)] hover:text-[var(--text-primary)]`}
+            onClick={handleCancel}
+          >
             취소
           </button>
         </>
@@ -244,14 +265,21 @@ export default function UpdateChecker() {
       {/* 다운로드 완료 */}
       {phase === 'downloaded' && (
         <>
-          <span className="update_badge update_badge--success">업데이트 준비됨</span>
-          <span className="update_text">
-            <span className="update_ver latest">{latest}</span> 다운로드 완료
+          <span className={`${badgeBase} bg-[#16a34a]`}>업데이트 준비됨</span>
+          <span className="flex-1 min-w-0 text-[var(--text-secondary)] whitespace-nowrap overflow-hidden text-ellipsis">
+            <span className="font-semibold text-[var(--accent,#1f3f62)] font-mono">{latest}</span>{' '}
+            다운로드 완료
           </span>
-          <button className="update_btn update_btn--primary" onClick={handleApply}>
+          <button
+            className={`${btnBase} bg-[var(--accent,#1f3f62)] text-white hover:bg-[var(--accent-hover,#2d5a8a)]`}
+            onClick={handleApply}
+          >
             적용 + 재시작
           </button>
-          <button className="update_btn update_btn--ghost" onClick={handleDismiss}>
+          <button
+            className={`${btnBase} bg-transparent text-[var(--text-secondary)] border border-[var(--accent-border,#c7d2fe)] hover:bg-[var(--accent-light,#eef2ff)] hover:text-[var(--text-primary)]`}
+            onClick={handleDismiss}
+          >
             나중에
           </button>
         </>
@@ -260,24 +288,26 @@ export default function UpdateChecker() {
       {/* 적용 중 */}
       {phase === 'applying' && (
         <>
-          <span className="update_badge update_badge--progress">업데이트 적용 중...</span>
-          <span className="update_text update_text--muted">잠시만 기다려 주세요</span>
+          <span className={`${badgeBase} bg-[#d97706]`}>업데이트 적용 중...</span>
+          <span className="flex-1 min-w-0 text-[var(--text-muted)] italic">잠시만 기다려 주세요</span>
         </>
       )}
 
       {/* 재시작 필요 */}
       {phase === 'restart_required' && (
         <>
-          <span className="update_badge update_badge--success">업데이트 완료</span>
-          <span className="update_text">
-            재시작하면 <span className="update_ver latest">{latest}</span>이 적용됩니다.
+          <span className={`${badgeBase} bg-[#16a34a]`}>업데이트 완료</span>
+          <span className="flex-1 min-w-0 text-[var(--text-secondary)] whitespace-nowrap overflow-hidden text-ellipsis">
+            재시작하면{' '}
+            <span className="font-semibold text-[var(--accent,#1f3f62)] font-mono">{latest}</span>
+            이 적용됩니다.
           </span>
           {updateUrl && (
             <a
               href={updateUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="update_link"
+              className={`${linkBase} text-[var(--accent,#1f3f62)]`}
             >
               재시작 안내
             </a>
@@ -288,9 +318,14 @@ export default function UpdateChecker() {
       {/* 에러 */}
       {phase === 'error' && (
         <>
-          <span className="update_badge update_badge--error">업데이트 실패</span>
-          <span className="update_text update_text--error">{error || '알 수 없는 오류'}</span>
-          <button className="update_btn update_btn--ghost" onClick={handleRetry}>
+          <span className={`${badgeBase} bg-[var(--error,#dc2626)]`}>업데이트 실패</span>
+          <span className="flex-1 min-w-0 text-[var(--error,#dc2626)] whitespace-nowrap overflow-hidden text-ellipsis">
+            {error || '알 수 없는 오류'}
+          </span>
+          <button
+            className={`${btnBase} bg-transparent text-[var(--text-secondary)] border border-[var(--accent-border,#c7d2fe)] hover:bg-[var(--accent-light,#eef2ff)] hover:text-[var(--text-primary)]`}
+            onClick={handleRetry}
+          >
             다시 시도
           </button>
           {updateUrl && (
@@ -298,215 +333,20 @@ export default function UpdateChecker() {
               href={updateUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="update_link"
+              className={`${linkBase} text-[var(--accent,#1f3f62)]`}
             >
               수동 다운로드
             </a>
           )}
-          <button className="update_dismiss" onClick={handleDismiss} title="닫기">
+          <button
+            className="bg-transparent border-none text-lg leading-none text-[var(--text-muted)] cursor-pointer px-0.5 flex-shrink-0 ml-auto hover:text-[var(--error,#dc2626)] transition-colors"
+            onClick={handleDismiss}
+            title="닫기"
+          >
             &times;
           </button>
         </>
       )}
-
-      <style jsx>{`
-        .update_banner {
-          width: 100%;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 8px 20px;
-          background: var(--accent-light, #eef2ff);
-          border-bottom: 1px solid var(--accent-border, #c7d2fe);
-          font-size: 13px;
-          color: var(--text-primary);
-          box-sizing: border-box;
-          flex-wrap: wrap;
-        }
-
-        .update_banner--active {
-          background: var(--surface-elevated, #f8fafc);
-          border-bottom-color: var(--accent-border, #c7d2fe);
-        }
-
-        /* 배지 */
-        .update_badge {
-          display: inline-flex;
-          align-items: center;
-          padding: 2px 8px;
-          border-radius: 10px;
-          background: var(--accent, #1f3f62);
-          color: #fff;
-          font-size: 11px;
-          font-weight: 700;
-          letter-spacing: 0.3px;
-          flex-shrink: 0;
-          white-space: nowrap;
-        }
-
-        .update_badge--progress {
-          background: #d97706;
-        }
-
-        .update_badge--success {
-          background: #16a34a;
-        }
-
-        .update_badge--error {
-          background: var(--error, #dc2626);
-        }
-
-        /* 텍스트 */
-        .update_text {
-          flex: 1;
-          min-width: 0;
-          color: var(--text-secondary);
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .update_text--muted {
-          color: var(--text-muted);
-          font-style: italic;
-        }
-
-        .update_text--error {
-          color: var(--error, #dc2626);
-        }
-
-        .update_ver {
-          font-weight: 600;
-          color: var(--text-primary);
-          font-family: monospace;
-          font-size: 13px;
-        }
-
-        .update_ver.latest {
-          color: var(--accent, #1f3f62);
-        }
-
-        /* 프로그레스 바 */
-        .update_progress_wrap {
-          flex: 1;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          min-width: 0;
-        }
-
-        .update_progress_bar {
-          flex: 1;
-          height: 6px;
-          background: var(--surface-input, #e2e8f0);
-          border-radius: 3px;
-          overflow: hidden;
-          min-width: 80px;
-        }
-
-        .update_progress_fill {
-          height: 100%;
-          background: var(--accent, #1f3f62);
-          border-radius: 3px;
-          transition: width 0.3s ease;
-        }
-
-        .update_progress_text {
-          font-size: 12px;
-          color: var(--text-secondary);
-          white-space: nowrap;
-          flex-shrink: 0;
-          font-variant-numeric: tabular-nums;
-        }
-
-        /* 버튼 */
-        .update_btn {
-          padding: 3px 12px;
-          border-radius: 6px;
-          font-size: 12px;
-          font-weight: 600;
-          cursor: pointer;
-          flex-shrink: 0;
-          border: none;
-          transition: background 0.15s, color 0.15s;
-          white-space: nowrap;
-        }
-
-        .update_btn--primary {
-          background: var(--accent, #1f3f62);
-          color: #fff;
-        }
-
-        .update_btn--primary:hover {
-          background: var(--accent-hover, #2d5a8a);
-        }
-
-        .update_btn--ghost {
-          background: transparent;
-          color: var(--text-secondary);
-          border: 1px solid var(--accent-border, #c7d2fe);
-        }
-
-        .update_btn--ghost:hover {
-          background: var(--accent-light, #eef2ff);
-          color: var(--text-primary);
-        }
-
-        /* 릴리스 노트 링크 */
-        .update_link {
-          padding: 3px 12px;
-          border-radius: 6px;
-          background: transparent;
-          color: var(--accent, #1f3f62) !important;
-          font-size: 12px;
-          font-weight: 600;
-          text-decoration: none;
-          flex-shrink: 0;
-          border: 1px solid var(--accent-border, #c7d2fe);
-          transition: background 0.15s;
-          white-space: nowrap;
-        }
-
-        .update_link:hover {
-          background: var(--accent-light, #eef2ff);
-        }
-
-        /* 닫기 버튼 */
-        .update_dismiss {
-          background: none;
-          border: none;
-          font-size: 18px;
-          line-height: 1;
-          color: var(--text-muted);
-          cursor: pointer;
-          padding: 0 2px;
-          flex-shrink: 0;
-          margin-left: auto;
-          transition: color 0.15s;
-        }
-
-        .update_dismiss:hover {
-          color: var(--error, #dc2626);
-        }
-
-        @media (max-width: 600px) {
-          .update_banner {
-            padding: 8px 12px;
-            gap: 8px;
-          }
-          .update_text {
-            white-space: normal;
-          }
-          .update_progress_wrap {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 4px;
-          }
-          .update_progress_bar {
-            width: 100%;
-          }
-        }
-      `}</style>
     </div>
   );
 }

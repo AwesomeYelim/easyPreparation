@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/apiClient";
 import { ScheduleConfig, ScheduleEntry } from "@/types";
 import FeatureGate from "./FeatureGate";
@@ -44,31 +44,47 @@ export default function SchedulePanel({ open, onClose }: SchedulePanelProps) {
   };
 
   return (
-    <div className="sched_overlay" onClick={onClose}>
-      <div className="sched_panel" onClick={(e) => e.stopPropagation()}>
-        <div className="sched_header">
-          <h3>정기 스케줄</h3>
-          <button className="sched_close" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-[var(--surface-elevated)] rounded-2xl w-[500px] max-w-[90vw] max-h-[85vh] overflow-y-auto shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* header */}
+        <div className="flex justify-between items-center px-6 pt-5 pb-3 border-b border-[var(--border)]">
+          <h3 className="m-0 text-lg font-bold text-[var(--text-primary)]">정기 스케줄</h3>
+          <button
+            className="bg-transparent border-none text-2xl cursor-pointer text-[var(--text-secondary)] leading-none"
+            onClick={onClose}
+          >
             &times;
           </button>
         </div>
 
         <FeatureGate feature="auto_scheduler">
-          <div className="sched_body">
+          {/* body */}
+          <div className="px-6 py-5 flex flex-col gap-3.5">
             {config.entries.map((entry, i) => (
-              <div key={entry.worshipType} className="sched_entry">
-                <label className="sched_check">
+              <div key={entry.worshipType} className="flex items-center gap-3">
+                <label className="flex items-center gap-2 flex-1 cursor-pointer">
                   <input
                     type="checkbox"
+                    className="w-4 h-4 accent-[var(--accent)]"
                     checked={entry.enabled}
                     onChange={(e) => updateEntry(i, { enabled: e.target.checked })}
                   />
-                  <span className="sched_label">{entry.label}</span>
+                  <span className="text-sm font-medium text-[var(--text-primary)]">
+                    {entry.label}
+                  </span>
                 </label>
-                <span className="sched_day">{WEEKDAY_NAMES[entry.weekday]}요일</span>
+                <span className="text-xs text-[var(--text-secondary)] min-w-[44px] text-center">
+                  {WEEKDAY_NAMES[entry.weekday]}요일
+                </span>
                 <input
                   type="time"
-                  className="sched_time"
+                  className="px-2 py-1 border border-[var(--border-input)] rounded-md text-xs bg-[var(--surface-input)]"
                   value={`${String(entry.hour).padStart(2, "0")}:${String(entry.minute).padStart(2, "0")}`}
                   onChange={(e) => {
                     const [h, m] = e.target.value.split(":").map(Number);
@@ -78,11 +94,12 @@ export default function SchedulePanel({ open, onClose }: SchedulePanelProps) {
               </div>
             ))}
 
-            <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />
+            <div className="h-px bg-[var(--border)] my-1" />
 
-            <div className="sched_option">
-              <span>사전 카운트다운</span>
-              <div className="sched_option_input">
+            {/* 카운트다운 */}
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-[var(--text-primary)]">사전 카운트다운</span>
+              <div className="flex items-center gap-1.5">
                 <input
                   type="number"
                   min={1}
@@ -91,15 +108,21 @@ export default function SchedulePanel({ open, onClose }: SchedulePanelProps) {
                   onChange={(e) =>
                     setConfig({ ...config, countdownMinutes: Number(e.target.value) })
                   }
+                  className="w-16 px-2 py-1 border border-[var(--border-input)] rounded-md text-xs text-center bg-[var(--surface-input)]"
                 />
-                <span>분</span>
+                <span className="text-xs text-[var(--text-secondary)]">분</span>
               </div>
             </div>
 
-            <div className="sched_option">
-              <span>OBS 자동 스트리밍</span>
+            {/* OBS 자동 스트리밍 */}
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-[var(--text-primary)]">OBS 자동 스트리밍</span>
               <button
-                className={`sched_auto_btn ${config.autoStream ? "on" : ""}`}
+                className={`px-4 py-1.5 rounded-md text-xs font-semibold cursor-pointer border-none transition-colors ${
+                  config.autoStream
+                    ? "bg-[var(--accent)] text-[var(--surface-elevated)]"
+                    : "bg-[var(--border)] text-[var(--text-secondary)]"
+                }`}
                 onClick={() =>
                   setConfig({ ...config, autoStream: !config.autoStream })
                 }
@@ -109,12 +132,16 @@ export default function SchedulePanel({ open, onClose }: SchedulePanelProps) {
             </div>
           </div>
 
-          <div className="sched_footer">
-            <button className="sched_cancel_btn" onClick={onClose}>
+          {/* footer */}
+          <div className="flex justify-end gap-2 px-6 pb-5 pt-4 border-t border-[var(--border)]">
+            <button
+              className="px-5 py-2 text-sm bg-[var(--surface-hover)] border border-[var(--border-input)] rounded-xl cursor-pointer"
+              onClick={onClose}
+            >
               취소
             </button>
             <button
-              className="sched_save_btn"
+              className="px-5 py-2 text-sm font-semibold bg-[var(--accent)] text-[var(--surface-elevated)] border-none rounded-xl cursor-pointer hover:bg-[var(--accent-hover)] disabled:bg-[var(--text-muted)]"
               onClick={handleSave}
               disabled={saving}
             >
@@ -123,88 +150,6 @@ export default function SchedulePanel({ open, onClose }: SchedulePanelProps) {
           </div>
         </FeatureGate>
       </div>
-
-      <style jsx>{`
-        .sched_overlay {
-          position: fixed;
-          top: 0; left: 0; width: 100%; height: 100%;
-          background: rgba(0,0,0,0.5);
-          display: flex; align-items: center; justify-content: center;
-          z-index: 11000;
-        }
-        .sched_panel {
-          background: var(--surface-elevated);
-          border-radius: 16px;
-          width: 500px;
-          max-width: 90vw;
-          max-height: 85vh;
-          overflow-y: auto;
-          box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-        }
-        .sched_header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 20px 24px 12px;
-          border-bottom: 1px solid var(--border);
-        }
-        .sched_header h3 { margin: 0; font-size: 18px; font-weight: 700; color: var(--text-primary); }
-        .sched_close {
-          background: none; border: none; font-size: 24px;
-          cursor: pointer; color: var(--text-secondary); line-height: 1;
-        }
-        .sched_body {
-          padding: 20px 24px;
-          display: flex; flex-direction: column; gap: 14px;
-        }
-        .sched_entry {
-          display: flex; align-items: center; gap: 12px;
-        }
-        .sched_check {
-          display: flex; align-items: center; gap: 8px; flex: 1;
-        }
-        .sched_check input[type="checkbox"] {
-          width: 18px; height: 18px; accent-color: var(--accent);
-        }
-        .sched_label { font-size: 14px; font-weight: 500; color: var(--text-primary); }
-        .sched_day { font-size: 13px; color: var(--text-secondary); min-width: 44px; text-align: center; }
-        .sched_time {
-          padding: 4px 8px; border: 1px solid var(--border-input);
-          border-radius: 6px; font-size: 13px; background: var(--surface-input);
-        }
-        .sched_option {
-          display: flex; justify-content: space-between; align-items: center;
-        }
-        .sched_option > span { font-size: 14px; color: var(--text-primary); font-weight: 500; }
-        .sched_option_input { display: flex; align-items: center; gap: 6px; }
-        .sched_option_input input {
-          width: 60px; padding: 4px 8px; border: 1px solid var(--border-input);
-          border-radius: 6px; font-size: 13px; text-align: center; background: var(--surface-input);
-        }
-        .sched_option_input span { font-size: 13px; color: var(--text-secondary); }
-        .sched_auto_btn {
-          padding: 6px 16px; border-radius: 6px; font-size: 13px;
-          font-weight: 600; cursor: pointer; border: none;
-          transition: background 0.15s;
-          background: var(--border); color: var(--text-secondary);
-        }
-        .sched_auto_btn.on { background: var(--accent); color: var(--surface-elevated); }
-        .sched_footer {
-          display: flex; justify-content: flex-end; gap: 8px;
-          padding: 16px 24px 20px; border-top: 1px solid var(--border);
-        }
-        .sched_cancel_btn {
-          padding: 8px 20px; font-size: 13px; background: var(--surface-hover);
-          border: 1px solid var(--border-input); border-radius: 8px; cursor: pointer;
-        }
-        .sched_save_btn {
-          padding: 8px 20px; font-size: 13px; font-weight: 600;
-          background: var(--accent); color: var(--surface-elevated); border: none;
-          border-radius: 8px; cursor: pointer;
-        }
-        .sched_save_btn:hover { background: var(--accent-hover); }
-        .sched_save_btn:disabled { background: var(--text-muted); }
-      `}</style>
     </div>
   );
 }

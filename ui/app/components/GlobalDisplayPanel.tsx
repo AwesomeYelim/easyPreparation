@@ -24,12 +24,11 @@ export default function GlobalDisplayPanel() {
       .catch((e) => console.error("display 상태 복원 실패:", e));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    document.body.classList.toggle("display_panel_open", panelOpen);
-    return () => document.body.classList.remove("display_panel_open");
-  }, [panelOpen]);
-
   if (!panelOpen) return null;
 
-  return <DisplayControlPanel />;
+  return (
+    <div className="fixed top-0 right-0 w-80 h-screen z-40 shadow-2xl shadow-navy-dark/5">
+      <DisplayControlPanel />
+    </div>
+  );
 }

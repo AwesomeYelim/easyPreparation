@@ -7,7 +7,6 @@ import { apiClient } from "@/lib/apiClient";
 import { WorshipOrderItem, OBSStatus, StreamStatus } from "@/types";
 import { useWS } from "@/components/WebSocketProvider";
 import FeatureGate from "@/components/FeatureGate";
-import s from "./DisplayControlPanel.module.scss";
 
 type TimerState = {
   enabled: boolean;
@@ -43,7 +42,6 @@ export default function DisplayControlPanel() {
   const reorderSuppressRef = useRef(false);
   const keyCounterRef = useRef(0);
 
-  // 아이템에 고유 key 보장 (중복 key 방지)
   const ensureUniqueKeys = useCallback((rawItems: WorshipOrderItem[]) => {
     const seen = new Set<string>();
     return rawItems.map((item) => {
@@ -57,7 +55,6 @@ export default function DisplayControlPanel() {
     });
   }, []);
 
-  // WS: position, timer_state, order, display_loading 동기화
   useEffect(() => {
     return subscribe((msg) => {
       if (msg.type === "position" && typeof msg.idx === "number") {
@@ -75,7 +72,6 @@ export default function DisplayControlPanel() {
       }
       if (msg.type === "order" && Array.isArray(msg.items)) {
         setLoadingMsg("");
-        // reorder 진행 중이면 WS order로 로컬 상태 덮어쓰기 방지
         if (!reorderSuppressRef.current) {
           setItems(ensureUniqueKeys(msg.items as WorshipOrderItem[]));
           setExpandedItems(new Set());
@@ -101,7 +97,6 @@ export default function DisplayControlPanel() {
           minutes: msg.minutes,
           seconds: msg.seconds,
         });
-        // 3초 내 새 countdown 없으면 자동 해제
         if (schedTimeoutRef.current) clearTimeout(schedTimeoutRef.current);
         schedTimeoutRef.current = setTimeout(() => setSchedCountdown(null), 3000);
       }
@@ -112,7 +107,6 @@ export default function DisplayControlPanel() {
     });
   }, [subscribe, setItems, ensureUniqueKeys]);
 
-  // 마운트 시 현재 상태 fetch + OBS 폴링 (5초)
   useEffect(() => {
     const poll = () => {
       apiClient.getDisplayStatus()
@@ -131,10 +125,8 @@ export default function DisplayControlPanel() {
     return () => clearInterval(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 활성 항목/섹션 자동 스크롤
   useEffect(() => {
-    const el = listRef.current?.querySelector(`.${s.order_section_item}.${s.active}`)
-      || listRef.current?.querySelector(`.${s.order_item}.${s.active}`);
+    const el = listRef.current?.querySelector("[data-active='true']");
     el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [idx, subPageIdx]);
 
@@ -158,7 +150,7 @@ export default function DisplayControlPanel() {
   }, []);
 
   const clearDragHighlight = useCallback(() => {
-    listRef.current?.querySelectorAll(`.${s.drag_over}`).forEach((el) => el.classList.remove(s.drag_over));
+    listRef.current?.querySelectorAll("[data-dragover]").forEach((el) => el.removeAttribute("data-dragover"));
   }, []);
 
   const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
@@ -170,23 +162,21 @@ export default function DisplayControlPanel() {
   const handleDragEnd = useCallback((e: React.DragEvent) => {
     (e.target as HTMLElement).style.opacity = "1";
     clearDragHighlight();
-    // wasDragging 플래그 짧게 유지 (click 방지)
     setTimeout(() => { dragRef.current = null; }, 50);
   }, [clearDragHighlight]);
 
-  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    // DOM 직접 조작 (re-render 방지)
-    const target = (e.currentTarget as HTMLElement);
-    if (!target.classList.contains(s.drag_over)) {
+    const target = e.currentTarget as HTMLElement;
+    if (!target.hasAttribute("data-dragover")) {
       clearDragHighlight();
-      target.classList.add(s.drag_over);
+      target.setAttribute("data-dragover", "true");
     }
   }, [clearDragHighlight]);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
-    (e.currentTarget as HTMLElement).classList.remove(s.drag_over);
+    (e.currentTarget as HTMLElement).removeAttribute("data-dragover");
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent, toIndex: number) => {
@@ -198,7 +188,6 @@ export default function DisplayControlPanel() {
     if (fromIndex === toIndex) return;
     if (reorderLockRef.current) return;
 
-    // Optimistic local reorder
     reorderLockRef.current = true;
     reorderSuppressRef.current = true;
     setItems((prev) => {
@@ -207,7 +196,6 @@ export default function DisplayControlPanel() {
       next.splice(toIndex, 0, moved);
       return next;
     });
-    // currentIdx 보정
     setIdx((prev) => {
       if (prev === fromIndex) return toIndex;
       let newIdx = prev;
@@ -218,7 +206,6 @@ export default function DisplayControlPanel() {
 
     apiClient.reorderDisplay(fromIndex, toIndex).finally(() => {
       reorderLockRef.current = false;
-      // suppress 해제 지연 (WS broadcast 수신 대기)
       setTimeout(() => { reorderSuppressRef.current = false; }, 1500);
     });
   }, [clearDragHighlight, items.length, setItems]);
@@ -251,12 +238,9 @@ export default function DisplayControlPanel() {
 
   const handleStreamToggle = useCallback(() => {
     const action = streamStatus.active ? "stop" : "start";
-    apiClient.streamControl(action).then(() => {
-      // 상태 폴링에서 자동 갱신됨
-    });
+    apiClient.streamControl(action);
   }, [streamStatus.active]);
 
-  // 키보드 ← → 제어 (디바운스)
   useEffect(() => {
     let blocked = false;
     let debounceTimer: ReturnType<typeof setTimeout>;
@@ -278,79 +262,114 @@ export default function DisplayControlPanel() {
   }, [handleNav]);
 
   return (
-    <div className={s.display_control_panel}>
-      <div className={s.dcp_header}>
-        <div className={s.dcp_title_row}>
-          <span className={`${s.obs_dot} ${obsStatus.connected ? s.connected : s.disconnected}`} />
-          <span className={s.dcp_title}>
+    <div className="h-full bg-[#1a1a2e] text-gray-200 flex flex-col">
+      {/* Header */}
+      <div className="flex justify-between items-center px-4 py-3.5 border-b border-white/10">
+        <div className="flex items-center gap-2">
+          <span className={`w-2.5 h-2.5 rounded-full inline-block ${
+            obsStatus.connected
+              ? "bg-green-500 shadow-[0_0_6px_#4caf50]"
+              : "bg-red-500 shadow-[0_0_6px_#f44336]"
+          }`} />
+          <span className="text-[13px] text-white/70">
             OBS {obsStatus.connected ? obsStatus.currentScene : "Disconnected"}
           </span>
           <FeatureGate feature="obs_control" fallback={null}>
             {streamStatus.active && (
-              <span className={s.live_badge}>LIVE</span>
+              <span className="text-[10px] font-bold text-white bg-red-600 px-1.5 py-0.5 rounded animate-pulse">
+                LIVE
+              </span>
             )}
           </FeatureGate>
         </div>
-        <div className={s.dcp_header_actions}>
+        <div className="flex items-center gap-2">
           <FeatureGate
             feature="obs_control"
             fallback={
-              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", padding: "4px 10px" }}>
-                Pro
-              </span>
+              <span className="text-[11px] text-white/35 px-2.5 py-1">Pro</span>
             }
           >
             <button
-              className={`${s.stream_btn} ${streamStatus.active ? s.stop : s.start}`}
+              className={`px-2.5 py-1 text-[11px] font-semibold border-none rounded cursor-pointer text-white ${
+                streamStatus.active
+                  ? "bg-[#424242] hover:bg-[#616161]"
+                  : "bg-red-600 hover:bg-red-800"
+              }`}
               onClick={handleStreamToggle}
             >
               {streamStatus.active ? "방송 종료" : "방송 시작"}
             </button>
           </FeatureGate>
-          <button className={s.dcp_close} onClick={onClose}>✕</button>
+          <button
+            className="bg-transparent border-none text-white/50 text-lg cursor-pointer hover:text-white"
+            onClick={onClose}
+          >
+            ✕
+          </button>
         </div>
       </div>
 
+      {/* Schedule Countdown */}
       {schedCountdown && (
-        <div className={s.dcp_schedule_countdown}>
-          <span className={s.sched_label}>{schedCountdown.label}</span>
-          <span className={s.sched_time}>
+        <div className="flex items-center justify-center gap-3 px-4 py-3 bg-red-900 text-white border-b border-white/10">
+          <span className="text-sm font-semibold">{schedCountdown.label}</span>
+          <span className="text-xl font-bold font-mono tracking-widest">
             {String(schedCountdown.minutes).padStart(2, "0")}:{String(schedCountdown.seconds).padStart(2, "0")}
           </span>
         </div>
       )}
 
-      <div className={s.dcp_nav}>
-        <button onClick={() => handleNav("prev")}>◀</button>
-        <span className={s.dcp_pos}>
+      {/* Navigation */}
+      <div className="flex items-center justify-center gap-4 px-4 py-3 border-b border-white/10">
+        <button
+          className="px-5 py-2 text-lg bg-[#2a2a4a] text-white border border-white/15 rounded-lg cursor-pointer hover:bg-[#3a3a5a]"
+          onClick={() => handleNav("prev")}
+        >
+          ◀
+        </button>
+        <span className="text-base font-semibold min-w-[60px] text-center">
           {items.length > 0 ? `${idx + 1} / ${items.length}` : "-"}
         </span>
-        <button onClick={() => handleNav("next")}>▶</button>
+        <button
+          className="px-5 py-2 text-lg bg-[#2a2a4a] text-white border border-white/15 rounded-lg cursor-pointer hover:bg-[#3a3a5a]"
+          onClick={() => handleNav("next")}
+        >
+          ▶
+        </button>
       </div>
 
-      {/* 타이머 제어 */}
-      <div className={s.dcp_timer}>
-        <div className={s.dcp_timer_row}>
+      {/* Timer Controls */}
+      <div className="px-4 py-2.5 border-b border-white/10">
+        <div className="flex gap-1.5 mb-2">
           <button
-            className={`${s.dcp_timer_btn} ${timer.enabled ? s.active : ""}`}
+            className={`flex-1 px-2 py-1.5 text-xs border rounded-lg cursor-pointer whitespace-nowrap ${
+              timer.enabled
+                ? "bg-blue-600 border-blue-400 text-white"
+                : "bg-[#2a2a4a] border-white/15 text-gray-200 hover:bg-[#3a3a5a]"
+            }`}
             onClick={handleTimerToggle}
-            title="자동 넘김 ON/OFF"
           >
             {timer.enabled ? "⏸" : "▶"} 자동
           </button>
-          <button className={s.dcp_timer_btn} onClick={handleTimerRepeat} title="현재 슬라이드 반복">
+          <button
+            className="flex-1 px-2 py-1.5 text-xs bg-[#2a2a4a] text-gray-200 border border-white/15 rounded-lg cursor-pointer hover:bg-[#3a3a5a]"
+            onClick={handleTimerRepeat}
+          >
             반복
           </button>
-          <button className={s.dcp_timer_btn} onClick={handleTimerRestart} title="처음으로">
+          <button
+            className="flex-1 px-2 py-1.5 text-xs bg-[#2a2a4a] text-gray-200 border border-white/15 rounded-lg cursor-pointer hover:bg-[#3a3a5a]"
+            onClick={handleTimerRestart}
+          >
             처음
           </button>
         </div>
         {timer.enabled && timer.countdown > 0 && (
-          <div className={s.dcp_countdown}>
+          <div className="text-center text-sm font-semibold text-yellow-300 py-1">
             다음까지 {timer.countdown}초
           </div>
         )}
-        <div className={s.dcp_speed}>
+        <div className="flex items-center gap-2 text-xs text-white/60">
           <span>속도</span>
           <input
             type="range"
@@ -359,51 +378,60 @@ export default function DisplayControlPanel() {
             step="0.1"
             value={timer.speedFactor}
             onChange={handleSpeedChange}
+            className="flex-1 accent-blue-500"
           />
           <span>{Math.round(timer.speedFactor * 100)}%</span>
         </div>
       </div>
 
+      {/* Current Item */}
       {items.length > 0 && items[idx] && (
-        <div className={s.dcp_current}>
+        <div className="px-4 py-2.5 text-[15px] font-semibold text-blue-300 border-b border-white/10">
           {items[idx].title}
           {items[idx].obj && items[idx].obj !== "-" && (
-            <span className={s.dcp_current_obj}> — {items[idx].obj}</span>
+            <span className="font-normal text-[13px] text-white/50"> — {items[idx].obj}</span>
           )}
         </div>
       )}
 
-      <div className={s.dcp_order_list} ref={listRef}>
+      {/* Order List */}
+      <div className="flex-1 overflow-y-auto py-2" ref={listRef}>
         {loadingMsg && (
-          <div className={s.dcp_loading}>
-            <div className={s.dcp_loading_spinner} />
+          <div className="flex items-center gap-2.5 px-4 py-3.5 text-white/70 text-[13px]">
+            <div className="w-4 h-4 border-2 border-white/20 border-t-blue-500 rounded-full animate-spin shrink-0" />
             <span>{loadingMsg}</span>
           </div>
         )}
         {items.map((item, i) => {
           const hasSections = item.sections && item.sections.length > 0;
           const isExpanded = expandedItems.has(i);
+          const isActive = i === idx;
 
           return (
             <div key={item.key || i}>
               <div
-                className={`${s.order_item} ${i === idx ? s.active : ""}`}
+                className={`flex items-center gap-2.5 px-4 py-2.5 cursor-pointer border-l-[3px] transition-all ${
+                  isActive
+                    ? "bg-blue-500/15 border-l-blue-500"
+                    : "border-l-transparent hover:bg-white/5"
+                } data-[dragover]:border-t-2 data-[dragover]:border-t-blue-500 data-[dragover]:bg-blue-500/10`}
+                data-active={isActive ? "true" : undefined}
                 onClick={() => { if (!dragRef.current?.wasDragging) handleJump(i); }}
                 draggable
                 onDragStart={(e) => handleDragStart(e, i)}
                 onDragEnd={handleDragEnd}
-                onDragOver={(e) => handleDragOver(e, i)}
+                onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, i)}
               >
-                <span className={s.order_num}>{i + 1}</span>
-                <span className={s.order_title_text}>{item.title}</span>
-                <span className={s.order_obj}>
+                <span className="text-xs text-white/40 min-w-[20px] text-right">{i + 1}</span>
+                <span className="text-sm font-medium shrink-0">{item.title}</span>
+                <span className="text-xs text-white/50 overflow-hidden text-ellipsis whitespace-nowrap flex-1">
                   {item.obj && item.obj !== "-" ? item.obj : ""}
                 </span>
                 {hasSections && (
                   <button
-                    className={s.order_toggle}
+                    className="bg-transparent border-none text-white/50 text-[10px] cursor-pointer px-1 shrink-0 hover:text-white"
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleItemExpand(i);
@@ -413,7 +441,7 @@ export default function DisplayControlPanel() {
                   </button>
                 )}
                 <button
-                  className={s.order_remove}
+                  className="bg-transparent border-none text-white/25 text-[11px] cursor-pointer px-1.5 shrink-0 transition-colors hover:text-red-500"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleRemove(i);
@@ -424,17 +452,30 @@ export default function DisplayControlPanel() {
                 </button>
               </div>
               {hasSections && isExpanded && (
-                <div className={s.order_sections}>
+                <div className="flex flex-col gap-1 py-1 px-2 pl-6 bg-white/[0.03]">
                   {item.sections!.map((sec, si) => {
-                    const isActive = i === idx && sec.startPage === subPageIdx;
+                    const isSectionActive = i === idx && sec.startPage === subPageIdx;
                     return (
                       <div
                         key={si}
-                        className={`${s.order_section_item}${isActive ? ` ${s.active}` : ""}`}
+                        data-active={isSectionActive ? "true" : undefined}
+                        className={`flex gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-all border ${
+                          isSectionActive
+                            ? "bg-blue-600 border-blue-400"
+                            : "bg-[#2a2a4a] border-white/[0.08] hover:bg-blue-600 hover:border-blue-400"
+                        }`}
                         onClick={() => handleSectionJump(i, sec.startPage)}
                       >
-                        <span className={s.order_section_label}>{sec.label}</span>
-                        <pre className={s.order_section_text}>{sec.text || ""}</pre>
+                        <span className={`text-[11px] font-semibold whitespace-nowrap min-w-[32px] pt-px ${
+                          isSectionActive ? "text-white" : "text-blue-300"
+                        }`}>
+                          {sec.label}
+                        </span>
+                        <pre className={`font-[inherit] text-[11px] leading-snug m-0 whitespace-pre-wrap ${
+                          isSectionActive ? "text-white" : "text-white/60"
+                        }`}>
+                          {sec.text || ""}
+                        </pre>
                       </div>
                     );
                   })}

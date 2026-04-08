@@ -66,28 +66,47 @@ export default function YouTubePanel({ open, onClose }: YouTubePanelProps) {
   };
 
   return (
-    <div className="yt_overlay" onClick={onClose}>
-      <div className="yt_panel" onClick={(e) => e.stopPropagation()}>
-        <div className="yt_header">
-          <h3>YouTube</h3>
-          <button className="yt_close" onClick={onClose}>&times;</button>
+    <div className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div
+        className="bg-white rounded-2xl w-[420px] max-w-[90vw] max-h-[80vh] overflow-y-auto shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* header */}
+        <div className="flex justify-between items-center px-6 pt-5 pb-4 border-b border-[#e5e7eb]">
+          <h3 className="m-0 text-lg font-bold text-[#1f2937]">YouTube</h3>
+          <button
+            className="bg-transparent border-none text-2xl cursor-pointer text-[#6b7280] leading-none"
+            onClick={onClose}
+          >
+            &times;
+          </button>
         </div>
 
         <FeatureGate feature="youtube_integration">
-          <div className="yt_body">
-            <div className="yt_status_row">
-              <span className="yt_status_label">연결 상태</span>
-              <span className={`yt_badge ${connected ? "on" : "off"}`}>
+          <div className="px-6 py-5 flex flex-col gap-3.5">
+            {/* 연결 상태 */}
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-[#374151]">연결 상태</span>
+              <span
+                className={`text-xs font-semibold px-3 py-1 rounded-xl ${
+                  connected
+                    ? "bg-[#d1fae5] text-[#059669]"
+                    : "bg-[#fee2e2] text-[#dc2626]"
+                }`}
+              >
                 {connected ? "연결됨" : "미연결"}
               </span>
             </div>
 
             {!connected && (
-              <div style={{ textAlign: "center", padding: "20px 0" }}>
-                <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 16 }}>
+              <div className="text-center py-5">
+                <p className="text-xs text-[#6b7280] mb-4">
                   YouTube 계정을 연결하면 예배 시작 시 썸네일이 자동으로 업로드됩니다.
                 </p>
-                <button className="yt_connect_btn" onClick={handleConnect}>
+                <button
+                  className="px-6 py-2.5 text-sm font-semibold bg-[#dc2626] text-white border-none rounded-lg cursor-pointer hover:bg-[#b91c1c] transition-colors"
+                  onClick={handleConnect}
+                >
                   YouTube 계정 연결
                 </button>
               </div>
@@ -95,26 +114,26 @@ export default function YouTubePanel({ open, onClose }: YouTubePanelProps) {
 
             {connected && (
               <>
-                <div className="yt_divider" />
-                <div className="yt_section_title">OBS 스트리밍 설정</div>
-                <p style={{ fontSize: 13, color: "#6b7280", margin: 0 }}>
+                <div className="h-px bg-[#e5e7eb]" />
+                <div className="text-xs font-semibold text-[#374151]">OBS 스트리밍 설정</div>
+                <p className="text-xs text-[#6b7280] m-0">
                   YouTube 스트림 키를 자동으로 가져와 OBS에 세팅합니다.
                 </p>
                 <button
-                  className="yt_action_btn green"
+                  className="self-start px-5 py-2 text-xs font-semibold bg-[#059669] text-white border-none rounded-lg cursor-pointer hover:bg-[#047857] disabled:opacity-60 disabled:cursor-default transition-colors"
                   onClick={handleSetupOBS}
                   disabled={settingUp}
                 >
                   {settingUp ? "설정 중..." : "OBS 스트림 자동 세팅"}
                 </button>
 
-                <div className="yt_divider" />
-                <div className="yt_section_title">수동 업로드</div>
-                <p style={{ fontSize: 13, color: "#6b7280", margin: 0 }}>
+                <div className="h-px bg-[#e5e7eb]" />
+                <div className="text-xs font-semibold text-[#374151]">수동 업로드</div>
+                <p className="text-xs text-[#6b7280] m-0">
                   현재 활성/예정 라이브 방송에 썸네일을 즉시 생성하고 업로드합니다.
                 </p>
                 <button
-                  className="yt_action_btn blue"
+                  className="self-start px-5 py-2 text-xs font-semibold bg-[#1f3f62] text-white border-none rounded-lg cursor-pointer hover:bg-[#2d5a8a] disabled:opacity-60 disabled:cursor-default transition-colors"
                   onClick={handleManualUpload}
                   disabled={uploading}
                 >
@@ -125,58 +144,6 @@ export default function YouTubePanel({ open, onClose }: YouTubePanelProps) {
           </div>
         </FeatureGate>
       </div>
-
-      <style jsx>{`
-        .yt_overlay {
-          position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-          background: rgba(0,0,0,0.5);
-          display: flex; align-items: center; justify-content: center;
-          z-index: 11000;
-        }
-        .yt_panel {
-          background: #fff; border-radius: 16px;
-          width: 420px; max-width: 90vw; max-height: 80vh;
-          overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-        }
-        .yt_header {
-          display: flex; justify-content: space-between; align-items: center;
-          padding: 20px 24px 16px; border-bottom: 1px solid #e5e7eb;
-        }
-        .yt_header h3 { margin: 0; font-size: 18px; font-weight: 700; color: #1f2937; }
-        .yt_close {
-          background: none; border: none; font-size: 24px;
-          cursor: pointer; color: #6b7280; line-height: 1;
-        }
-        .yt_body {
-          padding: 20px 24px; display: flex; flex-direction: column; gap: 14px;
-        }
-        .yt_status_row {
-          display: flex; justify-content: space-between; align-items: center;
-        }
-        .yt_status_label { font-size: 14px; color: #374151; font-weight: 500; }
-        .yt_badge {
-          font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 12px;
-        }
-        .yt_badge.on { background: #d1fae5; color: #059669; }
-        .yt_badge.off { background: #fee2e2; color: #dc2626; }
-        .yt_connect_btn {
-          padding: 10px 24px; font-size: 14px; font-weight: 600;
-          background: #dc2626; color: #fff; border: none;
-          border-radius: 8px; cursor: pointer;
-        }
-        .yt_connect_btn:hover { background: #b91c1c; }
-        .yt_divider { height: 1px; background: #e5e7eb; }
-        .yt_section_title { font-size: 13px; font-weight: 600; color: #374151; }
-        .yt_action_btn {
-          padding: 8px 20px; font-size: 13px; font-weight: 600;
-          border: none; border-radius: 8px; cursor: pointer; align-self: flex-start;
-        }
-        .yt_action_btn:disabled { opacity: 0.6; cursor: default; }
-        .yt_action_btn.green { background: #059669; color: #fff; }
-        .yt_action_btn.green:hover:not(:disabled) { background: #047857; }
-        .yt_action_btn.blue { background: #1f3f62; color: #fff; }
-        .yt_action_btn.blue:hover:not(:disabled) { background: #2d5a8a; }
-      `}</style>
     </div>
   );
 }

@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { WorshipOrderItem } from "@/types";
 import { deleteNode, insertSiblingNode } from "@/lib/treeUtils";
+import ConfirmModal from "@/components/ConfirmModal";
 import EditChildNews from "./EditChildNews";
-import s from "../bulletin.module.scss";
 
 export interface ChurchNewsProps {
   handleValueChange: (key: string, { newObj, newLead }: { newObj: string; newLead?: string }) => void;
@@ -15,6 +15,7 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
   const [selectedChild, setSelectedChild] = useState<WorshipOrderItem | null>(null);
   const [expandedKeys, setExpandedKeys] = useState(new Set<string>());
   const [addContent, setAddContent] = useState<WorshipOrderItem | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ key: string; title: string } | null>(null);
 
   const handleModifyChild = (action: "DELETE" | "ADD", childKey: string) => {
     switch (action) {
@@ -88,41 +89,40 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
       return (
         <div
           key={news.key}
-          className={`news-tag-wrapper depth-${depth}`}
+          className={`depth-${depth}`}
           style={{
             boxShadow: !depth ? "2px 3px rgba(0, 0, 0, 0.1)" : "none",
             border: !depth ? "1px solid #e5e5e5" : "none",
             margin: !depth ? "6px 0" : "none",
-            borderRadius: "5px",
+            borderRadius: "8px",
             paddingLeft: depth > 0 ? `${depth * 24}px` : undefined,
           }}>
           {news.title !== "-" && (
             <span
-              className={s.tag}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer"
               onClick={() => setSelectedChild(news)}
               style={{
                 backgroundColor,
                 color: lightness > 60 ? "#000" : "#fff",
                 padding: "7px 14px",
-                borderRadius: "5px",
+                borderRadius: "8px",
                 fontSize: depth === 0 ? "14px" : "13px",
               }}>
               {depthLabel}{news.title}
               <button
-                className={s.delete_btn}
+                className="w-4 h-4 flex items-center justify-center rounded-full bg-white/20 text-white text-[9px] font-black hover:bg-white/40 transition-colors ml-1"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (!window.confirm(`'${news.title}' 소식을 삭제하시겠습니까?`)) return;
-                  handleModifyChild("DELETE", news.key);
+                  setConfirmDelete({ key: news.key, title: news.title });
                 }}>
-                x
+                ×
               </button>
             </span>
           )}
 
           {news.children && (
             <button
-              className={s.expand_btn}
+              className="text-electric-blue hover:text-secondary transition-colors text-lg px-1 border-none bg-transparent cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation();
                 toggleExpand(news.key);
@@ -133,16 +133,10 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
 
           {i === newsList.length - 1 && (
             <span
-              className={s.tag}
-              style={{
-                backgroundColor: "transparent",
-                color: "rgb(130 130 130)",
-                padding: "5px 10px",
-                border: "1px dashed #ccc",
-                borderRadius: "5px",
-              }}>
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg cursor-pointer border border-dashed border-slate-300 text-slate-400 text-sm ml-1"
+              style={{ backgroundColor: "transparent" }}>
               <button
-                className={s.plus_btn}
+                className="w-4 h-4 flex items-center justify-center rounded-full bg-slate-600 text-white text-[10px] font-black hover:bg-navy-dark transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleModifyChild("ADD", news.key);
@@ -154,7 +148,7 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
           )}
 
           {news.children && expandedKeys.has(news.key) && (
-            <div className={s.sub_news}>{renderNewsList(news.children, depth + 1)}</div>
+            <div className="pl-6 mt-1">{renderNewsList(news.children, depth + 1)}</div>
           )}
         </div>
       );
@@ -163,20 +157,12 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
 
   return (
     <>
-      <div className="church-news-container">{selectedDetail?.children && renderNewsList(selectedDetail.children)}</div>
+      <div className="flex flex-col gap-1">
+        {selectedDetail?.children && renderNewsList(selectedDetail.children)}
+      </div>
 
       {addContent && (
-        <div
-          className="add-item-form"
-          style={{
-            backgroundColor: "#fff",
-            padding: "16px",
-            borderRadius: "8px",
-            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "5px",
-          }}>
+        <div className="mt-4 bg-surface-low p-4 rounded-xl border border-slate-200 flex flex-col gap-3">
           <input
             type="text"
             placeholder="타이틀을 입력하세요"
@@ -187,14 +173,7 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
                 title: e.target.value,
               }))
             }
-            style={{
-              width: "100%",
-              padding: "3px",
-              border: "1px solid #ccc",
-              borderRadius: "3px",
-              outline: "none",
-              fontSize: "0.8rem",
-            }}
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-navy-dark focus:outline-none focus:border-electric-blue focus:ring-2 focus:ring-electric-blue/20 transition-all"
           />
           <input
             placeholder="내용을 입력하세요"
@@ -205,30 +184,12 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
                 obj: e.target.value,
               }))
             }
-            style={{
-              width: "100%",
-              height: "50px",
-              padding: "3px",
-              border: "1px solid #ccc",
-              borderRadius: "3px",
-              outline: "none",
-              fontSize: "0.8rem",
-            }}
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-navy-dark h-12 focus:outline-none focus:border-electric-blue focus:ring-2 focus:ring-electric-blue/20 transition-all"
           />
           <button
             onClick={() => handleAddNewItem(addContent)}
-            style={{
-              backgroundColor: "#007bff",
-              color: "#fff",
-              padding: "10px",
-              borderRadius: "6px",
-              fontSize: "16px",
-              border: "none",
-              cursor: "pointer",
-              transition: "background 0.3s",
-            }}
-            onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#0056b3")}
-            onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#007bff")}>
+            className="w-full bg-electric-blue text-white py-2.5 rounded-xl font-bold text-sm hover:bg-secondary transition-all active:scale-[0.98] shadow-sm shadow-electric-blue/20"
+          >
             항목 추가
           </button>
         </div>
@@ -242,6 +203,18 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
           handleValueChange={handleValueChange}
         />
       )}
+
+      <ConfirmModal
+        open={confirmDelete !== null}
+        message={`'${confirmDelete?.title}' 소식을 삭제하시겠습니까?`}
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (confirmDelete) handleModifyChild("DELETE", confirmDelete.key);
+          setConfirmDelete(null);
+        }}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </>
   );
 };

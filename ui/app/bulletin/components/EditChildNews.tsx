@@ -1,7 +1,6 @@
 import React, { useEffect } from "react";
 import { WorshipOrderItem } from "@/types";
 import { findNode } from "@/lib/treeUtils";
-import s from "../bulletin.module.scss";
 
 interface EditChildNewsProps {
   selectedDetail: WorshipOrderItem;
@@ -25,8 +24,8 @@ export default function EditChildNews({
   }, [selectedDetail, selectedChild.key]); // key 기준으로 찾기
 
   return (
-    <div className={s.form_group}>
-      <label htmlFor="obj">
+    <div className="flex flex-col gap-1.5 mt-4">
+      <label htmlFor="obj" className="text-xs font-bold text-navy-dark uppercase tracking-wider">
         Content
       </label>
       <textarea
@@ -38,6 +37,7 @@ export default function EditChildNews({
           handleValueChange(selectedChild.key, { newObj });
         }}
         placeholder="Enter news content"
+        className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm text-navy-dark resize-none min-h-[120px] focus:outline-none focus:border-electric-blue focus:ring-2 focus:ring-electric-blue/20 transition-all"
       />
     </div>
   );
