@@ -149,6 +149,10 @@ func ExtractEmbeddedData(dataFS fs.FS, execPath string) {
 	bibleDst := filepath.Join(execPath, "data", "bible.db")
 	extractFile(dataFS, "bible.db", bibleDst)
 
+	// schema.sql 추출 (앱 DB 자동 초기화용)
+	schemaDst := filepath.Join(execPath, "data", "schema.sql")
+	extractFile(dataFS, "schema.sql", schemaDst)
+
 	// 기본 설정 파일 추출
 	defaults := []string{
 		"bible_info.json",

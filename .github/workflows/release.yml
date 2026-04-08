@@ -62,6 +62,7 @@ jobs:
         run: |
           mkdir -p cmd/server/data/defaults
           cp data/bible.db cmd/server/data/bible.db 2>/dev/null || true
+          cp data/schema.sql cmd/server/data/schema.sql 2>/dev/null || true
           for f in bible_info main_worship after_worship wed_worship fri_worship; do
             [ -f "config/${f}.json" ] && cp "config/${f}.json" "cmd/server/data/defaults/${f}.json" || true
           done
@@ -127,6 +128,7 @@ jobs:
         run: |
           mkdir -p cmd/desktop/data/defaults
           cp data/bible.db cmd/desktop/data/bible.db 2>/dev/null || true
+          cp data/schema.sql cmd/desktop/data/schema.sql 2>/dev/null || true
           for f in bible_info main_worship after_worship wed_worship fri_worship; do
             [ -f "config/${f}.json" ] && cp "config/${f}.json" "cmd/desktop/data/defaults/${f}.json" || true
           done
@@ -136,6 +138,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force cmd/desktop/data/defaults | Out-Null
           if (Test-Path data/bible.db) { Copy-Item data/bible.db cmd/desktop/data/bible.db }
+          if (Test-Path data/schema.sql) { Copy-Item data/schema.sql cmd/desktop/data/schema.sql }
           foreach ($f in @('bible_info','main_worship','after_worship','wed_worship','fri_worship')) {
             $src = "config/${f}.json"
             if (Test-Path $src) { Copy-Item $src "cmd/desktop/data/defaults/${f}.json" }
