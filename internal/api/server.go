@@ -25,6 +25,9 @@ var FrontendFS fs.FS
 // srv — 서버 인스턴스 (StopServer에서 사용)
 var srv *http.Server
 
+// ServerError — 서버 시작 에러를 외부로 전달하기 위한 채널
+var ServerError = make(chan error, 1)
+
 // StartServer — HTTP 서버를 시작합니다.
 // readyCh가 nil이 아니면 리슨 준비 완료 시 닫힙니다.
 func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
@@ -224,7 +227,8 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	// net.Listen으로 포트 바인딩 — 준비 완료 시점 감지 가능
 	ln, err := net.Listen("tcp", "0.0.0.0:8080")
 	if err != nil {
-		panic(fmt.Sprintf("서버 리슨 실패: %v", err))
+		ServerError <- fmt.Errorf("포트 8080이 이미 사용 중입니다.\n다른 easyPreparation 또는 프로그램이 실행 중인지 확인해주세요.\n\n상세: %v", err)
+		return
 	}
 
 	srv = &http.Server{Handler: mux}
@@ -237,7 +241,7 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	}
 
 	if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
-		panic(fmt.Sprintf("서버 오류: %v", err))
+		ServerError <- fmt.Errorf("서버 오류: %v", err)
 	}
 }
 

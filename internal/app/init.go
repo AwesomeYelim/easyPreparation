@@ -119,6 +119,13 @@ func Initialize(cfg Config) *App {
 	go api.StartServer(app.DataChan)
 	go handlers.StartKeepAliveBroadcast()
 
+	// 서버 에러 감지 → 로그 출력 후 종료
+	go func() {
+		if err := <-api.ServerError; err != nil {
+			log.Fatalf("[server] %v", err)
+		}
+	}()
+
 	return app
 }
 

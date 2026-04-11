@@ -89,12 +89,29 @@ func (a *App) startup(ctx context.Context) {
 	// 백그라운드 작업 큐 처리 goroutine
 	go a.processDataChan()
 
-	// 서버가 준비될 때까지 대기 후 WebView URL 설정
+	// 서버 에러 감지 → 다이얼로그 표시 후 앱 종료
+	go func() {
+		select {
+		case err := <-api.ServerError:
+			log.Printf("[desktop] 서버 시작 실패: %v", err)
+			wailsruntime.WindowShow(ctx)
+			wailsruntime.MessageDialog(ctx, wailsruntime.MessageDialogOptions{
+				Type:    wailsruntime.ErrorDialog,
+				Title:   "easyPreparation 시작 실패",
+				Message: err.Error(),
+			})
+			wailsruntime.Quit(ctx)
+			return
+		case <-time.After(10 * time.Second):
+			// 타임아웃 — 서버가 조용히 실패했을 수 있음
+		}
+	}()
+
+	// 서버가 준비될 때까지 대기 후 윈도우 표시
 	go func() {
 		waitForServer("http://localhost:8080")
-		log.Println("[desktop] 서버 준비 완료 — WebView URL 설정")
+		log.Println("[desktop] 서버 준비 완료 — 윈도우 표시")
 		wailsruntime.WindowShow(ctx)
-		wailsruntime.BrowserOpenURL(ctx, "http://localhost:8080")
 	}()
 }
 
@@ -171,9 +188,32 @@ func main() {
 		OnShutdown:    app.shutdown,
 		Bind:          []interface{}{app},
 		AssetServer: &assetserver.Options{
-			// Wails 내장 asset server 대신 Go HTTP 서버(:8080)를 WebView에서 직접 로드
+			// 서버 준비될 때까지 로딩 화면 표시 후 자동 전환
 			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				http.Redirect(w, r, "http://localhost:8080", http.StatusTemporaryRedirect)
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				w.Write([]byte(`<!DOCTYPE html>
+<html><head><style>
+  body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;
+       background:#0F172A;font-family:Inter,system-ui,sans-serif;color:#fff}
+  .wrap{text-align:center}
+  .logo{font-size:32px;font-weight:800;letter-spacing:-0.5px;margin-bottom:16px}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#3B82F6;
+       margin:0 4px;animation:pulse 1.2s ease-in-out infinite}
+  .dot:nth-child(2){animation-delay:.2s} .dot:nth-child(3){animation-delay:.4s}
+  @keyframes pulse{0%,80%,100%{opacity:.3;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+  .msg{margin-top:12px;font-size:13px;color:#64748B}
+</style></head><body><div class="wrap">
+  <div class="logo">easyPreparation</div>
+  <div><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+  <div class="msg">서버를 시작하는 중...</div>
+</div><script>
+(function check(){
+  fetch("http://localhost:8080/display/status")
+    .then(function(r){if(r.ok)window.location.replace("http://localhost:8080")
+      else setTimeout(check,500)})
+    .catch(function(){setTimeout(check,500)});
+})();
+</script></body></html>`))
 			}),
 		},
 	})
