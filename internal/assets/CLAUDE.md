@@ -1,6 +1,6 @@
 # internal/assets — PDF 에셋 다운로더
 
-Cloudflare R2에서 찬송가/교독 PDF 다운로드 → 로컬 캐시.
+Oracle Cloud nginx에서 찬송가/교독 PDF 다운로드 → 로컬 캐시.
 
 ## 캐시 경로
 

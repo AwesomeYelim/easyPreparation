@@ -1,4 +1,4 @@
-// Package assets — 원격 서버(Cloudflare R2)에서 PDF를 다운로드하고 로컬 캐시를 관리합니다.
+// Package assets — 원격 서버에서 PDF를 다운로드하고 로컬 캐시를 관리합니다.
 package assets
 
 import (
@@ -11,9 +11,8 @@ import (
 	"time"
 )
 
-// AssetBaseURL — PDF 에셋 서빙 URL (CF Workers + R2)
-// 배포 환경에서는 실제 Worker URL로 교체합니다.
-var AssetBaseURL = "https://easyprep-license-api.yelim-hong.workers.dev/api/assets"
+// AssetBaseURL — PDF 에셋 서빙 URL (Oracle Cloud nginx)
+var AssetBaseURL = "http://138.2.119.220/assets"
 
 // DownloadPDF — 로컬 캐시 확인 후 없으면 원격에서 PDF를 다운로드합니다.
 // category: "hymn" 또는 "responsive_reading"
@@ -22,7 +21,7 @@ var AssetBaseURL = "https://easyprep-license-api.yelim-hong.workers.dev/api/asse
 //
 // 우선순위:
 //  1. 로컬 캐시 (cacheDir/filename)
-//  2. 원격 R2 서버 (AssetBaseURL/category/filename)
+//  2. 원격 서버 (AssetBaseURL/category/filename)
 func DownloadPDF(category, filename, cacheDir string) error {
 	pdfPath := filepath.Join(cacheDir, filename)
 

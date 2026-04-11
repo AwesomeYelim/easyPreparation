@@ -12,13 +12,8 @@ compatibility_flags = ["nodejs_compat"]
 
 [[kv_namespaces]]
 binding = "LICENSE_KV"
-id = "placeholder_kv_id"
-preview_id = "placeholder_preview_kv_id"
-
-[[r2_buckets]]
-binding = "ASSETS_BUCKET"
-bucket_name = "easyprep-assets"
-preview_bucket_name = "easyprep-assets-preview"
+id = "cad54402d43b4e9d965c9de67d582e7a"
+preview_id = "d516c690f6ec47d3b9c106341bf34851"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 아래 시크릿은 wrangler secret put 으로 별도 설정:

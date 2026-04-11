@@ -24,7 +24,6 @@ export interface SessionData {
 
 export interface Env {
   LICENSE_KV: KVNamespace
-  ASSETS_BUCKET: R2Bucket
   TOSS_SECRET_KEY: string   // 토스페이먼츠 시크릿 키 (test_gsk_... 또는 live_gsk_...)
   TOSS_CLIENT_KEY: string   // 토스페이먼츠 클라이언트 키 (test_gck_... 또는 live_gck_...)
   HMAC_SECRET: string

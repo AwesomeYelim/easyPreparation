@@ -181,11 +181,11 @@ export default function Bulletin() {
 
   return (
     <div className="flex flex-col w-full min-h-full">
-      {/* 로딩 오버레이 */}
-      {(loading || displayLoading) && (
+      {/* 로딩 오버레이 (주보 PDF 생성 전용 — display 전송은 제어판 loadingMsg로 표시) */}
+      {loading && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-navy-dark/80 backdrop-blur-sm">
           <div className="w-12 h-12 border-4 border-white/20 border-t-electric-blue rounded-full animate-spin mb-6" />
-          {!displayLoading && wsLogs.length > 1 && (
+          {wsLogs.length > 1 && (
             <div className="text-white/50 text-xs font-mono mb-2 flex flex-col items-center gap-1">
               {wsLogs.slice(0, -1).map((log, i) => (
                 <div key={i}>{log}</div>
@@ -193,7 +193,7 @@ export default function Bulletin() {
             </div>
           )}
           <div className="text-white text-sm font-bold tracking-wide">
-            {displayLoading ? displayProgress : wsMessage}
+            {wsMessage}
           </div>
         </div>
       )}

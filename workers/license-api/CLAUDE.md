@@ -1,6 +1,6 @@
 # workers/license-api — CF Workers 라이선스 서버
 
-Hono 기반. 토스페이먼츠 결제 + KV 스토리지 + R2 에셋.
+Hono 기반. 토스페이먼츠 결제 + KV 스토리지.
 
 ## 파일
 
@@ -16,6 +16,3 @@ Hono 기반. 토스페이먼츠 결제 + KV 스토리지 + R2 에셋.
 
 Go 앱 → `/api/checkout` → 토스페이먼츠 결제 → `/api/confirm` 승인 → 키 생성 → Go 앱 폴링
 
-## R2
-
-`/api/assets/:category/:filename` — 찬송/교독 PDF 에셋 서빙.
