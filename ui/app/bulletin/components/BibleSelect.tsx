@@ -31,7 +31,15 @@ const BibleSelect: React.FC<BibleSelectProps> = ({ handleValueChange, parentKey 
         const splitStandardUnder = sEl.split("_");
         const book = splitStandardUnder[0];
         const chapter = splitStandardUnder[1]?.split("/")[1];
-        if (!chapter) return [];
+        if (!chapter) {
+          // 이미 변환된 형식 파싱 시도: "마태복음 28:1-10"
+          const match = sEl.trim().match(/^(.+?)\s+(\d+):(\d+)(?:-(?:(\d+):)?(\d+))?$/);
+          if (!match) return [];
+          const [, b, c1, v1, c2, v2] = match;
+          const result: Selection[] = [{ book: b, chapter: +c1, verse: +v1 }];
+          if (v2) result.push({ book: b, chapter: +(c2 || c1), verse: +v2 });
+          return result;
+        }
         if (chapter.includes("-")) {
           return chapter.split("-").map((el) => {
             const [c, v] = el.split(":");
@@ -43,7 +51,7 @@ const BibleSelect: React.FC<BibleSelectProps> = ({ handleValueChange, parentKey 
         }
       });
     }
-    return sermonsSelection;
+    return sermonsSelection.filter((s) => s.length > 0);
   })();
 
   const [selectedBook, setSelectedBook] = useState<Selection>({ book: "", chapter: 0, verse: 0 });

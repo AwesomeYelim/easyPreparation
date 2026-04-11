@@ -11,6 +11,7 @@ export default function HymnSearch() {
   const [results, setResults] = useState<Hymn[]>([]);
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState<Hymn | null>(null);
+  const [pickedHymns, setPickedHymns] = useState<Hymn[]>([]);
   const setDisplayPanelOpen = useSetRecoilState(displayPanelOpenState);
 
   const handleSearch = useCallback(() => {
@@ -19,8 +20,15 @@ export default function HymnSearch() {
     setSelected(null);
     apiClient
       .searchHymns(query)
-      .then((data: Hymn[]) => setResults(Array.isArray(data) ? data : []))
-      .catch(() => setResults([]))
+      .then((data: Hymn[]) => {
+        const newData = Array.isArray(data) ? data : [];
+        setResults((prev) => {
+          const existing = new Set(prev.map((h) => `${h.hymnbook}-${h.number}`));
+          const unique = newData.filter((h) => !existing.has(`${h.hymnbook}-${h.number}`));
+          return [...prev, ...unique];
+        });
+      })
+      .catch(() => {})
       .finally(() => setSearching(false));
   }, [query]);
 
@@ -37,6 +45,11 @@ export default function HymnSearch() {
 
   const handleSendToDisplay = useCallback(async () => {
     if (!selected) return;
+    // 중복 방지 후 picked 리스트에 즉시 추가
+    setPickedHymns((prev) => {
+      if (prev.some((h) => h.number === selected.number && h.hymnbook === selected.hymnbook)) return prev;
+      return [...prev, selected];
+    });
     try {
       setDisplayPanelOpen(true);
       openDisplayWindow();
@@ -150,6 +163,48 @@ export default function HymnSearch() {
             })
           )}
         </div>
+
+        {/* 전송된 찬송가 목록 */}
+        {pickedHymns.length > 0 && (
+          <div className="border-t border-outline/30 bg-white">
+            <div className="px-5 py-3 flex items-center justify-between">
+              <span className="text-[10px] font-black text-secondary uppercase tracking-widest">
+                전송 목록 ({pickedHymns.length})
+              </span>
+              <button
+                onClick={() => setPickedHymns([])}
+                className="text-[10px] text-on-surface-variant hover:text-red-500 transition-colors"
+              >
+                전체 삭제
+              </button>
+            </div>
+            <div className="max-h-40 overflow-y-auto px-3 pb-3 space-y-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-outline/40 [&::-webkit-scrollbar-thumb]:rounded-full">
+              {pickedHymns.map((h) => (
+                <div
+                  key={`picked-${h.hymnbook}-${h.number}`}
+                  className="flex items-center gap-2 px-3 py-2 bg-secondary/5 rounded-lg group"
+                >
+                  <span className="text-xs font-black text-secondary w-7 text-center flex-shrink-0">
+                    {h.number}
+                  </span>
+                  <span className="text-xs font-medium text-on-surface truncate flex-1">
+                    {h.title}
+                  </span>
+                  <button
+                    onClick={() =>
+                      setPickedHymns((prev) =>
+                        prev.filter((p) => !(p.number === h.number && p.hymnbook === h.hymnbook))
+                      )
+                    }
+                    className="w-4 h-4 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-red-100 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 text-[10px]"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* 우측: 상세 뷰 */}

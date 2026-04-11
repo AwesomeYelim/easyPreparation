@@ -9,18 +9,10 @@ export default function Lyrics() {
 
   return (
     <div className="w-full flex flex-col">
-      {/* 히어로 섹션 */}
-      <section className="pb-6 border-b border-outline/40">
-        <span className="text-secondary font-semibold tracking-widest text-[10px] uppercase block mb-1">
-          Lyrics Retrieval Engine
-        </span>
-        <h2 className="text-4xl font-black text-primary tracking-tight">
-          Find Your Worship
-        </h2>
-      </section>
+      <h1 className="text-3xl font-black tracking-tight text-primary mb-6">Find Your Worship</h1>
 
       {/* 탭 */}
-      <div className="flex gap-1 mt-6 mb-0">
+      <div className="flex gap-1 mb-0">
         <button
           className={`px-5 py-2.5 text-sm font-bold rounded-t-lg border border-b-0 transition-all ${
             tab === "free"

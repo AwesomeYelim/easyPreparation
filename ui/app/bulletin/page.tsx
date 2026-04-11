@@ -200,12 +200,7 @@ export default function Bulletin() {
 
       {/* 상단 헤더 */}
       <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight text-navy-dark">Worship Sequence</h1>
-          <p className="text-on-surface-variant font-medium mt-1 text-sm">
-            {worshipTypeLabels[selectedWorshipType]}
-          </p>
-        </div>
+        <h1 className="text-3xl font-black tracking-tight text-primary">Worship Sequence</h1>
         <div className="flex items-center gap-3">
           {/* 예배 타입 드롭다운 */}
           <select
@@ -222,13 +217,13 @@ export default function Bulletin() {
           {/* 주보 PDF 생성 버튼 */}
           <button
             onClick={sendDataToGoServer}
-            title="주보 PDF 파일을 생성하여 다운로드합니다"
+            title="주보/예배 PDF 파일을 생성하여 다운로드합니다"
             className="flex items-center gap-2 bg-white text-navy-dark px-5 py-2.5 rounded-xl font-bold text-sm border border-slate-200 shadow-sm hover:bg-slate-50 transition-all"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M8 2V10M8 10L5 7M8 10L11 7M3 13H13" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            주보 PDF 생성
+            주보/예배 PDF 생성
           </button>
 
           {/* 프로젝터 전송 버튼 */}

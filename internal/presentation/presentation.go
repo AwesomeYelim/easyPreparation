@@ -255,7 +255,7 @@ func (pdf *PDF) ForComposeBuiltin(elements []types.WorshipInfo) (ym float64) {
 	return ym
 }
 
-func (pdf *PDF) ForReferNext(elements []types.WorshipInfo, nextStart float64) {
+func (pdf *PDF) ForReferNext(elements []types.WorshipInfo, nextStart float64) float64 {
 
 	pdf.Config.FontSize *= 0.8
 	fontInfo := pdf.Config.FontInfo
@@ -282,6 +282,42 @@ func (pdf *PDF) ForReferNext(elements []types.WorshipInfo, nextStart float64) {
 		pdf.MultiCell(innerBoxWidth, 0, element.Obj, "", "R", false)
 		nextStart += fontInfo.FontSize / 2
 	}
+	return nextStart
+}
+
+func (pdf *PDF) ForExtraWorship(label string, elements []types.WorshipInfo, startY float64) float64 {
+	fontInfo := pdf.Config.FontInfo
+	printColor := colorPalette.HexToRGBA(pdf.Config.Color.PrintColor)
+	var xm float64 = 427
+	var innerBoxWidth float64 = 180
+
+	startY += fontInfo.FontSize
+	pdf.SetText(classification.FontInfo{
+		FontSize:   fontInfo.FontSize * 1.1,
+		FontFamily: fontInfo.FontFamily,
+	}, true, printColor)
+	pdf.SetXY(xm, startY)
+	pdf.MultiCell(innerBoxWidth, 0, label, "", "L", false)
+	startY += fontInfo.FontSize / 1.5
+
+	pdf.SetText(fontInfo, false, printColor)
+	for _, el := range elements {
+		if strings.Contains(el.Key, ".") {
+			continue
+		}
+		t := el.Title
+		if strings.Contains(t, "기도") {
+			t = "기도"
+		}
+		pdf.SetXY(xm, startY)
+		pdf.MultiCell(innerBoxWidth, 0, fmt.Sprintf("%s:", t), "", "L", false)
+		if el.Obj != "" && el.Obj != "-" {
+			pdf.SetXY(xm, startY)
+			pdf.MultiCell(innerBoxWidth, 0, el.Obj, "", "R", false)
+		}
+		startY += fontInfo.FontSize / 2
+	}
+	return startY
 }
 
 func (pdf *PDF) ForTodayVerse(element types.WorshipInfo) {

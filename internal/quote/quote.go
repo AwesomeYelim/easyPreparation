@@ -156,6 +156,16 @@ func GetBibleDB() *sql.DB {
 }
 
 func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
+	execPath := path.ExecutePath("easyPreparation")
+
+	// 기존 설정 로드 (빈 obj 시 데이터 보존용)
+	var existingData []map[string]interface{}
+	if data, err := os.ReadFile(filepath.Join(execPath, "config", worshipTitle+".json")); err == nil {
+		if err := json.Unmarshal(data, &existingData); err != nil {
+			log.Printf("기존 설정 파싱 오류 (%s): %v", worshipTitle, err)
+		}
+	}
+
 	i := 0
 	for i < len(*bulletin) {
 		el := (*bulletin)[i]
@@ -171,15 +181,41 @@ func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 
 		// "b_"로 시작하는 info 필드가 있을 때만 처리
 		if iOk && strings.HasPrefix(info, "b_") {
-			// "성경봉독" 제목 뒤에 "말씀내용" 항목 삽입
+			// "성경봉독" 제목 뒤에 "말씀내용" 항목 삽입 (중복 방지)
 			if title == "성경봉독" {
-				newItem := map[string]interface{}{
-					"key":   fmt.Sprintf("%d.1", i),
-					"title": "말씀내용",
-					"info":  "c_edit",
-					"obj":   "-",
+				alreadyExists := false
+				if i+1 < len(*bulletin) {
+					if nextTitle, ok := (*bulletin)[i+1]["title"].(string); ok && nextTitle == "말씀내용" {
+						alreadyExists = true
+					}
 				}
-				*bulletin = append((*bulletin)[:i+1], append([]map[string]interface{}{newItem}, (*bulletin)[i+1:]...)...)
+				if !alreadyExists {
+					newItem := map[string]interface{}{
+						"key":   fmt.Sprintf("%d.1", i),
+						"title": "말씀내용",
+						"info":  "c_edit",
+						"obj":   "-",
+					}
+					*bulletin = append((*bulletin)[:i+1], append([]map[string]interface{}{newItem}, (*bulletin)[i+1:]...)...)
+				}
+			}
+
+			// obj가 비어있거나 이미 변환된 형식이면 기존 데이터 보존
+			if obj == "" || obj == "-" || !strings.Contains(obj, "_") {
+				key, _ := el["key"].(string)
+				for _, existing := range existingData {
+					if ek, ok := existing["key"].(string); ok && ek == key {
+						if ec, ok := existing["contents"].(string); ok && ec != "" {
+							(*bulletin)[i]["contents"] = ec
+						}
+						if eo, ok := existing["obj"].(string); ok && eo != "" {
+							(*bulletin)[i]["obj"] = eo
+						}
+						break
+					}
+				}
+				i++
+				continue
 			}
 
 			var sb strings.Builder
@@ -213,6 +249,7 @@ func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 					korName, codeAndRange := parts[0], parts[1]
 					codeParts := strings.SplitN(codeAndRange, "/", 2)
 					if len(codeParts) != 2 {
+						i++
 						continue
 					}
 					quoteText, err := GetQuote(codeAndRange)
@@ -241,7 +278,6 @@ func ProcessQuote(worshipTitle string, bulletin *[]map[string]interface{}) {
 		i++
 	}
 
-	execPath := path.ExecutePath("easyPreparation")
 	sample, _ := json.MarshalIndent(bulletin, "", "  ")
 	_ = utils.CheckDirIs(filepath.Join(execPath, "config"))
 	_ = os.WriteFile(filepath.Join(execPath, "config", worshipTitle+".json"), sample, 0644)

@@ -93,7 +93,8 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
           style={{
             boxShadow: !depth ? "2px 3px rgba(0, 0, 0, 0.1)" : "none",
             border: !depth ? "1px solid #e5e5e5" : "none",
-            margin: !depth ? "6px 0" : "none",
+            margin: !depth ? "6px 0" : undefined,
+            marginTop: depth > 0 ? "6px" : undefined,
             borderRadius: "8px",
             paddingLeft: depth > 0 ? `${depth * 24}px` : undefined,
           }}>
@@ -157,7 +158,7 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
 
   return (
     <>
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-3">
         {selectedDetail?.children && renderNewsList(selectedDetail.children)}
       </div>
 

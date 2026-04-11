@@ -197,6 +197,12 @@ jobs:
     if: always() && needs.build-server.result == 'success'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/install-mac.sh
+            scripts/install-windows.ps1
+          sparse-checkout-cone-mode: false
       - uses: actions/download-artifact@v4
         with:
           path: artifacts/
@@ -215,3 +221,5 @@ jobs:
           files: |
             artifacts/easyPreparation_*
             artifacts/checksums.txt
+            scripts/install-mac.sh
+            scripts/install-windows.ps1

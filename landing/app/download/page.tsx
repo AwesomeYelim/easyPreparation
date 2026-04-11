@@ -9,8 +9,7 @@ const desktopApps = [
     desc: "M1 / M2 / M3 / M4",
     file: "easyPreparation_desktop_darwin_arm64.zip",
     icon: "\u{f8ff}",
-    install:
-      '압축 해제 → Applications 이동 → 우클릭 "열기"',
+    install: "터미널 한 줄 설치 또는 직접 다운로드",
     note: "첫 실행 시 Gatekeeper 경고가 나타나면: 우클릭 → 열기 → 열기 클릭",
   },
   {
@@ -18,7 +17,7 @@ const desktopApps = [
     desc: "Windows 10 / 11 (64-bit)",
     file: "easyPreparation_desktop_windows_amd64_setup.exe",
     icon: "W",
-    install: '실행 → SmartScreen 경고 시 "추가 정보 → 실행"',
+    install: "PowerShell 한 줄 설치 또는 직접 다운로드",
     note: "첫 실행 시 SmartScreen 경고가 나타나면: 추가 정보 클릭 → 실행 클릭",
   },
   {
@@ -78,6 +77,28 @@ export default function DownloadPage() {
         ))}
       </div>
 
+      {/* 터미널 설치 (macOS / Windows) */}
+      <div className="mt-8 space-y-4">
+        <h3 className="text-sm font-semibold text-gray-700">
+          터미널 한 줄 설치 (보안 경고 자동 해결)
+        </h3>
+        <div className="rounded-lg border border-gray-200 bg-gray-900 p-4">
+          <p className="mb-1 text-xs text-gray-400">macOS (Terminal)</p>
+          <code className="block whitespace-pre-wrap break-all text-sm text-green-400">
+            curl -fsSL https://github.com/AwesomeYelim/easyPreparation/releases/latest/download/install-mac.sh | bash
+          </code>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-gray-900 p-4">
+          <p className="mb-1 text-xs text-gray-400">Windows (PowerShell)</p>
+          <code className="block whitespace-pre-wrap break-all text-sm text-green-400">
+            irm https://github.com/AwesomeYelim/easyPreparation/releases/latest/download/install-windows.ps1 | iex
+          </code>
+        </div>
+        <p className="text-xs text-gray-500">
+          Gatekeeper(macOS) / SmartScreen(Windows) 경고 없이 자동으로 설치됩니다.
+        </p>
+      </div>
+
       {/* Server 바이너리 */}
       <details className="mt-10">
         <summary className="cursor-pointer text-lg font-bold text-navy hover:text-navy-light">
@@ -128,6 +149,12 @@ export default function DownloadPage() {
             </p>
             <ol className="mt-2 list-inside list-decimal space-y-1">
               <li>
+                <strong>자동 설치 스크립트 (권장)</strong>:{" "}
+                <code className="rounded bg-gray-200 px-1.5 py-0.5 text-xs">
+                  curl -fsSL https://github.com/AwesomeYelim/easyPreparation/releases/latest/download/install-mac.sh | bash
+                </code>
+              </li>
+              <li>
                 <strong>우클릭 → 열기</strong>: Finder에서 앱을 우클릭 →
                 &ldquo;열기&rdquo; → 팝업에서 다시 &ldquo;열기&rdquo;
               </li>
@@ -150,6 +177,12 @@ export default function DownloadPage() {
               서명되지 않은 실행 파일은 SmartScreen이 차단할 수 있습니다.
             </p>
             <ol className="mt-2 list-inside list-decimal space-y-1">
+              <li>
+                <strong>자동 설치 스크립트 (권장)</strong>: PowerShell에서{" "}
+                <code className="rounded bg-gray-200 px-1.5 py-0.5 text-xs">
+                  irm https://github.com/AwesomeYelim/easyPreparation/releases/latest/download/install-windows.ps1 | iex
+                </code>
+              </li>
               <li>
                 &ldquo;Windows가 PC를 보호했습니다&rdquo; 화면에서{" "}
                 <strong>추가 정보</strong> 클릭

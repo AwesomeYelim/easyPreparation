@@ -286,19 +286,13 @@ export default function BiblePage() {
   const getVersionName = (id: number) => versions.find((v) => v.id === id)?.name || "";
 
   return (
-    <div className="flex flex-col w-full" style={{ height: "calc(100vh - 70px)", overflow: "hidden" }}>
+    <div className="flex flex-col w-full" style={{ height: "calc(100vh - 70px)" }}>
 
       {/* ── 상단 컨트롤 바 ── */}
-      <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-3 px-6 py-3 bg-white border-b border-outline/50">
+      <div className="flex-shrink-0 flex items-center justify-between gap-3 px-6 py-3 bg-white border-b border-outline/50">
         {/* 좌측: 로고 + 버전 선택 */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] font-black tracking-widest uppercase text-on-surface-variant mr-1">
-              Scripture
-            </span>
-            <h2 className="text-xl font-black tracking-tight text-primary">Bible</h2>
-          </div>
-
+          <h1 className="text-3xl font-black tracking-tight text-primary">Scripture Bible</h1>
           {versions.length > 1 && (
             <select
               className="px-3 py-1.5 text-sm font-semibold rounded-lg border border-outline/60 bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 cursor-pointer"
@@ -341,10 +335,10 @@ export default function BiblePage() {
         </div>
 
         {/* 우측: 선택 바 + 검색 */}
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-3 min-w-0">
           {selectedVerses.size > 0 && selectedBook && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/10 border border-secondary/30 rounded-lg">
-              <span className="text-sm font-semibold text-secondary whitespace-nowrap">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/10 border border-secondary/30 rounded-lg min-w-0">
+              <span className="text-sm font-semibold text-secondary truncate">
                 {selectionLabel()}
               </span>
               <button
@@ -356,7 +350,7 @@ export default function BiblePage() {
             </div>
           )}
 
-          <div className="flex max-w-xs w-full">
+          <div className="flex w-48">
             <input
               type="text"
               placeholder="구절 검색..."
