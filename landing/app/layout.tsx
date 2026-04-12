@@ -26,14 +26,6 @@ function Header() {
           <a href="/download" className="hover:text-navy">
             다운로드
           </a>
-          <a
-            href="https://github.com/AwesomeYelim/easyPreparation"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-navy"
-          >
-            GitHub
-          </a>
         </nav>
       </div>
     </header>
@@ -44,14 +36,6 @@ function Footer() {
   return (
     <footer className="border-t border-gray-200 bg-gray-50 py-10 text-center text-sm text-gray-500">
       <p>easyPreparation</p>
-      <p className="mt-1">
-        <a
-          href="https://github.com/AwesomeYelim/easyPreparation"
-          className="underline hover:text-navy"
-        >
-          GitHub
-        </a>
-      </p>
     </footer>
   );
 }
