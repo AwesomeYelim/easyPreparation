@@ -2382,7 +2382,19 @@ func fetchDisplayImages(title, obj string) []string {
 		return cached
 	}
 
-	// 고정 디렉토리에 PDF 캐시 (data/pdf/hymn/, data/pdf/responsive_reading/)
+	// PNG 우선 다운로드 (Oracle Cloud hymn_pages/ — 변환 불필요, Windows 포함 모든 OS)
+	BroadcastMessage("display_loading", map[string]interface{}{
+		"message": fmt.Sprintf("%s/%s PNG 다운로드 중...", category, targetNum),
+	})
+	if pngPaths := assets.DownloadPNGPages(category, targetNum, baseDir); len(pngPaths) > 0 {
+		var urls []string
+		for _, p := range pngPaths {
+			urls = append(urls, "/display/tmp/"+filepath.Base(p))
+		}
+		return urls
+	}
+
+	// Fallback: PDF 다운로드 → 로컬 변환 (Mac/Linux, PNG 서버에 없는 경우)
 	pdfDir := filepath.Join(execPath, "data", "pdf")
 	_ = utils.CheckDirIs(pdfDir)
 	cacheDir := filepath.Join(pdfDir, category)
@@ -2390,10 +2402,9 @@ func fetchDisplayImages(title, obj string) []string {
 
 	pdfPath := filepath.Join(cacheDir, targetNum)
 
-	// PDF 캐시 확인 → 없으면 R2에서 다운로드
 	if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
 		BroadcastMessage("display_loading", map[string]interface{}{
-			"message": fmt.Sprintf("%s/%s 다운로드 중...", category, targetNum),
+			"message": fmt.Sprintf("%s/%s PDF 다운로드 중...", category, targetNum),
 		})
 		if err := assets.DownloadPDF(category, targetNum, cacheDir); err != nil {
 			log.Printf("[display] PDF 다운로드 실패 — %v (건너뜀)", err)
@@ -2405,7 +2416,7 @@ func fetchDisplayImages(title, obj string) []string {
 		})
 	}
 
-	// PDF → PNG 변환 (MuPDF)
+	// PDF → PNG 변환
 	tmpDir, err := os.MkdirTemp(baseDir, category+"_conv_")
 	if err != nil {
 		log.Printf("[display] 임시 디렉토리 생성 실패: %v", err)
@@ -2418,7 +2429,6 @@ func fetchDisplayImages(title, obj string) []string {
 		return nil
 	}
 
-	// PNG 파일 → baseDir에 고유명으로 복사
 	files, err := os.ReadDir(tmpDir)
 	if err != nil {
 		return nil

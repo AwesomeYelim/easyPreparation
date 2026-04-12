@@ -27,11 +27,10 @@ export default function LeftSidebar() {
         {/* Logo */}
         <div className="mb-10 px-2 flex flex-col gap-2">
           <img
-            src="/images/ep-icon-40.png"
+            src="/images/ep-logo.svg"
             alt="EP"
             width={40}
             height={40}
-            className="rounded-xl"
           />
           <p className="text-[10px] font-black text-on-surface opacity-40 uppercase tracking-[0.25em]">
             easyPreparation

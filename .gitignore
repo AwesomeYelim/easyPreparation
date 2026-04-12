@@ -1,7 +1,7 @@
 *.pdf
 /bin/
 /build/
-data/
+/data/
 !data/bible.db
 output/*/*.pdf
 output/display/
@@ -46,7 +46,8 @@ tools/__pycache__/
 cmd/server/frontend/
 cmd/server/data/
 cmd/desktop/frontend/
-cmd/desktop/data/
+cmd/desktop/data/*
+!cmd/desktop/data/bible.db
 cmd/desktop/build/bin/
 
 # Wails 생성 파일
