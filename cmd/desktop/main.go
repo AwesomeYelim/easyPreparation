@@ -61,6 +61,15 @@ func (a *App) startup(ctx context.Context) {
 		}
 	}
 
+	// 성경 DB 연결 (SQLite)
+	biblePath := filepath.Join(execPath, "data", "bible.db")
+	if err := quote.InitBibleDB(biblePath); err != nil {
+		log.Printf("[desktop] 성경 DB 연결 실패 (성경 조회 비활성): %v", err)
+	} else {
+		handlers.InitBibleDB(quote.GetBibleDB())
+		log.Println("[desktop] 성경 DB 연결 성공 (SQLite)")
+	}
+
 	// OBS WebSocket 연결
 	obs.Init(filepath.Join(execPath, "config", "obs.json"))
 

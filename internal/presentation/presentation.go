@@ -18,9 +18,8 @@ import (
 	"image/color"
 	"log"
 	"os"
-	"os/exec"
+	"easyPreparation_1.0/internal/pdfrender"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -535,25 +534,9 @@ func (pdf *PDF) setOutDirFiles(category, target string) {
 	// PNG 변환용 임시 디렉토리
 	tempPath := filepath.Join(cacheDir, fmt.Sprintf("temp_%s", splitNum))
 	_ = utils.CheckDirIs(tempPath)
-	tempPngPtah := filepath.Join(tempPath, "%d.png")
 
-	var cmd *exec.Cmd
-
-	switch runtime.GOOS {
-	case "windows":
-		cmd = exec.Command("gswin64c", "-sDEVICE=pngalpha", "-o", tempPngPtah, "-r96", pdfPath)
-	default:
-		gsPath := "/opt/homebrew/bin/gs"
-		if _, err := os.Stat(gsPath); err != nil {
-			gsPath = "gs"
-		}
-		cmd = exec.Command(gsPath, "-sDEVICE=pngalpha", "-o", tempPngPtah, "-r96", pdfPath)
-	}
-
-	output, err := cmd.CombinedOutput()
-
-	if err != nil {
-		log.Printf("찬송/교독 변환 실패: %s, 에러: %v", string(output), err)
+	if err := pdfrender.PDFToImages(pdfPath, tempPath, 96); err != nil {
+		log.Printf("찬송/교독 변환 실패: %v", err)
 		return
 	}
 	defer func() {

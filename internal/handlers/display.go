@@ -4,6 +4,7 @@ import (
 	"easyPreparation_1.0/internal/assets"
 	"easyPreparation_1.0/internal/obs"
 	"easyPreparation_1.0/internal/path"
+	"easyPreparation_1.0/internal/pdfrender"
 	"easyPreparation_1.0/internal/quote"
 	"easyPreparation_1.0/internal/utils"
 	"encoding/json"
@@ -13,10 +14,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -2406,28 +2405,16 @@ func fetchDisplayImages(title, obj string) []string {
 		})
 	}
 
-	// PDF → PNG 변환 (gs)
+	// PDF → PNG 변환 (MuPDF)
 	tmpDir, err := os.MkdirTemp(baseDir, category+"_conv_")
 	if err != nil {
 		log.Printf("[display] 임시 디렉토리 생성 실패: %v", err)
 		return nil
 	}
 	defer func() { _ = os.RemoveAll(tmpDir) }()
-	pngPattern := filepath.Join(tmpDir, "page_%d.png")
 
-	gsPath := "/opt/homebrew/bin/gs"
-	if _, err := os.Stat(gsPath); err != nil {
-		gsPath = "gs" // fallback to PATH
-	}
-
-	var cmd *exec.Cmd
-	if runtime.GOOS == "windows" {
-		cmd = exec.Command("gswin64c", "-sDEVICE=pngalpha", "-o", pngPattern, "-r144", pdfPath)
-	} else {
-		cmd = exec.Command(gsPath, "-sDEVICE=pngalpha", "-o", pngPattern, "-r144", pdfPath)
-	}
-	if output, err := cmd.CombinedOutput(); err != nil {
-		log.Printf("[display] 찬송/교독 변환 실패: %s, 에러: %v", string(output), err)
+	if err := pdfrender.PDFToImages(pdfPath, tmpDir, 144); err != nil {
+		log.Printf("[display] 찬송/교독 변환 실패: %v", err)
 		return nil
 	}
 
@@ -2442,7 +2429,11 @@ func fetchDisplayImages(title, obj string) []string {
 			pngFiles = append(pngFiles, f.Name())
 		}
 	}
-	sort.Strings(pngFiles)
+	sort.Slice(pngFiles, func(i, j int) bool {
+		numI, _ := strconv.Atoi(strings.TrimSuffix(pngFiles[i], ".png"))
+		numJ, _ := strconv.Atoi(strings.TrimSuffix(pngFiles[j], ".png"))
+		return numI < numJ
+	})
 
 	var urls []string
 	for _, pf := range pngFiles {
