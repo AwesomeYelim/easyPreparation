@@ -4,6 +4,7 @@
     "paths": {
       "@/*": ["./app/*"]
     },
+    "target": "es2015",
     "lib": [
       "dom",
       "dom.iterable",
@@ -33,6 +34,8 @@
     "**/*.tsx"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "bulletin",
+    "lyrics"
   ]
 }
