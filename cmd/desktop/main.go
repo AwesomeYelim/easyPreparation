@@ -208,9 +208,8 @@ func main() {
   <div class="msg">서버를 시작하는 중...</div>
 </div><script>
 (function check(){
-  fetch("http://localhost:8080/display/status")
-    .then(function(r){if(r.ok)window.location.replace("http://localhost:8080")
-      else setTimeout(check,500)})
+  fetch("http://localhost:8080/display/status",{mode:'no-cors'})
+    .then(function(){window.location.replace("http://localhost:8080")})
     .catch(function(){setTimeout(check,500)});
 })();
 </script></body></html>`))

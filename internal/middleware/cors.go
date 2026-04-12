@@ -22,8 +22,8 @@ func isAllowedOrigin(origin string) bool {
 		host = h
 	}
 
-	// localhost, 127.0.0.1 허용
-	if host == "localhost" || host == "127.0.0.1" || host == "::1" {
+	// localhost, 127.0.0.1, Wails WebView 허용
+	if host == "localhost" || host == "127.0.0.1" || host == "::1" || host == "wails.localhost" {
 		return true
 	}
 
