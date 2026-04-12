@@ -519,7 +519,19 @@ func (pdf *PDF) setOutDirFiles(category, target string) {
 
 	pdfPath := filepath.Join(cacheDir, targetNum)
 
-	// PDF 캐시 확인 → 없으면 R2에서 다운로드
+	// PNG 우선: Oracle Cloud hymn_pages/ 에서 직접 다운로드 (변환 불필요 — Windows 포함 전 플랫폼)
+	pngCacheDir := filepath.Join(pdf.ExecPath, "data", "cache", "hymn_pages")
+	_ = utils.CheckDirIs(pngCacheDir)
+	if pngPaths := assets.DownloadPNGPages(category, targetNum, pngCacheDir); len(pngPaths) > 0 {
+		handlers.BroadcastProgress("PNG cache", 1, fmt.Sprintf("[PNG] %s/%s 적용", category, targetNum))
+		for _, imgPath := range pngPaths {
+			pdf.AddPage()
+			pdf.CheckImgPlaced(imgPath, 0)
+		}
+		return
+	}
+
+	// PDF fallback: PDF 다운로드 → 로컬 변환 (Mac/Linux, PNG 서버에 없는 경우)
 	if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
 		handlers.BroadcastProgress("PDF download", 1, fmt.Sprintf("%s/%s 다운로드 중...", category, targetNum))
 		if err := assets.DownloadPDF(category, targetNum, cacheDir); err != nil {
@@ -531,7 +543,6 @@ func (pdf *PDF) setOutDirFiles(category, target string) {
 		handlers.BroadcastProgress("PDF cache", 1, fmt.Sprintf("[캐시] %s/%s 사용", category, targetNum))
 	}
 
-	// PNG 변환용 임시 디렉토리
 	tempPath := filepath.Join(cacheDir, fmt.Sprintf("temp_%s", splitNum))
 	_ = utils.CheckDirIs(tempPath)
 
