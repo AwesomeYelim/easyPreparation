@@ -199,6 +199,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           sparse-checkout: |
             scripts/install-mac.sh
             scripts/install-windows.ps1
@@ -214,9 +215,37 @@ jobs:
           ls -la
           sha256sum easyPreparation_* > checksums.txt
           cat checksums.txt
+      - name: Generate release notes
+        run: |
+          PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${GITHUB_REF_NAME}$" | head -1)
+          echo "## 설치 방법" > release_notes.md
+          echo "" >> release_notes.md
+          echo "**macOS (터미널)**" >> release_notes.md
+          echo '```bash' >> release_notes.md
+          echo "curl -fsSL https://github.com/AwesomeYelim/easyPreparation/releases/latest/download/install-mac.sh | bash" >> release_notes.md
+          echo '```' >> release_notes.md
+          echo "" >> release_notes.md
+          echo "**Windows (PowerShell)**" >> release_notes.md
+          echo '```powershell' >> release_notes.md
+          echo "irm https://github.com/AwesomeYelim/easyPreparation/releases/latest/download/install-windows.ps1 | iex" >> release_notes.md
+          echo '```' >> release_notes.md
+          echo "" >> release_notes.md
+          echo "---" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "## 변경 사항" >> release_notes.md
+          echo "" >> release_notes.md
+          if [ -n "$PREV_TAG" ]; then
+            git log "${PREV_TAG}..HEAD" --pretty=format:"- %s" --no-merges >> release_notes.md
+            echo "" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "**Full Changelog**: https://github.com/AwesomeYelim/easyPreparation/compare/${PREV_TAG}...${GITHUB_REF_NAME}" >> release_notes.md
+          else
+            git log --pretty=format:"- %s" --no-merges >> release_notes.md
+          fi
+          cat release_notes.md
       - uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          body_path: release_notes.md
           fail_on_unmatched_files: false
           files: |
             artifacts/easyPreparation_*
