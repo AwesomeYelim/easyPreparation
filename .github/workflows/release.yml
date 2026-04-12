@@ -1,0 +1,254 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  # 1단계: 프론트엔드 빌드 (1회)
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: ui/package-lock.json
+      - name: Build frontend
+        run: cd ui && npm ci && npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: ui/out/
+
+  # 2단계: Server 바이너리 빌드 (4 플랫폼 병렬, CGO_ENABLED=0)
+  build-server:
+    needs: build-frontend
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: darwin
+            goarch: arm64
+            artifact: easyPreparation_server_darwin_arm64
+          - os: ubuntu-latest
+            goos: darwin
+            goarch: amd64
+            artifact: easyPreparation_server_darwin_amd64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            artifact: easyPreparation_server_linux_amd64
+          - os: ubuntu-latest
+            goos: windows
+            goarch: amd64
+            artifact: easyPreparation_server_windows_amd64.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: cmd/server/frontend/
+      - name: Copy embedded data
+        run: |
+          mkdir -p cmd/server/data/defaults
+          cp data/bible.db cmd/server/data/bible.db 2>/dev/null || true
+          cp data/schema.sql cmd/server/data/schema.sql 2>/dev/null || true
+          for f in bible_info main_worship after_worship wed_worship fri_worship; do
+            [ -f "config/${f}.json" ] && cp "config/${f}.json" "cmd/server/data/defaults/${f}.json" || true
+          done
+      - name: Build server binary
+        env:
+          CGO_ENABLED: '0'
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          COMMIT=$(git rev-parse --short HEAD)
+          BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          LDFLAGS="-X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildTime=${BUILD_TIME}"
+          go build -ldflags "${LDFLAGS}" -o ${{ matrix.artifact }} ./cmd/server/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+
+  # 3단계: Desktop 앱 빌드 (3 플랫폼, 네이티브 OS별 빌드)
+  build-desktop:
+    needs: build-frontend
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: darwin/arm64
+            artifact: easyPreparation_desktop_darwin_arm64.zip
+          - os: windows-latest
+            platform: windows/amd64
+            artifact: easyPreparation_desktop_windows_amd64_setup.exe
+          - os: ubuntu-latest
+            platform: linux/amd64
+            artifact: easyPreparation_desktop_linux_amd64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev build-essential pkg-config
+      - name: Install NSIS (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install nsis -y
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: cmd/desktop/frontend/
+      - name: Copy embedded data (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p cmd/desktop/data/defaults
+          cp data/bible.db cmd/desktop/data/bible.db 2>/dev/null || true
+          cp data/schema.sql cmd/desktop/data/schema.sql 2>/dev/null || true
+          for f in bible_info main_worship after_worship wed_worship fri_worship; do
+            [ -f "config/${f}.json" ] && cp "config/${f}.json" "cmd/desktop/data/defaults/${f}.json" || true
+          done
+      - name: Copy embedded data (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force cmd/desktop/data/defaults | Out-Null
+          if (Test-Path data/bible.db) { Copy-Item data/bible.db cmd/desktop/data/bible.db }
+          if (Test-Path data/schema.sql) { Copy-Item data/schema.sql cmd/desktop/data/schema.sql }
+          foreach ($f in @('bible_info','main_worship','after_worship','wed_worship','fri_worship')) {
+            $src = "config/${f}.json"
+            if (Test-Path $src) { Copy-Item $src "cmd/desktop/data/defaults/${f}.json" }
+          }
+      - name: Select Xcode (macOS)
+        if: runner.os == 'macOS'
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+      - name: Build desktop app (macOS arm64)
+        if: matrix.os == 'macos-latest'
+        env:
+          CGO_ENABLED: '1'
+          CGO_LDFLAGS: '-framework UniformTypeIdentifiers'
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          COMMIT=$(git rev-parse --short HEAD)
+          BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          LDFLAGS="-X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildTime=${BUILD_TIME}"
+          cd cmd/desktop
+          wails build -s -o easyPreparation -ldflags "${LDFLAGS}"
+          ls -la build/bin/
+          # ad-hoc 코드 서명 (Gatekeeper 경고 완화)
+          codesign --force --deep -s - build/bin/easyPreparation.app
+          xattr -cr build/bin/easyPreparation.app
+          cd build/bin && zip -r "$GITHUB_WORKSPACE/easyPreparation_desktop_darwin_arm64.zip" easyPreparation.app
+      - name: Build desktop app (Windows amd64)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $VERSION = $env:GITHUB_REF_NAME
+          $COMMIT = git rev-parse --short HEAD
+          $BUILD_TIME = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+          $LDFLAGS = "-X main.Version=$VERSION -X main.Commit=$COMMIT -X main.BuildTime=$BUILD_TIME"
+          Set-Location cmd/desktop
+          wails build -s -o easyPreparation.exe -ldflags "$LDFLAGS" -platform windows/amd64
+          Copy-Item build/bin/easyPreparation.exe "../../easyPreparation_desktop_windows_amd64_setup.exe"
+      - name: Build desktop app (Linux amd64)
+        if: matrix.os == 'ubuntu-latest'
+        env:
+          CGO_ENABLED: '1'
+        run: |
+          VERSION=${GITHUB_REF_NAME}
+          COMMIT=$(git rev-parse --short HEAD)
+          BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          LDFLAGS="-X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildTime=${BUILD_TIME}"
+          cd cmd/desktop
+          wails build -s -o easyPreparation -ldflags "${LDFLAGS}" -tags webkit2_41 -platform linux/amd64
+          cp build/bin/easyPreparation ../../easyPreparation_desktop_linux_amd64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+
+  # 4단계: Release 생성 (아티팩트 + checksums.txt)
+  release:
+    needs: [build-server, build-desktop]
+    if: always() && needs.build-server.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          sparse-checkout: |
+            scripts/install-mac.sh
+            scripts/install-windows.ps1
+          sparse-checkout-cone-mode: false
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+          pattern: easyPreparation_*
+          merge-multiple: true
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          ls -la
+          sha256sum easyPreparation_* > checksums.txt
+          cat checksums.txt
+      - name: Generate release notes
+        run: |
+          PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${GITHUB_REF_NAME}$" | head -1)
+          echo "## 설치 방법" > release_notes.md
+          echo "" >> release_notes.md
+          echo "**macOS (터미널)**" >> release_notes.md
+          echo '```bash' >> release_notes.md
+          echo "curl -fsSL https://github.com/AwesomeYelim/easyPreparation/releases/latest/download/install-mac.sh | bash" >> release_notes.md
+          echo '```' >> release_notes.md
+          echo "" >> release_notes.md
+          echo "**Windows (PowerShell)**" >> release_notes.md
+          echo '```powershell' >> release_notes.md
+          echo "irm https://github.com/AwesomeYelim/easyPreparation/releases/latest/download/install-windows.ps1 | iex" >> release_notes.md
+          echo '```' >> release_notes.md
+          echo "" >> release_notes.md
+          echo "---" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "## 변경 사항" >> release_notes.md
+          echo "" >> release_notes.md
+          if [ -n "$PREV_TAG" ]; then
+            git log "${PREV_TAG}..HEAD" --pretty=format:"- %s" --no-merges >> release_notes.md
+            echo "" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "**Full Changelog**: https://github.com/AwesomeYelim/easyPreparation/compare/${PREV_TAG}...${GITHUB_REF_NAME}" >> release_notes.md
+          else
+            git log --pretty=format:"- %s" --no-merges >> release_notes.md
+          fi
+          cat release_notes.md
+      - uses: softprops/action-gh-release@v2
+        with:
+          body_path: release_notes.md
+          fail_on_unmatched_files: false
+          files: |
+            artifacts/easyPreparation_*
+            artifacts/checksums.txt
+            scripts/install-mac.sh
+            scripts/install-windows.ps1

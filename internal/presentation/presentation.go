@@ -7,18 +7,19 @@ import (
 	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/font"
 	"easyPreparation_1.0/internal/format"
-	"easyPreparation_1.0/internal/googleCloud"
-	"easyPreparation_1.0/internal/gui"
+	"easyPreparation_1.0/internal/assets"
+	"easyPreparation_1.0/internal/handlers"
 	"easyPreparation_1.0/internal/parser"
+	"easyPreparation_1.0/internal/types"
 	"easyPreparation_1.0/internal/utils"
 	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
+	"golang.org/x/text/unicode/norm"
 	"image/color"
 	"log"
 	"os"
-	"os/exec"
+	"easyPreparation_1.0/internal/pdfrender"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -40,6 +41,24 @@ type InnerSizeInfo struct {
 	Padding float64
 }
 
+// Text, MultiCell, CellFormat, GetStringWidth — NFC 정규화 래퍼
+// macOS에서 한글이 NFD(자모 분리)로 들어올 경우 NFC(완성형)로 변환
+func (pdf *PDF) Text(x, y float64, txtStr string) {
+	pdf.Fpdf.Text(x, y, norm.NFC.String(txtStr))
+}
+
+func (pdf *PDF) MultiCell(w, h float64, txtStr, borderStr, alignStr string, fill bool) {
+	pdf.Fpdf.MultiCell(w, h, norm.NFC.String(txtStr), borderStr, alignStr, fill)
+}
+
+func (pdf *PDF) CellFormat(w, h float64, txtStr, borderStr string, ln int, alignStr string, fill bool, link int, linkStr string) {
+	pdf.Fpdf.CellFormat(w, h, norm.NFC.String(txtStr), borderStr, ln, alignStr, fill, link, linkStr)
+}
+
+func (pdf *PDF) GetStringWidth(s string) float64 {
+	return pdf.Fpdf.GetStringWidth(norm.NFC.String(s))
+}
+
 func New(size gofpdf.SizeType) PDF {
 	// PDF 객체 생성
 	pdf := gofpdf.NewCustom(&gofpdf.InitType{
@@ -55,11 +74,16 @@ func New(size gofpdf.SizeType) PDF {
 
 func (pdf *PDF) CheckImgPlaced(path string, place float32) {
 	if _, err := os.Stat(path); err == nil {
+		imgType := "PNG"
+		ext := strings.ToLower(filepath.Ext(path))
+		if ext == ".jpg" || ext == ".jpeg" {
+			imgType = "JPG"
+		}
 		switch place {
 		case 0:
-			pdf.ImageOptions(path, 0, 0, pdf.Config.Width, pdf.Config.Height, false, gofpdf.ImageOptions{ImageType: "PNG"}, 0, "")
+			pdf.ImageOptions(path, 0, 0, pdf.Config.Width, pdf.Config.Height, false, gofpdf.ImageOptions{ImageType: imgType}, 0, "")
 		case 0.5:
-			pdf.ImageOptions(path, pdf.Config.Width/2, 0, pdf.Config.Width/2, pdf.Config.Height, false, gofpdf.ImageOptions{ImageType: "PNG"}, 0, "")
+			pdf.ImageOptions(path, pdf.Config.Width/2, 0, pdf.Config.Width/2, pdf.Config.Height, false, gofpdf.ImageOptions{ImageType: imgType}, 0, "")
 		default:
 			log.Print("해당되지 않은 값")
 		}
@@ -180,8 +204,8 @@ func (pdf *PDF) TextSpacingFormat(text string, targetWidth, x, y float64) {
 	}
 }
 
-func (pdf *PDF) ForComposeBuiltin(elements []gui.WorshipInfo) (ym float64) {
-	// figma 디자인 기준
+func (pdf *PDF) ForComposeBuiltin(elements []types.WorshipInfo) (ym float64) {
+	// 디자인 기준
 	var xm float64 = 95
 	ym = 202
 	var line float64 = 272
@@ -230,7 +254,7 @@ func (pdf *PDF) ForComposeBuiltin(elements []gui.WorshipInfo) (ym float64) {
 	return ym
 }
 
-func (pdf *PDF) ForReferNext(elements []gui.WorshipInfo, nextStart float64) {
+func (pdf *PDF) ForReferNext(elements []types.WorshipInfo, nextStart float64) float64 {
 
 	pdf.Config.FontSize *= 0.8
 	fontInfo := pdf.Config.FontInfo
@@ -257,9 +281,45 @@ func (pdf *PDF) ForReferNext(elements []gui.WorshipInfo, nextStart float64) {
 		pdf.MultiCell(innerBoxWidth, 0, element.Obj, "", "R", false)
 		nextStart += fontInfo.FontSize / 2
 	}
+	return nextStart
 }
 
-func (pdf *PDF) ForTodayVerse(element gui.WorshipInfo) {
+func (pdf *PDF) ForExtraWorship(label string, elements []types.WorshipInfo, startY float64) float64 {
+	fontInfo := pdf.Config.FontInfo
+	printColor := colorPalette.HexToRGBA(pdf.Config.Color.PrintColor)
+	var xm float64 = 427
+	var innerBoxWidth float64 = 180
+
+	startY += fontInfo.FontSize
+	pdf.SetText(classification.FontInfo{
+		FontSize:   fontInfo.FontSize * 1.1,
+		FontFamily: fontInfo.FontFamily,
+	}, true, printColor)
+	pdf.SetXY(xm, startY)
+	pdf.MultiCell(innerBoxWidth, 0, label, "", "L", false)
+	startY += fontInfo.FontSize / 1.5
+
+	pdf.SetText(fontInfo, false, printColor)
+	for _, el := range elements {
+		if strings.Contains(el.Key, ".") {
+			continue
+		}
+		t := el.Title
+		if strings.Contains(t, "기도") {
+			t = "기도"
+		}
+		pdf.SetXY(xm, startY)
+		pdf.MultiCell(innerBoxWidth, 0, fmt.Sprintf("%s:", t), "", "L", false)
+		if el.Obj != "" && el.Obj != "-" {
+			pdf.SetXY(xm, startY)
+			pdf.MultiCell(innerBoxWidth, 0, el.Obj, "", "R", false)
+		}
+		startY += fontInfo.FontSize / 2
+	}
+	return startY
+}
+
+func (pdf *PDF) ForTodayVerse(element types.WorshipInfo) {
 	pdf.Config.FontInfo.FontSize = pdf.Config.FontInfo.FontSize * 0.9
 	fontInfo := pdf.Config.FontInfo
 
@@ -276,7 +336,7 @@ func (pdf *PDF) ForTodayVerse(element gui.WorshipInfo) {
 	pdf.MultiCell(innerBoxW, fontInfo.FontSize/2, element.Contents, "", "C", false)
 }
 
-func (pdf *PDF) ForEdit(con gui.WorshipInfo, config extract.Config) {
+func (pdf *PDF) ForEdit(con types.WorshipInfo, config extract.Config) {
 	hLColor := colorPalette.HexToRGBA(pdf.Config.Color.BoxColor) // 박스 색상 설정
 	fontInfo := config.Classification.Bulletin.Presentation.FontInfo
 
@@ -327,14 +387,14 @@ func (pdf *PDF) MarkName() {
 	pdf.SetXY(x, y)
 	pdf.MultiCell(labelW, 0, pdf.PdfInfo.MarkName, "", "R", false)
 }
-func (pdf *PDF) DrawChurchNews(fontInfo classification.FontInfo, con gui.WorshipInfo, hLColor color.RGBA, x, y float64) {
+func (pdf *PDF) DrawChurchNews(fontInfo classification.FontInfo, con types.WorshipInfo, hLColor color.RGBA, x, y float64) {
 	// 재귀적으로 교회소식과 그 내부 children 데이터를 처리하는 함수
-	var draw func(items []gui.WorshipInfo, depth int)
+	var draw func(items []types.WorshipInfo, depth int)
 
 	var tmpData string
 	pdf.SetText(fontInfo, false, hLColor)
 
-	draw = func(items []gui.WorshipInfo, depth int) {
+	draw = func(items []types.WorshipInfo, depth int) {
 		for i, item := range items {
 			tab := strings.Repeat("\t", depth-1)
 
@@ -369,7 +429,7 @@ func (pdf *PDF) DrawChurchNews(fontInfo classification.FontInfo, con gui.Worship
 	pdf.MultiCell(pdf.Config.InnerRectangle.Width, fontInfo.FontSize/2.3, tmpData, "", "L", false)
 }
 
-func (pdf *PDF) setBegin(con gui.WorshipInfo, lines int) {
+func (pdf *PDF) setBegin(con types.WorshipInfo, lines int) {
 	var tmpEl string
 
 	for i, _ := range pdf.BibleVerse {
@@ -429,48 +489,61 @@ func (pdf *PDF) setOutDirFiles(category, target string) {
 	var splitNum string
 	switch category {
 	case "hymn":
-		splitNum = strings.TrimSuffix(target, "장")
+		// "31장", "495장" → 숫자만 추출 / "사명", "하나님 품으로" → 원문 그대로
+		for _, r := range target {
+			if r >= '0' && r <= '9' {
+				splitNum += string(r)
+			}
+		}
+		if splitNum == "" {
+			splitNum = target
+		}
 	case "responsive_reading":
 		splitNum = strings.Split(target, ".")[0]
 	}
-	outputPath := filepath.Join(pdf.FigmaInfo.ExecPath, "data", category)
+	pdfDir := filepath.Join(pdf.ExecPath, "data", "pdf")
+	_ = utils.CheckDirIs(pdfDir)
 
-	_ = utils.CheckDirIs(outputPath)
-	defer func() {
-		_ = os.RemoveAll(outputPath)
-	}()
+	// 고정 디렉토리에 PDF 캐시 (data/pdf/hymn/, data/pdf/responsive_reading/)
+	cacheDir := filepath.Join(pdfDir, category)
+	_ = utils.CheckDirIs(cacheDir)
 
-	targetNum := fmt.Sprintf("%03s.pdf", splitNum)
-
-	googleCloud.GetGoogleCloudInfo(category, targetNum, outputPath)
-	// 캐싱 방지
-	tempPath := filepath.Join(outputPath, fmt.Sprintf("temp_%s", splitNum))
-	_ = utils.CheckDirIs(tempPath)
-	tempPngPtah := filepath.Join(tempPath, "%d.png")
-
-	var cmdStr string
-	var cmd *exec.Cmd
-	osType := runtime.GOOS
-
-	switch osType {
-	case "windows":
-		cmd = exec.Command("gswin64c", "-sDEVICE=pngalpha", "-o", tempPngPtah, "-r96", filepath.Join(outputPath, targetNum))
-	default:
-		cmdStr = fmt.Sprintf("gs -sDEVICE=pngalpha -o \"%s\" -r96 \"%s\"", tempPngPtah, filepath.Join(outputPath, targetNum))
-		cmd = exec.Command("bash", "-c", cmdStr)
+	// %03d 로 숫자 0-패딩 ("31" → "031.pdf")
+	num, err := strconv.Atoi(splitNum)
+	var targetNum string
+	if err == nil {
+		targetNum = fmt.Sprintf("%03d.pdf", num)
+	} else {
+		targetNum = fmt.Sprintf("%s.pdf", splitNum)
 	}
 
-	output, err := cmd.CombinedOutput()
+	pdfPath := filepath.Join(cacheDir, targetNum)
 
-	if err != nil {
-		log.Fatalf("명령어 실행 실패: %s, 에러: %v", string(output), err)
+	// PDF 캐시 확인 → 없으면 R2에서 다운로드
+	if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
+		handlers.BroadcastProgress("PDF download", 1, fmt.Sprintf("%s/%s 다운로드 중...", category, targetNum))
+		if err := assets.DownloadPDF(category, targetNum, cacheDir); err != nil {
+			handlers.BroadcastProgress("PDF error", -1, fmt.Sprintf("PDF 다운로드 실패 — %v", err))
+			return
+		}
+		handlers.BroadcastProgress("PDF done", 1, fmt.Sprintf("%s/%s 다운로드 완료", category, targetNum))
+	} else {
+		handlers.BroadcastProgress("PDF cache", 1, fmt.Sprintf("[캐시] %s/%s 사용", category, targetNum))
+	}
+
+	// PNG 변환용 임시 디렉토리
+	tempPath := filepath.Join(cacheDir, fmt.Sprintf("temp_%s", splitNum))
+	_ = utils.CheckDirIs(tempPath)
+
+	if err := pdfrender.PDFToImages(pdfPath, tempPath, 96); err != nil {
+		log.Printf("찬송/교독 변환 실패: %v", err)
+		return
 	}
 	defer func() {
 		_ = os.RemoveAll(tempPath)
 	}()
-	err = pdf.AddImagesToPDF(tempPath)
-	if err != nil {
-		log.Fatalf("이미지 PDF 추가 실패: %v", err)
+	if err = pdf.AddImagesToPDF(tempPath); err != nil {
+		log.Printf("이미지 PDF 추가 실패: %v", err)
 	}
 }
 

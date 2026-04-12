@@ -3,8 +3,8 @@ package forPresentation
 import (
 	"easyPreparation_1.0/internal/bulletin/define"
 	"easyPreparation_1.0/internal/extract"
-	"easyPreparation_1.0/internal/gui"
 	"easyPreparation_1.0/internal/presentation"
+	"easyPreparation_1.0/internal/types"
 	"easyPreparation_1.0/internal/utils"
 	"encoding/json"
 	"fmt"
@@ -20,18 +20,24 @@ type PdfInfo struct {
 
 func (pi PdfInfo) Create() {
 	config := extract.ConfigMem
-	outputDir := filepath.Join(pi.ExecPath, config.OutputPath.Bulletin, "presentation", "tmp")
+	outputDir := filepath.Join(pi.ExecPath, "data", "templates", "display")
 	_ = utils.CheckDirIs(outputDir)
 
-	pi.FigmaInfo.GetFigmaImage(outputDir, "forShowing")
-
+	// 배경 이미지 디렉토리에서 PNG 파일 로드
+	pathInfo := make(map[string]string)
 	imgFiles, err := os.ReadDir(outputDir)
 	if err != nil || len(imgFiles) == 0 {
 		fmt.Printf("[forPresentation] 배경 이미지 없음: %s\n", outputDir)
 		return
 	}
 	for _, img := range imgFiles {
-		pi.FigmaInfo.PathInfo[strings.TrimSuffix(img.Name(), ".png")] = filepath.Join(outputDir, img.Name())
+		if img.IsDir() {
+			continue
+		}
+		ext := strings.ToLower(filepath.Ext(img.Name()))
+		if ext == ".png" || ext == ".jpg" || ext == ".jpeg" {
+			pathInfo[strings.TrimSuffix(img.Name(), ext)] = filepath.Join(outputDir, img.Name())
+		}
 	}
 
 	instanceSize := gofpdf.SizeType{
@@ -42,7 +48,7 @@ func (pi PdfInfo) Create() {
 	objPdf.Config = config.Classification.Bulletin.Presentation
 	objPdf.PdfInfo = pi.PdfInfo
 
-	var contents []gui.WorshipInfo
+	var contents []types.WorshipInfo
 
 	worshipContents, err := os.ReadFile(filepath.Join(pi.ExecPath, "config", pi.Target+".json"))
 	err = json.Unmarshal(worshipContents, &contents)
@@ -50,7 +56,7 @@ func (pi PdfInfo) Create() {
 	for _, con := range contents {
 		objPdf.Title = con.Title
 
-		if path, ok := pi.FigmaInfo.PathInfo[objPdf.Title]; ok {
+		if path, ok := pathInfo[objPdf.Title]; ok {
 			objPdf.Path = filepath.Join(outputDir, filepath.Base(path))
 			if !strings.Contains(objPdf.Title, "성시교독") {
 				objPdf.AddPage()

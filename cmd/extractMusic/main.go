@@ -1,3 +1,5 @@
+//go:build extractmusic
+
 package main
 
 import (

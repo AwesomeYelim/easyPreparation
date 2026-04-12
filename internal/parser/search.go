@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 
@@ -13,6 +14,29 @@ func (si *SlideData) SearchLyricsList(baseUrl, query string, isDirect bool) erro
 	if len(si.Content) > 0 {
 		return nil
 	}
+
+	// 1차: 원본 쿼리로 가사 검색
+	if err := si.doSearch(baseUrl, query, isDirect); err != nil {
+		return err
+	}
+	if si.Lyrics != "" {
+		return nil
+	}
+
+	// 2차: 가사 검색 실패 → 트랙(곡명) 검색으로 재시도 (띄어쓰기 더 유연함)
+	if !isDirect {
+		log.Printf("[lyrics] 가사검색 실패, 트랙검색 재시도: %q", query)
+		trackURL := "https://music.bugs.co.kr/search/track?q=%s"
+		if err := si.doSearch(trackURL, query, false); err != nil {
+			log.Printf("[lyrics] 트랙검색도 실패: %v", err)
+		}
+	}
+
+	return nil
+}
+
+// doSearch — 실제 HTTP 검색 + 파싱
+func (si *SlideData) doSearch(baseUrl, query string, isDirect bool) error {
 	searchUrl := formatSearchURL(baseUrl, query, isDirect)
 
 	resp, err := http.Get(searchUrl)

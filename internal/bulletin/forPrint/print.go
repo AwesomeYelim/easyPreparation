@@ -6,9 +6,9 @@ import (
 	"easyPreparation_1.0/internal/colorPalette"
 	"easyPreparation_1.0/internal/date"
 	"easyPreparation_1.0/internal/extract"
-	"easyPreparation_1.0/internal/gui"
 	"easyPreparation_1.0/internal/presentation"
 	"easyPreparation_1.0/internal/sorted"
+	"easyPreparation_1.0/internal/types"
 	"easyPreparation_1.0/internal/utils"
 	"encoding/json"
 	"fmt"
@@ -24,10 +24,8 @@ type PdfInfo struct {
 
 func (pi PdfInfo) Create() {
 	config := extract.ConfigMem
-	outputDir := filepath.Join(pi.ExecPath, config.OutputPath.Bulletin, "print", "tmp")
+	outputDir := filepath.Join(pi.ExecPath, config.OutputPath.Bulletin, "print", "backgrounds")
 	_ = utils.CheckDirIs(outputDir)
-
-	pi.FigmaInfo.GetFigmaImage(outputDir, "forPrint")
 
 	allFiles, err := os.ReadDir(outputDir)
 	if err != nil {
@@ -54,8 +52,8 @@ func (pi PdfInfo) Create() {
 
 	sorted.ToIntSort(files, "- ", ".png", 0)
 
-	var elements []gui.WorshipInfo
-	var newsCon gui.WorshipInfo
+	var elements []types.WorshipInfo
+	var newsCon types.WorshipInfo
 
 	worshipContents, err := os.ReadFile(filepath.Join(pi.ExecPath, "config", pi.Target+".json"))
 	err = json.Unmarshal(worshipContents, &elements)
@@ -83,7 +81,26 @@ func (pi PdfInfo) Create() {
 			objPdf.DrawChurchNews(config.Classification.Bulletin.Print.FontInfo, newsCon, hLColor, 70.0, 200.0)
 		} else {
 			ym := objPdf.ForComposeBuiltin(elements)
-			objPdf.ForReferNext(elements, ym)
+			extraY := objPdf.ForReferNext(elements, ym)
+
+			// 주일예배일 때 오후예배/수요예배 순서 추가
+			if pi.Target == "main_worship" {
+				for _, et := range []struct{ target, label string }{
+					{"after_worship", "오후예배"},
+					{"wed_worship", "수요예배"},
+				} {
+					data, err := os.ReadFile(filepath.Join(pi.ExecPath, "config", et.target+".json"))
+					if err != nil {
+						continue
+					}
+					var extraElements []types.WorshipInfo
+					if err := json.Unmarshal(data, &extraElements); err != nil {
+						continue
+					}
+					extraY = objPdf.ForExtraWorship(et.label, extraElements, extraY)
+				}
+			}
+
 			objPdf.ForTodayVerse(elements[len(elements)-1])
 		}
 

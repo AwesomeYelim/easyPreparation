@@ -1,0 +1,38 @@
+name = "easyprep-license-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Workers 무료 플랜: 100,000 req/day
+# 유료 플랜: 10M req/month
+
+[vars]
+# Non-secret 환경 변수 (필요 시 추가)
+# APP_ENV = "production"
+
+[[kv_namespaces]]
+binding = "LICENSE_KV"
+id = "cad54402d43b4e9d965c9de67d582e7a"
+preview_id = "d516c690f6ec47d3b9c106341bf34851"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 아래 시크릿은 wrangler secret put 으로 별도 설정:
+#
+#   wrangler secret put TOSS_SECRET_KEY
+#   wrangler secret put TOSS_CLIENT_KEY
+#   wrangler secret put HMAC_SECRET
+#
+# 로컬 개발 시 .dev.vars 파일 사용 (gitignore에 포함됨):
+#   TOSS_SECRET_KEY=test_gsk_...
+#   TOSS_CLIENT_KEY=test_gck_...
+#   HMAC_SECRET=your-hmac-secret-min-32-chars
+# ─────────────────────────────────────────────────────────────────────────────
+
+# 빌드 설정
+[build]
+command = "npm run build"
+
+# 개발 서버 설정
+[dev]
+port = 8787
+local_protocol = "http"

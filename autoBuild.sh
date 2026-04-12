@@ -3,8 +3,11 @@
 set -e
 
 GO_FILES=(
-  "./cmd/server/main.go"
+  "./cmd/server/"
 )
+
+# embed 데이터 준비 (프론트엔드 없이 -tags dev로 빌드)
+BUILD_TAGS="-tags dev"
 
 BIN_DIR="./bin"
 mkdir -p "${BIN_DIR}"
@@ -28,9 +31,9 @@ for target in "${TARGETS[@]}"; do
 
     # 정적 컴파일 설정
     if [ "$GOOS" == "linux" ] || [ "$GOOS" == "darwin" ]; then
-      CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build -a -trimpath -ldflags="-extldflags=-static" -o "$output_file" "$file"
+      CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build ${BUILD_TAGS} -a -trimpath -ldflags="-extldflags=-static" -o "$output_file" "$file"
     else
-      GOOS=$GOOS GOARCH=$GOARCH go build -a -trimpath -o "$output_file" "$file"
+      GOOS=$GOOS GOARCH=$GOARCH go build ${BUILD_TAGS} -a -trimpath -o "$output_file" "$file"
     fi
   done
 done
