@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="landing/public/ep-logo-192.png" width="80" alt="easyPreparation logo" />
+
 # easyPreparation
 
 **교회 주보 · 가사 PPT · 예배 화면 자동화 플랫폼**
@@ -221,7 +223,48 @@ sequenceDiagram
     C-->>C: 카운트다운 해제 → LIVE 뱃지
 ```
 
-### OBS 권장 설정
+### OBS 설치 및 설정
+
+#### 1. OBS Studio 설치
+
+[https://obsproject.com](https://obsproject.com) 에서 운영체제에 맞는 버전을 다운로드합니다.
+
+> **OBS 28 이상 권장** — WebSocket 서버가 내장되어 별도 플러그인 불필요.
+
+#### 2. WebSocket 서버 활성화
+
+OBS 메뉴 → **도구(Tools) → WebSocket 서버 설정(WebSocket Server Settings)**
+
+| 항목 | 값 |
+|------|-----|
+| WebSocket 서버 활성화 | ✅ 체크 |
+| 서버 포트 | `4455` (기본값) |
+| 인증 활성화 | 선택 — 활성화 시 비밀번호 설정 |
+
+#### 3. `config/obs.json` 작성
+
+```json
+{
+  "host": "localhost:4455",
+  "password": "your_password_here",
+  "scenes": {
+    "찬송": "camera",
+    "기도": "camera",
+    "말씀": "camera",
+    "성경": "monitor",
+    "교독문": "monitor"
+  },
+  "cameraScene": "camera",
+  "displayScene": "monitor",
+  "fadeMs": 800,
+  "fadeDelaySec": 3
+}
+```
+
+> `scenes` 맵: 예배 항목 title → OBS 씬 이름. 매핑되지 않은 항목은 씬 전환 스킵.
+> `config/obs.json`이 없으면 OBS 연동 전체 비활성(에러 없음).
+
+#### 4. Browser Source 추가
 
 | Source | URL | 용도 |
 |--------|-----|------|

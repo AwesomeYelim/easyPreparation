@@ -53,10 +53,19 @@ export default function Home() {
           </a>
         </div>
 
-        {/* 스크린샷 placeholder */}
-        <div className="mx-auto mt-14 max-w-4xl overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-lg">
-          <div className="flex h-80 items-center justify-center text-gray-400">
-            스크린샷 (추후 추가)
+        {/* 핵심 수치 */}
+        <div className="mx-auto mt-14 grid max-w-2xl grid-cols-3 gap-6">
+          <div className="rounded-xl border border-gray-200 bg-white px-6 py-5 shadow-sm">
+            <p className="text-3xl font-extrabold text-navy">645곡</p>
+            <p className="mt-1 text-sm text-gray-500">새찬송가 전곡 지원</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white px-6 py-5 shadow-sm">
+            <p className="text-3xl font-extrabold text-navy">7개</p>
+            <p className="mt-1 text-sm text-gray-500">성경 번역본</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white px-6 py-5 shadow-sm">
+            <p className="text-3xl font-extrabold text-navy">OBS</p>
+            <p className="mt-1 text-sm text-gray-500">방송 자동 연동</p>
           </div>
         </div>
       </section>
