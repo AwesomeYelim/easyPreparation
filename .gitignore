@@ -21,6 +21,7 @@ tools/output/_tmp.py
 tools/templates/
 lyricsPPT_v*.zip
 public
+!landing/public/
 
 # env (시크릿)
 .env
