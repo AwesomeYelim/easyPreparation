@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useLayoutEffect, useState, useCallback, useRef } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import { displayItemsState, displayPanelOpenState } from "@/recoilState";
 import { apiClient } from "@/lib/apiClient";
@@ -125,10 +125,21 @@ export default function DisplayControlPanel() {
     return () => clearInterval(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    const el = listRef.current?.querySelector("[data-active='true']");
-    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [idx, subPageIdx]);
+  useLayoutEffect(() => {
+    const container = listRef.current;
+    if (!container) return;
+    const el = container.querySelector("[data-active='true']") as HTMLElement | null;
+    if (!el) return;
+    const cRect = container.getBoundingClientRect();
+    const eRect = el.getBoundingClientRect();
+    const relTop = eRect.top - cRect.top + container.scrollTop;
+    const relBottom = relTop + eRect.height;
+    if (relTop < container.scrollTop) {
+      container.scrollTop = relTop - 8;
+    } else if (relBottom > container.scrollTop + container.clientHeight) {
+      container.scrollTop = relBottom - container.clientHeight + 8;
+    }
+  }, [idx, subPageIdx, items]);
 
   const handleNav = useCallback((dir: "prev" | "next") => {
     apiClient.navigateDisplay(dir);

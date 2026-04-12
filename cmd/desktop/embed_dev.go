@@ -8,3 +8,8 @@ import "io/fs"
 func getFrontendFS() fs.FS {
 	return nil
 }
+
+// getUIBaseURL — dev 모드에서 WebView가 리디렉션할 UI URL
+func getUIBaseURL() string {
+	return "http://localhost:3000"
+}

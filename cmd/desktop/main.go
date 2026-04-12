@@ -188,7 +188,8 @@ func main() {
 		Title:         "easyPreparation",
 		Width:         1400,
 		Height:        900,
-		MinWidth:      1024,
+		MinWidth:      1400,
+		MaxWidth:      1400,
 		MinHeight:     768,
 		DisableResize: false,
 		Fullscreen:    false,
@@ -218,7 +219,7 @@ func main() {
 </div><script>
 (function check(){
   fetch("http://localhost:8080/display/status",{mode:'no-cors'})
-    .then(function(){window.location.replace("http://localhost:8080")})
+    .then(function(){window.location.replace("` + getUIBaseURL() + `")})
     .catch(function(){setTimeout(check,500)});
 })();
 </script></body></html>`))

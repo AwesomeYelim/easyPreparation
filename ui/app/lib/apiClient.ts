@@ -117,13 +117,22 @@ export const apiClient = {
     }),
 
   downloadFile: (fileName: string) => {
-    const link = document.createElement("a");
-    link.href = `${BASE_URL}/download?target=${fileName}`;
-    link.download = fileName;
-    link.target = "_self";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    fetch(`${BASE_URL}/download?target=${fileName}`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`download failed: ${r.status}`);
+        return r.blob();
+      })
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${fileName}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      })
+      .catch((e) => console.error("downloadFile error:", e));
   },
 
   // 찬송가 API

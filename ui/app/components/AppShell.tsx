@@ -9,7 +9,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const panelOpen = useRecoilValue(displayPanelOpenState);
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen min-w-[1024px] bg-surface">
       <LeftSidebar />
       <div
         className="transition-all duration-300 ease-in-out"
