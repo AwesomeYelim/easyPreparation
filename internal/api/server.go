@@ -115,6 +115,7 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/api/obs/camera/add", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSCameraAddHandler))
 	mux.Handle("/api/obs/sources/toggle", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSSourceToggleHandler))
 	mux.Handle("/api/obs/sources/remove", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSSourceRemoveHandler))
+	mux.Handle("/api/obs/setup-display", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSSetupDisplayHandler))
 
 	// 버전 + 업데이트 체크 API
 	mux.Handle("/api/version", middleware.CORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

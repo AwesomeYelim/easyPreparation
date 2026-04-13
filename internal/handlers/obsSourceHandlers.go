@@ -312,6 +312,62 @@ func OBSSourceToggleHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
 }
 
+// OBSSetupDisplayHandler — POST /api/obs/setup-display
+// displayScene에 EP_Display 브라우저 소스를 자동 생성합니다.
+// 기존 EP_Display가 있으면 먼저 제거 후 재생성합니다.
+func OBSSetupDisplayHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	var body struct {
+		Scene string `json:"scene"` // 비어있으면 config.displayScene 사용
+		URL   string `json:"url"`   // 비어있으면 http://localhost:8080/display
+	}
+	json.NewDecoder(r.Body).Decode(&body)
+
+	m := obs.Get()
+	cfg := m.GetConfig()
+
+	sceneName := body.Scene
+	if sceneName == "" {
+		sceneName = cfg.DisplayScene
+	}
+	if sceneName == "" {
+		http.Error(w, "씬 이름 필수 (config/obs.json displayScene 또는 body.scene)", http.StatusBadRequest)
+		return
+	}
+
+	displayURL := body.URL
+	if displayURL == "" {
+		displayURL = "http://localhost:8080/display"
+	}
+
+	inputName := "EP_Display"
+	// 기존 소스 제거 (없어도 무시)
+	m.RemoveInput(inputName)
+
+	sceneItemID, err := m.CreateBrowserSource(sceneName, inputName, displayURL, 1920, 1080)
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": err.Error()})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"ok":          true,
+		"sceneItemId": sceneItemID,
+		"inputName":   inputName,
+		"scene":       sceneName,
+		"url":         displayURL,
+	})
+}
+
 // OBSSourceRemoveHandler — POST /api/obs/sources/remove {inputName}
 func OBSSourceRemoveHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {

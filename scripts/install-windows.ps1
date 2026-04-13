@@ -3,28 +3,30 @@
 
 $ErrorActionPreference = "Stop"
 
-$AppName = "easyPreparation"
-$ExeName = "${AppName}_desktop_windows_amd64_setup.exe"
+$AppName    = "easyPreparation"
+$ExeName    = "${AppName}_desktop_windows_amd64.exe"
 $DownloadUrl = "https://github.com/AwesomeYelim/easyPreparation/releases/latest/download/$ExeName"
-$TmpDir = Join-Path $env:TEMP "easyprep_install_$(Get-Random)"
+$InstallDir = Join-Path $env:LOCALAPPDATA $AppName
+$ExePath    = Join-Path $InstallDir "${AppName}.exe"
 
-try {
-    New-Item -ItemType Directory -Force $TmpDir | Out-Null
-    $ExePath = Join-Path $TmpDir $ExeName
+# 설치 디렉토리 생성
+New-Item -ItemType Directory -Force $InstallDir | Out-Null
 
-    Write-Host "다운로드 중..." -ForegroundColor Cyan
-    Invoke-WebRequest -Uri $DownloadUrl -OutFile $ExePath -UseBasicParsing
+Write-Host "다운로드 중..." -ForegroundColor Cyan
+Invoke-WebRequest -Uri $DownloadUrl -OutFile $ExePath -UseBasicParsing
 
-    Write-Host "SmartScreen 차단 해제 중..." -ForegroundColor Cyan
-    Unblock-File -Path $ExePath
+Write-Host "SmartScreen 차단 해제 중..." -ForegroundColor Cyan
+Unblock-File -Path $ExePath
 
-    Write-Host "설치 프로그램 실행 중..." -ForegroundColor Cyan
-    Start-Process -FilePath $ExePath
+# 바탕화면 바로가기 생성
+$ShortcutPath = Join-Path ([Environment]::GetFolderPath("Desktop")) "${AppName}.lnk"
+$WshShell = New-Object -ComObject WScript.Shell
+$Shortcut = $WshShell.CreateShortcut($ShortcutPath)
+$Shortcut.TargetPath = $ExePath
+$Shortcut.WorkingDirectory = $InstallDir
+$Shortcut.Description = "easyPreparation"
+$Shortcut.Save()
 
-    Write-Host "설치 완료! 설치 마법사의 안내를 따라주세요." -ForegroundColor Green
-}
-finally {
-    # 설치 프로그램이 실행 중이므로 즉시 삭제하지 않음
-    Start-Sleep -Seconds 3
-    Remove-Item -Recurse -Force $TmpDir -ErrorAction SilentlyContinue
-}
+Write-Host "설치 완료!" -ForegroundColor Green
+Write-Host "설치 경로: $ExePath" -ForegroundColor Gray
+Write-Host "바탕화면 바로가기가 생성되었습니다." -ForegroundColor Gray

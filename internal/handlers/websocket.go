@@ -201,14 +201,29 @@ func BroadcastMessage(messageType string, payload map[string]interface{}) {
 	broadcastTo(msgBytes, nil)
 }
 
-func StartKeepAliveBroadcast() {
-	ticker := time.NewTicker(50 * time.Second)
+var keepAliveStop chan struct{}
 
+func StartKeepAliveBroadcast() {
+	keepAliveStop = make(chan struct{})
+	ticker := time.NewTicker(50 * time.Second)
 	go func() {
-		for range ticker.C {
-			BroadcastMessage("keepalive", map[string]interface{}{})
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				BroadcastMessage("keepalive", map[string]interface{}{})
+			case <-keepAliveStop:
+				return
+			}
 		}
 	}()
+}
+
+func StopKeepAliveBroadcast() {
+	if keepAliveStop != nil {
+		close(keepAliveStop)
+		keepAliveStop = nil
+	}
 }
 
 func BroadcastProcessDone(target, fileName string) {

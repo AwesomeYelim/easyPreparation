@@ -98,6 +98,11 @@ export default function Bulletin() {
 
   const sendToDisplay = async () => {
     const processedInfo = processSelectedInfo(selectedInfo);
+    if (processedInfo.length === 0) {
+      toast.error("예배 순서가 비어 있습니다. 먼저 순서를 불러오세요.");
+      setDisplayPanelOpen(true);
+      return;
+    }
     setDisplayItems(processedInfo);
     setDisplayPanelOpen(true);
     openDisplayWindow();

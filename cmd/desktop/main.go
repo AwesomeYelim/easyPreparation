@@ -124,6 +124,11 @@ func (a *App) startup(ctx context.Context) {
 	}()
 }
 
+// OpenURL — 시스템 브라우저에서 URL 열기 (파일 다운로드 등 WebView2가 처리 못하는 경우 사용)
+func (a *App) OpenURL(url string) {
+	wailsruntime.BrowserOpenURL(a.ctx, url)
+}
+
 // shutdown — 앱 종료 시 호출됨
 func (a *App) shutdown(ctx context.Context) {
 	log.Println("[desktop] 앱 종료 중...")
@@ -136,6 +141,7 @@ func (a *App) shutdown(ctx context.Context) {
 	}
 
 	handlers.StopScheduler()
+	handlers.StopKeepAliveBroadcast()
 
 	if m := obs.Get(); m != nil {
 		m.Disconnect()

@@ -44,19 +44,8 @@ func CreateBulletin(data map[string]interface{}) {
 		return
 	}
 
-	dbConfigPath := filepath.Join(execPath, "config", "db.json")
-	dsn, err := quote.LoadDSN(dbConfigPath)
-	if err != nil {
-		handlers.BroadcastProgress("DB Config Error", -1, err.Error())
-		return
-	}
-	if err := quote.InitDB(dsn); err != nil {
-		handlers.BroadcastProgress("DB Init Error", -1, fmt.Sprintf("DB 연결 실패: %s", err))
-		return
-	}
-	defer func() {
-		_ = quote.CloseDB()
-	}()
+	// ProcessQuote는 startup()에서 이미 초기화된 bibleDB만 사용
+	// 여기서 InitDB/CloseDB 호출하면 bibleDB까지 닫혀서 찬송가·성경 검색이 끊김
 	quote.ProcessQuote(target, &targetInfo)
 
 	configPath := filepath.Join(execPath, "config", "custom.json")

@@ -47,6 +47,9 @@ func saveDisplayState() {
 	cn := displayChurchName
 	orderMu.RUnlock()
 
+	if snapshot == nil {
+		snapshot = []map[string]interface{}{}
+	}
 	state := map[string]interface{}{
 		"items":      snapshot,
 		"idx":        idx,
@@ -1359,14 +1362,22 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 	var displayEmail string
 	var skipPreprocess bool
 	var newChurchName string
-	if err := json.Unmarshal(raw, &wrapper); err == nil && len(wrapper.Items) > 0 {
+	// wrapper format 판별: JSON이 '{' 로 시작하면 wrapper, '[' 로 시작하면 plain array
+	rawStr := strings.TrimSpace(string(raw))
+	if len(rawStr) > 0 && rawStr[0] == '{' {
+		if err := json.Unmarshal(raw, &wrapper); err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
 		order = wrapper.Items
 		newChurchName = wrapper.ChurchName
 		displayEmail = wrapper.Email
 		skipPreprocess = wrapper.Preprocessed
-	} else if err := json.Unmarshal(raw, &order); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		return
+	} else {
+		if err := json.Unmarshal(raw, &order); err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
 	}
 
 	BroadcastMessage("display_loading", map[string]interface{}{
@@ -1552,7 +1563,14 @@ func DisplayJumpHandler(w http.ResponseWriter, r *http.Request) {
 		"info":       info,
 	}
 
-	// OBS 씬 전환은 WS position 핸들러에서 통합 처리 (중복 방지)
+	// OBS 씬 전환 — /display 페이지 없이도 동작하도록 직접 호출
+	go func() {
+		if info == "lyrics_display" {
+			obs.Get().SwitchScene("찬양")
+		} else if title != "" {
+			obs.Get().SwitchScene(title)
+		}
+	}()
 
 	log.Printf("[jump] idx=%d title=%s broadcast to clients", payload.Index, title)
 	BroadcastMessage("navigate", navPayload)

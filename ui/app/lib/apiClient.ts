@@ -117,20 +117,29 @@ export const apiClient = {
     }),
 
   downloadFile: (fileName: string) => {
-    fetch(`${BASE_URL}/download?target=${fileName}`)
+    const url = `${BASE_URL}/download?target=${fileName}`;
+    // Wails WebView2 환경: blob 다운로드가 안 되므로 시스템 브라우저로 열기
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const wails = (window as any)?.go?.main?.App;
+    if (wails?.OpenURL) {
+      wails.OpenURL(url);
+      return;
+    }
+    // 일반 브라우저 환경: fetch+blob
+    fetch(url)
       .then((r) => {
         if (!r.ok) throw new Error(`download failed: ${r.status}`);
         return r.blob();
       })
       .then((blob) => {
-        const url = URL.createObjectURL(blob);
+        const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = url;
+        a.href = blobUrl;
         a.download = `${fileName}.zip`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(blobUrl);
       })
       .catch((e) => console.error("downloadFile error:", e));
   },
@@ -410,4 +419,11 @@ export const apiClient = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ inputName }),
     }).then((r) => r.json()) as Promise<{ ok: boolean; error?: string }>,
+
+  setupOBSDisplay: (scene?: string, url?: string) =>
+    fetch(`${BASE_URL}/api/obs/setup-display`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scene: scene ?? "", url: url ?? "" }),
+    }).then((r) => r.json()) as Promise<{ ok: boolean; sceneItemId?: number; inputName?: string; scene?: string; url?: string; error?: string }>,
 };

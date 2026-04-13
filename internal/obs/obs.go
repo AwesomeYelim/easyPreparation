@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
@@ -67,6 +68,22 @@ func Init(configPath string) {
 
 		data, err := os.ReadFile(configPath)
 		if err != nil {
+			// 파일 없으면 기본값으로 자동 생성
+			defaultCfg := Config{
+				Host:         "localhost:4455",
+				Password:     "",
+				Scenes:       map[string]string{},
+				CameraScene:  "카메라",
+				DisplayScene: "화면",
+				FadeMs:       800,
+				FadeDelaySec: 3,
+			}
+			if b, err2 := json.MarshalIndent(defaultCfg, "", "  "); err2 == nil {
+				if err3 := os.MkdirAll(filepath.Dir(configPath), 0755); err3 == nil {
+					_ = os.WriteFile(configPath, b, 0644)
+					log.Printf("[obs] 기본 config 생성: %s — OBS WebSocket 비밀번호 설정 후 재시작하세요", configPath)
+				}
+			}
 			log.Printf("[obs] config 파일 없음 (%s) — OBS 연동 비활성", configPath)
 			return
 		}
@@ -473,6 +490,46 @@ func (m *Manager) CreateImageSource(sceneName, name, filePath string, enabled bo
 	}
 	log.Printf("[obs] 이미지 소스 생성: %s (sceneItemId=%d)", name, resp.SceneItemId)
 	return resp.SceneItemId, nil
+}
+
+// CreateBrowserSource — browser_source 생성 (OBS 브라우저 소스, 1920×1080 기본)
+func (m *Manager) CreateBrowserSource(sceneName, name, url string, width, height int) (int, error) {
+	client, err := m.getClient()
+	if err != nil {
+		return 0, err
+	}
+	if width <= 0 {
+		width = 1920
+	}
+	if height <= 0 {
+		height = 1080
+	}
+	params := inputs.NewCreateInputParams().
+		WithInputKind("browser_source").
+		WithInputName(name).
+		WithSceneName(sceneName).
+		WithSceneItemEnabled(true).
+		WithInputSettings(map[string]any{
+			"url":           url,
+			"width":         width,
+			"height":        height,
+			"fps":           30,
+			"reroute_audio": false,
+		})
+	resp, err := client.Inputs.CreateInput(params)
+	if err != nil {
+		return 0, fmt.Errorf("브라우저 소스 생성 실패: %w", err)
+	}
+	log.Printf("[obs] 브라우저 소스 생성: %s (url=%s, sceneItemId=%d)", name, url, resp.SceneItemId)
+	return resp.SceneItemId, nil
+}
+
+// GetConfig — 현재 OBS 설정 반환
+func (m *Manager) GetConfig() Config {
+	if m == nil {
+		return Config{}
+	}
+	return m.config
 }
 
 // CreateCameraSource — 카메라 소스 생성 (macOS: av_capture_input_v2, Windows: dshow_input)

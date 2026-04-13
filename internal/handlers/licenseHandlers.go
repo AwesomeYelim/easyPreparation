@@ -287,11 +287,14 @@ func LicenseCheckoutHandler(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 
 	var result map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&result)
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		respondJSON(w, http.StatusBadGateway, map[string]string{"error": "서버 응답 파싱 실패"})
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.StatusCode)
-	json.NewEncoder(w).Encode(result)
+	_ = json.NewEncoder(w).Encode(result)
 }
 
 // LicenseCallbackHandler — POST /api/license/callback
@@ -342,7 +345,10 @@ func LicenseCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		ExpiresAt  string `json:"expiresAt"`
 		Signature  string `json:"signature"`
 	}
-	json.NewDecoder(resp.Body).Decode(&result)
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		respondJSON(w, http.StatusBadGateway, map[string]string{"error": "서버 응답 파싱 실패"})
+		return
+	}
 
 	if result.Status == "completed" && result.LicenseKey != "" {
 		now := time.Now()
@@ -415,11 +421,14 @@ func LicensePortalHandler(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 
 	var result map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&result)
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		respondJSON(w, http.StatusBadGateway, map[string]string{"error": "서버 응답 파싱 실패"})
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.StatusCode)
-	json.NewEncoder(w).Encode(result)
+	_ = json.NewEncoder(w).Encode(result)
 }
 
 // respondJSON — 간편 JSON 응답 헬퍼

@@ -94,6 +94,10 @@ func InitScheduler() {
 	scheduleMu.Lock()
 	scheduleConf = loadScheduleConfig()
 	scheduleMu.Unlock()
+	// 기존 goroutine 정리 (double-init 방지)
+	if schedulerStop != nil {
+		close(schedulerStop)
+	}
 	schedulerStop = make(chan struct{})
 	go schedulerLoop()
 	log.Println("[scheduler] 스케줄러 시작")

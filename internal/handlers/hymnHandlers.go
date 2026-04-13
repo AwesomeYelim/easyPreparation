@@ -13,6 +13,10 @@ func HymnListHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if bibleDB == nil {
+		http.Error(w, `{"error":"bible DB not available"}`, http.StatusServiceUnavailable)
+		return
+	}
 
 	page := 1
 	limit := 50
@@ -107,6 +111,10 @@ func HymnSearchHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if bibleDB == nil {
+		http.Error(w, `{"error":"bible DB not available"}`, http.StatusServiceUnavailable)
+		return
+	}
 
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	if q == "" {
@@ -196,6 +204,10 @@ func HymnSearchHandler(w http.ResponseWriter, r *http.Request) {
 func HymnDetailHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if bibleDB == nil {
+		http.Error(w, `{"error":"bible DB not available"}`, http.StatusServiceUnavailable)
 		return
 	}
 

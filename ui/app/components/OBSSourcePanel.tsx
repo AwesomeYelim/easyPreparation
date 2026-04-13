@@ -9,11 +9,12 @@ interface OBSSourcePanelProps {
   onClose: () => void;
 }
 
-type Tab = "logo" | "camera" | "sources";
+type Tab = "logo" | "camera" | "display" | "sources";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "logo", label: "로고" },
   { key: "camera", label: "카메라" },
+  { key: "display", label: "Display" },
   { key: "sources", label: "전체 소스" },
 ];
 
@@ -49,6 +50,10 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
   // Sources state
   const [sources, setSources] = useState<OBSSourceItem[]>([]);
   const [loadingSources, setLoadingSources] = useState(false);
+
+  // Display setup state
+  const [displayURL, setDisplayURL] = useState("http://localhost:8080/display");
+  const [displaySetupDone, setDisplaySetupDone] = useState(false);
 
   const [busy, setBusy] = useState(false);
 
@@ -169,6 +174,27 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
       }
     } catch {
       showToast("추가 실패");
+    }
+    setBusy(false);
+  };
+
+  const handleSetupDisplay = async () => {
+    if (!selectedScene) {
+      showToast("씬을 선택하세요");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await apiClient.setupOBSDisplay(selectedScene, displayURL);
+      if (res.ok) {
+        setDisplaySetupDone(true);
+        showToast("Display 소스 설정 완료", "info");
+        fetchSources();
+      } else {
+        showToast(res.error || "설정 실패");
+      }
+    } catch {
+      showToast("설정 실패");
     }
     setBusy(false);
   };
@@ -364,6 +390,53 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
                   </button>
                 )}
               </div>
+            </div>
+          ) : tab === "display" ? (
+            /* ===== Display Tab ===== */
+            <div>
+              <p className="text-[#aaa] text-xs mb-4 leading-relaxed">
+                선택한 씬에 <span className="text-white font-semibold">EP_Display</span> 브라우저 소스를 자동으로 추가합니다.
+                <br />기존 EP_Display가 있으면 삭제 후 재생성합니다.
+              </p>
+
+              <div className="mb-4">
+                <label className="text-[11px] text-[#888]">Display URL</label>
+                <input
+                  className={`${selectClass} mt-1`}
+                  value={displayURL}
+                  onChange={(e) => setDisplayURL(e.target.value)}
+                  placeholder="http://localhost:8080/display"
+                />
+                <p className="text-[#666] text-[10px] mt-1">
+                  서버가 다른 포트나 IP에서 실행 중이면 URL을 변경하세요.
+                </p>
+              </div>
+
+              <button onClick={handleSetupDisplay} disabled={busy} className={btnPrimaryClass}>
+                {busy ? "설정 중..." : "Display 소스 설정"}
+              </button>
+
+              {displaySetupDone && (
+                <div className="mt-4 p-3 bg-[rgba(76,175,80,0.1)] border border-[rgba(76,175,80,0.3)] rounded-md text-[#4caf50] text-xs">
+                  EP_Display 소스가 "{selectedScene}" 씬에 추가되었습니다.
+                </div>
+              )}
+
+              {sources.filter((s) => s.sourceName === "EP_Display").length > 0 && (
+                <div className="mt-5">
+                  <label className="text-[11px] text-[#888]">현재 Display 소스</label>
+                  {sources
+                    .filter((s) => s.sourceName === "EP_Display")
+                    .map((item) => (
+                      <SourceRow
+                        key={item.sceneItemId}
+                        item={item}
+                        onToggle={() => handleToggle(item)}
+                        onRemove={() => handleRemove(item)}
+                      />
+                    ))}
+                </div>
+              )}
             </div>
           ) : tab === "camera" ? (
             /* ===== Camera Tab ===== */

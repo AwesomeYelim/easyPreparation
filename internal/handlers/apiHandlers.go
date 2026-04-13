@@ -98,11 +98,17 @@ func upsertUserHandler(w http.ResponseWriter, r *http.Request) {
 	_ = apiDB.QueryRow("SELECT 1 FROM churches WHERE email=? LIMIT 1", body.Email).Scan(&exists)
 
 	if exists == 1 {
-		_, _ = apiDB.Exec("UPDATE churches SET name=?, english_name=? WHERE email=?",
-			body.Name, body.EnglishName, body.Email)
+		if _, err := apiDB.Exec("UPDATE churches SET name=?, english_name=? WHERE email=?",
+			body.Name, body.EnglishName, body.Email); err != nil {
+			http.Error(w, `{"error":"update failed"}`, http.StatusInternalServerError)
+			return
+		}
 	} else {
-		_, _ = apiDB.Exec("INSERT INTO churches (name, english_name, email) VALUES (?,?,?)",
-			body.Name, body.EnglishName, body.Email)
+		if _, err := apiDB.Exec("INSERT INTO churches (name, english_name, email) VALUES (?,?,?)",
+			body.Name, body.EnglishName, body.Email); err != nil {
+			http.Error(w, `{"error":"insert failed"}`, http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
