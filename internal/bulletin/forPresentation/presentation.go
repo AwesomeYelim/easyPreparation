@@ -3,6 +3,7 @@ package forPresentation
 import (
 	"easyPreparation_1.0/internal/bulletin/define"
 	"easyPreparation_1.0/internal/extract"
+	"easyPreparation_1.0/internal/handlers"
 	"easyPreparation_1.0/internal/presentation"
 	"easyPreparation_1.0/internal/types"
 	"easyPreparation_1.0/internal/utils"
@@ -23,18 +24,31 @@ func (pi PdfInfo) Create() {
 	outputDir := filepath.Join(pi.ExecPath, "data", "templates", "display")
 	_ = utils.CheckDirIs(outputDir)
 
-	// 배경 이미지 로드 (없어도 계속 진행 — 흰 배경으로 대체)
+	// 배경 이미지 로드
 	pathInfo := make(map[string]string)
-	if imgFiles, err := os.ReadDir(outputDir); err == nil {
-		for _, img := range imgFiles {
-			if img.IsDir() {
-				continue
-			}
-			ext := strings.ToLower(filepath.Ext(img.Name()))
-			if ext == ".png" || ext == ".jpg" || ext == ".jpeg" {
-				pathInfo[strings.TrimSuffix(img.Name(), ext)] = filepath.Join(outputDir, img.Name())
+	loadPathInfo := func(dir string) {
+		if imgFiles, err := os.ReadDir(dir); err == nil {
+			for _, img := range imgFiles {
+				if img.IsDir() {
+					continue
+				}
+				ext := strings.ToLower(filepath.Ext(img.Name()))
+				if ext == ".png" || ext == ".jpg" || ext == ".jpeg" {
+					key := strings.TrimSuffix(img.Name(), ext)
+					if _, exists := pathInfo[key]; !exists {
+						pathInfo[key] = filepath.Join(dir, img.Name())
+					}
+				}
 			}
 		}
+	}
+	loadPathInfo(outputDir)
+
+	// outputDir에 파일 없으면 data/defaults/bulletin/presentation/ 에서 직접 참조 (복사 안 함)
+	// → display.go는 data/templates/display/만 스캔하므로 defaults 복사 시 display bgImage에 영향을 줌
+	if len(pathInfo) == 0 {
+		defaultsDir := filepath.Join(pi.ExecPath, "data", "defaults", "bulletin", "presentation")
+		loadPathInfo(defaultsDir)
 	}
 
 	instanceSize := gofpdf.SizeType{
@@ -44,6 +58,7 @@ func (pi PdfInfo) Create() {
 	objPdf := presentation.New(instanceSize)
 	objPdf.Config = config.Classification.Bulletin.Presentation
 	objPdf.PdfInfo = pi.PdfInfo
+	objPdf.SetAutoPageBreak(false, 0) // presentation은 슬라이드 단위 — MultiCell 자동 페이지 추가 방지
 
 	var contents []types.WorshipInfo
 
@@ -60,21 +75,38 @@ func (pi PdfInfo) Create() {
 	for _, con := range contents {
 		objPdf.Title = con.Title
 
+		// 성시교독 스킵
 		if strings.Contains(objPdf.Title, "성시교독") {
 			continue
 		}
+		hasBackground := false
+		if _, ok := pathInfo[con.Title]; ok {
+			hasBackground = true
+		}
+		hasContent := strings.Contains(con.Info, "edit") || strings.Contains(con.Info, "notice")
 
+		// 배경도 없고 내용도 없는 항목은 슬라이드 생략 (흰화면 방지)
+		if !hasBackground && !hasContent {
+			continue
+		}
+
+		handlers.BroadcastProgress("Presentation", 1, fmt.Sprintf("[슬라이드] %s", con.Title))
 		objPdf.AddPage()
 
-		if path, ok := pathInfo[objPdf.Title]; ok {
-			objPdf.Path = filepath.Join(outputDir, filepath.Base(path))
+		if hasBackground {
+			objPdf.Path = pathInfo[objPdf.Title]
 			objPdf.CheckImgPlaced(objPdf.Path, 0)
 		}
 
 		objPdf.MarkName()
 
-		if strings.Contains(con.Info, "edit") || strings.Contains(con.Info, "notice") {
+		if hasContent {
 			objPdf.ForEdit(con, config)
+		}
+
+		// 축도 이후 항목 제외
+		if con.Title == "축도" {
+			break
 		}
 	}
 

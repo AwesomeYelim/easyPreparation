@@ -54,6 +54,7 @@ type Manager struct {
 	currentScene string
 	stopCh       chan struct{}
 	fadeCancel   chan struct{} // 현재 fadeBack 타이머 취소용
+	loopStarted  bool         // connectLoop 고루틴 실행 여부
 }
 
 var (
@@ -73,8 +74,8 @@ func Init(configPath string) {
 				Host:         "localhost:4455",
 				Password:     "",
 				Scenes:       map[string]string{},
-				CameraScene:  "카메라",
-				DisplayScene: "화면",
+				CameraScene:  "camera",
+				DisplayScene: "monitor",
 				FadeMs:       800,
 				FadeDelaySec: 3,
 			}
@@ -111,6 +112,7 @@ func Init(configPath string) {
 
 		instance.config = cfg
 		instance.enabled = true
+		instance.loopStarted = true
 		log.Printf("[obs] OBS 연동 활성 (host=%s)", cfg.Host)
 
 		go instance.connectLoop()
@@ -379,6 +381,42 @@ func (m *Manager) SetStreamSettings(server, key string) error {
 	return nil
 }
 
+// Connect — 연결 설정 업데이트 + 재연결 (config 파일 저장 포함)
+func (m *Manager) Connect(host, password, configPath string) {
+	m.mu.Lock()
+	m.config.Host = host
+	m.config.Password = password
+	m.enabled = true
+	if m.client != nil {
+		_ = m.client.Disconnect()
+		m.client = nil
+	}
+	m.connected = false
+	wasLoopStarted := m.loopStarted
+	if !wasLoopStarted {
+		m.loopStarted = true
+	}
+	cfg := m.config
+	m.mu.Unlock()
+
+	// 설정 파일 저장
+	if configPath != "" {
+		if b, err := json.MarshalIndent(cfg, "", "  "); err == nil {
+			_ = os.MkdirAll(filepath.Dir(configPath), 0755)
+			_ = os.WriteFile(configPath, b, 0644)
+		}
+	}
+
+	if wasLoopStarted {
+		// 루프가 이미 실행 중 — 연결 끊으면 루프가 자동 재연결
+		go m.tryConnect()
+	} else {
+		// 처음 연결 — connectLoop 시작
+		go m.connectLoop()
+	}
+	log.Printf("[obs] 연결 설정 업데이트: host=%s", host)
+}
+
 // Disconnect — 종료 시 정리
 func (m *Manager) Disconnect() {
 	if m == nil || !m.enabled {
@@ -614,10 +652,19 @@ func (m *Manager) RemoveInput(name string) error {
 }
 
 // ListCameraDevices — 임시 입력 생성 → 디바이스 목록 → 정리
-func (m *Manager) ListCameraDevices() ([]DeviceInfo, error) {
+// sceneHint: 탐지에 사용할 씬 이름 (생략 시 현재 씬 사용)
+func (m *Manager) ListCameraDevices(sceneHint ...string) ([]DeviceInfo, error) {
 	client, err := m.getClient()
 	if err != nil {
 		return nil, err
+	}
+
+	// 씬 이름 결정 (락으로 currentScene 안전하게 읽기)
+	m.mu.RLock()
+	sceneName := m.currentScene
+	m.mu.RUnlock()
+	if len(sceneHint) > 0 && sceneHint[0] != "" {
+		sceneName = sceneHint[0]
 	}
 
 	inputKind := "av_capture_input_v2"
@@ -632,7 +679,7 @@ func (m *Manager) ListCameraDevices() ([]DeviceInfo, error) {
 	createParams := inputs.NewCreateInputParams().
 		WithInputKind(inputKind).
 		WithInputName(tmpName).
-		WithSceneName(m.currentScene).
+		WithSceneName(sceneName).
 		WithSceneItemEnabled(false)
 	_, err = client.Inputs.CreateInput(createParams)
 	if err != nil {
@@ -666,6 +713,208 @@ func (m *Manager) ListCameraDevices() ([]DeviceInfo, error) {
 		})
 	}
 	return devices, nil
+}
+
+// InitialSetupResult — SetupInitial 결과
+type InitialSetupResult struct {
+	Success        bool     `json:"success"`
+	ScenesCreated  []string `json:"scenes_created"`
+	SourcesCreated []string `json:"sources_created"`
+	Warnings       []string `json:"warnings"`
+}
+
+// CreateScene — OBS에 새 씬 생성
+func (m *Manager) CreateScene(name string) error {
+	client, err := m.getClient()
+	if err != nil {
+		return err
+	}
+	params := scenes.NewCreateSceneParams().WithSceneName(name)
+	_, err = client.Scenes.CreateScene(params)
+	if err != nil {
+		return fmt.Errorf("씬 생성 실패 (%s): %w", name, err)
+	}
+	log.Printf("[obs] 씬 생성: %s", name)
+	return nil
+}
+
+// CreateMonitorCaptureSource — 모니터 캡처 소스 생성
+// Windows: monitor_capture / macOS: display_capture / Linux: monitor_capture
+func (m *Manager) CreateMonitorCaptureSource(sceneName, name string, monitorIndex int) (int, error) {
+	client, err := m.getClient()
+	if err != nil {
+		return 0, err
+	}
+
+	inputKind := "monitor_capture"
+	settingsKey := "monitor"
+	if runtime.GOOS == "darwin" {
+		inputKind = "display_capture"
+		settingsKey = "display"
+	}
+
+	params := inputs.NewCreateInputParams().
+		WithInputKind(inputKind).
+		WithInputName(name).
+		WithSceneName(sceneName).
+		WithSceneItemEnabled(true).
+		WithInputSettings(map[string]any{settingsKey: monitorIndex})
+	resp, err := client.Inputs.CreateInput(params)
+	if err != nil {
+		return 0, fmt.Errorf("모니터 캡처 소스 생성 실패: %w", err)
+	}
+	log.Printf("[obs] 모니터 캡처 소스 생성: %s (monitorIndex=%d, sceneItemId=%d)", name, monitorIndex, resp.SceneItemId)
+	return resp.SceneItemId, nil
+}
+
+// SetupInitial — OBS 초기 설정 전체 흐름 조율
+// 1) camera / monitor 씬이 없으면 생성
+// 2) camera 씬에 카메라 소스 추가 (첫 번째 디바이스 자동 탐지)
+// 3) camera 씬에 EP_Overlay 브라우저 소스 추가
+// 4) camera 씬에 EP_Logo 이미지 소스 추가 (logoPath가 있고 파일이 존재할 때)
+// 5) monitor 씬에 모니터 캡처 소스 추가 (주 모니터)
+// 6) monitor 씬에 EP_Display 브라우저 소스 추가 (1920×1080)
+func (m *Manager) SetupInitial(cameraDeviceID string, logoPath ...string) (*InitialSetupResult, error) {
+	result := &InitialSetupResult{
+		Success:        false,
+		ScenesCreated:  []string{},
+		SourcesCreated: []string{},
+		Warnings:       []string{},
+	}
+
+	cfg := m.GetConfig()
+	cameraScene := cfg.CameraScene
+	if cameraScene == "" {
+		cameraScene = "camera"
+	}
+	displayScene := cfg.DisplayScene
+	if displayScene == "" {
+		displayScene = "monitor"
+	}
+
+	// 기존 씬 목록 조회
+	existingScenes, err := m.GetScenes()
+	if err != nil {
+		return nil, fmt.Errorf("씬 목록 조회 실패: %w", err)
+	}
+	sceneSet := make(map[string]bool, len(existingScenes))
+	for _, s := range existingScenes {
+		sceneSet[s] = true
+	}
+
+	// camera 씬 생성 (없을 때만)
+	if !sceneSet[cameraScene] {
+		if err := m.CreateScene(cameraScene); err != nil {
+			return nil, err
+		}
+		result.ScenesCreated = append(result.ScenesCreated, cameraScene)
+	}
+
+	// monitor 씬 생성 (없을 때만)
+	if !sceneSet[displayScene] {
+		if err := m.CreateScene(displayScene); err != nil {
+			return nil, err
+		}
+		result.ScenesCreated = append(result.ScenesCreated, displayScene)
+	}
+
+	// 카메라 디바이스 탐지 — cameraDeviceID가 비어있으면 자동 탐지
+	if cameraDeviceID == "" {
+		devices, devErr := m.ListCameraDevices(cameraScene)
+		if devErr != nil || len(devices) == 0 {
+			result.Warnings = append(result.Warnings, "카메라 디바이스를 찾을 수 없습니다. 카메라 소스를 건너뜁니다.")
+		} else {
+			cameraDeviceID = devices[0].Value
+		}
+	}
+
+	// 기존 소스 목록 조회 (중복 생성 방지)
+	cameraItems, _ := m.GetSceneItems(cameraScene)
+	cameraSourceNames := make(map[string]bool, len(cameraItems))
+	for _, item := range cameraItems {
+		cameraSourceNames[item.SourceName] = true
+	}
+	displayItems, _ := m.GetSceneItems(displayScene)
+	displaySourceNames := make(map[string]bool, len(displayItems))
+	for _, item := range displayItems {
+		displaySourceNames[item.SourceName] = true
+	}
+
+	// camera 씬에 카메라 소스 추가 (이미 있으면 스킵)
+	if cameraDeviceID != "" {
+		if cameraSourceNames["카메라"] {
+			result.Warnings = append(result.Warnings, "카메라 소스가 이미 존재합니다. 건너뜁니다.")
+		} else {
+			_, camErr := m.CreateCameraSource(cameraScene, "카메라", cameraDeviceID)
+			if camErr != nil {
+				result.Warnings = append(result.Warnings, "카메라 소스 추가 실패: "+camErr.Error())
+			} else {
+				result.SourcesCreated = append(result.SourcesCreated, cameraScene+"/카메라")
+			}
+		}
+	}
+
+	// monitor 씬에 모니터 캡처 소스 추가 (이미 있으면 스킵)
+	if displaySourceNames["화면캡처"] {
+		result.Warnings = append(result.Warnings, "모니터 캡처 소스가 이미 존재합니다. 건너뜁니다.")
+	} else {
+		_, monErr := m.CreateMonitorCaptureSource(displayScene, "화면캡처", 0)
+		if monErr != nil {
+			result.Warnings = append(result.Warnings, "모니터 캡처 소스 추가 실패: "+monErr.Error())
+		} else {
+			result.SourcesCreated = append(result.SourcesCreated, displayScene+"/화면캡처")
+		}
+	}
+
+	// monitor 씬에 EP_Display 브라우저 소스 추가 (이미 있으면 스킵)
+	if displaySourceNames["EP_Display"] {
+		result.Warnings = append(result.Warnings, "EP_Display 소스가 이미 존재합니다. 건너뜁니다.")
+	} else {
+		_, dispErr := m.CreateBrowserSource(displayScene, "EP_Display", "http://localhost:8080/display", 1920, 1080)
+		if dispErr != nil {
+			result.Warnings = append(result.Warnings, "EP_Display 소스 추가 실패: "+dispErr.Error())
+		} else {
+			result.SourcesCreated = append(result.SourcesCreated, displayScene+"/EP_Display")
+		}
+	}
+
+	// camera 씬에 EP_Overlay 브라우저 소스 추가 (이미 있으면 스킵)
+	if cameraSourceNames["EP_Overlay"] {
+		result.Warnings = append(result.Warnings, "EP_Overlay 소스가 이미 존재합니다. 건너뜁니다.")
+	} else {
+		_, overlayErr := m.CreateBrowserSource(cameraScene, "EP_Overlay", "http://localhost:8080/display/overlay", 1920, 1080)
+		if overlayErr != nil {
+			result.Warnings = append(result.Warnings, "EP_Overlay 소스 추가 실패: "+overlayErr.Error())
+		} else {
+			result.SourcesCreated = append(result.SourcesCreated, cameraScene+"/EP_Overlay")
+		}
+	}
+
+	// camera 씬에 EP_Logo 이미지 소스 추가 (로고 파일이 있을 때)
+	if len(logoPath) > 0 && logoPath[0] != "" {
+		if _, err := os.Stat(logoPath[0]); err == nil {
+			if cameraSourceNames["EP_Logo"] {
+				result.Warnings = append(result.Warnings, "EP_Logo 소스가 이미 존재합니다. 건너뜁니다.")
+			} else {
+				sceneItemID, logoErr := m.CreateImageSource(cameraScene, "EP_Logo", logoPath[0], true)
+				if logoErr != nil {
+					result.Warnings = append(result.Warnings, "로고 소스 추가 실패: "+logoErr.Error())
+				} else {
+					// 우상단 기본 위치 (scale 0.15, margin 30)
+					scale := 0.15
+					logoSize := 200.0 * scale
+					margin := 30.0
+					x := 1920 - logoSize - margin
+					y := margin
+					_ = m.SetItemTransform(cameraScene, sceneItemID, x, y, scale, scale)
+					result.SourcesCreated = append(result.SourcesCreated, cameraScene+"/EP_Logo")
+				}
+			}
+		}
+	}
+
+	result.Success = true
+	return result, nil
 }
 
 // resolveScene — title → OBS 씬 이름 매핑 (매핑 없으면 false)

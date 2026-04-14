@@ -2,16 +2,17 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { apiClient } from "@/lib/apiClient";
-import { OBSSourceItem, OBSDevice } from "@/types";
+import { OBSSourceItem, OBSDevice, OBSInitialSetupResult } from "@/types";
 
 interface OBSSourcePanelProps {
   open: boolean;
   onClose: () => void;
 }
 
-type Tab = "logo" | "camera" | "display" | "sources";
+type Tab = "setup" | "logo" | "camera" | "display" | "sources";
 
 const TABS: { key: Tab; label: string }[] = [
+  { key: "setup", label: "초기 설정" },
   { key: "logo", label: "로고" },
   { key: "camera", label: "카메라" },
   { key: "display", label: "Display" },
@@ -55,7 +56,16 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
   const [displayURL, setDisplayURL] = useState("http://localhost:8080/display");
   const [displaySetupDone, setDisplaySetupDone] = useState(false);
 
+  // Connect form state
+  const [obsIP, setObsIP] = useState("localhost");
+  const [obsPort, setObsPort] = useState(4455);
+  const [obsPassword, setObsPassword] = useState("");
+  const [connectLoading, setConnectLoading] = useState(false);
+
   const [busy, setBusy] = useState(false);
+  const [setupLoading, setSetupLoading] = useState(false);
+  const [setupResult, setSetupResult] = useState<OBSInitialSetupResult | null>(null);
+  const [setupDone, setSetupDone] = useState(false);
 
   const showToast = (msg: string, type: "error" | "info" = "error") => {
     setToastMsg({ msg, type });
@@ -64,11 +74,16 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
 
   const fetchScenes = useCallback(async () => {
     try {
+      // 연결 상태는 feature gate 없는 /obs/status로 확인
+      const status = await apiClient.obsGetStatus();
+      setConnected(status.connected);
+      if (status.currentScene && !selectedScene) {
+        setSelectedScene(status.currentScene);
+      }
+      // 씬 목록은 Pro 기능 — 실패해도 connected 상태는 유지
       const res = await apiClient.getOBSScenes();
-      setConnected(res.connected);
-      setScenes(res.scenes || []);
-      if (res.currentScene && !selectedScene) {
-        setSelectedScene(res.currentScene);
+      if (!res.error) {
+        setScenes(res.scenes || []);
       }
     } catch {
       setConnected(false);
@@ -81,6 +96,11 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
     setLoadingSources(true);
     try {
       const res = await apiClient.getOBSSources(selectedScene);
+      if ((res as any).error) {
+        // feature_locked 등 에러 응답 — 조용히 무시
+        setLoadingSources(false);
+        return;
+      }
       setSources(res.items || []);
       const logoItem = (res.items || []).find((s) => s.sourceName === "EP_Logo");
       if (logoItem) {
@@ -100,6 +120,54 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
   useEffect(() => {
     if (open && selectedScene) fetchSources();
   }, [open, selectedScene, fetchSources]);
+
+  const handleConnect = async () => {
+    setConnectLoading(true);
+    try {
+      const res = await apiClient.obsConnect(obsIP, obsPort, obsPassword);
+      if (res.connected) {
+        setConnected(true);
+        showToast("OBS 연결 완료", "info");
+        fetchScenes();
+        if (tab === "setup") fetchDevices();
+      } else {
+        setConnected(false);
+        showToast("연결 실패 — IP/포트/비밀번호를 확인하세요");
+      }
+    } catch {
+      showToast("연결 실패");
+    }
+    setConnectLoading(false);
+  };
+
+  const handleSetupInitial = async () => {
+    setSetupLoading(true);
+    setSetupResult(null);
+    try {
+      const res = await apiClient.obsSetupInitial(selectedDevice || undefined);
+      if ((res as any).error) {
+        showToast((res as any).message || "초기 설정 실패");
+        setSetupLoading(false);
+        return;
+      }
+      setSetupResult(res);
+      if (res.success) {
+        setSetupDone(true);
+        const msg =
+          (res.warnings ?? []).length > 0
+            ? `초기 설정 완료 (경고 ${res.warnings.length}건)`
+            : "초기 설정 완료";
+        showToast(msg, "info");
+        fetchScenes();
+        fetchSources();
+      } else {
+        showToast("초기 설정 실패");
+      }
+    } catch {
+      showToast("초기 설정 실패");
+    }
+    setSetupLoading(false);
+  };
 
   const handleLogoUpload = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
@@ -267,7 +335,8 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
               key={t.key}
               onClick={() => {
                 setTab(t.key);
-                if (t.key === "camera") fetchDevices();
+                if (t.key === "camera" || t.key === "setup") fetchDevices();
+                if (t.key === "sources" || t.key === "camera" || t.key === "display") fetchSources();
               }}
               className={`px-4 py-2.5 bg-transparent border-none border-b-2 text-xs cursor-pointer transition-colors ${
                 tab === t.key
@@ -297,13 +366,155 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
 
         {/* body */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {!connected ? (
+          {tab === "setup" ? (
+            <div>
+              {/* OBS 연결 설정 */}
+              <div className="mb-5 pb-5 border-b border-white/10">
+                <div className="text-[11px] text-[#888] mb-3 font-semibold uppercase tracking-wide">WebSocket 연결</div>
+                <div className="flex gap-2 mb-2">
+                  <div className="flex-1">
+                    <label className="text-[11px] text-[#888]">서버 IP</label>
+                    <input
+                      className={`${selectClass} mt-1`}
+                      value={obsIP}
+                      onChange={(e) => setObsIP(e.target.value)}
+                      placeholder="localhost"
+                    />
+                  </div>
+                  <div className="w-24">
+                    <label className="text-[11px] text-[#888]">포트</label>
+                    <input
+                      className={`${selectClass} mt-1`}
+                      type="number"
+                      value={obsPort}
+                      onChange={(e) => setObsPort(parseInt(e.target.value) || 4455)}
+                      placeholder="4455"
+                    />
+                  </div>
+                </div>
+                <div className="mb-3">
+                  <label className="text-[11px] text-[#888]">비밀번호</label>
+                  <input
+                    className={`${selectClass} mt-1`}
+                    type="password"
+                    value={obsPassword}
+                    onChange={(e) => setObsPassword(e.target.value)}
+                    placeholder="WebSocket 비밀번호"
+                  />
+                </div>
+                <button
+                  onClick={handleConnect}
+                  disabled={connectLoading}
+                  className={`px-5 py-2 rounded-md text-white text-xs font-semibold transition-opacity border-none cursor-pointer ${
+                    connected ? "bg-[#2e7d32] hover:bg-[#388e3c]" : "bg-[#204d87] hover:bg-[#2d5a8a]"
+                  } ${connectLoading ? "opacity-60 cursor-default" : ""}`}
+                >
+                  {connectLoading ? "연결 중..." : connected ? "재연결" : "연결"}
+                </button>
+              </div>
+
+              {!connected ? (
+                <div className="text-[#666] text-xs text-center py-4">
+                  연결 후 초기 설정을 진행할 수 있습니다.
+                </div>
+              ) : (
+                <>
+                  <p className="text-[#aaa] text-xs mb-4 leading-relaxed">
+                    <span className="text-white font-semibold">camera</span> 씬과{" "}
+                    <span className="text-white font-semibold">monitor</span> 씬이 없으면 자동 생성하고,
+                    카메라·모니터 캡처·EP_Display 브라우저 소스를 자동으로 추가합니다.
+                  </p>
+
+                  {/* 카메라 디바이스 선택 */}
+                  <div className="mb-4">
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-[11px] text-[#888]">카메라 디바이스</label>
+                      <button onClick={fetchDevices} className="bg-transparent border-none text-[#4a9eff] text-[11px] cursor-pointer">
+                        {loadingDevices ? "조회 중..." : "새로고침"}
+                      </button>
+                    </div>
+                    <select className={selectClass} value={selectedDevice} onChange={(e) => setSelectedDevice(e.target.value)}>
+                      <option value="">-- 자동 감지 --</option>
+                      {devices.map((d) => (
+                        <option key={d.value} value={d.value}>{d.name}</option>
+                      ))}
+                    </select>
+                    <p className="text-[#666] text-[10px] mt-1">선택하지 않으면 첫 번째 카메라를 자동으로 사용합니다.</p>
+                  </div>
+
+                  <div className="flex gap-2 items-center">
+                    <button
+                      onClick={handleSetupInitial}
+                      disabled={setupLoading || setupDone}
+                      className={`px-5 py-2 rounded-md text-white text-xs font-semibold border-none transition-opacity ${
+                        setupDone
+                          ? "bg-[#2e7d32] cursor-default opacity-80"
+                          : setupLoading
+                          ? "bg-[#204d87] opacity-60 cursor-default"
+                          : "bg-[#204d87] cursor-pointer hover:bg-[#2d5a8a]"
+                      }`}
+                    >
+                      {setupLoading ? "설정 중..." : setupDone ? "설정 완료 ✓" : "초기 설정 실행"}
+                    </button>
+                    {setupDone && (
+                      <button
+                        onClick={() => { setSetupDone(false); setSetupResult(null); }}
+                        className="px-3 py-2 bg-white/10 border-none rounded-md text-[#aaa] text-xs cursor-pointer hover:bg-white/20 transition-colors"
+                      >
+                        재설정
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+              {setupResult && (
+                <div className="mt-4 space-y-2">
+                  {!setupResult.success && (
+                    <div className="p-3 bg-[rgba(244,67,54,0.1)] border border-[rgba(244,67,54,0.3)] rounded-md">
+                      <div className="text-[#f44336] text-xs font-semibold mb-1">오류</div>
+                      {(setupResult.warnings ?? []).map((w, i) => (
+                        <div key={i} className="text-[#f44336] text-xs">• {w}</div>
+                      ))}
+                    </div>
+                  )}
+                  {(setupResult.scenes_created ?? []).length > 0 && (
+                    <div className="p-3 bg-[rgba(76,175,80,0.1)] border border-[rgba(76,175,80,0.3)] rounded-md">
+                      <div className="text-[#4caf50] text-xs font-semibold mb-1">생성된 씬</div>
+                      {setupResult.scenes_created.map((s) => (
+                        <div key={s} className="text-[#4caf50] text-xs">• {s}</div>
+                      ))}
+                    </div>
+                  )}
+                  {(setupResult.sources_created ?? []).length > 0 && (
+                    <div className="p-3 bg-[rgba(74,158,255,0.08)] border border-[rgba(74,158,255,0.25)] rounded-md">
+                      <div className="text-[#4a9eff] text-xs font-semibold mb-1">추가된 소스</div>
+                      {setupResult.sources_created.map((s) => (
+                        <div key={s} className="text-[#4a9eff] text-xs">• {s}</div>
+                      ))}
+                    </div>
+                  )}
+                  {setupResult.success && (setupResult.warnings ?? []).length > 0 && (
+                    <div className="p-3 bg-[rgba(255,152,0,0.08)] border border-[rgba(255,152,0,0.25)] rounded-md">
+                      <div className="text-[#ff9800] text-xs font-semibold mb-1">경고</div>
+                      {setupResult.warnings.map((w, i) => (
+                        <div key={i} className="text-[#ff9800] text-xs">• {w}</div>
+                      ))}
+                    </div>
+                  )}
+                  {setupResult.success &&
+                    (setupResult.scenes_created ?? []).length === 0 &&
+                    (setupResult.sources_created ?? []).length === 0 &&
+                    (setupResult.warnings ?? []).length === 0 && (
+                      <div className="text-[#888] text-xs">변경 사항 없음 (씬/소스가 이미 존재).</div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : !connected ? (
             <div className="text-[#888] text-center py-10">
               OBS가 연결되지 않았습니다.
               <br />
-              <span className="text-xs text-[#666]">
-                OBS를 실행하고 WebSocket 서버를 활성화하세요.
-              </span>
+              <span className="text-xs text-[#666]">설정 탭에서 WebSocket 연결 정보를 입력하세요.</span>
             </div>
           ) : tab === "logo" ? (
             /* ===== Logo Tab ===== */

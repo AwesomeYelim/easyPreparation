@@ -1,4 +1,4 @@
-import { WorshipOrderItem, UserSettings, ScheduleConfig, ThumbnailConfig, LicenseStatus, OBSSourceItem, OBSDevice } from "@/types";
+import { WorshipOrderItem, UserSettings, ScheduleConfig, ThumbnailConfig, LicenseStatus, OBSSourceItem, OBSDevice, OBSInitialSetupResult } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
   || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8080');
@@ -426,4 +426,21 @@ export const apiClient = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scene: scene ?? "", url: url ?? "" }),
     }).then((r) => r.json()) as Promise<{ ok: boolean; sceneItemId?: number; inputName?: string; scene?: string; url?: string; error?: string }>,
+
+  obsSetupInitial: (cameraDeviceId?: string) =>
+    fetch(`${BASE_URL}/api/obs/setup-initial`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cameraDeviceId: cameraDeviceId ?? "" }),
+    }).then((r) => r.json()) as Promise<OBSInitialSetupResult>,
+
+  obsGetStatus: () =>
+    fetch(`${BASE_URL}/api/obs/status`).then((r) => r.json()) as Promise<{ connected: boolean; currentScene?: string }>,
+
+  obsConnect: (ip: string, port: number, password: string) =>
+    fetch(`${BASE_URL}/api/obs/connect`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ip, port, password }),
+    }).then((r) => r.json()) as Promise<{ ok: boolean; connected: boolean; host: string }>,
 };

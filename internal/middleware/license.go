@@ -6,12 +6,21 @@ import (
 	"net/http"
 )
 
+// devMode — dev 빌드 태그 시 SetDevMode(true)로 feature gate 우회
+var devMode bool
+
+func SetDevMode(v bool) { devMode = v }
+
 // RequireFeature — blocks requests if the feature is not available in the current plan.
 func RequireFeature(feature license.Feature) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusOK)
+				return
+			}
+			if devMode {
+				next.ServeHTTP(w, r)
 				return
 			}
 			mgr := license.Get()

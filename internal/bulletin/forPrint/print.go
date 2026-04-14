@@ -27,6 +27,24 @@ func (pi PdfInfo) Create() {
 	outputDir := filepath.Join(pi.ExecPath, config.OutputPath.Bulletin, "print", "backgrounds")
 	_ = utils.CheckDirIs(outputDir)
 
+	// outputDir가 비어있으면 data/defaults/bulletin/print/ 에서 복사
+	defaultsDir := filepath.Join(pi.ExecPath, "data", "defaults", "bulletin", "print")
+	if entries, _ := os.ReadDir(outputDir); len(entries) == 0 {
+		if defaultEntries, err := os.ReadDir(defaultsDir); err == nil && len(defaultEntries) > 0 {
+			fmt.Printf("[forPrint] 기본 배경 이미지 복사: %s → %s\n", defaultsDir, outputDir)
+			for _, de := range defaultEntries {
+				if de.IsDir() || !strings.HasSuffix(de.Name(), ".png") {
+					continue
+				}
+				src := filepath.Join(defaultsDir, de.Name())
+				dst := filepath.Join(outputDir, de.Name())
+				if data, readErr := os.ReadFile(src); readErr == nil {
+					_ = os.WriteFile(dst, data, 0644)
+				}
+			}
+		}
+	}
+
 	allFiles, err := os.ReadDir(outputDir)
 	if err != nil {
 		fmt.Printf("[forPrint] 배경 이미지 디렉토리 읽기 실패: %v\n", err)

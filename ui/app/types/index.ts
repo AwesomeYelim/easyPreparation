@@ -139,3 +139,10 @@ export interface LicenseStatus {
   grace_period: boolean;
   is_active: boolean;
 }
+
+export type OBSInitialSetupResult = {
+  success: boolean;
+  scenes_created: string[];
+  sources_created: string[];
+  warnings: string[];
+};

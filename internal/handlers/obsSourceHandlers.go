@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"easyPreparation_1.0/internal/obs"
 	"easyPreparation_1.0/internal/path"
@@ -20,6 +22,80 @@ func logoDir() string {
 // logoFilePath — 단일 로고 파일 경로
 func logoFilePath() string {
 	return filepath.Join(logoDir(), "logo.png")
+}
+
+// OBSConnectHandler — POST /api/obs/connect {ip, port, password}
+// Feature gate 없이 접근 가능 — 연결 설정 저장 + 재연결
+func OBSConnectHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	var body struct {
+		IP       string `json:"ip"`
+		Port     int    `json:"port"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "잘못된 요청", http.StatusBadRequest)
+		return
+	}
+	if body.IP == "" {
+		body.IP = "localhost"
+	}
+	if body.Port == 0 {
+		body.Port = 4455
+	}
+	host := fmt.Sprintf("%s:%d", body.IP, body.Port)
+
+	configPath := filepath.Join(path.ExecutePath("easyPreparation"), "config", "obs.json")
+	m := obs.Get()
+	if m == nil {
+		http.Error(w, "OBS 매니저 초기화 안됨", http.StatusInternalServerError)
+		return
+	}
+
+	m.Connect(host, body.Password, configPath)
+
+	// 연결 시도 후 결과 반환 (최대 2초 대기)
+	for i := 0; i < 4; i++ {
+		time.Sleep(500 * time.Millisecond)
+		if m.GetStatus().Connected {
+			break
+		}
+	}
+
+	status := m.GetStatus()
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"ok":        true,
+		"connected": status.Connected,
+		"host":      host,
+	})
+}
+
+// OBSStatusHandler — GET /api/obs/status (feature gate 없음)
+func OBSStatusHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	m := obs.Get()
+	if m == nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"connected": false})
+		return
+	}
+	status := m.GetStatus()
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"connected":    status.Connected,
+		"currentScene": status.CurrentScene,
+	})
 }
 
 // OBSScenesHandler — GET /api/obs/scenes
@@ -399,4 +475,49 @@ func OBSSourceRemoveHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+}
+
+// OBSSetupInitialHandler — POST /api/obs/setup-initial
+// camera/monitor 씬 자동 생성 + 카메라·모니터캡처·EP_Display 소스 자동 추가
+func OBSSetupInitialHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	var body struct {
+		CameraDeviceID string `json:"cameraDeviceId"`
+	}
+	json.NewDecoder(r.Body).Decode(&body) //nolint:errcheck
+
+	m := obs.Get()
+	status := m.GetStatus()
+	if !status.Connected {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(&obs.InitialSetupResult{ //nolint:errcheck
+			Success:        false,
+			ScenesCreated:  []string{},
+			SourcesCreated: []string{},
+			Warnings:       []string{"OBS가 연결되지 않았습니다"},
+		})
+		return
+	}
+
+	result, err := m.SetupInitial(body.CameraDeviceID, logoFilePath())
+	if err != nil {
+		json.NewEncoder(w).Encode(&obs.InitialSetupResult{ //nolint:errcheck
+			Success:        false,
+			ScenesCreated:  []string{},
+			SourcesCreated: []string{},
+			Warnings:       []string{err.Error()},
+		})
+		return
+	}
+
+	json.NewEncoder(w).Encode(result) //nolint:errcheck
 }

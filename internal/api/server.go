@@ -106,6 +106,10 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/api/schedule/test", middleware.FeatureGate(license.FeatureAutoScheduler, handlers.ScheduleTestHandler))
 	mux.Handle("/api/schedule/stream", middleware.FeatureGate(license.FeatureAutoScheduler, handlers.StreamControlHandler))
 
+	// OBS 연결 설정 + 상태 (Feature gate 없음)
+	mux.Handle("/api/obs/connect", middleware.CORS(http.HandlerFunc(handlers.OBSConnectHandler)))
+	mux.Handle("/api/obs/status", middleware.CORS(http.HandlerFunc(handlers.OBSStatusHandler)))
+
 	// OBS 소스 관리 API (Pro)
 	mux.Handle("/api/obs/scenes", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSScenesHandler))
 	mux.Handle("/api/obs/sources", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSSourcesHandler))
@@ -116,6 +120,7 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/api/obs/sources/toggle", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSSourceToggleHandler))
 	mux.Handle("/api/obs/sources/remove", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSSourceRemoveHandler))
 	mux.Handle("/api/obs/setup-display", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSSetupDisplayHandler))
+	mux.Handle("/api/obs/setup-initial", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSSetupInitialHandler))
 
 	// 버전 + 업데이트 체크 API
 	mux.Handle("/api/version", middleware.CORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

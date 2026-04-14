@@ -1,8 +1,18 @@
 *.pdf
 /bin/
 /build/
-/data/
-!data/bible.db
+# Runtime data (ignore)
+data/cache/
+data/pdf/
+data/easyprep.db
+data/easyprep.db-shm
+data/easyprep.db-wal
+data/local.db
+data/bible.db-shm
+data/bible.db-wal
+data/display_state.json
+data/schedule.json
+data/thumbnail_config.json
 output/*/*.pdf
 output/display/
 config/*
@@ -11,6 +21,7 @@ config/*
 craw/.next/
 
 # ai_supporter tools
+.ai-supporter-path
 tools/.venv/
 tools/output/*.pptx
 tools/output/*.docx
