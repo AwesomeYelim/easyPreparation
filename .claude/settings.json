@@ -1,5 +1,20 @@
 {
   "model": "sonnet",
+  "autoCompactWindow": true,
+  "permissions": {
+    "allow": [
+      "Bash(file:*)",
+      "Bash(cd:*)",
+      "Bash(.claude/bin/indexer:*)",
+      "Bash(bash run.sh:*)",
+      "Bash(./run.sh:*)",
+      "Bash(bash tools/setup.sh)",
+      "Bash(bash tools/tools.sh:*)",
+      "Bash(PYTHONUTF8=1 tools/.venv/Scripts/python.exe:*)",
+      "Bash(tools/.venv/Scripts/python.exe:*)",
+      "Bash(git:*)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {

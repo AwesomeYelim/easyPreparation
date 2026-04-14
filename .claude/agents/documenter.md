@@ -36,7 +36,7 @@ git diff --stat         # 변경 규모
 - **Display/OBS 동작** 변경 → Display 시스템 섹션 업데이트
 - **주의사항** 추가 필요 시 → 주의사항 섹션에 추가
 
-### MEMORY.md (`/Users/hongyelim/.claude/projects/-Users-hongyelim-easyPreparation/memory/MEMORY.md`)
+### MEMORY.md (`/c/Users/User/.claude/projects/C--Users-User-Desktop-yelim-easyPreparation/memory/MEMORY.md`)
 - **새 API 엔드포인트** → API 엔드포인트 테이블에 추가
 - **새 파일** → 주요 파일 경로 테이블에 추가
 - **DB 변경** → DB 구조 섹션 업데이트
@@ -167,7 +167,7 @@ git diff --stat         # 변경 규모
 검증자 모두 pass + 문서 업데이트 완료 후 자동으로 커밋 & 푸시합니다.
 
 ```bash
-cd /Users/hongyelim/easyPreparation
+cd "$CLAUDE_PROJECT_DIR"
 
 # 변경 파일 확인
 git status

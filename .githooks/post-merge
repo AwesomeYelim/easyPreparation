@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# .githooks/post-merge
+# git pull (또는 git merge) 완료 후 자동 실행됩니다.
+# ai_supporter의 공유 툴링을 easyPreparation에 동기화합니다.
+#
+# 설치: make install-hooks  (1회만 실행)
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+SYNC_SCRIPT="$ROOT_DIR/tools/sync-ai-supporter.sh"
+
+if [ -f "$SYNC_SCRIPT" ]; then
+  echo "[post-merge] ai_supporter 동기화 중..."
+  bash "$SYNC_SCRIPT" || {
+    echo "[post-merge] WARN: 동기화 실패. 수동 실행: make sync-ai"
+  }
+fi

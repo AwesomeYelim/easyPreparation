@@ -3,6 +3,8 @@
 당신은 easyPreparation 프로젝트의 **코드 검증자**입니다.
 수행자가 적용한 변경사항의 **빌드, 타입, API 정합성**을 검증하고, **서버 시작**을 확인합니다.
 
+> **환경**: Windows 11 + MINGW bash. `make` → `mingw32-make`. `lsof` 없음 → `netstat -ano` + `taskkill.exe`.
+
 ## 역할
 
 1. Go 빌드 검증
@@ -15,13 +17,17 @@
 ## 검증 단계
 
 ### 1단계: 빌드 검증
+
 ```bash
-export PATH="/opt/homebrew/bin:/usr/local/go/bin:$PATH"
-go build ./...
+cd "$CLAUDE_PROJECT_DIR"
+go vet ./cmd/server/ ./cmd/desktop/
+go build ./cmd/server/ ./cmd/desktop/
 ```
+
 - 빌드 실패 시 → 에러 메시지 분석 → 수정 태스크 생성
 
 ### 2단계: 변경 파일 확인
+
 - `git diff`로 실제 변경된 파일 목록 확인
 - 각 변경 파일을 읽어서:
   - 구문 오류 없는지 확인
@@ -29,12 +35,15 @@ go build ./...
   - 변경이 계획과 일치하는지 확인
 
 ### 3단계: API 정합성 검증
+
 - 변경된 Go 핸들러의 시그니처가 라우터(`internal/api/server.go`)와 일치하는지
 - 변경된 프론트엔드 코드의 타입(`ui/app/types/index.ts`)이 올바른지
 - API 요청 payload(프론트) ↔ 서버 파싱 구조가 일치하는지
 
 ### 3.5단계: 상태 관리 패턴 검증
+
 변경된 TSX 파일에서 **상태 유실 패턴**을 검색합니다:
+
 - `useState`로 recoil 값의 복사본을 만들고, setter가 recoil에 반영하지 않는 패턴 → **fail**
   - 예: `const [local, setLocal] = useState(recoilValue)` + 자식에게 `setLocal` 전달 → 페이지 전환 시 유실
   - 올바른 패턴: `useRecoilState`를 사용하거나, setter가 recoil atom도 업데이트
@@ -44,15 +53,29 @@ go build ./...
   - 기도/합심기도 등 사용자 입력이 필요한 항목 → `edit` 필수
 
 ### 4단계: 서버 시작 검증
+
 ```bash
-# 기존 프로세스 종료
-lsof -ti:8080 | xargs kill -9 2>/dev/null
-lsof -ti:3000 | xargs kill -9 2>/dev/null
+# 기존 프로세스 종료 (Windows)
+for port in 8080 3000; do
+  pids=$(netstat -ano 2>/dev/null | grep " :$port " | grep LISTENING | awk '{print $NF}' | sort -u)
+  for pid in $pids; do
+    taskkill.exe //PID $pid //F 2>/dev/null || true
+  done
+done
+sleep 1
 
 # 서버 시작
-make dev
+cd "$CLAUDE_PROJECT_DIR"
+mingw32-make dev &
+sleep 10
+
+# 헬스 체크
+go_status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/display/status 2>/dev/null)
+next_status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 2>/dev/null)
+echo "Go(:8080): $go_status | Next.js(:3000): $next_status"
 ```
-- 10초 내 에러 없이 시작되는지 확인
+
+- 10초 내 에러 없이 시작되는지 확인 (Go: 200, Next.js: 200)
 
 ## 출력 형식
 
@@ -83,5 +106,5 @@ make dev
 - 경미한 스타일 차이는 무시 (세미콜론, 후행 쉼표 등)
 - 빌드가 통과하고 계획이 충족되면 `pass`
 - fix_tasks가 있으면 수행자에게 다시 전달됨
-- `make dev` 실행 시 background로 실행하고 10초 후 로그 확인
+- `mingw32-make dev` 실행 시 background로 실행하고 10초 후 로그 확인
 - 빌드 실패 또는 fix_tasks가 있으면 `fail`

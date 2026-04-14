@@ -27,7 +27,8 @@ endif
 
 .PHONY: dev restart build clean build-desktop build-desktop-macos \
         build-desktop-windows build-desktop-linux dev-desktop \
-        build-go build-go-dev build-ui build-frontend build-landing upload-r2
+        build-go build-go-dev build-ui build-frontend build-landing upload-r2 \
+        sync-ai install-hooks
 
 # ── 포트 킬 헬퍼 (크로스 플랫폼) ─────────────────────────────────────────────
 # 사용: $(call kill_ports,3000 8080)
@@ -164,3 +165,22 @@ build-landing:
 # ── R2에 PDF 에셋 업로드 ──────────────────────────────────────────────────────
 upload-r2:
 	bash tools/upload-r2.sh
+
+# ── ai_supporter sync ────────────────────────────────────────────────────────
+# auto-runs after git pull (when install-hooks is set)
+# manual: make sync-ai
+sync-ai:
+	@bash tools/sync-ai-supporter.sh
+
+# ── Git hooks install (run once) ─────────────────────────────────────────────
+# .githooks/post-merge -> auto-syncs ai_supporter on git pull
+install-hooks:
+	@git config core.hooksPath .githooks
+	@chmod +x .githooks/post-merge tools/sync-ai-supporter.sh
+	@echo "Git hooks installed."
+	@echo "  'git pull' will auto-sync ai_supporter."
+	@echo ""
+	@echo "Set ai_supporter path (pick one):"
+	@echo "  1) echo '/path/to/ai_supporter' > .ai-supporter-path"
+	@echo "  2) export AI_SUPPORTER_PATH=/path/to/ai_supporter"
+	@echo "  -> '../ai_supporter' sibling dir is auto-detected."

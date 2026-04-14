@@ -1,0 +1,19 @@
+# GSAC tools Python 의존성
+# setup.sh 실행 시 tools/.venv에 자동 설치됨
+
+# 문서 생성
+python-pptx>=1.0.0
+python-docx>=1.0.0
+openpyxl>=3.1.0
+
+# 차트/시각화
+matplotlib>=3.7.0
+Pillow>=10.0.0
+
+# MCP 서버 (tools/gdrive_mcp.py)
+mcp>=1.0.0
+
+# Google API
+requests>=2.31.0
+google-api-python-client>=2.100.0
+google-auth>=2.20.0
