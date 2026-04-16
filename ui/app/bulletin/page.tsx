@@ -94,7 +94,16 @@ export default function Bulletin() {
     });
   }, [subscribe]);
 
-  const downloadZip = (fileName: string) => apiClient.downloadFile(fileName);
+  const downloadZip = async (fileName: string) => {
+    try {
+      await apiClient.downloadFile(fileName);
+    } catch (e) {
+      const msg = e instanceof Error && e.message.includes("주보를 생성")
+        ? e.message
+        : "다운로드 중 오류가 발생했습니다.";
+      toast.error(msg);
+    }
+  };
 
   const sendToDisplay = async () => {
     const processedInfo = processSelectedInfo(selectedInfo);

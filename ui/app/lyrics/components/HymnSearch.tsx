@@ -21,14 +21,11 @@ export default function HymnSearch() {
     apiClient
       .searchHymns(query)
       .then((data: Hymn[]) => {
-        const newData = Array.isArray(data) ? data : [];
-        setResults((prev) => {
-          const existing = new Set(prev.map((h) => `${h.hymnbook}-${h.number}`));
-          const unique = newData.filter((h) => !existing.has(`${h.hymnbook}-${h.number}`));
-          return [...prev, ...unique];
-        });
+        setResults(Array.isArray(data) ? data : []);
       })
-      .catch(() => {})
+      .catch((e) => {
+        console.error("찬송가 검색 실패:", e);
+      })
       .finally(() => setSearching(false));
   }, [query]);
 

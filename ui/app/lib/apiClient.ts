@@ -116,32 +116,39 @@ export const apiClient = {
       body: JSON.stringify({ from, to }),
     }),
 
-  downloadFile: (fileName: string) => {
+  downloadFile: async (fileName: string): Promise<void> => {
     const url = `${BASE_URL}/download?target=${fileName}`;
     // Wails WebView2 환경: blob 다운로드가 안 되므로 시스템 브라우저로 열기
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const wails = (window as any)?.go?.main?.App;
     if (wails?.OpenURL) {
+      // 파일 존재 여부 먼저 확인 (404 silent fail 방지)
+      // WKWebView에서 네트워크 오류 시 TypeError가 날 수 있으므로 try-catch
+      try {
+        const check = await fetch(url, { method: "HEAD" });
+        if (!check.ok) {
+          throw new Error("PDF를 찾을 수 없습니다. 먼저 주보를 생성해주세요.");
+        }
+      } catch (e) {
+        // HEAD 요청 자체가 실패한 경우 (서버 다운 등) → 그냥 열기 시도
+        if (e instanceof Error && e.message.includes("주보를 생성")) throw e;
+        // 네트워크 TypeError는 무시하고 OpenURL 시도
+      }
       wails.OpenURL(url);
       return;
     }
     // 일반 브라우저 환경: fetch+blob
-    fetch(url)
-      .then((r) => {
-        if (!r.ok) throw new Error(`download failed: ${r.status}`);
-        return r.blob();
-      })
-      .then((blob) => {
-        const blobUrl = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = blobUrl;
-        a.download = `${fileName}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(blobUrl);
-      })
-      .catch((e) => console.error("downloadFile error:", e));
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`다운로드 실패 (${r.status})`);
+    const blob = await r.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = `${fileName}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
   },
 
   // 찬송가 API
