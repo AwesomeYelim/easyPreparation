@@ -4,9 +4,7 @@ import (
 	"easyPreparation_1.0/internal/assets"
 	"easyPreparation_1.0/internal/obs"
 	"easyPreparation_1.0/internal/path"
-	"easyPreparation_1.0/internal/pdfrender"
 	"easyPreparation_1.0/internal/quote"
-	"easyPreparation_1.0/internal/utils"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -1325,12 +1323,18 @@ func DisplayFontHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, fontPath)
 }
 
-// DisplayTmpHandler — GET /display/tmp/{name}
-// 찬송/교독 변환 PNG 서빙
+// DisplayTmpHandler — GET /display/tmp/{category}/{num}/{page}.png
+// 찬송/교독 PNG 서빙 (예: /display/tmp/hymn/635/1.png)
 func DisplayTmpHandler(w http.ResponseWriter, r *http.Request) {
-	name := filepath.Base(r.URL.Path)
+	rel := strings.TrimPrefix(r.URL.Path, "/display/tmp/")
+	rel = filepath.FromSlash(rel)
 	execPath := path.ExecutePath("easyPreparation")
-	imgPath := filepath.Join(execPath, "data", "cache", "hymn_pages", name)
+	cacheRoot := filepath.Join(execPath, "data", "cache")
+	imgPath := filepath.Clean(filepath.Join(cacheRoot, rel))
+	if !strings.HasPrefix(imgPath, cacheRoot+string(filepath.Separator)) {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
 	http.ServeFile(w, r, imgPath)
 }
 
@@ -2382,8 +2386,7 @@ func fetchDisplayImages(title, obj string) []string {
 	}
 
 	execPath := path.ExecutePath("easyPreparation")
-	baseDir := filepath.Join(execPath, "data", "cache", "hymn_pages")
-	_ = utils.CheckDirIs(baseDir)
+	cacheRoot := filepath.Join(execPath, "data", "cache")
 
 	// 숫자 0-패딩
 	num, err := strconv.Atoi(splitNum)
@@ -2393,99 +2396,41 @@ func fetchDisplayImages(title, obj string) []string {
 	} else {
 		targetNum = fmt.Sprintf("%s.pdf", splitNum)
 	}
+	base := strings.TrimSuffix(targetNum, ".pdf")
 
-	// 캐시: 이미 변환된 PNG가 있으면 재사용
-	cachePrefix := fmt.Sprintf("%s_%s_", category, strings.TrimSuffix(targetNum, ".pdf"))
-	if cached := findCachedImages(baseDir, cachePrefix); len(cached) > 0 {
+	// 캐시: data/cache/{category}/{base}/ 에 PNG 있으면 재사용
+	imgDir := filepath.Join(cacheRoot, category, base)
+	if cached := findCachedImages(category, base, imgDir); len(cached) > 0 {
 		return cached
 	}
 
-	// PNG 우선 다운로드 (Oracle Cloud hymn_pages/ — 변환 불필요, Windows 포함 모든 OS)
+	// PNG 다운로드 (Oracle Cloud hymn_pages/)
 	BroadcastMessage("display_loading", map[string]interface{}{
-		"message": fmt.Sprintf("%s/%s PNG 다운로드 중...", category, targetNum),
+		"message": fmt.Sprintf("%s/%s PNG 다운로드 중...", category, base),
 	})
-	if pngPaths := assets.DownloadPNGPages(category, targetNum, baseDir); len(pngPaths) > 0 {
+	if pngPaths := assets.DownloadPNGPages(category, targetNum, cacheRoot); len(pngPaths) > 0 {
 		var urls []string
 		for _, p := range pngPaths {
-			urls = append(urls, "/display/tmp/"+filepath.Base(p))
+			rel, _ := filepath.Rel(cacheRoot, p)
+			urls = append(urls, "/display/tmp/"+filepath.ToSlash(rel))
 		}
 		return urls
 	}
 
-	// Fallback: PDF 다운로드 → 로컬 변환 (Mac/Linux, PNG 서버에 없는 경우)
-	pdfDir := filepath.Join(execPath, "data", "pdf")
-	_ = utils.CheckDirIs(pdfDir)
-	cacheDir := filepath.Join(pdfDir, category)
-	_ = utils.CheckDirIs(cacheDir)
-
-	pdfPath := filepath.Join(cacheDir, targetNum)
-
-	if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
-		BroadcastMessage("display_loading", map[string]interface{}{
-			"message": fmt.Sprintf("%s/%s PDF 다운로드 중...", category, targetNum),
-		})
-		if err := assets.DownloadPDF(category, targetNum, cacheDir); err != nil {
-			log.Printf("[display] PDF 다운로드 실패 — %v (건너뜀)", err)
-			return nil
-		}
-	} else {
-		BroadcastMessage("display_loading", map[string]interface{}{
-			"message": fmt.Sprintf("[캐시] %s/%s 사용", category, targetNum),
-		})
-	}
-
-	// PDF → PNG 변환
-	tmpDir, err := os.MkdirTemp(baseDir, category+"_conv_")
-	if err != nil {
-		log.Printf("[display] 임시 디렉토리 생성 실패: %v", err)
-		return nil
-	}
-	defer func() { _ = os.RemoveAll(tmpDir) }()
-
-	if err := pdfrender.PDFToImages(pdfPath, tmpDir, 144); err != nil {
-		log.Printf("[display] 찬송/교독 변환 실패: %v", err)
-		return nil
-	}
-
-	files, err := os.ReadDir(tmpDir)
-	if err != nil {
-		return nil
-	}
-	var pngFiles []string
-	for _, f := range files {
-		if !f.IsDir() && strings.HasSuffix(f.Name(), ".png") {
-			pngFiles = append(pngFiles, f.Name())
-		}
-	}
-	sort.Slice(pngFiles, func(i, j int) bool {
-		numI, _ := strconv.Atoi(strings.TrimSuffix(pngFiles[i], ".png"))
-		numJ, _ := strconv.Atoi(strings.TrimSuffix(pngFiles[j], ".png"))
-		return numI < numJ
-	})
-
-	var urls []string
-	for _, pf := range pngFiles {
-		dstName := cachePrefix + pf
-		src := filepath.Join(tmpDir, pf)
-		dst := filepath.Join(baseDir, dstName)
-		if data, err := os.ReadFile(src); err == nil {
-			_ = os.WriteFile(dst, data, 0644)
-			urls = append(urls, "/display/tmp/"+dstName)
-		}
-	}
-	return urls
+	log.Printf("[display] PNG 없음 — %s/%s 건너뜀", category, base)
+	return nil
 }
 
-// findCachedImages — baseDir에서 prefix로 시작하는 PNG 파일 URL 목록 반환
-func findCachedImages(baseDir, prefix string) []string {
-	files, err := os.ReadDir(baseDir)
+// findCachedImages — data/cache/{category}/{base}/ 에서 PNG 파일 URL 목록 반환
+func findCachedImages(category, base, imgDir string) []string {
+	files, err := os.ReadDir(imgDir)
 	if err != nil {
 		return nil
 	}
 	var urls []string
 	for _, f := range files {
-		if !f.IsDir() && strings.HasPrefix(f.Name(), prefix) && strings.HasSuffix(f.Name(), ".png") {
-			urls = append(urls, "/display/tmp/"+f.Name())
+		if !f.IsDir() && strings.HasSuffix(f.Name(), ".png") {
+			urls = append(urls, fmt.Sprintf("/display/tmp/%s/%s/%s", category, base, f.Name()))
 		}
 	}
 	sort.Strings(urls)

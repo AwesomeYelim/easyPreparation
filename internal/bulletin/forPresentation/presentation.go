@@ -44,12 +44,10 @@ func (pi PdfInfo) Create() {
 	}
 	loadPathInfo(outputDir)
 
-	// outputDir에 파일 없으면 data/defaults/bulletin/presentation/ 에서 직접 참조 (복사 안 함)
+	// templates에 없는 키는 data/defaults/bulletin/presentation/ 에서 보충 (복사 안 함)
 	// → display.go는 data/templates/display/만 스캔하므로 defaults 복사 시 display bgImage에 영향을 줌
-	if len(pathInfo) == 0 {
-		defaultsDir := filepath.Join(pi.ExecPath, "data", "defaults", "bulletin", "presentation")
-		loadPathInfo(defaultsDir)
-	}
+	defaultsDir := filepath.Join(pi.ExecPath, "data", "defaults", "bulletin", "presentation")
+	loadPathInfo(defaultsDir)
 
 	instanceSize := gofpdf.SizeType{
 		Wd: config.Classification.Bulletin.Presentation.Width,
@@ -75,10 +73,6 @@ func (pi PdfInfo) Create() {
 	for _, con := range contents {
 		objPdf.Title = con.Title
 
-		// 성시교독 스킵
-		if strings.Contains(objPdf.Title, "성시교독") {
-			continue
-		}
 		hasBackground := false
 		if _, ok := pathInfo[con.Title]; ok {
 			hasBackground = true
@@ -91,17 +85,20 @@ func (pi PdfInfo) Create() {
 		}
 
 		handlers.BroadcastProgress("Presentation", 1, fmt.Sprintf("[슬라이드] %s", con.Title))
-		objPdf.AddPage()
 
-		if hasBackground {
-			objPdf.Path = pathInfo[objPdf.Title]
-			objPdf.CheckImgPlaced(objPdf.Path, 0)
-		}
-
-		objPdf.MarkName()
-
-		if hasContent {
+		// 성시교독: ForEdit 내부에서 PNG 페이지를 자체 추가 — 외부 AddPage/MarkName 불필요 (흰화면 방지)
+		if con.Title == "성시교독" {
 			objPdf.ForEdit(con, config)
+		} else {
+			objPdf.AddPage()
+			if hasBackground {
+				objPdf.Path = pathInfo[objPdf.Title]
+				objPdf.CheckImgPlaced(objPdf.Path, 0)
+			}
+			objPdf.MarkName()
+			if hasContent {
+				objPdf.ForEdit(con, config)
+			}
 		}
 
 		// 축도 이후 항목 제외

@@ -12,7 +12,33 @@
       "Bash(bash tools/tools.sh:*)",
       "Bash(PYTHONUTF8=1 tools/.venv/Scripts/python.exe:*)",
       "Bash(tools/.venv/Scripts/python.exe:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(curl:*)",
+      "Bash(go run:*)",
+      "Bash(go build:*)",
+      "Bash(go vet:*)",
+      "Bash(go test:*)",
+      "Bash(make:*)",
+      "Bash(npm:*)",
+      "Bash(node:*)",
+      "Bash(lsof:*)",
+      "Bash(kill:*)",
+      "Bash(pkill:*)",
+      "Bash(ps:*)",
+      "Bash(sleep:*)",
+      "Bash(tail:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(chmod:*)",
+      "Bash(ls:*)",
+      "Bash(export:*)",
+      "Bash(unzip:*)",
+      "Bash(zip:*)",
+      "Bash(sha256sum:*)",
+      "Bash(open:*)",
+      "Bash(which:*)",
+      "Bash(xattr:*)"
     ]
   },
   "hooks": {
@@ -30,9 +56,31 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && CHANGED=$(git diff --name-only 2>/dev/null | grep '\\.go$' | head -1) && [ -n \"$CHANGED\" ] && export PATH=\"/usr/local/go/bin:$PATH\" && go vet ./cmd/... ./internal/... 2>&1 | head -12 || true"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && echo '=== 세션 종료 — 변경 파일 ===' && git status --short 2>/dev/null | head -25"
+          }
+        ]
+      }
     ]
   },
   "env": {
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50"
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80"
   }
 }

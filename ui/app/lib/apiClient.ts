@@ -8,7 +8,11 @@ type SongItem = { title: string; lyrics: string };
 /** Display 창 참조 — 이미 열려있으면 reload 방지 */
 let displayWindow: Window | null = null;
 
-export function openDisplayWindow() {
+export async function openDisplayWindow() {
+  // Desktop 모드: 서버에 요청해서 시스템 브라우저로 열기 (Wails WebView window.open 차단 우회)
+  const res = await fetch(`${BASE_URL}/api/open-display`).catch(() => null);
+  if (res?.ok) return;
+  // 웹 브라우저 모드: window.open 사용
   if (displayWindow && !displayWindow.closed) {
     displayWindow.focus();
     return;
@@ -117,27 +121,14 @@ export const apiClient = {
     }),
 
   downloadFile: async (fileName: string): Promise<void> => {
-    const url = `${BASE_URL}/download?target=${fileName}`;
-    // Wails WebView2 환경: blob 다운로드가 안 되므로 시스템 브라우저로 열기
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const wails = (window as any)?.go?.main?.App;
-    if (wails?.OpenURL) {
-      // 파일 존재 여부 먼저 확인 (404 silent fail 방지)
-      // WKWebView에서 네트워크 오류 시 TypeError가 날 수 있으므로 try-catch
-      try {
-        const check = await fetch(url, { method: "HEAD" });
-        if (!check.ok) {
-          throw new Error("PDF를 찾을 수 없습니다. 먼저 주보를 생성해주세요.");
-        }
-      } catch (e) {
-        // HEAD 요청 자체가 실패한 경우 (서버 다운 등) → 그냥 열기 시도
-        if (e instanceof Error && e.message.includes("주보를 생성")) throw e;
-        // 네트워크 TypeError는 무시하고 OpenURL 시도
-      }
-      wails.OpenURL(url);
-      return;
+    // Desktop 모드: 서버가 ~/Downloads에 직접 저장 + 폴더 열기
+    const saveRes = await fetch(`${BASE_URL}/api/save-to-downloads?target=${encodeURIComponent(fileName)}`);
+    if (saveRes.ok) return;
+    if (saveRes.status !== 403) {
+      throw new Error("다운로드 중 오류가 발생했습니다.");
     }
-    // 일반 브라우저 환경: fetch+blob
+    // 웹 브라우저 모드: fetch+blob
+    const url = `${BASE_URL}/download?target=${encodeURIComponent(fileName)}`;
     const r = await fetch(url);
     if (!r.ok) throw new Error(`다운로드 실패 (${r.status})`);
     const blob = await r.blob();

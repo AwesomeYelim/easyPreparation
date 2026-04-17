@@ -4,6 +4,13 @@
 # Runtime data (ignore)
 data/cache/
 data/pdf/
+data/logs/
+data/update/
+data/license.json
+data/templates/
+output/bulletin/print/backgrounds/
+# IDE
+.idea/
 data/easyprep.db
 data/easyprep.db-shm
 data/easyprep.db-wal

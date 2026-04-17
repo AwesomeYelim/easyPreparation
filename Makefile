@@ -25,10 +25,20 @@ else
     printf '. %s/.nvm/nvm.sh && nvm use 22 --silent && npm' "$(HOME)" || echo npm)
 endif
 
+# ── Node.js bin 경로 감지 (wails dev PATH 주입용) ────────────────────────────
+# 우선순위: 1) 이미 PATH에 npm 있음  2) nvm(macOS/Linux)  3) nvm-windows(APPDATA)
+ifdef IS_WINDOWS
+  _NPM_CMD     := $(shell where npm 2>NUL | head -1)
+  NODE_BIN_DIR := $(strip $(if $(_NPM_CMD),$(dir $(_NPM_CMD)),$(shell ls -d "$$APPDATA/nvm/v22"*/ 2>/dev/null | head -1)))
+else
+  _NPM_CMD     := $(shell command -v npm 2>/dev/null)
+  NODE_BIN_DIR := $(strip $(if $(_NPM_CMD),$(dir $(_NPM_CMD)),$(shell ls -d $(HOME)/.nvm/versions/node/v22*/bin 2>/dev/null | head -1)))
+endif
+
 .PHONY: dev restart build clean build-desktop build-desktop-macos \
         build-desktop-windows build-desktop-linux dev-desktop \
         build-go build-go-dev build-ui build-frontend build-landing upload-r2 \
-        sync-ai install-hooks
+        sync-ai install-hooks dev-license health
 
 # ── 포트 킬 헬퍼 (크로스 플랫폼) ─────────────────────────────────────────────
 # 사용: $(call kill_ports,3000 8080)
@@ -102,7 +112,8 @@ build-ui:
 clean:
 	rm -f bin/server
 	rm -rf ui/.next
-	rm -rf cmd/server/data cmd/desktop/data
+	rm -rf cmd/server/frontend cmd/server/data
+	rm -rf cmd/desktop/frontend cmd/desktop/data
 
 # ── 프론트엔드 + 데이터 준비 (Desktop 빌드 공통 선행 작업) ──────────────────────
 # bible.db를 cmd/desktop/data/에 복사 → //go:embed all:data 에 포함됨
@@ -150,12 +161,21 @@ build-desktop-linux: build-frontend
 	@echo "Done: cmd/desktop/build/bin/easyPreparation"
 
 # ── Desktop 개발 모드 ─────────────────────────────────────────────────────────
-# -s: wails.json frontend:build의 Unix 명령어 스킵 (Next.js는 watcher가 자동 시작)
-# -frontenddevserverurl: Go 앱의 로딩화면이 리다이렉트할 URL 명시
+# Next.js(:3000) 백그라운드 기동 → 준비 완료 후 wails dev 시작
+# Ctrl+C 시 trap으로 하위 프로세스 모두 종료
 dev-desktop:
 	$(call kill_ports,3000 3001 8080)
-	@cd cmd/desktop && export PATH="$$HOME/go/bin:/usr/local/go/bin:$$PATH" && \
-	wails dev -s -frontenddevserverurl http://localhost:3000
+	@echo "Starting Next.js dev (:3000) + Wails Desktop..."
+	@( \
+	  trap 'kill $$(jobs -p) 2>/dev/null; exit 0' EXIT INT TERM; \
+	  (cd ui && $(RUN_NPM) run dev) & \
+	  echo "Next.js 시작 대기 중..."; \
+	  until curl -sf http://localhost:3000 >/dev/null 2>&1; do sleep 0.5; done; \
+	  echo "Next.js 준비 완료 — Wails Desktop 시작"; \
+	  cd cmd/desktop && \
+	  export PATH="$$HOME/go/bin:/usr/local/go/bin:$(NODE_BIN_DIR):$$PATH" && \
+	  wails dev -s -frontenddevserverurl http://localhost:3000; \
+	)
 
 # ── 랜딩 페이지 빌드 ──────────────────────────────────────────────────────────
 build-landing:
@@ -171,6 +191,22 @@ upload-r2:
 # manual: make sync-ai
 sync-ai:
 	@bash tools/sync-ai-supporter.sh
+
+# ── 개발용 Pro 라이선스 생성 (data/license.json 덮어씀) ──────────────────────
+# 사용: make dev-license           (Pro, 무기한)
+#        make dev-license PLAN=free (Free 초기화)
+#        make dev-license PLAN=enterprise
+PLAN ?= pro
+dev-license:
+	@go run ./tools/devlicense/ $(PLAN)
+
+# ── 코드 헬스 체크 (빌드 검증 + 타입 체크) ──────────────────────────────────
+health:
+	@echo "▶ Go vet..."
+	@go vet ./cmd/server/ ./cmd/desktop/ ./internal/... ./tools/devlicense/
+	@echo "▶ TypeScript typecheck..."
+	@cd ui && $(RUN_NPM) run typecheck 2>/dev/null || $(RUN_NPM) exec tsc -- --noEmit
+	@echo "✅ 헬스 체크 완료"
 
 # ── Git hooks install (run once) ─────────────────────────────────────────────
 # .githooks/post-merge -> auto-syncs ai_supporter on git pull

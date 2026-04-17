@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -76,6 +79,11 @@ func (a *App) startup(ctx context.Context) {
 	// YouTube API 초기화
 	youtube.Init(youtube.DefaultOAuthPath(), youtube.DefaultTokenPath())
 
+	// Desktop 모드 활성화 — ~/Downloads에 파일 저장
+	if homeDir, err := os.UserHomeDir(); err == nil {
+		handlers.SetDesktopMode(filepath.Join(homeDir, "Downloads"))
+	}
+
 	// Display 상태 복원 (이전 세션)
 	handlers.LoadDisplayState()
 
@@ -122,6 +130,46 @@ func (a *App) startup(ctx context.Context) {
 		log.Println("[desktop] 서버 준비 완료 — 윈도우 표시")
 		wailsruntime.WindowShow(ctx)
 	}()
+}
+
+// SaveZip — 서버에서 ZIP을 받아 ~/Downloads에 저장 후 Finder로 표시
+// 반환값: 에러 메시지 (빈 문자열 = 성공)
+func (a *App) SaveZip(target string) string {
+	log.Printf("[desktop] SaveZip 호출: %s", target)
+
+	// ZIP 다운로드
+	resp, err := http.Get(fmt.Sprintf("http://localhost:8080/download?target=%s", target))
+	if err != nil {
+		log.Printf("[desktop] SaveZip 다운로드 실패: %v", err)
+		return "다운로드 실패: " + err.Error()
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("[desktop] SaveZip 서버 오류: %d", resp.StatusCode)
+		return fmt.Sprintf("PDF를 찾을 수 없습니다 (%d). 먼저 주보를 생성해주세요.", resp.StatusCode)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "파일 읽기 실패: " + err.Error()
+	}
+	log.Printf("[desktop] SaveZip ZIP 로드 완료: %d bytes", len(data))
+
+	// ~/Downloads에 저장
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "홈 디렉토리 조회 실패: " + err.Error()
+	}
+	savePath := filepath.Join(homeDir, "Downloads", target+".zip")
+
+	if err := os.WriteFile(savePath, data, 0644); err != nil {
+		return "저장 실패: " + err.Error()
+	}
+	log.Printf("[desktop] SaveZip 저장 완료: %s", savePath)
+
+	// Finder에서 파일 표시 (macOS)
+	wailsruntime.BrowserOpenURL(a.ctx, "file://"+filepath.Dir(savePath))
+	return ""
 }
 
 // OpenURL — 시스템 브라우저에서 URL 열기 (파일 다운로드 등 WebView2가 처리 못하는 경우 사용)

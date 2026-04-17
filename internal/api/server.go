@@ -36,6 +36,8 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.HandleFunc("/ws", handlers.WebSocketHandler)
 	mux.Handle("/submit", handlers.SubmitHandler(dataChan))
 	mux.Handle("/download", middleware.CORS(http.HandlerFunc(handlers.DownloadPDFHandler)))
+	mux.Handle("/api/save-to-downloads", middleware.CORS(http.HandlerFunc(handlers.SaveToDownloadsHandler)))
+	mux.Handle("/api/open-display", middleware.CORS(http.HandlerFunc(handlers.OpenDisplayInBrowserHandler)))
 	mux.Handle("/searchLyrics", handlers.SearchLyrics())
 	mux.Handle("/submitLyrics", handlers.SubmitLyricsHandler(dataChan))
 

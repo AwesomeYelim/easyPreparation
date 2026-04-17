@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "/Users/hongyelim/.nvm/versions/node/v22.13.0/bin/npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"]
+    }
+  }
+}

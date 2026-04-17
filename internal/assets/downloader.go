@@ -54,47 +54,27 @@ func downloadFile(url, localPath string) error {
 	return nil
 }
 
-// DownloadPDF — 로컬 캐시 확인 후 없으면 원격에서 PDF를 다운로드합니다.
-// category: "hymn" 또는 "responsive_reading"
-// filename: "032.pdf" 등
-// cacheDir: 로컬 캐시 디렉토리 (예: data/pdf/hymn/)
-func DownloadPDF(category, filename, cacheDir string) error {
-	pdfPath := filepath.Join(cacheDir, filename)
-	if _, err := os.Stat(pdfPath); err == nil {
-		return nil // 캐시 히트
-	}
-
-	url := fmt.Sprintf("%s/%s/%s", AssetBaseURL, category, filename)
-	log.Printf("[assets] PDF 다운로드: %s", url)
-
-	if err := downloadFile(url, pdfPath); err != nil {
-		return fmt.Errorf("PDF 다운로드 실패: %w", err)
-	}
-
-	log.Printf("[assets] 다운로드 완료: %s → %s", url, pdfPath)
-	return nil
-}
-
-// DownloadPNGPages — Oracle Cloud에서 category_pages/NNN/1.png, 2.png... 를 순서대로 다운로드합니다.
-// filename: "032.pdf" 형식, cacheDir: 로컬 PNG 캐시 디렉토리
+// DownloadPNGPages — Oracle Cloud에서 PNG 페이지들을 다운로드합니다.
+// filename: "032.pdf" 형식, cacheRoot: 로컬 캐시 루트 (예: data/cache)
+// 파일 저장 경로: cacheRoot/category/NNN/1.png, 2.png, ...
 // 반환값: 로컬에 저장된 PNG 파일 경로 목록 (페이지 순서). 서버에 PNG 없으면 빈 슬라이스.
 //
 // 서버 URL 규칙:
 //
 //	AssetBaseURL/hymn_pages/032/1.png
 //	AssetBaseURL/responsive_reading_pages/001/1.png
-func DownloadPNGPages(category, filename, cacheDir string) []string {
+func DownloadPNGPages(category, filename, cacheRoot string) []string {
 	base := strings.TrimSuffix(filename, ".pdf")
 	dirURL := fmt.Sprintf("%s/%s_pages/%s", AssetBaseURL, category, base)
+	localDir := filepath.Join(cacheRoot, category, base)
 
-	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+	if err := os.MkdirAll(localDir, 0755); err != nil {
 		return nil
 	}
 
 	var paths []string
 	for page := 1; page <= 30; page++ { // 찬송가 최대 페이지 수 (보통 2~4장)
-		localName := fmt.Sprintf("%s_%s_%d.png", category, base, page)
-		localPath := filepath.Join(cacheDir, localName)
+		localPath := filepath.Join(localDir, fmt.Sprintf("%d.png", page))
 
 		// 이미 캐시된 파일이면 추가
 		if _, err := os.Stat(localPath); err == nil {

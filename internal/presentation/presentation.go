@@ -18,7 +18,6 @@ import (
 	"image/color"
 	"log"
 	"os"
-	"easyPreparation_1.0/internal/pdfrender"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -501,13 +500,6 @@ func (pdf *PDF) setOutDirFiles(category, target string) {
 	case "responsive_reading":
 		splitNum = strings.Split(target, ".")[0]
 	}
-	pdfDir := filepath.Join(pdf.ExecPath, "data", "pdf")
-	_ = utils.CheckDirIs(pdfDir)
-
-	// 고정 디렉토리에 PDF 캐시 (data/pdf/hymn/, data/pdf/responsive_reading/)
-	cacheDir := filepath.Join(pdfDir, category)
-	_ = utils.CheckDirIs(cacheDir)
-
 	// %03d 로 숫자 0-패딩 ("31" → "031.pdf")
 	num, err := strconv.Atoi(splitNum)
 	var targetNum string
@@ -517,12 +509,9 @@ func (pdf *PDF) setOutDirFiles(category, target string) {
 		targetNum = fmt.Sprintf("%s.pdf", splitNum)
 	}
 
-	pdfPath := filepath.Join(cacheDir, targetNum)
-
-	// PNG 우선: Oracle Cloud hymn_pages/ 에서 직접 다운로드 (변환 불필요 — Windows 포함 전 플랫폼)
-	pngCacheDir := filepath.Join(pdf.ExecPath, "data", "cache", "hymn_pages")
-	_ = utils.CheckDirIs(pngCacheDir)
-	if pngPaths := assets.DownloadPNGPages(category, targetNum, pngCacheDir); len(pngPaths) > 0 {
+	cacheRoot := filepath.Join(pdf.ExecPath, "data", "cache")
+	_ = utils.CheckDirIs(cacheRoot)
+	if pngPaths := assets.DownloadPNGPages(category, targetNum, cacheRoot); len(pngPaths) > 0 {
 		handlers.BroadcastProgress("PNG cache", 1, fmt.Sprintf("[PNG] %s/%s 적용", category, targetNum))
 		for _, imgPath := range pngPaths {
 			pdf.AddPage()
@@ -530,32 +519,7 @@ func (pdf *PDF) setOutDirFiles(category, target string) {
 		}
 		return
 	}
-
-	// PDF fallback: PDF 다운로드 → 로컬 변환 (Mac/Linux, PNG 서버에 없는 경우)
-	if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
-		handlers.BroadcastProgress("PDF download", 1, fmt.Sprintf("%s/%s 다운로드 중...", category, targetNum))
-		if err := assets.DownloadPDF(category, targetNum, cacheDir); err != nil {
-			handlers.BroadcastProgress("PDF error", -1, fmt.Sprintf("PDF 다운로드 실패 — %v", err))
-			return
-		}
-		handlers.BroadcastProgress("PDF done", 1, fmt.Sprintf("%s/%s 다운로드 완료", category, targetNum))
-	} else {
-		handlers.BroadcastProgress("PDF cache", 1, fmt.Sprintf("[캐시] %s/%s 사용", category, targetNum))
-	}
-
-	tempPath := filepath.Join(cacheDir, fmt.Sprintf("temp_%s", splitNum))
-	_ = utils.CheckDirIs(tempPath)
-
-	if err := pdfrender.PDFToImages(pdfPath, tempPath, 96); err != nil {
-		log.Printf("찬송/교독 변환 실패: %v", err)
-		return
-	}
-	defer func() {
-		_ = os.RemoveAll(tempPath)
-	}()
-	if err = pdf.AddImagesToPDF(tempPath); err != nil {
-		log.Printf("이미지 PDF 추가 실패: %v", err)
-	}
+	log.Printf("[presentation] PNG 없음 — %s/%s 건너뜀", category, targetNum)
 }
 
 func (pdf *PDF) AddImagesToPDF(imageDir string) error {

@@ -36,6 +36,7 @@ export default function Bulletin() {
   const msgQueueRef = useRef<string[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastMsgRef = useRef("");
+  const processingRef = useRef(false); // "done" 중복 처리 방지 (StrictMode 이중 WS 연결)
 
   const flushQueue = () => {
     if (timerRef.current) return;
@@ -82,6 +83,8 @@ export default function Bulletin() {
       }
 
       if (message.type === "done") {
+        if (!processingRef.current) return; // 이미 처리했으면 중복 무시
+        processingRef.current = false;
         msgQueueRef.current = [];
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
         downloadZip(message.fileName);
@@ -97,6 +100,7 @@ export default function Bulletin() {
   const downloadZip = async (fileName: string) => {
     try {
       await apiClient.downloadFile(fileName);
+      toast.success("다운로드 폴더에 저장되었습니다.");
     } catch (e) {
       const msg = e instanceof Error && e.message.includes("주보를 생성")
         ? e.message
@@ -161,6 +165,7 @@ export default function Bulletin() {
   const sendDataToGoServer = async () => {
     try {
       setLoading(true);
+      processingRef.current = true;
       setWsMessage("");
       setWsLogs([]);
 

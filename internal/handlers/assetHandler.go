@@ -8,9 +8,9 @@ import (
 	"strings"
 )
 
-// AssetServeHandler — data/pdf/ 디렉토리에서 PDF 파일을 서빙합니다.
+// AssetServeHandler — data/cache/pdf/ 디렉토리에서 PDF 파일을 서빙합니다.
 // 경로: /api/assets/{category}/{filename}
-// 예: /api/assets/hymn/032.pdf → data/pdf/hymn/032.pdf
+// 예: /api/assets/hymn/032.pdf → data/cache/pdf/hymn/032.pdf
 func AssetServeHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -39,7 +39,7 @@ func AssetServeHandler(w http.ResponseWriter, r *http.Request) {
 	filename = filepath.Base(filename)
 
 	execPath := path.ExecutePath("easyPreparation")
-	baseDir := filepath.Join(execPath, "data", "pdf", category)
+	baseDir := filepath.Join(execPath, "data", "cache", "pdf", category)
 	filePath := filepath.Clean(filepath.Join(baseDir, filename))
 
 	// 해석된 경로가 허용 디렉토리 내에 있는지 검증
