@@ -74,6 +74,12 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
   // 개발모드 플랜 변경
   const [devPlanChanging, setDevPlanChanging] = useState(false);
 
+  // 관리자 플랜 변경 (비밀번호)
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminPlan, setAdminPlan] = useState<"free" | "pro" | "enterprise">("pro");
+  const [adminChanging, setAdminChanging] = useState(false);
+
   useEffect(() => {
     if (open) {
       setKeyInput("");
@@ -206,6 +212,22 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
       setError(`플랜 변경 실패: ${e?.message || e}`);
     } finally {
       setDevPlanChanging(false);
+    }
+  };
+
+  const handleAdminPlanChange = async () => {
+    if (!adminPassword) { setError("비밀번호를 입력해주세요."); return; }
+    setAdminChanging(true); setError(""); setSuccessMsg("");
+    try {
+      await apiClient.setLicensePlan(adminPlan, adminPassword);
+      setSuccessMsg(`플랜이 ${PLAN_LABELS[adminPlan]}으로 변경되었습니다.`);
+      setAdminPassword("");
+      setShowAdminPanel(false);
+      await refresh();
+    } catch (e: any) {
+      setError(e?.message || "플랜 변경 실패");
+    } finally {
+      setAdminChanging(false);
     }
   };
 
@@ -509,6 +531,55 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
                 );
               })}
             </div>
+          </div>
+
+          <div className="h-px bg-[var(--border)] mb-0" />
+
+          {/* 관리자 플랜 변경 */}
+          <div className="pt-0">
+            <button
+              type="button"
+              onClick={() => { setShowAdminPanel((v) => !v); setAdminPassword(""); setError(""); }}
+              className="flex items-center justify-between w-full py-2 bg-transparent border-none border-t border-dashed border-[var(--border)] cursor-pointer text-[var(--text-muted)] text-[11px] font-medium tracking-wide hover:text-[var(--text-secondary)] transition-colors"
+            >
+              <span>관리자</span>
+              <span className={`flex items-center transition-transform duration-200 ${showAdminPanel ? "rotate-180" : ""}`}>
+                <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                  <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+            </button>
+            {showAdminPanel && (
+              <div className="mt-2 flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <select
+                    value={adminPlan}
+                    onChange={(e) => setAdminPlan(e.target.value as "free" | "pro" | "enterprise")}
+                    className="flex-1 px-2.5 py-2 text-xs border border-[var(--border-input)] rounded-lg bg-[var(--surface-input)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                  >
+                    <option value="free">무료</option>
+                    <option value="pro">Pro</option>
+                    <option value="enterprise">Enterprise</option>
+                  </select>
+                  <input
+                    type="password"
+                    placeholder="비밀번호"
+                    value={adminPassword}
+                    onChange={(e) => { setAdminPassword(e.target.value); setError(""); }}
+                    onKeyDown={(e) => e.key === "Enter" && handleAdminPlanChange()}
+                    className="flex-1 px-3 py-2 text-xs border border-[var(--border-input)] rounded-lg bg-[var(--surface-input)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAdminPlanChange}
+                    disabled={adminChanging || !adminPassword}
+                    className="px-3 py-2 text-xs font-semibold bg-[var(--accent)] text-[var(--surface-elevated)] border-none rounded-lg cursor-pointer flex-shrink-0 hover:bg-[var(--accent-hover)] disabled:bg-[var(--text-muted)] disabled:cursor-default transition-colors"
+                  >
+                    {adminChanging ? "..." : "적용"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="h-px bg-[var(--border)] mb-0" />

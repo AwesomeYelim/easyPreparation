@@ -339,12 +339,13 @@ export const apiClient = {
     return res.json() as Promise<{ portalUrl: string }>;
   },
 
-  setLicensePlan: async (plan: string) => {
+  setLicensePlan: async (plan: string, password?: string) => {
     const res = await fetch(`${BASE_URL}/api/license/set-plan`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan }),
+      body: JSON.stringify({ plan, password: password ?? '' }),
     });
+    if (res.status === 401) throw new Error('비밀번호가 올바르지 않습니다.');
     if (!res.ok) throw new Error('플랜 변경 실패');
     return res.json();
   },

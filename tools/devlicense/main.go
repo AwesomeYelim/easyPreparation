@@ -14,10 +14,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
 	"easyPreparation_1.0/internal/license"
+	"easyPreparation_1.0/internal/path"
 )
 
 func main() {
@@ -58,8 +60,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	outPath := filepath.Join("data", "license.json")
-	if err := os.MkdirAll("data", 0755); err != nil {
+	// 출력 디렉터리: Windows는 %APPDATA%\easyPreparation\data, 그 외는 프로젝트 data/
+	var dataDir string
+	if runtime.GOOS == "windows" {
+		dataDir = filepath.Join(path.ExecutePath("easyPreparation"), "data")
+	} else {
+		dataDir = filepath.Join("data")
+	}
+
+	outPath := filepath.Join(dataDir, "license.json")
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		fmt.Fprintf(os.Stderr, "data/ 디렉토리 생성 실패: %v\n", err)
 		os.Exit(1)
 	}
@@ -68,7 +78,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("✅ 개발용 %s 라이선스 생성 완료\n", strings.ToUpper(string(plan)))
+	fmt.Printf("✅ %s 라이선스 생성 완료\n", strings.ToUpper(string(plan)))
 	fmt.Printf("   파일: %s\n", outPath)
 	fmt.Printf("   키:   %s\n", key)
 	fmt.Printf("   앱을 재시작하면 적용됩니다.\n")

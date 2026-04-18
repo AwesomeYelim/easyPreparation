@@ -201,6 +201,13 @@ PLAN ?= pro
 dev-license:
 	@go run ./tools/devlicense/ $(PLAN)
 
+# Windows 배포용 devlicense.exe 빌드 (프로덕션 머신에서 실행)
+build-devlicense-windows:
+	@GOOS=windows GOARCH=amd64 go build -o tools/output/devlicense.exe ./tools/devlicense/
+	@echo "✅ tools/output/devlicense.exe 생성 완료"
+	@echo "   Windows에서 실행: devlicense.exe      (Pro)"
+	@echo "                    devlicense.exe free  (Free)"
+
 # ── 코드 헬스 체크 (빌드 검증 + 타입 체크) ──────────────────────────────────
 health:
 	@echo "▶ Go vet..."

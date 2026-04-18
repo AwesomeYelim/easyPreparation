@@ -26,7 +26,19 @@ func ExecutePath(baseDir string) string {
 		}
 	}
 
-	// 2. 작업 디렉터리에서 baseDir 탐색
+	// 2. Windows: %APPDATA%\easyPreparation 최우선
+	// C:\Program Files\ 는 쓰기 권한이 없고, cwd 탐색에서
+	// "easyPreparation" 세그먼트가 걸려 Program Files 경로를 반환하는 버그 방지
+	if runtime.GOOS == "windows" {
+		if appData := os.Getenv("APPDATA"); appData != "" {
+			appDataDir := filepath.Join(appData, baseDir)
+			if err := os.MkdirAll(appDataDir, 0755); err == nil {
+				return appDataDir
+			}
+		}
+	}
+
+	// 3. 작업 디렉터리에서 baseDir 탐색 (개발 모드 — Mac/Linux)
 	fullPath, err := os.Getwd()
 	if err != nil {
 		log.Printf("작업 디렉터리를 가져오는 중 오류 발생: %v", err)
@@ -39,7 +51,7 @@ func ExecutePath(baseDir string) string {
 		}
 	}
 
-	// 3. 실행 파일 경로 확인
+	// 4. 실행 파일 경로 확인
 	execPath, err := os.Executable()
 	if err != nil {
 		log.Printf("실행 파일 경로를 가져오는 중 오류 발생: %v", err)
@@ -52,17 +64,7 @@ func ExecutePath(baseDir string) string {
 		return ""
 	}
 
-	// Windows: %APPDATA%\easyPreparation (C:\Program Files\ 쓰기 권한 문제 방지)
-	if runtime.GOOS == "windows" {
-		if appData := os.Getenv("APPDATA"); appData != "" {
-			appDataDir := filepath.Join(appData, baseDir)
-			if err := os.MkdirAll(appDataDir, 0755); err == nil {
-				return appDataDir
-			}
-		}
-	}
-
-	// macOS .app 번들 감지: .../Foo.app/Contents/MacOS/binary
+	// 5. macOS .app 번들 감지: .../Foo.app/Contents/MacOS/binary
 	if runtime.GOOS == "darwin" && strings.Contains(absExecPath, ".app/Contents/MacOS") {
 		// 번들 루트: .app 디렉터리
 		appIdx := strings.Index(absExecPath, ".app/Contents/MacOS")

@@ -2,12 +2,17 @@ package handlers
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"easyPreparation_1.0/internal/license"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"os"
 	"time"
 )
+
+// adminPasswordHash — SHA256("lightoflifechurch1228")
+const adminPasswordHash = "894ddc7f235f177ce205b3d3e9989ddaaf9a086580e0c45ac8a58227eba0c5bc"
 
 // licenseStatusResponse — /api/license 공통 응답 구조
 func licenseStatusResponse(mgr *license.Manager) map[string]interface{} {
@@ -433,24 +438,31 @@ func LicensePortalHandler(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(result)
 }
 
-// LicenseSetPlanHandler — POST /api/license/set-plan (개발모드 전용)
-// body: {"plan": "free" | "pro" | "enterprise"}
+// LicenseSetPlanHandler — POST /api/license/set-plan
+// 개발모드: 비밀번호 불필요. 프로덕션: 관리자 비밀번호 필요.
+// body: {"plan": "free" | "pro" | "enterprise", "password": "..."}
 func LicenseSetPlanHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if os.Getenv("EASYPREP_DEV") != "true" {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "개발모드에서만 사용 가능합니다."})
-		return
-	}
 
 	var body struct {
-		Plan string `json:"plan"`
+		Plan     string `json:"plan"`
+		Password string `json:"password"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
 		return
+	}
+
+	// 프로덕션 모드: 비밀번호 SHA256 검증
+	if os.Getenv("EASYPREP_DEV") != "true" {
+		h := sha256.Sum256([]byte(body.Password))
+		if hex.EncodeToString(h[:]) != adminPasswordHash {
+			respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "비밀번호가 올바르지 않습니다."})
+			return
+		}
 	}
 
 	newPlan := license.Plan(body.Plan)
@@ -467,15 +479,17 @@ func LicenseSetPlanHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	key, sig := license.GenerateTestKey(newPlan, time.Time{})
 	now := time.Now()
 	info := &license.LicenseInfo{
-		LicenseKey:   "EP-DEV0-MODE-AUTO-PLAN",
+		LicenseKey:   key,
 		Plan:         newPlan,
 		DeviceID:     mgr.GetDeviceID(),
 		ChurchID:     1,
 		IssuedAt:     now,
-		ExpiresAt:    time.Time{}, // 만료일 없음
+		ExpiresAt:    time.Time{}, // 만료일 없음 (영구)
 		LastVerified: now,
+		Signature:    sig,
 	}
 	if err := mgr.SetLicense(info); err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "플랜 변경 실패"})
