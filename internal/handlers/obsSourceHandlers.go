@@ -79,6 +79,49 @@ func OBSConnectHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// OBSAutoConfigureHandler — POST /api/obs/auto-configure
+// OBS WebSocket 서버 설정 파일을 자동으로 활성화하고 OBS를 재시작합니다.
+func OBSAutoConfigureHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	var body struct {
+		Password string `json:"password"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+
+	if err := obs.AutoConfigureWebSocket(body.Password); err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"ok":    false,
+			"error": err.Error(),
+		})
+		return
+	}
+
+	restartErr := obs.RestartOBS()
+	if restartErr != nil {
+		// OBS 실행 파일 못 찾아도 config 저장은 성공 — 수동 재시작 안내
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"ok":            true,
+			"manualRestart": true,
+			"message":       "설정이 저장됐습니다. OBS를 수동으로 재시작해주세요.",
+		})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"ok":      true,
+		"message": "OBS WebSocket 서버가 활성화됐습니다. 재시작 중...",
+	})
+}
+
 // OBSStatusHandler — GET /api/obs/status (feature gate 없음)
 func OBSStatusHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {

@@ -6,7 +6,8 @@ import { displayPanelOpenState, userSettingsState } from "@/recoilState";
 import { apiClient, openDisplayWindow } from "@/lib/apiClient";
 // bible.scss 마이그레이션 완료 — Tailwind CSS로 전환됨
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+  || (typeof window !== "undefined" ? window.location.origin : "http://localhost:8080");
 
 type Book = {
   name_kor: string;

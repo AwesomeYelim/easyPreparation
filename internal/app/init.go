@@ -17,6 +17,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -232,10 +233,25 @@ func ExtractEmbeddedData(dataFS fs.FS, execPath string) {
 // 단, .db 파일은 SQLite가 빈 파일을 먼저 생성하는 경우를 대비해 1MB 미만이면 재추출합니다.
 func extractFile(srcFS fs.FS, srcPath, dstPath string) {
 	if info, err := os.Stat(dstPath); err == nil {
-		// .db 파일이 비정상적으로 작으면 빈 파일로 간주해 재추출
-		if filepath.Ext(dstPath) == ".db" && info.Size() < 1*1024*1024 {
+		ext := filepath.Ext(dstPath)
+		if ext == ".db" && info.Size() < 1*1024*1024 {
+			// .db 파일이 비정상적으로 작으면 빈 파일로 간주해 재추출
 			log.Printf("[embed] %s 크기 이상 (%.1f KB) — 재추출합니다", filepath.Base(dstPath), float64(info.Size())/1024)
 			_ = os.Remove(dstPath)
+		} else if ext == ".json" {
+			// JSON 설정 파일이 빈 배열/객체면 default로 재추출
+			content, readErr := os.ReadFile(dstPath)
+			if readErr == nil {
+				trimmed := strings.TrimSpace(string(content))
+				if trimmed == "[]" || trimmed == "{}" || trimmed == "" {
+					log.Printf("[embed] %s 가 비어있음 — 기본값으로 재추출합니다", filepath.Base(dstPath))
+					_ = os.Remove(dstPath)
+				} else {
+					return // 데이터 있음
+				}
+			} else {
+				return
+			}
 		} else {
 			return // 정상적으로 존재
 		}

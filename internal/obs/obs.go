@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -985,7 +986,9 @@ func (m *Manager) tryConnect() {
 		opts = append(opts, goobs.WithPassword(m.config.Password))
 	}
 
-	client, err := goobs.New(m.config.Host, opts...)
+	// Windows에서 localhost가 [::1](IPv6)로 resolve되어 OBS(IPv4) 연결 실패하는 문제 방지
+	host := strings.Replace(m.config.Host, "localhost", "127.0.0.1", 1)
+	client, err := goobs.New(host, opts...)
 	if err != nil {
 		log.Printf("[obs] 연결 실패 (%s): %v", m.config.Host, err)
 		return

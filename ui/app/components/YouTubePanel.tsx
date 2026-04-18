@@ -25,8 +25,12 @@ export default function YouTubePanel({ open, onClose }: YouTubePanelProps) {
 
   const connected = ytStatus?.connected ?? false;
 
-  const handleConnect = () => {
-    window.open(apiClient.getYoutubeAuthUrl(), "yt_auth", "width=600,height=700");
+  const handleConnect = async () => {
+    // Desktop 모드: 시스템 브라우저로 열기 (Wails WebView window.open 우회)
+    const res = await fetch("/api/youtube/open-auth").catch(() => null);
+    if (!res || !res.ok) {
+      window.open(apiClient.getYoutubeAuthUrl(), "yt_auth", "width=600,height=700");
+    }
     const check = setInterval(async () => {
       try {
         const s = await apiClient.getYoutubeStatus();

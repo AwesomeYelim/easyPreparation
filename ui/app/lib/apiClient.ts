@@ -376,6 +376,7 @@ export const apiClient = {
     fetch(`${BASE_URL}/api/youtube/status`).then((r) => r.json()),
 
   getYoutubeAuthUrl: () => `${BASE_URL}/api/youtube/auth`,
+  openYoutubeAuth: () => fetch(`${BASE_URL}/api/youtube/open-auth`),
 
   setupOBSStream: (worshipType?: string) =>
     fetch(`${BASE_URL}/api/youtube/setup-obs`, {

@@ -7,7 +7,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 
@@ -516,6 +518,40 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+}
+
+// OpenAuthHandler — GET /api/youtube/open-auth
+// Desktop 모드: Wails WebView 대신 시스템 브라우저로 OAuth 인증 페이지를 엽니다.
+func OpenAuthHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	m := Get()
+	authURL, err := m.GetAuthURL()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", authURL)
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "start", authURL)
+	default:
+		cmd = exec.Command("xdg-open", authURL)
+	}
+	if err := cmd.Start(); err != nil {
+		log.Printf("[youtube] 브라우저 열기 실패: %v", err)
+		http.Error(w, "브라우저 열기 실패", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 }
 
 // CallbackHandler — GET /api/youtube/callback → 토큰 교환 + 저장

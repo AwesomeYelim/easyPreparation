@@ -61,6 +61,7 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
   const [obsPort, setObsPort] = useState(4455);
   const [obsPassword, setObsPassword] = useState("");
   const [connectLoading, setConnectLoading] = useState(false);
+  const [autoConfigLoading, setAutoConfigLoading] = useState(false);
 
   const [busy, setBusy] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
@@ -120,6 +121,28 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
   useEffect(() => {
     if (open && selectedScene) fetchSources();
   }, [open, selectedScene, fetchSources]);
+
+  const handleAutoConfig = async () => {
+    setAutoConfigLoading(true);
+    try {
+      const res = await fetch("/api/obs/auto-configure", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: obsPassword }),
+      }).then((r) => r.json());
+
+      if (!res.ok) {
+        showToast(res.error || "자동 설정 실패");
+      } else if (res.manualRestart) {
+        showToast(res.message, "info");
+      } else {
+        showToast("OBS 재시작 중... 잠시 후 연결을 시도하세요", "info");
+      }
+    } catch {
+      showToast("자동 설정 실패");
+    }
+    setAutoConfigLoading(false);
+  };
 
   const handleConnect = async () => {
     setConnectLoading(true);
@@ -402,15 +425,27 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
                     placeholder="WebSocket 비밀번호"
                   />
                 </div>
-                <button
-                  onClick={handleConnect}
-                  disabled={connectLoading}
-                  className={`px-5 py-2 rounded-md text-white text-xs font-semibold transition-opacity border-none cursor-pointer ${
-                    connected ? "bg-[#2e7d32] hover:bg-[#388e3c]" : "bg-[#204d87] hover:bg-[#2d5a8a]"
-                  } ${connectLoading ? "opacity-60 cursor-default" : ""}`}
-                >
-                  {connectLoading ? "연결 중..." : connected ? "재연결" : "연결"}
-                </button>
+                <div className="flex gap-2 items-center">
+                  <button
+                    onClick={handleConnect}
+                    disabled={connectLoading}
+                    className={`px-5 py-2 rounded-md text-white text-xs font-semibold transition-opacity border-none cursor-pointer ${
+                      connected ? "bg-[#2e7d32] hover:bg-[#388e3c]" : "bg-[#204d87] hover:bg-[#2d5a8a]"
+                    } ${connectLoading ? "opacity-60 cursor-default" : ""}`}
+                  >
+                    {connectLoading ? "연결 중..." : connected ? "재연결" : "연결"}
+                  </button>
+                  {!connected && (
+                    <button
+                      onClick={handleAutoConfig}
+                      disabled={autoConfigLoading}
+                      className={`px-4 py-2 rounded-md text-white text-xs font-semibold border-none cursor-pointer bg-[#6a3d9a] hover:bg-[#7b4fa8] ${autoConfigLoading ? "opacity-60 cursor-default" : ""}`}
+                      title="OBS WebSocket 서버를 자동으로 활성화하고 재시작합니다"
+                    >
+                      {autoConfigLoading ? "설정 중..." : "자동 설정"}
+                    </button>
+                  )}
+                </div>
               </div>
 
               {!connected ? (

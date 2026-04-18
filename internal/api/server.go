@@ -113,6 +113,7 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	// OBS 연결 설정 + 상태 (Feature gate 없음)
 	mux.Handle("/api/obs/connect", middleware.CORS(http.HandlerFunc(handlers.OBSConnectHandler)))
 	mux.Handle("/api/obs/status", middleware.CORS(http.HandlerFunc(handlers.OBSStatusHandler)))
+	mux.Handle("/api/obs/auto-configure", middleware.CORS(http.HandlerFunc(handlers.OBSAutoConfigureHandler)))
 
 	// OBS 소스 관리 API (Pro)
 	mux.Handle("/api/obs/scenes", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSScenesHandler))
@@ -158,6 +159,7 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 
 	// YouTube API (auth/setup-obs = Pro, callback/status = 무료)
 	mux.Handle("/api/youtube/auth", middleware.FeatureGate(license.FeatureYouTube, youtube.AuthHandler))
+	mux.Handle("/api/youtube/open-auth", middleware.FeatureGate(license.FeatureYouTube, youtube.OpenAuthHandler))
 	mux.Handle("/api/youtube/callback", http.HandlerFunc(youtube.CallbackHandler))
 	mux.Handle("/api/youtube/status", middleware.CORS(http.HandlerFunc(youtube.StatusHandler)))
 
