@@ -64,8 +64,8 @@ endef
 dev:
 	$(call kill_ports,3000 3001 3002 8080)
 	@echo "Starting Go server (:8080) + Next.js dev (:3000)..."
-	@(cd ui && $(RUN_NPM) run dev &) && \
-	go run -tags dev ./cmd/server/
+	@(cd ui && NEXT_PUBLIC_DEV_MODE=true $(RUN_NPM) run dev &) && \
+	EASYPREP_DEV=true go run -tags dev ./cmd/server/
 
 # ── 재시작: 기존 프로세스 종료 + .next 캐시 삭제 + dev ──────────────────────
 restart:
@@ -164,16 +164,17 @@ build-desktop-linux: build-frontend
 # Next.js(:3000) 백그라운드 기동 → 준비 완료 후 wails dev 시작
 # Ctrl+C 시 trap으로 하위 프로세스 모두 종료
 dev-desktop:
-	$(call kill_ports,3000 3001 8080)
+	$(call kill_ports,3000 8080)
 	@echo "Starting Next.js dev (:3000) + Wails Desktop..."
 	@( \
 	  trap 'kill $$(jobs -p) 2>/dev/null; exit 0' EXIT INT TERM; \
-	  (cd ui && $(RUN_NPM) run dev) & \
+	  (cd ui && NEXT_PUBLIC_DEV_MODE=true $(RUN_NPM) exec -- next dev -p 3000) & \
 	  echo "Next.js 시작 대기 중..."; \
 	  until curl -sf http://localhost:3000 >/dev/null 2>&1; do sleep 0.5; done; \
 	  echo "Next.js 준비 완료 — Wails Desktop 시작"; \
 	  cd cmd/desktop && \
 	  export PATH="$$HOME/go/bin:/usr/local/go/bin:$(NODE_BIN_DIR):$$PATH" && \
+	  export EASYPREP_DEV=true && \
 	  wails dev -s -frontenddevserverurl http://localhost:3000; \
 	)
 

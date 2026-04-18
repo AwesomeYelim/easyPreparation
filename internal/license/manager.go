@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"time"
 )
@@ -55,6 +56,23 @@ func Init(db *sql.DB) {
 				m.license = cached
 				log.Printf("[license] 파일 캐시에서 라이선스 로드 완료 (plan=%s)", cached.Plan)
 			}
+		}
+
+		// 개발모드: 기존 플랜에 관계없이 항상 Pro로 시작
+		if os.Getenv("EASYPREP_DEV") == "true" && (m.license == nil || (m.license.Plan != PlanPro && m.license.Plan != PlanEnterprise)) {
+			key, sig := GenerateTestKey(PlanPro, time.Time{})
+			m.license = &LicenseInfo{
+				LicenseKey:   key,
+				Plan:         PlanPro,
+				DeviceID:     m.deviceID,
+				ChurchID:     1,
+				IssuedAt:     time.Now(),
+				ExpiresAt:    time.Time{},
+				LastVerified: time.Now(),
+				Signature:    sig,
+			}
+			_ = saveCache(m.license)
+			log.Printf("[license] 개발모드 — Pro 자동 적용")
 		}
 
 		instance = m

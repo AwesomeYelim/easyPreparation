@@ -71,6 +71,9 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
   const [portalLoading, setPortalLoading] = useState(false);
   const [showKeyInput, setShowKeyInput] = useState(false);
 
+  // 개발모드 플랜 변경
+  const [devPlanChanging, setDevPlanChanging] = useState(false);
+
   useEffect(() => {
     if (open) {
       setKeyInput("");
@@ -192,6 +195,20 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
 
   const isPro = license.plan === "pro" || license.plan === "enterprise";
 
+  const handleDevPlanChange = async (plan: string) => {
+    setDevPlanChanging(true);
+    setError(""); setSuccessMsg("");
+    try {
+      await apiClient.setLicensePlan(plan);
+      setSuccessMsg(`플랜이 ${PLAN_LABELS[plan as LicensePlan]}으로 변경되었습니다.`);
+      await refresh();
+    } catch (e: any) {
+      setError(`플랜 변경 실패: ${e?.message || e}`);
+    } finally {
+      setDevPlanChanging(false);
+    }
+  };
+
   if (!open) return null;
 
   return (
@@ -205,7 +222,14 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
       >
         {/* 헤더 (sticky) */}
         <div className="flex justify-between items-center px-6 pt-5 pb-4 border-b border-[var(--border)] sticky top-0 bg-[var(--surface-elevated)] z-10 rounded-t-2xl">
-          <h3 className="m-0 text-lg font-bold text-[var(--text-primary)]">라이선스 정보</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="m-0 text-lg font-bold text-[var(--text-primary)]">라이선스 정보</h3>
+            {license.dev_mode && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#fef9c3] text-[#854d0e] border border-[#fde047]">
+                DEV
+              </span>
+            )}
+          </div>
           <button
             className="bg-transparent border-none text-2xl cursor-pointer text-[var(--text-secondary)] leading-none p-0 flex items-center justify-center hover:text-[var(--text-primary)] transition-colors"
             onClick={onClose}
@@ -259,6 +283,34 @@ export default function LicensePanel({ open, onClose }: LicensePanelProps) {
           </div>
 
           <div className="h-px bg-[var(--border)] mb-4" />
+
+          {/* ── 개발모드 플랜 변경 ── */}
+          {license.dev_mode && (
+            <div className="pb-4">
+              <div className="bg-[#fefce8] border border-[#fde047] rounded-xl px-4 py-3 flex flex-col gap-2.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.8px] text-[#854d0e]">개발모드 — 플랜 변경</span>
+                </div>
+                <div className="flex gap-2">
+                  {(["free", "pro", "enterprise"] as LicensePlan[]).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      disabled={devPlanChanging || license.plan === p}
+                      onClick={() => handleDevPlanChange(p)}
+                      className={`flex-1 py-1.5 text-xs font-semibold rounded-lg border transition-colors disabled:cursor-default ${
+                        license.plan === p
+                          ? "bg-[#854d0e] text-white border-[#854d0e]"
+                          : "bg-[var(--surface-elevated)] text-[#92400e] border-[#fde047] hover:bg-[#fef08a]"
+                      }`}
+                    >
+                      {devPlanChanging && license.plan !== p ? "변경 중..." : PLAN_LABELS[p]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ── Free 플랜: 업그레이드 카드 ── */}
           {!isPro && (

@@ -334,6 +334,16 @@ export const apiClient = {
     return res.json() as Promise<{ portalUrl: string }>;
   },
 
+  setLicensePlan: async (plan: string) => {
+    const res = await fetch(`${BASE_URL}/api/license/set-plan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan }),
+    });
+    if (!res.ok) throw new Error('플랜 변경 실패');
+    return res.json();
+  },
+
   // 배경 템플릿 API
   getTemplates: (category: string) =>
     fetch(`${BASE_URL}/api/templates?category=${category}`)

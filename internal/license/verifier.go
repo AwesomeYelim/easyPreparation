@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -37,6 +38,10 @@ func StartBackgroundVerification(ctx context.Context) {
 
 // verifyWithServer — CF Worker /api/verify 엔드포인트에 라이선스 검증 요청
 func verifyWithServer() {
+	if os.Getenv("EASYPREP_DEV") == "true" {
+		return // 개발모드: 서버 검증 스킵
+	}
+
 	cfg := GetServerConfig()
 	if cfg == nil || cfg.ServerURL == "" {
 		return // 오프라인 모드 — 검증 스킵

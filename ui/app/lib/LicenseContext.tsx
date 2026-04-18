@@ -59,6 +59,7 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
 
   const hasFeature = useCallback(
     (feature: LicenseFeature): boolean => {
+      if (process.env.NEXT_PUBLIC_DEV_MODE === 'true') return true;
       return license.features.includes(feature);
     },
     [license.features],

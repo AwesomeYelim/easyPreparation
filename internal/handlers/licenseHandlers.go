@@ -5,6 +5,7 @@ import (
 	"easyPreparation_1.0/internal/license"
 	"encoding/json"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -46,6 +47,7 @@ func licenseStatusResponse(mgr *license.Manager) map[string]interface{} {
 		"grace_period":   gracePeriod,
 		"is_active":      isActive,
 		"days_remaining": daysRemaining,
+		"dev_mode":       os.Getenv("EASYPREP_DEV") == "true",
 	}
 	if expiresAt != nil {
 		resp["expires_at"] = expiresAt.Format(time.RFC3339)
@@ -429,6 +431,58 @@ func LicensePortalHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.StatusCode)
 	_ = json.NewEncoder(w).Encode(result)
+}
+
+// LicenseSetPlanHandler — POST /api/license/set-plan (개발모드 전용)
+// body: {"plan": "free" | "pro" | "enterprise"}
+func LicenseSetPlanHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if os.Getenv("EASYPREP_DEV") != "true" {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "개발모드에서만 사용 가능합니다."})
+		return
+	}
+
+	var body struct {
+		Plan string `json:"plan"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
+		return
+	}
+
+	newPlan := license.Plan(body.Plan)
+	switch newPlan {
+	case license.PlanFree, license.PlanPro, license.PlanEnterprise:
+	default:
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "유효하지 않은 플랜입니다. (free / pro / enterprise)"})
+		return
+	}
+
+	mgr := license.Get()
+	if mgr == nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "라이선스 매니저 미초기화"})
+		return
+	}
+
+	now := time.Now()
+	info := &license.LicenseInfo{
+		LicenseKey:   "EP-DEV0-MODE-AUTO-PLAN",
+		Plan:         newPlan,
+		DeviceID:     mgr.GetDeviceID(),
+		ChurchID:     1,
+		IssuedAt:     now,
+		ExpiresAt:    time.Time{}, // 만료일 없음
+		LastVerified: now,
+	}
+	if err := mgr.SetLicense(info); err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "플랜 변경 실패"})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, licenseStatusResponse(mgr))
 }
 
 // respondJSON — 간편 JSON 응답 헬퍼

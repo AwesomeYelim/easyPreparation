@@ -102,6 +102,8 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/api/license/checkout", middleware.CORS(http.HandlerFunc(handlers.LicenseCheckoutHandler)))
 	mux.Handle("/api/license/callback", middleware.CORS(http.HandlerFunc(handlers.LicenseCallbackHandler)))
 	mux.Handle("/api/license/portal", middleware.CORS(http.HandlerFunc(handlers.LicensePortalHandler)))
+	// 개발모드 전용: 플랜 즉시 변경
+	mux.Handle("/api/license/set-plan", middleware.CORS(http.HandlerFunc(handlers.LicenseSetPlanHandler)))
 
 	// 스케줄러 API (Pro)
 	mux.Handle("/api/schedule", middleware.FeatureGate(license.FeatureAutoScheduler, handlers.ScheduleHandler))

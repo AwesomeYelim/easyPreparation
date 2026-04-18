@@ -138,6 +138,7 @@ export interface LicenseStatus {
   device_id: string;
   grace_period: boolean;
   is_active: boolean;
+  dev_mode?: boolean;
 }
 
 export type OBSInitialSetupResult = {
