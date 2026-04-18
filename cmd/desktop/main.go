@@ -48,6 +48,9 @@ func (a *App) startup(ctx context.Context) {
 
 	execPath := path.ExecutePath("easyPreparation")
 
+	// 로그 파일 설정 (execPath/logs/app_YYYY-MM-DD.log)
+	app.SetupLogFile(execPath)
+
 	// embed된 데이터 파일 추출 (첫 실행 시)
 	app.ExtractEmbeddedData(getEmbeddedDataFS(), execPath)
 

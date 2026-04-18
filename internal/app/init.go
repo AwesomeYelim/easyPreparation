@@ -35,9 +35,9 @@ type App struct {
 	shutdownFns []func()
 }
 
-// setupLogFile — execPath/logs/app.log 에 로그를 저장 (콘솔 동시 출력)
+// SetupLogFile — execPath/logs/app.log 에 로그를 저장 (콘솔 동시 출력)
 // 반환된 *os.File은 앱 종료 시 닫아야 합니다.
-func setupLogFile(execPath string) *os.File {
+func SetupLogFile(execPath string) *os.File {
 	logDir := filepath.Join(execPath, "logs")
 	if err := os.MkdirAll(logDir, 0755); err != nil {
 		log.Printf("[log] 로그 디렉토리 생성 실패: %v", err)
@@ -87,7 +87,7 @@ func Initialize(cfg Config) *App {
 	execPath := path.ExecutePath("easyPreparation")
 
 	// 로그 파일 설정 (execPath/logs/app_YYYY-MM-DD.log)
-	logFile := setupLogFile(execPath)
+	logFile := SetupLogFile(execPath)
 
 	// embed된 데이터 파일 추출 (첫 실행 시)
 	ExtractEmbeddedData(cfg.EmbeddedDataFS, execPath)
