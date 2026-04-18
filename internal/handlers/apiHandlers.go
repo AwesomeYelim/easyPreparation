@@ -2,12 +2,9 @@ package handlers
 
 import (
 	"database/sql"
-	"easyPreparation_1.0/internal/path"
 	"easyPreparation_1.0/internal/quote"
 	"encoding/json"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 )
 
@@ -25,17 +22,15 @@ func InitBibleDB(db *sql.DB) {
 }
 
 // BibleBooksHandler — GET /api/bible/books
-// config/bible_info.json을 그대로 서빙 (프론트 bible_info.json 대체)
+// bible.db의 books 테이블에서 책 목록 + 장수를 반환 (bible_info.json 파일 불필요)
 func BibleBooksHandler(w http.ResponseWriter, r *http.Request) {
-	execPath := path.ExecutePath("easyPreparation")
-	bibleInfoPath := filepath.Join(execPath, "config", "bible_info.json")
-	data, err := os.ReadFile(bibleInfoPath)
+	books, err := quote.GetBooksWithChapters()
 	if err != nil {
-		http.Error(w, "bible_info not found", http.StatusInternalServerError)
+		http.Error(w, "bible books not available: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(data)
+	_ = json.NewEncoder(w).Encode(books)
 }
 
 // UserHandler — GET /api/user?email=xxx  /  POST /api/user
