@@ -7,12 +7,17 @@ type SongItem = { title: string; lyrics: string };
 
 /** Display 창 참조 — 이미 열려있으면 reload 방지 */
 let displayWindow: Window | null = null;
+let desktopDisplayOpened = false;
 
-export async function openDisplayWindow() {
+export async function openDisplayWindow(force = false) {
   // Desktop 모드: 서버에 요청해서 시스템 브라우저로 열기 (Wails WebView window.open 차단 우회)
+  if (!force && desktopDisplayOpened) return; // 이미 열린 경우 중복 방지
   const res = await fetch(`${BASE_URL}/api/open-display`).catch(() => null);
-  if (res?.ok) return;
-  // 웹 브라우저 모드: window.open 사용
+  if (res?.ok) {
+    desktopDisplayOpened = true;
+    return;
+  }
+  // 웹 브라우저 모드: window.open (named window → 이미 열려있으면 포커스)
   if (displayWindow && !displayWindow.closed) {
     displayWindow.focus();
     return;

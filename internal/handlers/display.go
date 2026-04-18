@@ -215,12 +215,12 @@ const displayHTML = `<!DOCTYPE html>
 
   /* 성경 본문 */
   .bible-ref {
-    font-size:2.8vh; color:rgba(255,255,255,0.65);
+    font-size:3.5vh; color:rgba(255,255,255,0.65);
     margin-bottom:3vh; text-align:left; width:100%;
     text-shadow:0 1px 4px rgba(0,0,0,0.5);
   }
   .bible-contents {
-    font-size:3.3vh; line-height:2;
+    font-size:5vh; line-height:1.9;
     text-align:left; color:#fff;
     white-space:pre-wrap; width:100%;
     text-shadow:0 1px 6px rgba(0,0,0,0.6);
@@ -252,7 +252,7 @@ const displayHTML = `<!DOCTYPE html>
 
   /* 가사 슬라이드 (큰 텍스트 중앙) */
   .lyrics-text {
-    font-size:5vh; line-height:1.8;
+    font-size:7vh; line-height:1.8;
     text-align:center; color:#fff;
     white-space:pre-wrap; width:100%;
     font-weight:500;

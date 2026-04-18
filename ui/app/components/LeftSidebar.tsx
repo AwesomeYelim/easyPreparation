@@ -80,7 +80,7 @@ export default function LeftSidebar() {
             </button>
             <button
               className="p-3 rounded-2xl bg-slate-100 text-on-surface-variant hover:bg-slate-200 transition-all"
-              onClick={() => openDisplayWindow()}
+              onClick={() => openDisplayWindow(true)}
               title="새 창으로 열기"
             >
               <span className="material-symbols-outlined text-lg">open_in_new</span>

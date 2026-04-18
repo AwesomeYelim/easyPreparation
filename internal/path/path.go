@@ -13,9 +13,10 @@ import (
 // 우선순위:
 //  1. 환경변수 EASYPREP_DATA_DIR (절대 경로 오버라이드)
 //  2. 현재 작업 디렉터리에서 baseDir 세그먼트 탐색
-//  3. macOS .app 번들 감지 (Contents/MacOS 포함 시)
+//  3. Windows: %APPDATA%\easyPreparation (C:\Program Files\ 쓰기 권한 문제 방지)
+//  4. macOS .app 번들 감지 (Contents/MacOS 포함 시)
 //     → 번들 옆 디렉터리(easyPreparation) 또는 ~/Library/Application Support/easyPreparation
-//  4. 실행 파일 경로 반환 (fallback)
+//  5. 실행 파일 경로 반환 (fallback)
 func ExecutePath(baseDir string) string {
 	// 1. 환경변수 오버라이드
 	if override := os.Getenv("EASYPREP_DATA_DIR"); override != "" {
@@ -49,6 +50,16 @@ func ExecutePath(baseDir string) string {
 	if err != nil {
 		log.Printf("실행 파일 절대 경로 변환 오류: %v", err)
 		return ""
+	}
+
+	// Windows: %APPDATA%\easyPreparation (C:\Program Files\ 쓰기 권한 문제 방지)
+	if runtime.GOOS == "windows" {
+		if appData := os.Getenv("APPDATA"); appData != "" {
+			appDataDir := filepath.Join(appData, baseDir)
+			if err := os.MkdirAll(appDataDir, 0755); err == nil {
+				return appDataDir
+			}
+		}
 	}
 
 	// macOS .app 번들 감지: .../Foo.app/Contents/MacOS/binary
