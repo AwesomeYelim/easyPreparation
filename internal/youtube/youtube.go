@@ -331,7 +331,8 @@ func CreateBroadcastAndBind(title string) (server string, key string, broadcastI
 	return info.IngestionAddress, info.StreamName, broadcast.Id, nil
 }
 
-// TransitionToLive — upcoming 방송을 live로 전환 (OBS 스트리밍 시작 후 호출)
+// TransitionToLive — 방송을 live로 전환 (OBS 스트리밍 시작 후 호출)
+// enableAutoStart=true 이면 ready→testing은 YouTube가 자동 처리, testing→live만 수동 전환
 func TransitionToLive(broadcastID string) error {
 	m := Get()
 	m.mu.Lock()
@@ -343,33 +344,42 @@ func TransitionToLive(broadcastID string) error {
 		return fmt.Errorf("YouTube 미연결")
 	}
 
-	// 스트림이 active 상태가 될 때까지 대기 (최대 30초)
-	for i := 0; i < 15; i++ {
+	// 최대 90초 대기 (45회 × 2초)
+	for i := 0; i < 45; i++ {
 		time.Sleep(2 * time.Second)
 		resp, err := svc.LiveBroadcasts.List([]string{"id", "status"}).Id(broadcastID).Do()
 		if err != nil {
+			log.Printf("[youtube] 방송 상태 조회 실패 (재시도): %v", err)
 			continue
 		}
-		if len(resp.Items) > 0 {
-			status := resp.Items[0].Status.LifeCycleStatus
-			log.Printf("[youtube] 방송 상태: %s", status)
-			if status == "live" {
-				log.Printf("[youtube] 이미 라이브 상태")
-				return nil
+		if len(resp.Items) == 0 {
+			continue
+		}
+		status := resp.Items[0].Status.LifeCycleStatus
+		log.Printf("[youtube] 방송 상태: %s", status)
+
+		switch status {
+		case "live":
+			log.Printf("[youtube] 라이브 상태 확인")
+			return nil
+		case "complete":
+			return fmt.Errorf("방송이 이미 종료됨")
+		case "ready", "testStarting":
+			// enableAutoStart=true → YouTube가 스트림 수신 확인 후 자동으로 testing으로 전환
+			// 여기서는 그냥 대기
+			continue
+		case "testing":
+			// testing 상태에서만 live로 수동 전환
+			_, err := svc.LiveBroadcasts.Transition("live", broadcastID, []string{"id", "status"}).Do()
+			if err != nil {
+				log.Printf("[youtube] live 전환 실패 (재시도): %v", err)
+				continue
 			}
-			if status == "ready" || status == "testStarting" || status == "testing" {
-				// transition to live
-				_, err := svc.LiveBroadcasts.Transition("live", broadcastID, []string{"id", "status"}).Do()
-				if err != nil {
-					log.Printf("[youtube] live 전환 시도 실패 (재시도): %v", err)
-					continue
-				}
-				log.Printf("[youtube] 방송 live 전환 성공: %s", broadcastID)
-				return nil
-			}
+			log.Printf("[youtube] 방송 live 전환 성공: %s", broadcastID)
+			return nil
 		}
 	}
-	return fmt.Errorf("방송 live 전환 타임아웃")
+	return fmt.Errorf("방송 live 전환 타임아웃 (90초)")
 }
 
 // CleanupBroadcasts — 기존 upcoming/active 방송 정리 (complete 전환 또는 삭제)
@@ -440,8 +450,30 @@ func GetStreamInfo() (server string, key string, err error) {
 
 // ── 내부 함수 ──
 
+// persistingTokenSource — 토큰 갱신 시 자동으로 디스크에 저장
+type persistingTokenSource struct {
+	src       oauth2.TokenSource
+	tokenPath string
+	mu        sync.Mutex
+}
+
+func (p *persistingTokenSource) Token() (*oauth2.Token, error) {
+	tok, err := p.src.Token()
+	if err != nil {
+		return nil, err
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if err := saveToken(p.tokenPath, tok); err != nil {
+		log.Printf("[youtube] 토큰 자동 저장 실패: %v", err)
+	}
+	return tok, nil
+}
+
 func (m *Manager) createService(tok *oauth2.Token) (*yt.Service, error) {
-	client := m.oauthConf.Client(context.Background(), tok)
+	base := m.oauthConf.TokenSource(context.Background(), tok)
+	src := &persistingTokenSource{src: oauth2.ReuseTokenSource(tok, base), tokenPath: m.tokenPath}
+	client := oauth2.NewClient(context.Background(), src)
 	return yt.New(client)
 }
 

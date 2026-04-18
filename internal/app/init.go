@@ -12,10 +12,12 @@ import (
 	"easyPreparation_1.0/internal/selfupdate"
 	"easyPreparation_1.0/internal/types"
 	"easyPreparation_1.0/internal/youtube"
+	"io"
 	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 // Config — Initialize에 전달하는 옵션
@@ -33,17 +35,68 @@ type App struct {
 	shutdownFns []func()
 }
 
+// setupLogFile — execPath/logs/app.log 에 로그를 저장 (콘솔 동시 출력)
+// 반환된 *os.File은 앱 종료 시 닫아야 합니다.
+func setupLogFile(execPath string) *os.File {
+	logDir := filepath.Join(execPath, "logs")
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		log.Printf("[log] 로그 디렉토리 생성 실패: %v", err)
+		return nil
+	}
+	// 날짜별 로그 파일 (최대 7일 보관)
+	logPath := filepath.Join(logDir, "app_"+time.Now().Format("2006-01-02")+".log")
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Printf("[log] 로그 파일 생성 실패: %v", err)
+		return nil
+	}
+	// 콘솔 + 파일 동시 출력
+	log.SetOutput(io.MultiWriter(os.Stderr, f))
+	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
+	log.Printf("[log] 로그 파일: %s", logPath)
+	// 7일 이상 된 로그 파일 정리
+	go cleanOldLogs(logDir, 7)
+	return f
+}
+
+// cleanOldLogs — 7일 이상 된 app_*.log 파일 삭제
+func cleanOldLogs(logDir string, keepDays int) {
+	entries, err := os.ReadDir(logDir)
+	if err != nil {
+		return
+	}
+	cutoff := time.Now().AddDate(0, 0, -keepDays)
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		if info.ModTime().Before(cutoff) {
+			_ = os.Remove(filepath.Join(logDir, e.Name()))
+		}
+	}
+}
+
 // Initialize — DB, OBS, YouTube, Display, 스케줄러를 초기화하고
 // HTTP 서버를 백그라운드 goroutine으로 시작합니다.
 // 반환된 *App의 DataChan을 이벤트 루프에서 소비하면 됩니다.
 func Initialize(cfg Config) *App {
 	execPath := path.ExecutePath("easyPreparation")
 
+	// 로그 파일 설정 (execPath/logs/app_YYYY-MM-DD.log)
+	logFile := setupLogFile(execPath)
+
 	// embed된 데이터 파일 추출 (첫 실행 시)
 	ExtractEmbeddedData(cfg.EmbeddedDataFS, execPath)
 
 	app := &App{
 		DataChan: make(chan types.DataEnvelope, 100),
+	}
+	if logFile != nil {
+		app.shutdownFns = append(app.shutdownFns, func() { _ = logFile.Close() })
 	}
 
 	// 앱 DB 연결 (SQLite)
