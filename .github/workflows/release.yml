@@ -60,12 +60,8 @@ jobs:
           path: cmd/server/frontend/
       - name: Copy embedded data
         run: |
-          mkdir -p cmd/server/data/defaults
           cp data/bible.db cmd/server/data/bible.db 2>/dev/null || true
           cp data/schema.sql cmd/server/data/schema.sql 2>/dev/null || true
-          for f in bible_info main_worship after_worship wed_worship fri_worship; do
-            [ -f "config/${f}.json" ] && cp "config/${f}.json" "cmd/server/data/defaults/${f}.json" || true
-          done
       - name: Build server binary
         env:
           CGO_ENABLED: '0'
@@ -119,23 +115,14 @@ jobs:
       - name: Copy embedded data (Unix)
         if: runner.os != 'Windows'
         run: |
-          mkdir -p cmd/desktop/data/defaults
           cp data/bible.db cmd/desktop/data/bible.db
           cp data/schema.sql cmd/desktop/data/schema.sql 2>/dev/null || true
-          for f in bible_info main_worship after_worship wed_worship fri_worship; do
-            [ -f "config/${f}.json" ] && cp "config/${f}.json" "cmd/desktop/data/defaults/${f}.json" || true
-          done
       - name: Copy embedded data (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force cmd/desktop/data/defaults | Out-Null
           Copy-Item data/bible.db cmd/desktop/data/bible.db
           if (Test-Path data/schema.sql) { Copy-Item data/schema.sql cmd/desktop/data/schema.sql }
-          foreach ($f in @('bible_info','main_worship','after_worship','wed_worship','fri_worship')) {
-            $src = "config/${f}.json"
-            if (Test-Path $src) { Copy-Item $src "cmd/desktop/data/defaults/${f}.json" }
-          }
       - name: Select Xcode (macOS)
         if: runner.os == 'macOS'
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
