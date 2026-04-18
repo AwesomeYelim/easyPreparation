@@ -5,7 +5,6 @@ import SetupWizard from "./components/SetupWizard";
 import { WebSocketProvider } from "./components/WebSocketProvider";
 import GlobalDisplayPanel from "./components/GlobalDisplayPanel";
 import SettingsLoader from "./components/SettingsLoader";
-import UpdateChecker from "./components/UpdateChecker";
 import ToastProvider from "./components/ToastProvider";
 import AppShell from "./components/AppShell";
 import "@/globals.css";
@@ -41,7 +40,6 @@ export default function RootLayout({
               <SetupWizard />
               <WebSocketProvider>
                 <SettingsLoader />
-                <UpdateChecker />
                 <AppShell>
                   {children}
                 </AppShell>

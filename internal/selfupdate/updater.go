@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -172,8 +173,16 @@ func (u *Updater) doDownload(ctx context.Context, release *Release, asset *Relea
 	// 기존 임시 파일 삭제
 	_ = os.Remove(destPath)
 
-	// HTTP 다운로드
-	client := &http.Client{Timeout: 10 * time.Minute}
+	// HTTP 다운로드 (연결 타임아웃 30s, 헤더 수신 60s, 전체 10분)
+	transport := &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		TLSHandshakeTimeout:   15 * time.Second,
+		ResponseHeaderTimeout: 60 * time.Second,
+	}
+	client := &http.Client{Transport: transport, Timeout: 10 * time.Minute}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, asset.BrowserDownloadURL, nil)
 	if err != nil {
 		u.setState(UpdateStatus{

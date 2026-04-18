@@ -4,6 +4,7 @@ import { useRecoilValue } from "recoil";
 import { displayPanelOpenState } from "@/recoilState";
 import LeftSidebar from "./LeftSidebar";
 import TopHeader from "./TopHeader";
+import UpdateChecker from "./UpdateChecker";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const panelOpen = useRecoilValue(displayPanelOpenState);
@@ -19,6 +20,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }}
       >
         <TopHeader />
+        <UpdateChecker />
         <main className="p-6 lg:p-8">{children}</main>
       </div>
     </div>
