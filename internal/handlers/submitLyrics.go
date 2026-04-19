@@ -4,6 +4,7 @@ import (
 	"easyPreparation_1.0/internal/types"
 	middleware "easyPreparation_1.0/internal/middleware"
 	"easyPreparation_1.0/internal/path"
+	"easyPreparation_1.0/internal/sanitize"
 	"easyPreparation_1.0/internal/utils"
 	"encoding/json"
 	"fmt"
@@ -44,12 +45,12 @@ func SubmitLyricsHandler(dataChan chan types.DataEnvelope) http.Handler {
 		}
 
 		var expectedFiles []string
-		outputDir := filepath.Join(execPath, "output", "lyrics")
+		outputDir := filepath.Join(execPath, "data", "templates", "lyrics")
 
 		for _, item := range rawSongs {
 			if songMap, ok := item.(map[string]interface{}); ok {
 				title, _ := songMap["title"].(string)
-				expectedFiles = append(expectedFiles, filepath.Join(outputDir, fmt.Sprintf("%s.pdf", title)))
+				expectedFiles = append(expectedFiles, filepath.Join(outputDir, sanitize.FileName(title)+".pdf"))
 			}
 		}
 		// 3. 폴링으로 생성 완료 확인
