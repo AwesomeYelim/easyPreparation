@@ -59,8 +59,9 @@ export default function Bulletin() {
     flushQueue();
   };
 
-  // 예배 순서 API에서 로드
+  // 예배 순서 API에서 로드 (아직 로드 안 된 타입만 — 이미 있으면 편집 내용 유지)
   useEffect(() => {
+    if (worshipOrder[selectedWorshipType]?.length > 0) return;
     apiClient.getWorshipOrder(selectedWorshipType).then((data) => {
       if (Array.isArray(data) && data.length > 0) {
         setWorshipOrder((prev) => ({ ...prev, [selectedWorshipType]: data }));
