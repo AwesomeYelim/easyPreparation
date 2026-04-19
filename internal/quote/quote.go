@@ -415,44 +415,62 @@ func GetBibleVersions() ([]map[string]interface{}, error) {
 	return versions, rows.Err()
 }
 
-// GetBooksWithChapters — bible.db에서 책 목록 + 장수를 조회해 bible_info.json 포맷으로 반환
-// 키: 한글 책명, 값: {index, kor, eng, chapters(길이=장수인 배열)}
+// GetBooksWithChapters — bible.db에서 책 목록 + 장별 절수를 조회해 bible_info.json 포맷으로 반환
+// 키: 한글 책명, 값: {index, kor, eng, chapters: [장1절수, 장2절수, ...]}
 func GetBooksWithChapters() (map[string]interface{}, error) {
 	if bibleDB == nil {
 		return nil, fmt.Errorf("Bible DB 연결이 초기화되지 않았습니다")
 	}
+	// 책별 장별 최대 절 번호 = 해당 장의 절 수
 	rows, err := bibleDB.Query(`
 		SELECT b.name_kor, b.abbr_kor, b.abbr_eng, b.book_order,
-		       COUNT(DISTINCT v.chapter) AS chapter_count
+		       v.chapter, MAX(v.verse) AS verse_count
 		FROM books b
-		LEFT JOIN verses v ON v.book_id = b.id AND v.version_id = 1
-		GROUP BY b.id
-		ORDER BY b.book_order
+		JOIN verses v ON v.book_id = b.id AND v.version_id = 1
+		GROUP BY b.id, v.chapter
+		ORDER BY b.book_order, v.chapter
 	`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	result := make(map[string]interface{})
+	type bookMeta struct {
+		abbrKor   string
+		abbrEng   string
+		bookOrder int
+		chapters  []int
+	}
+	bookMap := make(map[string]*bookMeta)
+	var bookKeys []string // 순서 유지
+
 	for rows.Next() {
 		var nameKor, abbrKor, abbrEng string
-		var bookOrder, chapterCount int
-		if err := rows.Scan(&nameKor, &abbrKor, &abbrEng, &bookOrder, &chapterCount); err != nil {
+		var bookOrder, chapter, verseCount int
+		if err := rows.Scan(&nameKor, &abbrKor, &abbrEng, &bookOrder, &chapter, &verseCount); err != nil {
 			return nil, err
 		}
-		chapters := make([]int, chapterCount)
-		for i := range chapters {
-			chapters[i] = i + 1
+		if _, ok := bookMap[nameKor]; !ok {
+			bookMap[nameKor] = &bookMeta{abbrKor: abbrKor, abbrEng: abbrEng, bookOrder: bookOrder}
+			bookKeys = append(bookKeys, nameKor)
 		}
+		bookMap[nameKor].chapters = append(bookMap[nameKor].chapters, verseCount)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]interface{})
+	for _, nameKor := range bookKeys {
+		bm := bookMap[nameKor]
 		result[nameKor] = map[string]interface{}{
-			"index":    bookOrder,
-			"kor":      abbrKor,
-			"eng":      abbrEng,
-			"chapters": chapters,
+			"index":    bm.bookOrder,
+			"kor":      bm.abbrKor,
+			"eng":      bm.abbrEng,
+			"chapters": bm.chapters,
 		}
 	}
-	return result, rows.Err()
+	return result, nil
 }
 
 // GetBooks 성경 책 목록을 반환
