@@ -95,9 +95,9 @@ func SubmitLyricsHandler(dataChan chan types.DataEnvelope) http.Handler {
 			fmt.Println("ZIP 전송 오류:", err)
 		}
 
-		// 생성 이력 기록
+		// 생성 이력 기록 (songs 포함 — 재활용 가능하게)
 		if email, ok := response["email"].(string); ok && email != "" {
-			RecordGeneration(email, "lyrics_ppt", "lyrics_bundle.zip", "", "success")
+			RecordGeneration(email, "lyrics_ppt", "lyrics_bundle.zip", "", "success", response["songs"])
 		}
 
 	}))

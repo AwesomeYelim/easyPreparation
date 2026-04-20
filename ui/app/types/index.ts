@@ -57,7 +57,7 @@ export type GenerationHistory = {
   filename?: string;
   status: string;
   metadata?: Record<string, any>;
-  order_data?: WorshipOrderItem[];
+  order_data?: WorshipOrderItem[] | { title: string; lyrics: string; bpm?: number }[];
   created_at: string;
 };
 

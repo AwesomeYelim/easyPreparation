@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
-import { userInfoState, displayPanelOpenState } from "@/recoilState";
+import { useRouter } from "next/navigation";
+import { userInfoState, displayPanelOpenState, lyricsSongsState } from "@/recoilState";
 import { apiClient, openDisplayWindow } from "@/lib/apiClient";
-import { GenerationHistory, WorshipOrderItem } from "@/types";
+import { GenerationHistory, WorshipOrderItem, SongBlock } from "@/types";
 
 interface HistoryListProps {
   open: boolean;
@@ -29,6 +30,8 @@ const filterTabs: { key: string | undefined; label: string }[] = [
 export default function HistoryList({ open, onClose, filterType }: HistoryListProps) {
   const userInfo = useRecoilValue(userInfoState);
   const setDisplayPanelOpen = useSetRecoilState(displayPanelOpenState);
+  const setLyricsSongs = useSetRecoilState(lyricsSongsState);
+  const router = useRouter();
   const [items, setItems] = useState<GenerationHistory[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -62,6 +65,18 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
     setActiveFilter(type);
     loadHistory(1, type);
   };
+
+  const handleReuseLyrics = useCallback((orderData: { title: string; lyrics: string; bpm?: number }[]) => {
+    const songs: SongBlock[] = orderData.map((s) => ({
+      title: s.title,
+      lyrics: s.lyrics,
+      bpm: s.bpm ?? 100,
+      expanded: true,
+    }));
+    setLyricsSongs(songs);
+    onClose();
+    router.push("/lyrics");
+  }, [setLyricsSongs, onClose, router]);
 
   const handleSendToDisplay = useCallback(async (orderData: WorshipOrderItem[], historyId: number) => {
     setSending(historyId);
@@ -123,15 +138,25 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
                   <span className={`history_status ${item.status}`}>
                     {item.status === "success" ? "성공" : "실패"}
                   </span>
-                  {item.order_data && Array.isArray(item.order_data) && item.order_data.length > 0 && (
-                    <button
-                      className="history_send_btn"
-                      onClick={() => handleSendToDisplay(item.order_data!, item.id)}
-                      disabled={sending === item.id}
-                    >
-                      {sending === item.id ? "전송 중..." : "전송"}
-                    </button>
-                  )}
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {item.type === "lyrics_ppt" && item.order_data && Array.isArray(item.order_data) && item.order_data.length > 0 && (
+                      <button
+                        className="history_send_btn"
+                        onClick={() => handleReuseLyrics(item.order_data as { title: string; lyrics: string; bpm?: number }[])}
+                      >
+                        재활용
+                      </button>
+                    )}
+                    {item.type !== "lyrics_ppt" && item.order_data && Array.isArray(item.order_data) && item.order_data.length > 0 && (
+                      <button
+                        className="history_send_btn"
+                        onClick={() => handleSendToDisplay(item.order_data as WorshipOrderItem[], item.id)}
+                        disabled={sending === item.id}
+                      >
+                        {sending === item.id ? "전송 중..." : "전송"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))
