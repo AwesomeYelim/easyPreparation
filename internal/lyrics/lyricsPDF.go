@@ -46,7 +46,7 @@ func NewLyricsPresentationManager() *LyricsPresentationManager {
 	configPath := filepath.Join(execPath, "config/custom.json")
 	extract.ExtCustomOption(configPath)
 
-	outputDir := filepath.Join(execPath, "data", "templates", "lyrics")
+	outputDir := filepath.Join(execPath, "output", "lyrics")
 	_ = utils.CheckDirIs(outputDir)
 
 	return &LyricsPresentationManager{

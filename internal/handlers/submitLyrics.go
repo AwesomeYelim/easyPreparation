@@ -45,7 +45,7 @@ func SubmitLyricsHandler(dataChan chan types.DataEnvelope) http.Handler {
 		}
 
 		var expectedFiles []string
-		outputDir := filepath.Join(execPath, "data", "templates", "lyrics")
+		outputDir := filepath.Join(execPath, "output", "lyrics")
 
 		for _, item := range rawSongs {
 			if songMap, ok := item.(map[string]interface{}); ok {
