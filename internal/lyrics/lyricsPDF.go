@@ -19,9 +19,10 @@ import (
 )
 
 type LyricsPresentationManager struct {
-	ExecPath  string
-	Config    extract.Config
-	OutputDir string
+	ExecPath    string
+	Config      extract.Config
+	OutputDir   string // PDF 저장 경로 (output/lyrics/)
+	TemplateDir string // 배경 이미지 경로 (data/templates/lyrics/)
 }
 
 type stSong struct {
@@ -46,13 +47,16 @@ func NewLyricsPresentationManager() *LyricsPresentationManager {
 	configPath := filepath.Join(execPath, "config/custom.json")
 	extract.ExtCustomOption(configPath)
 
+	templateDir := filepath.Join(execPath, "data", "templates", "lyrics")
 	outputDir := filepath.Join(execPath, "output", "lyrics")
+	_ = utils.CheckDirIs(templateDir)
 	_ = utils.CheckDirIs(outputDir)
 
 	return &LyricsPresentationManager{
-		ExecPath:  execPath,
-		Config:    extract.ConfigMem,
-		OutputDir: outputDir,
+		ExecPath:    execPath,
+		Config:      extract.ConfigMem,
+		OutputDir:   outputDir,
+		TemplateDir: templateDir,
 	}
 }
 
@@ -91,9 +95,9 @@ func (lpm *LyricsPresentationManager) CreatePresentation(data map[string]interfa
 	labelWm, labelHm := 13.00, 10.00
 	labelP := 15.00
 
-	backgroundImages, err := os.ReadDir(lpm.OutputDir)
+	backgroundImages, err := os.ReadDir(lpm.TemplateDir)
 	if err != nil || len(backgroundImages) == 0 {
-		handlers.BroadcastProgress("Lyrics Error", -1, fmt.Sprintf("배경 이미지 없음: %s", lpm.OutputDir))
+		handlers.BroadcastProgress("Lyrics Error", -1, fmt.Sprintf("배경 이미지 없음: %s", lpm.TemplateDir))
 		return
 	}
 	// 이미지 파일만 필터 (PNG/JPG)
@@ -104,12 +108,12 @@ func (lpm *LyricsPresentationManager) CreatePresentation(data map[string]interfa
 		}
 		ext := strings.ToLower(filepath.Ext(e.Name()))
 		if ext == ".png" || ext == ".jpg" || ext == ".jpeg" {
-			bgImagePath = filepath.Join(lpm.OutputDir, e.Name())
+			bgImagePath = filepath.Join(lpm.TemplateDir, e.Name())
 			break
 		}
 	}
 	if bgImagePath == "" {
-		handlers.BroadcastProgress("Lyrics Error", -1, fmt.Sprintf("배경 이미지 없음: %s", lpm.OutputDir))
+		handlers.BroadcastProgress("Lyrics Error", -1, fmt.Sprintf("배경 이미지 없음: %s", lpm.TemplateDir))
 		return
 	}
 
@@ -128,7 +132,7 @@ func (lpm *LyricsPresentationManager) CreatePresentation(data map[string]interfa
 			continue
 		}
 
-		fileName := filepath.Join(strings.TrimSuffix(lpm.OutputDir, "tmp"), sanitize.FileName(song.title)+".pdf")
+		fileName := filepath.Join(lpm.OutputDir, sanitize.FileName(song.title)+".pdf")
 
 		objPdf := presentation.New(instanceSize)
 		objPdf.Config = extract.ConfigMem.Classification.Lyrics.Presentation

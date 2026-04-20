@@ -51,9 +51,19 @@ func CreateBulletin(data map[string]interface{}) {
 	configPath := filepath.Join(execPath, "config", "custom.json")
 	extract.ExtCustomOption(configPath)
 
-	// 파일명 생성: "202411_3.pdf"
+	// 파일명 생성: "sun_202411_3.pdf"
+	worshipPrefix := map[string]string{
+		"main_worship":  "sun",
+		"after_worship": "after",
+		"wed_worship":   "wed",
+		"fri_worship":   "fri",
+	}
+	prefix := worshipPrefix[target]
+	if prefix == "" {
+		prefix = target
+	}
 	yearMonth, weekFormatted := date.SetDateTitle()
-	outputFilename := fmt.Sprintf("%s_%s", yearMonth, weekFormatted)
+	outputFilename := fmt.Sprintf("%s_%s_%s", prefix, yearMonth, weekFormatted)
 	outputFilenameExe := fmt.Sprintf("%s.pdf", outputFilename)
 	PdfInfo := &define.PdfInfo{
 		ExecPath:       execPath,
