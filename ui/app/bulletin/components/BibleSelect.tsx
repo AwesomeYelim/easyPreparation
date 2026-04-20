@@ -58,7 +58,7 @@ const BibleSelect: React.FC<BibleSelectProps> = ({ handleValueChange, parentKey 
   const [selectedRanges, setSelectedRanges] = useState<Selection[]>([]);
   const [multiSelection, setMultiSelection] = useState<Selection[][]>(selectedInitInfo);
 
-  const books = Object.keys(bibleData);
+  const books = Object.keys(bibleData).sort((a, b) => bibleData[a].index - bibleData[b].index);
   const currentBook = selectedBook.book ? bibleData[selectedBook.book] : null;
   const currentChapterVerses = currentBook && selectedBook.chapter ? currentBook.chapters[selectedBook.chapter - 1] : 0;
 

@@ -37,6 +37,7 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
   const [loading, setLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string | undefined>(filterType);
   const [sending, setSending] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
 
   const loadHistory = useCallback(
     (p: number, type?: string) => {
@@ -78,6 +79,19 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
     router.push("/lyrics");
   }, [setLyricsSongs, onClose, router]);
 
+  const handleDelete = useCallback(async (id: number) => {
+    if (!userInfo.email) return;
+    setDeleting(id);
+    try {
+      await apiClient.deleteHistory(id, userInfo.email);
+      setItems(prev => prev.filter(item => item.id !== id));
+    } catch {
+      // 무시
+    } finally {
+      setDeleting(null);
+    }
+  }, [userInfo.email]);
+
   const handleSendToDisplay = useCallback(async (orderData: WorshipOrderItem[], historyId: number) => {
     setSending(historyId);
     try {
@@ -115,13 +129,15 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
           ))}
         </div>
 
-        <div className="history_body">
-          {loading ? (
-            <div className="history_loading">불러오는 중...</div>
-          ) : items.length === 0 ? (
+        <div className="history_body" style={{ opacity: loading ? 0.5 : 1, transition: "opacity 0.15s" }}>
+          {!loading && items.length === 0 ? (
             <div className="history_empty">생성 내역이 없습니다</div>
           ) : (
-            items.map((item) => (
+            items.map((item) => {
+              const lyricsSongs = item.type === "lyrics_ppt" && item.order_data && Array.isArray(item.order_data) && item.order_data.length > 0
+                ? (item.order_data as { title: string; lyrics: string; bpm?: number }[])
+                : null;
+              return (
               <div key={item.id} className="history_item">
                 <div className="history_item_top">
                   <span className={`history_badge ${item.status}`}>
@@ -131,20 +147,36 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
                     {new Date(item.created_at).toLocaleString("ko-KR")}
                   </span>
                 </div>
-                {item.filename && (
-                  <div className="history_filename">{item.filename}</div>
+                {item.type === "lyrics_ppt" ? (
+                  lyricsSongs ? (
+                    <div className="history_songs">
+                      {lyricsSongs.map((s, i) => (
+                        <span key={i} className="history_song_tag">{s.title}</span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="history_filename">{item.filename}</div>
+                  )
+                ) : item.type === "display" && item.order_data && Array.isArray(item.order_data) && item.order_data.length > 0 ? (
+                  <div className="history_songs">
+                    {(item.order_data as WorshipOrderItem[]).map((o, i) => (
+                      <span key={i} className="history_song_tag">{o.title}</span>
+                    ))}
+                  </div>
+                ) : (
+                  item.filename && <div className="history_filename">{item.filename}</div>
                 )}
                 <div className="history_item_bottom">
                   <span className={`history_status ${item.status}`}>
                     {item.status === "success" ? "성공" : "실패"}
                   </span>
                   <div style={{ display: "flex", gap: 6 }}>
-                    {item.type === "lyrics_ppt" && item.order_data && Array.isArray(item.order_data) && item.order_data.length > 0 && (
+                    {item.type === "lyrics_ppt" && (
                       <button
                         className="history_send_btn"
-                        onClick={() => handleReuseLyrics(item.order_data as { title: string; lyrics: string; bpm?: number }[])}
+                        onClick={() => handleReuseLyrics(lyricsSongs ?? [])}
                       >
-                        재활용
+                        전송
                       </button>
                     )}
                     {item.type !== "lyrics_ppt" && item.order_data && Array.isArray(item.order_data) && item.order_data.length > 0 && (
@@ -156,10 +188,19 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
                         {sending === item.id ? "전송 중..." : "전송"}
                       </button>
                     )}
+                    <button
+                      className="history_delete_btn"
+                      onClick={() => handleDelete(item.id)}
+                      disabled={deleting === item.id}
+                      title="삭제"
+                    >
+                      {deleting === item.id ? "…" : "삭제"}
+                    </button>
                   </div>
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
 
@@ -290,6 +331,20 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
           color: var(--text-primary);
           margin-top: 4px;
         }
+        .history_songs {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4px;
+          margin-top: 4px;
+        }
+        .history_song_tag {
+          font-size: 11px;
+          padding: 2px 7px;
+          border-radius: 10px;
+          background: var(--surface-hover);
+          color: var(--text-secondary);
+          border: 1px solid var(--border-light);
+        }
         .history_item_bottom {
           display: flex;
           justify-content: space-between;
@@ -314,6 +369,25 @@ export default function HistoryList({ open, onClose, filterType }: HistoryListPr
         }
         .history_send_btn:disabled {
           background: var(--text-muted);
+          cursor: default;
+        }
+        .history_delete_btn {
+          padding: 3px 10px;
+          font-size: 11px;
+          font-weight: 600;
+          background: transparent;
+          color: var(--text-muted);
+          border: 1px solid var(--border-input);
+          border-radius: 4px;
+          cursor: pointer;
+        }
+        .history_delete_btn:hover {
+          background: var(--error, #dc2626);
+          color: white;
+          border-color: var(--error, #dc2626);
+        }
+        .history_delete_btn:disabled {
+          opacity: 0.4;
           cursor: default;
         }
         .history_status.success {

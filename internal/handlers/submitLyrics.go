@@ -50,20 +50,30 @@ func SubmitLyricsHandler(dataChan chan types.DataEnvelope) http.Handler {
 		for _, item := range rawSongs {
 			if songMap, ok := item.(map[string]interface{}); ok {
 				title, _ := songMap["title"].(string)
+				lyrics, _ := songMap["lyrics"].(string)
+				// lyricsPDF.go와 동일 조건: 문자(한글 포함)가 있어야 PDF 생성됨
+				if title == "" || len(utils.RemoveEmptyNonLetterLines(lyrics, 25)) == 0 {
+					continue
+				}
 				expectedFiles = append(expectedFiles, filepath.Join(outputDir, sanitize.FileName(title)+".pdf"))
 			}
 		}
-		// 3. 폴링으로 생성 완료 확인
-		timeout := time.After(5 * time.Minute)
-		ticker := time.Tick(500 * time.Millisecond)
+		if len(expectedFiles) == 0 {
+			http.Error(w, "생성 가능한 가사 데이터가 없습니다", http.StatusBadRequest)
+			return
+		}
+
+		// 3. 폴링으로 생성 완료 확인 (최대 2분, 타임아웃 시 생성된 파일만 전송)
+		deadline := time.After(2 * time.Minute)
+		ticker := time.NewTicker(500 * time.Millisecond)
+		defer ticker.Stop()
 
 	WAIT_LOOP:
 		for {
 			select {
-			case <-timeout:
-				http.Error(w, "PDF 생성 시간 초과", http.StatusGatewayTimeout)
-				return
-			case <-ticker:
+			case <-deadline:
+				break WAIT_LOOP // 타임아웃: 생성된 파일만 ZIP 전송
+			case <-ticker.C:
 				allExist := true
 				for _, path := range expectedFiles {
 					if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -77,12 +87,20 @@ func SubmitLyricsHandler(dataChan chan types.DataEnvelope) http.Handler {
 			}
 		}
 
-		var fileNames []string
+		// 실제로 존재하는 파일만 ZIP에 포함
+		var existFiles, fileNames []string
 		for _, f := range expectedFiles {
-			fileNames = append(fileNames, filepath.Base(f))
+			if _, err := os.Stat(f); err == nil {
+				existFiles = append(existFiles, f)
+				fileNames = append(fileNames, filepath.Base(f))
+			}
+		}
+		if len(existFiles) == 0 {
+			http.Error(w, "PDF 생성 실패", http.StatusInternalServerError)
+			return
 		}
 
-		zipBytes, err := utils.CreateZipBufferFromFiles(expectedFiles, fileNames)
+		zipBytes, err := utils.CreateZipBufferFromFiles(existFiles, fileNames)
 		if err != nil {
 			http.Error(w, "ZIP 생성 실패: "+err.Error(), http.StatusInternalServerError)
 			return

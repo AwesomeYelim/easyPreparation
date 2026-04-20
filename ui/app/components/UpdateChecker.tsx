@@ -177,6 +177,7 @@ export default function UpdateChecker() {
     checkUpdate();
   };
 
+  if (process.env.NODE_ENV === 'development') return null;
   if (state.phase === 'idle' && (!state.hasUpdate || dismissed)) return null;
 
   const { phase, percent, totalBytes, downloadedBytes, latest, current, updateUrl, error } = state;

@@ -2427,13 +2427,30 @@ func findCachedImages(category, base, imgDir string) []string {
 	if err != nil {
 		return nil
 	}
-	var urls []string
-	for _, f := range files {
-		if !f.IsDir() && strings.HasSuffix(f.Name(), ".png") {
-			urls = append(urls, fmt.Sprintf("/display/tmp/%s/%s/%s", category, base, f.Name()))
-		}
+	type pageEntry struct {
+		num int
+		url string
 	}
-	sort.Strings(urls)
+	var entries []pageEntry
+	for _, f := range files {
+		if f.IsDir() || !strings.HasSuffix(f.Name(), ".png") {
+			continue
+		}
+		name := strings.TrimSuffix(f.Name(), ".png")
+		n, err := strconv.Atoi(name)
+		if err != nil {
+			continue
+		}
+		entries = append(entries, pageEntry{
+			num: n,
+			url: fmt.Sprintf("/display/tmp/%s/%s/%s", category, base, f.Name()),
+		})
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].num < entries[j].num })
+	urls := make([]string, len(entries))
+	for i, e := range entries {
+		urls[i] = e.url
+	}
 	return urls
 }
 

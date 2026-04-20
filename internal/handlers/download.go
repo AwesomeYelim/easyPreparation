@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 // desktopDownloadDir — Desktop 모드에서 파일을 저장할 디렉터리 (비어있으면 비활성)
@@ -42,12 +43,14 @@ func buildBulletinZip(execPath, target string) ([]byte, error) {
 		fileNames = append(fileNames, "print_"+exeTarget)
 	}
 
-	if target == "main_worship" {
-		for _, et := range []string{"after_worship", "wed_worship"} {
-			extraPath := filepath.Join(execPath, "output", "bulletin", "presentation", et+"_"+exeTarget)
+	if strings.HasPrefix(target, "sun_") {
+		datePart := strings.TrimPrefix(target, "sun_")
+		for _, pfx := range []string{"after", "wed"} {
+			extraName := fmt.Sprintf("%s_%s.pdf", pfx, datePart)
+			extraPath := filepath.Join(execPath, "output", "bulletin", "presentation", extraName)
 			if _, err := os.Stat(extraPath); err == nil {
 				filePaths = append(filePaths, extraPath)
-				fileNames = append(fileNames, et+"_presentation_"+exeTarget)
+				fileNames = append(fileNames, pfx+"_presentation_"+extraName)
 			}
 		}
 	}

@@ -114,8 +114,28 @@ func putSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }
 
-// HistoryHandler — GET /api/history?email=&type=&page=
+// HistoryHandler — GET /api/history?email=&type=&page=  |  DELETE /api/history?id=N&email=
 func HistoryHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodDelete {
+		id := r.URL.Query().Get("id")
+		email := r.URL.Query().Get("email")
+		if id == "" {
+			http.Error(w, "id required", http.StatusBadRequest)
+			return
+		}
+		churchID := resolveChurchID(email)
+		if churchID == 0 {
+			http.Error(w, "church not found", http.StatusNotFound)
+			return
+		}
+		_, err := apiDB.Exec(`DELETE FROM generation_history WHERE id = ? AND church_id = ?`, id, churchID)
+		if err != nil {
+			http.Error(w, "delete failed", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return

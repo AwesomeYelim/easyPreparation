@@ -4,7 +4,7 @@ import { WorshipOrder } from "./components/WorshipOrder";
 import SelectedOrder from "./components/SelectedOrder";
 import Detail from "./components/Detail";
 import { useState, useEffect, useRef } from "react";
-import { WorshipType, userInfoState, worshipOrderState, displayPanelOpenState, displayItemsState } from "@/recoilState";
+import { WorshipType, userInfoState, worshipOrderState, displayPanelOpenState } from "@/recoilState";
 import { WorshipOrderItem } from "@/types";
 import { apiClient, openDisplayWindow } from "@/lib/apiClient";
 import toast from "react-hot-toast";
@@ -25,7 +25,6 @@ export default function Bulletin() {
   };
   const userInfo = useRecoilValue(userInfoState);
   const { subscribe } = useWS();
-  const setDisplayItems = useSetRecoilState(displayItemsState);
   const setDisplayPanelOpen = useSetRecoilState(displayPanelOpenState);
 
   const [loading, setLoading] = useState(false);
@@ -117,7 +116,6 @@ export default function Bulletin() {
       setDisplayPanelOpen(true);
       return;
     }
-    setDisplayItems(processedInfo);
     setDisplayPanelOpen(true);
     openDisplayWindow();
     try {

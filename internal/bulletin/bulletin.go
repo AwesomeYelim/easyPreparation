@@ -89,7 +89,7 @@ func CreateBulletin(data map[string]interface{}) {
 
 	// 생성 이력 기록
 	if email, ok := data["email"].(string); ok && email != "" {
-		outputPath := filepath.Join(execPath, "output", "bulletin", outputFilenameExe)
+		outputPath := filepath.Join(execPath, "output", "bulletin", "presentation", outputFilenameExe)
 		handlers.RecordGeneration(email, "bulletin", outputFilenameExe, outputPath, "success")
 	}
 }

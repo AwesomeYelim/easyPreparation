@@ -33,8 +33,8 @@ type stSong struct {
 func CreateLyricsPDF(data map[string]interface{}) {
 	lpm := NewLyricsPresentationManager()
 
-	// 배경 이미지가 OutputDir에 없으면 경고만 출력하고 계속 진행
-	entries, err := os.ReadDir(lpm.OutputDir)
+	// 배경 이미지가 TemplateDir에 없으면 경고만 출력하고 계속 진행
+	entries, err := os.ReadDir(lpm.TemplateDir)
 	if err != nil || len(entries) == 0 {
 		handlers.BroadcastProgress("Background Warning", 1, "배경 이미지 없음 — 템플릿 폴더를 확인하세요")
 	}

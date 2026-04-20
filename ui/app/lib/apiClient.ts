@@ -184,6 +184,9 @@ export const apiClient = {
     fetch(`${BASE_URL}/api/history?email=${encodeURIComponent(email)}${type ? `&type=${type}` : ""}&page=${page}`)
       .then((r) => r.json()),
 
+  deleteHistory: (id: number, email: string) =>
+    fetch(`${BASE_URL}/api/history?id=${id}&email=${encodeURIComponent(email)}`, { method: "DELETE" }),
+
   // 스케줄러 API
   getSchedule: () =>
     fetch(`${BASE_URL}/api/schedule`).then((r) => r.json()),
