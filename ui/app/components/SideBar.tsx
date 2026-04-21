@@ -173,17 +173,17 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             </div>
           ) : (
             <div
-              className="flex justify-between items-center py-2.5 border-b border-white/20 text-white cursor-pointer"
+              className="flex justify-between items-center gap-2 py-2.5 border-b border-white/20 text-white cursor-pointer"
               onClick={() => setEditingChurch(true)}
             >
-              <div>
+              <div className="min-w-0">
                 <div className="font-bold text-[15px]">교회 정보</div>
-                <div className="text-xs opacity-80 mt-0.5">
+                <div className="text-xs opacity-80 mt-0.5 truncate">
                   {userInfo?.name || "미등록"}
                   {userInfo?.english_name ? ` (${userInfo.english_name})` : ""}
                 </div>
               </div>
-              <div className="text-xs opacity-60 text-[#ccc]">수정</div>
+              <div className="text-xs opacity-60 text-[#ccc] flex-shrink-0 whitespace-nowrap">수정</div>
             </div>
           )}
 
