@@ -290,10 +290,10 @@ export default function BiblePage() {
     <div className="flex flex-col w-full" style={{ height: "calc(100vh - 70px)" }}>
 
       {/* ── 상단 컨트롤 바 ── */}
-      <div className="flex-shrink-0 flex items-center justify-between gap-3 px-6 py-3 bg-white border-b border-outline/50">
+      <div className="flex-shrink-0 flex items-center justify-between gap-2 px-4 py-3 bg-white border-b border-outline/50">
         {/* 좌측: 로고 + 버전 선택 */}
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-black tracking-tight text-primary">Scripture Bible</h1>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <h1 className="text-xl font-black tracking-tight text-primary whitespace-nowrap">Scripture Bible</h1>
           {versions.length > 1 && (
             <select
               className="px-3 py-1.5 text-sm font-semibold rounded-lg border border-outline/60 bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 cursor-pointer"
@@ -336,10 +336,10 @@ export default function BiblePage() {
         </div>
 
         {/* 우측: 선택 바 + 검색 */}
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
           {selectedVerses.size > 0 && selectedBook && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/10 border border-secondary/30 rounded-lg min-w-0">
-              <span className="text-sm font-semibold text-secondary max-w-[120px] truncate">
+              <span className="text-sm font-semibold text-secondary max-w-[80px] truncate">
                 {selectionLabel()}
               </span>
               <button
@@ -351,14 +351,14 @@ export default function BiblePage() {
             </div>
           )}
 
-          <div className="flex min-w-[100px] w-48">
+          <div className="flex flex-shrink-0">
             <input
               type="text"
               placeholder="구절 검색..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyUp={(e) => e.key === "Enter" && handleSearch()}
-              className="flex-1 min-w-0 px-4 py-2 text-sm border border-r-0 border-outline/60 rounded-l-lg bg-surface text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20 transition-all"
+              className="w-32 flex-1 min-w-0 px-4 py-2 text-sm border border-r-0 border-outline/60 rounded-l-lg bg-surface text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20 transition-all"
             />
             <button
               onClick={handleSearch}

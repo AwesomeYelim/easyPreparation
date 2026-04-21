@@ -224,7 +224,7 @@ export default function Bulletin() {
           <select
             value={selectedWorshipType}
             onChange={(e) => setSelectedWorshipType(e.target.value as WorshipType)}
-            className="bg-white text-navy-dark font-semibold text-sm px-4 py-2.5 border border-slate-200 rounded-xl cursor-pointer transition-all hover:border-electric-blue focus:outline-none focus:border-electric-blue focus:ring-2 focus:ring-electric-blue/20 shadow-sm"
+            className="bg-white text-navy-dark font-semibold text-sm px-4 py-2.5 border border-slate-200 rounded-xl cursor-pointer transition-all hover:border-electric-blue focus:outline-none focus:border-electric-blue focus:ring-2 focus:ring-electric-blue/20 shadow-sm flex-shrink-0"
           >
             <option value="main_worship">주일예배</option>
             <option value="after_worship">오후예배</option>
@@ -236,7 +236,7 @@ export default function Bulletin() {
           <button
             onClick={sendDataToGoServer}
             title="주보/예배 PDF 파일을 생성하여 다운로드합니다"
-            className="flex items-center gap-2 bg-white text-navy-dark px-5 py-2.5 rounded-xl font-bold text-sm border border-slate-200 shadow-sm hover:bg-slate-50 transition-all"
+            className="flex items-center gap-2 bg-white text-navy-dark px-5 py-2.5 rounded-xl font-bold text-sm border border-slate-200 shadow-sm hover:bg-slate-50 transition-all whitespace-nowrap"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M8 2V10M8 10L5 7M8 10L11 7M3 13H13" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -248,7 +248,7 @@ export default function Bulletin() {
           <button
             onClick={sendToDisplay}
             title="예배 순서를 프로젝터 화면에 전송합니다"
-            className="flex items-center gap-2 bg-electric-blue text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm shadow-electric-blue/30 hover:bg-secondary transition-all active:scale-[0.98]"
+            className="flex items-center gap-2 bg-electric-blue text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm shadow-electric-blue/30 hover:bg-secondary transition-all active:scale-[0.98] whitespace-nowrap"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M2 3H14V11H2V3Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>

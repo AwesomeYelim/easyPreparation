@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRecoilState } from "recoil";
 import { displayPanelOpenState, sidebarCollapsedState } from "@/recoilState";
 import { useAuth } from "@/lib/LocalAuthContext";
@@ -21,21 +21,23 @@ export default function LeftSidebar() {
   const [panelOpen, setPanelOpen] = useRecoilState(displayPanelOpenState);
   const [collapsed, setCollapsed] = useRecoilState(sidebarCollapsedState);
   const { church } = useAuth();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   return (
     <>
       <aside
-        className={`fixed left-0 top-0 h-full flex flex-col py-8 bg-white border-r border-slate-200 z-50 transition-all duration-300 ${
+        className={`fixed left-0 top-0 h-full flex flex-col py-8 bg-white border-r border-slate-200 z-50 ${mounted ? "transition-[width,padding] duration-200 ease-in-out" : ""} ${
           collapsed ? "w-16 px-2" : "w-64 px-5"
         }`}
       >
         {/* 토글 버튼 */}
         <button
-          className="absolute -right-3 top-10 w-6 h-6 flex items-center justify-center bg-white border border-slate-200 rounded-full shadow-sm text-on-surface-variant hover:text-navy-dark transition-colors z-10"
+          className="absolute -right-4 top-10 w-8 h-8 flex items-center justify-center bg-white border-2 border-slate-300 rounded-full shadow-md text-on-surface-variant hover:text-navy-dark transition-colors z-10"
           onClick={() => setCollapsed(!collapsed)}
           title={collapsed ? "사이드바 열기" : "사이드바 접기"}
         >
-          <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
+          <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
             {collapsed ? "chevron_right" : "chevron_left"}
           </span>
         </button>
