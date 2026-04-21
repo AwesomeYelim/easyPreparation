@@ -2,6 +2,7 @@
 # 사용법: irm https://github.com/AwesomeYelim/easyPreparation/releases/latest/download/install-windows.ps1 | iex
 
 $ErrorActionPreference = "Stop"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 $AppName    = "easyPreparation"
 $ExeName    = "${AppName}_desktop_windows_amd64.exe"
