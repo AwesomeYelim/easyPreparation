@@ -92,7 +92,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       onClick={onClose}
     >
       <div
-        className="bg-[var(--surface-elevated)] rounded-2xl w-[480px] max-w-[90vw] max-h-[85vh] overflow-y-auto shadow-2xl"
+        className="bg-[var(--surface-elevated)] rounded-2xl w-[480px] max-w-[90vw] max-h-[85vh] overflow-hidden flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* header */}
@@ -131,7 +131,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         </div>
 
         {/* body */}
-        <div className="px-6 py-5 flex flex-col gap-4 min-h-[200px]">
+        <div className="px-6 py-5 flex flex-col gap-4 min-h-[200px] overflow-y-auto flex-1">
           {tab === "general" && (
             <GeneralTab
               local={local}

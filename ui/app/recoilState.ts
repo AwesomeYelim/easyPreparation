@@ -73,3 +73,8 @@ export const licenseState = atom<LicenseStatus>({
     is_active: false,
   },
 });
+
+export const sidebarCollapsedState = atom<boolean>({
+  key: "sidebarCollapsedState",
+  default: false,
+});

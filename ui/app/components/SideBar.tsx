@@ -130,10 +130,6 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         <div className="font-bold text-base text-[#204d87] mt-2.5">
           {church?.name || userInfo?.name || "교회명 미설정"}
         </div>
-        <div className="text-xs text-[#ddd] mb-5">
-          {church?.email || userInfo?.email || "local@localhost"}
-        </div>
-
         {/* 메뉴 카드 */}
         <div className="bg-white/10 p-5 rounded-xl w-full">
           {/* 교회 정보 편집 */}

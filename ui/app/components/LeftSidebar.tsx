@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useRecoilState } from "recoil";
-import { displayPanelOpenState } from "@/recoilState";
+import { displayPanelOpenState, sidebarCollapsedState } from "@/recoilState";
 import { useAuth } from "@/lib/LocalAuthContext";
 import { openDisplayWindow } from "@/lib/apiClient";
 import Sidebar from "./SideBar";
@@ -19,22 +19,44 @@ export default function LeftSidebar() {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useRecoilState(displayPanelOpenState);
+  const [collapsed, setCollapsed] = useRecoilState(sidebarCollapsedState);
   const { church } = useAuth();
 
   return (
     <>
-      <aside className="fixed left-0 top-0 h-full flex flex-col py-8 px-5 w-64 bg-white border-r border-slate-200 z-50">
+      <aside
+        className={`fixed left-0 top-0 h-full flex flex-col py-8 bg-white border-r border-slate-200 z-50 transition-all duration-300 ${
+          collapsed ? "w-16 px-2" : "w-64 px-5"
+        }`}
+      >
+        {/* 토글 버튼 */}
+        <button
+          className="absolute -right-3 top-10 w-6 h-6 flex items-center justify-center bg-white border border-slate-200 rounded-full shadow-sm text-on-surface-variant hover:text-navy-dark transition-colors z-10"
+          onClick={() => setCollapsed(!collapsed)}
+          title={collapsed ? "사이드바 열기" : "사이드바 접기"}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>
+            {collapsed ? "chevron_right" : "chevron_left"}
+          </span>
+        </button>
+
         {/* Logo */}
-        <div className="mb-10 px-2 flex flex-col gap-2">
+        <div
+          className={`mb-10 flex flex-col gap-2 ${
+            collapsed ? "items-center justify-center px-0" : "px-2"
+          }`}
+        >
           <img
             src="/images/ep-logo.svg"
             alt="EP"
             width={40}
             height={40}
           />
-          <p className="text-[10px] font-black text-on-surface opacity-40 uppercase tracking-[0.25em]">
-            easyPreparation
-          </p>
+          {!collapsed && (
+            <p className="text-[10px] font-black text-on-surface opacity-40 uppercase tracking-[0.25em]">
+              easyPreparation
+            </p>
+          )}
         </div>
 
         {/* Navigation */}
@@ -45,7 +67,10 @@ export default function LeftSidebar() {
               <Link
                 key={href}
                 href={href}
-                className={`flex items-center gap-4 py-3 px-4 rounded-2xl transition-all ${
+                title={collapsed ? label : undefined}
+                className={`flex items-center gap-4 py-3 rounded-2xl transition-all ${
+                  collapsed ? "justify-center px-2" : "px-4"
+                } ${
                   isActive
                     ? "bg-electric-blue/10 text-electric-blue font-bold shadow-sm shadow-electric-blue/5"
                     : "text-on-surface-variant hover:text-navy-dark hover:bg-slate-100"
@@ -57,7 +82,9 @@ export default function LeftSidebar() {
                 >
                   {icon}
                 </span>
-                <span className="text-sm tracking-tight font-semibold">{label}</span>
+                {!collapsed && (
+                  <span className="text-sm tracking-tight font-semibold">{label}</span>
+                )}
               </Link>
             );
           })}
@@ -66,17 +93,20 @@ export default function LeftSidebar() {
         {/* Bottom Actions */}
         <div className="mt-auto pt-6 space-y-2 border-t border-slate-100">
           {/* Display Control */}
-          <div className="flex gap-2 mb-6">
+          <div className={`flex mb-6 ${collapsed ? "flex-col gap-2" : "gap-2"}`}>
             <button
-              className={`flex-1 py-3 px-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all text-sm ${
+              className={`flex-1 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all text-sm ${
+                collapsed ? "px-2" : "px-4"
+              } ${
                 panelOpen
                   ? "bg-electric-blue text-white shadow-lg shadow-electric-blue/30"
                   : "bg-slate-100 text-on-surface-variant hover:bg-slate-200"
               }`}
               onClick={() => setPanelOpen(!panelOpen)}
+              title={collapsed ? "제어판" : undefined}
             >
               <span className="material-symbols-outlined text-lg">slideshow</span>
-              <span className="tracking-wide">예배 화면</span>
+              {!collapsed && <span className="tracking-wide">제어판</span>}
             </button>
             <button
               className="p-3 rounded-2xl bg-slate-100 text-on-surface-variant hover:bg-slate-200 transition-all"
@@ -88,13 +118,18 @@ export default function LeftSidebar() {
           </div>
 
           <button
-            className="flex items-center gap-4 py-2.5 px-4 rounded-xl text-on-surface-variant hover:text-navy-dark transition-colors w-full"
+            className={`flex items-center gap-4 py-2.5 rounded-xl text-on-surface-variant hover:text-navy-dark transition-colors w-full ${
+              collapsed ? "justify-center px-2" : "px-4"
+            }`}
             onClick={() => setSidebarOpen(true)}
+            title={collapsed ? (church?.name || "설정") : undefined}
           >
             <span className="material-symbols-outlined">settings</span>
-            <span className="text-sm font-semibold">
-              {church?.name || "설정"}
-            </span>
+            {!collapsed && (
+              <span className="text-sm font-semibold">
+                {church?.name || "설정"}
+              </span>
+            )}
           </button>
         </div>
       </aside>

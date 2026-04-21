@@ -336,10 +336,10 @@ export default function BiblePage() {
         </div>
 
         {/* 우측: 선택 바 + 검색 */}
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
           {selectedVerses.size > 0 && selectedBook && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/10 border border-secondary/30 rounded-lg min-w-0">
-              <span className="text-sm font-semibold text-secondary truncate">
+              <span className="text-sm font-semibold text-secondary max-w-[120px] truncate">
                 {selectionLabel()}
               </span>
               <button
@@ -351,14 +351,14 @@ export default function BiblePage() {
             </div>
           )}
 
-          <div className="flex w-48">
+          <div className="flex min-w-[100px] w-48">
             <input
               type="text"
               placeholder="구절 검색..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyUp={(e) => e.key === "Enter" && handleSearch()}
-              className="flex-1 px-4 py-2 text-sm border border-r-0 border-outline/60 rounded-l-lg bg-surface text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20 transition-all"
+              className="flex-1 min-w-0 px-4 py-2 text-sm border border-r-0 border-outline/60 rounded-l-lg bg-surface text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20 transition-all"
             />
             <button
               onClick={handleSearch}

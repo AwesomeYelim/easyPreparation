@@ -15,10 +15,10 @@ export default function FeatureGate({ feature, children, fallback }: FeatureGate
   return (
     <>
       {fallback ?? (
-        <div style={{ textAlign: 'center', padding: '24px', color: '#888' }}>
-          <div style={{ fontSize: '24px', marginBottom: '8px' }}>Pro</div>
-          <p>이 기능은 Pro 플랜에서 사용할 수 있습니다.</p>
-        </div>
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-600 text-xs font-bold rounded-full border border-blue-200">
+          <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>lock</span>
+          Pro only
+        </span>
       )}
     </>
   );

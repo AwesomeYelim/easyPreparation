@@ -206,16 +206,16 @@ func (m *Manager) SetLicense(info *LicenseInfo) error {
 	m.license = info
 	m.mu.Unlock()
 
-	// DB 저장
-	if m.db != nil {
-		if err := m.saveToDB(info); err != nil {
-			log.Printf("[license] DB 저장 실패: %v", err)
-		}
+	// 파일 캐시 저장 (항상 시도 — DB 없을 때도 동작)
+	if err := saveCache(info); err != nil {
+		return fmt.Errorf("라이선스 캐시 저장 실패: %w", err)
 	}
 
-	// 파일 캐시 저장
-	if err := saveCache(info); err != nil {
-		log.Printf("[license] 파일 캐시 저장 실패: %v", err)
+	// DB 저장 (있을 때만)
+	if m.db != nil {
+		if err := m.saveToDB(info); err != nil {
+			log.Printf("[license] DB 저장 실패 (캐시는 성공): %v", err)
+		}
 	}
 
 	log.Printf("[license] 라이선스 업데이트 완료 (plan=%s, device=%s)", info.Plan, info.DeviceID)

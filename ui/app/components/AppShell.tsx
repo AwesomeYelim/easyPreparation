@@ -1,13 +1,14 @@
 "use client";
 
 import { useRecoilValue } from "recoil";
-import { displayPanelOpenState } from "@/recoilState";
+import { displayPanelOpenState, sidebarCollapsedState } from "@/recoilState";
 import LeftSidebar from "./LeftSidebar";
 import TopHeader from "./TopHeader";
 import UpdateChecker from "./UpdateChecker";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const panelOpen = useRecoilValue(displayPanelOpenState);
+  const sidebarCollapsed = useRecoilValue(sidebarCollapsedState);
 
   return (
     <div className="min-h-screen min-w-[1024px] bg-surface">
@@ -15,7 +16,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <div
         className="transition-all duration-300 ease-in-out"
         style={{
-          marginLeft: "256px", // w-64
+          marginLeft: sidebarCollapsed ? "64px" : "256px",
           marginRight: panelOpen ? "320px" : "0px",
         }}
       >
