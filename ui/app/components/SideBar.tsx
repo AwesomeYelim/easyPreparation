@@ -10,6 +10,7 @@ import YouTubePanel from "./YouTubePanel";
 import LicensePanel from "./LicensePanel";
 import TemplatePanel from "./TemplatePanel";
 import OBSSourcePanel from "./OBSSourcePanel";
+import PDFPanel from "./PDFPanel";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -28,6 +29,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const [licenseOpen, setLicenseOpen] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [obsSourceOpen, setObsSourceOpen] = useState(false);
+  const [pdfOpen, setPdfOpen] = useState(false);
 
   // 교회 정보 편집
   const [editingChurch, setEditingChurch] = useState(false);
@@ -92,6 +94,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
     { title: "설정", action: () => setSettingsOpen(true) },
     { title: "배경 템플릿", action: () => setTemplateOpen(true) },
     { title: "OBS 소스", action: () => setObsSourceOpen(true) },
+    { title: "외부 PDF", action: () => setPdfOpen(true) },
     { title: "YouTube", action: () => setYoutubeOpen(true) },
     { title: "라이선스 정보", action: () => setLicenseOpen(true) },
     { title: "생성 내역", action: () => openHistory() },
@@ -226,6 +229,9 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 
       {/* OBS Source Modal */}
       <OBSSourcePanel open={obsSourceOpen} onClose={() => setObsSourceOpen(false)} />
+
+      {/* PDF Panel Modal */}
+      <PDFPanel open={pdfOpen} onClose={() => setPdfOpen(false)} />
     </>
   );
 }

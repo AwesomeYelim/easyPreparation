@@ -469,6 +469,9 @@ func OBSSetupDisplayHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	inputName := "EP_Display"
+	if strings.Contains(displayURL, "/display/pdf") {
+		inputName = "EP_PDF"
+	}
 	// 기존 소스 제거 (없어도 무시)
 	m.RemoveInput(inputName)
 

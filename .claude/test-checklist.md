@@ -400,11 +400,46 @@ curl -X POST http://localhost:8080/api/schedule/stream \
 
 ---
 
+---
+
+## R. 외부 PDF (OBS Browser Source)
+
+> 전제 조건: Ghostscript 설치 (`gswin64c` / `gswin32c` / `gs`)
+> 사이드바 → "외부 PDF" 메뉴로 진입
+
+| # | 테스트 | 조작 | 기대 결과 |
+|---|--------|------|-----------|
+| 165 | PDF 업로드 | 사이드바 → 외부 PDF → PDF 파일 선택 | "변환 완료: N페이지" 토스트 표시 |
+| 166 | 슬라이드 이동 (이전/다음) | 이전 / 다음 버튼 클릭 | 페이지 번호 변경 (`currentIndex` 갱신) |
+| 167 | OBS 소스 추가 | "OBS 소스 추가" 버튼 클릭 | EP_PDF 소스 생성 안내 표시 |
+| 168 | display/pdf 확인 | 브라우저에서 `http://localhost:8080/display/pdf` 접속 | 현재 슬라이드 이미지 표시 (1920×1080, 폴링 1초) |
+| 169 | 슬라이드 초기화 | 초기화 버튼 클릭 | "슬라이드 초기화 완료" 토스트 + 페이지 카운트 0으로 초기화 |
+| 170 | Ghostscript 미설치 시 업로드 | Ghostscript 없이 PDF 업로드 | 에러 토스트 표시 (변환 실패 안내) |
+
+### R-1. API 직접 테스트 (터미널)
+```bash
+# 슬라이드 상태 조회
+curl http://localhost:8080/api/pdf/slides
+
+# 슬라이드 이동 (다음)
+curl -X POST http://localhost:8080/api/pdf/navigate \
+  -H 'Content-Type: application/json' \
+  -d '{"action":"next"}'
+
+# 슬라이드 초기화
+curl -X DELETE http://localhost:8080/api/pdf/slides
+
+# OBS Browser Source 확인
+curl http://localhost:8080/display/pdf
+```
+
+---
+
 ## 테스트 우선순위
 
 | 우선순위 | 범위 | 항목 수 |
 |---------|------|--------|
 | P0 (필수) | A, C-3~C-4, F-1, G-1, L, P-2 | 인증, 주보생성, Display 제어, 렌더링, z-index, **스케줄 테스트** |
-| P1 (중요) | B, D, E-1~E-2, I, J, K, M, P-1, P-3 | 네비게이션, 가사, 성경, 사이드바, 설정, 이력, 상태복구, **스케줄 설정/스트리밍** |
+| P1 (중요) | B, D, E-1~E-2, I, J, K, M, P-1, P-3, R | 네비게이션, 가사, 성경, 사이드바, 설정, 이력, 상태복구, **스케줄 설정/스트리밍**, **외부 PDF** |
 | P2 (보통) | C-1~C-2, E-3~E-4, F-2~F-5, H, P-4 | 순서 편집, 비교모드, 드래그, 타이머, 오버레이, 실시간 테스트 |
 | P3 (낮음) | N, O, Q | 엣지케이스, 반응형, 외부 의존성 |
