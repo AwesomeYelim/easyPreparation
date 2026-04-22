@@ -2,17 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
-	"strconv"
-	"strings"
 	"sync"
+	"time"
 
 	"easyPreparation_1.0/internal/path"
 )
@@ -22,28 +17,19 @@ var (
 	pdfMu           sync.RWMutex
 	pdfSlideCount   int
 	pdfCurrentIndex int
+	pdfUploadTs     int64 // 업로드 시각 (ms) — 브라우저 변경 감지용
 )
 
-// pdfSlidesDir — 슬라이드 PNG 저장 디렉터리
-func pdfSlidesDir() string {
+func pdfDir() string {
 	return filepath.Join(path.ExecutePath("easyPreparation"), "data", "pdf-slides")
 }
 
-// findGhostscript — Windows: gswin64c / gswin32c / gs 순, 그외: gs
-func findGhostscript() (string, error) {
-	candidates := []string{"gs"}
-	if runtime.GOOS == "windows" {
-		candidates = []string{"gswin64c", "gswin32c", "gs"}
-	}
-	for _, name := range candidates {
-		if p, err := exec.LookPath(name); err == nil {
-			return p, nil
-		}
-	}
-	return "", fmt.Errorf("Ghostscript를 찾을 수 없습니다 (gswin64c/gswin32c/gs). PATH에 추가하거나 설치하세요")
+func pdfFilePath() string {
+	return filepath.Join(pdfDir(), "current.pdf")
 }
 
 // PDFUploadHandler — POST /api/pdf/upload (multipart, 최대 50 MB)
+// PDF 파일을 저장만 함. 변환 없음 — PDF.js가 브라우저에서 직접 렌더링.
 func PDFUploadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
@@ -55,9 +41,9 @@ func PDFUploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 
-	const maxSize = 50 << 20 // 50 MB
+	const maxSize = 50 << 20
 	if err := r.ParseMultipartForm(maxSize); err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "파일 크기가 너무 크거나 파싱 실패: " + err.Error()})
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "파일 크기 초과 또는 파싱 실패"})
 		return
 	}
 
@@ -68,67 +54,57 @@ func PDFUploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	// 임시 파일에 저장
-	tmpFile, err := os.CreateTemp("", "ep-pdf-*.pdf")
-	if err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "임시 파일 생성 실패"})
-		return
-	}
-	defer os.Remove(tmpFile.Name())
-
-	if _, err := io.Copy(tmpFile, file); err != nil {
-		tmpFile.Close()
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "파일 저장 실패"})
-		return
-	}
-	tmpFile.Close()
-
-	// 슬라이드 디렉터리 준비 (기존 파일 삭제 후 재생성)
-	slideDir := pdfSlidesDir()
-	_ = os.RemoveAll(slideDir)
-	if err := os.MkdirAll(slideDir, 0755); err != nil {
+	if err := os.MkdirAll(pdfDir(), 0755); err != nil {
 		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "디렉터리 생성 실패"})
 		return
 	}
 
-	// Ghostscript 경로 탐색
-	gsPath, err := findGhostscript()
+	dst, err := os.Create(pdfFilePath())
 	if err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": err.Error()})
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "파일 저장 실패"})
 		return
 	}
+	defer dst.Close()
 
-	// 출력 패턴: 001.png, 002.png …
-	outPattern := filepath.Join(slideDir, "%03d.png")
-
-	cmd := exec.Command(gsPath,
-		"-dNOPAUSE", "-dBATCH", "-dSAFER",
-		"-sDEVICE=png16m",
-		"-r150",
-		"-sOutputFile="+outPattern,
-		tmpFile.Name(),
-	)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		log.Printf("[pdf] gs 변환 실패: %v\n%s", err, string(out))
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "PDF 변환 실패: " + err.Error()})
+	if _, err := io.Copy(dst, file); err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "파일 쓰기 실패"})
 		return
-	}
-
-	// 생성된 PNG 파일 개수
-	entries, _ := os.ReadDir(slideDir)
-	count := 0
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(strings.ToLower(e.Name()), ".png") {
-			count++
-		}
 	}
 
 	pdfMu.Lock()
-	pdfSlideCount = count
+	pdfSlideCount = 0 // 브라우저가 PDF 로드 후 /api/pdf/count로 보고
 	pdfCurrentIndex = 0
+	pdfUploadTs = time.Now().UnixMilli()
 	pdfMu.Unlock()
 
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "count": count})
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+}
+
+// PDFCountHandler — POST /api/pdf/count {count: N}
+// PDF.js 브라우저가 PDF 로드 완료 후 페이지 수를 서버에 보고
+func PDFCountHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var body struct {
+		Count int `json:"count"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Count <= 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	pdfMu.Lock()
+	pdfSlideCount = body.Count
+	pdfMu.Unlock()
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // PDFSlidesHandler — GET /api/pdf/slides (상태 조회) | DELETE /api/pdf/slides (초기화)
@@ -144,21 +120,21 @@ func PDFSlidesHandler(w http.ResponseWriter, r *http.Request) {
 		pdfMu.RLock()
 		count := pdfSlideCount
 		idx := pdfCurrentIndex
+		ts := pdfUploadTs
 		pdfMu.RUnlock()
-		json.NewEncoder(w).Encode(map[string]interface{}{"count": count, "currentIndex": idx})
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"count":        count,
+			"currentIndex": idx,
+			"uploadTs":     ts,
+		})
 
 	case http.MethodDelete:
-		slideDir := pdfSlidesDir()
-		if err := os.RemoveAll(slideDir); err != nil {
-			log.Printf("[pdf] 슬라이드 삭제 실패: %v", err)
-		}
-		_ = os.MkdirAll(slideDir, 0755)
-
+		_ = os.Remove(pdfFilePath())
 		pdfMu.Lock()
 		pdfSlideCount = 0
 		pdfCurrentIndex = 0
+		pdfUploadTs = 0
 		pdfMu.Unlock()
-
 		json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
 
 	default:
@@ -209,7 +185,21 @@ func PDFNavigateHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "currentIndex": idx, "count": count})
 }
 
+// PDFFileHandler — GET /display/pdf-file
+// 업로드된 PDF 원본 파일 서빙 (PDF.js가 이 URL로 PDF 로드)
+func PDFFileHandler(w http.ResponseWriter, r *http.Request) {
+	fp := pdfFilePath()
+	if _, err := os.Stat(fp); os.IsNotExist(err) {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Cache-Control", "no-store")
+	http.ServeFile(w, r, fp)
+}
+
 // PDFDisplayHandler — GET /display/pdf (OBS Browser Source용 HTML)
+// PDF.js로 PDF를 직접 렌더링 — 외부 툴 없음
 const pdfDisplayHTML = `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -217,53 +207,74 @@ const pdfDisplayHTML = `<!DOCTYPE html>
 <title>PDF Display</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  html, body {
-    width:1920px; height:1080px;
-    background:#000;
-    overflow:hidden;
-    display:flex; align-items:center; justify-content:center;
-  }
-  #slide-img {
-    max-width:1920px; max-height:1080px;
-    width:100%; height:100%;
-    object-fit:contain;
-    display:none;
-  }
-  #no-slide {
-    color:rgba(255,255,255,0.4);
-    font-family:sans-serif;
-    font-size:32px;
-  }
+  html, body { width:1920px; height:1080px; background:#000; overflow:hidden; position:relative; }
+  #c { display:none; position:absolute; top:0; left:0; width:1920px; height:1080px; }
+  #msg { color:rgba(255,255,255,0.4); font:32px sans-serif;
+         position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); white-space:nowrap; }
 </style>
 </head>
 <body>
-  <img id="slide-img" src="" alt="slide">
-  <div id="no-slide">PDF 없음</div>
+<canvas id="c" width="1920" height="1080"></canvas>
+<div id="msg">PDF 없음</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
-  var cur = -1;
-  function poll() {
-    fetch('/api/pdf/slides')
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        if (!d.count) {
-          document.getElementById('slide-img').style.display='none';
-          document.getElementById('no-slide').style.display='block';
-          cur = -1;
-          return;
-        }
-        if (d.currentIndex !== cur) {
-          cur = d.currentIndex;
-          var n = String(cur+1).padStart(3,'0');
-          var img = document.getElementById('slide-img');
-          img.src = '/display/pdf-slides/'+n+'.png?t='+Date.now();
-          img.style.display='block';
-          document.getElementById('no-slide').style.display='none';
-        }
-      })
-      .catch(function(){})
-      .finally(function(){ setTimeout(poll,1000); });
-  }
-  poll();
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+var pdfDoc = null, loadedTs = 0, curPage = -1, rendering = false;
+
+function render(idx) {
+  if (!pdfDoc || rendering) return;
+  rendering = true;
+  pdfDoc.getPage(idx + 1).then(function(page) {
+    var vp0 = page.getViewport({scale: 1});
+    var scale = Math.min(1920 / vp0.width, 1080 / vp0.height);
+    var vp = page.getViewport({scale: scale});
+    var canvas = document.getElementById('c');
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, 1920, 1080);
+    var tx = (1920 - vp.width) / 2, ty = (1080 - vp.height) / 2;
+    page.render({canvasContext: ctx, viewport: vp, transform: [1, 0, 0, 1, tx, ty]}).promise
+      .then(function() { rendering = false; })
+      .catch(function() { rendering = false; });
+  }).catch(function() { rendering = false; });
+}
+
+function load(ts, idx) {
+  loadedTs = ts;
+  curPage = idx;
+  pdfDoc = null;
+  pdfjsLib.getDocument('/display/pdf-file').promise.then(function(pdf) {
+    pdfDoc = pdf;
+    fetch('/api/pdf/count', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({count: pdf.numPages})
+    }).catch(function() {});
+    document.getElementById('c').style.display = 'block';
+    document.getElementById('msg').style.display = 'none';
+    render(idx);
+  }).catch(function() {});
+}
+
+function poll() {
+  fetch('/api/pdf/slides')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d.uploadTs) {
+        document.getElementById('c').style.display = 'none';
+        document.getElementById('msg').style.display = 'block';
+        pdfDoc = null; loadedTs = 0; curPage = -1;
+        return;
+      }
+      if (d.uploadTs !== loadedTs) { load(d.uploadTs, d.currentIndex); return; }
+      if (d.currentIndex !== curPage && pdfDoc) { curPage = d.currentIndex; render(curPage); }
+    })
+    .catch(function() {})
+    .finally(function() { setTimeout(poll, 1000); });
+}
+poll();
 </script>
 </body>
 </html>`
@@ -272,16 +283,4 @@ func PDFDisplayHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
 	_, _ = w.Write([]byte(pdfDisplayHTML))
-}
-
-// PDFSlidesServeHandler — GET /display/pdf-slides/{NNN}.png
-// data/pdf-slides/ 에서 파일 서빙 (경로 탈출 방지)
-func PDFSlidesServeHandler(w http.ResponseWriter, r *http.Request) {
-	name := filepath.Base(r.URL.Path)
-	base := strings.TrimSuffix(name, ".png")
-	if _, err := strconv.Atoi(base); err != nil || !strings.HasSuffix(name, ".png") {
-		http.Error(w, "Not Found", http.StatusNotFound)
-		return
-	}
-	http.ServeFile(w, r, filepath.Join(pdfSlidesDir(), name))
 }

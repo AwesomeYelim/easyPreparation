@@ -71,8 +71,9 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/api/pdf/upload", middleware.CORS(http.HandlerFunc(handlers.PDFUploadHandler)))
 	mux.Handle("/api/pdf/slides", middleware.CORS(http.HandlerFunc(handlers.PDFSlidesHandler)))
 	mux.Handle("/api/pdf/navigate", middleware.CORS(http.HandlerFunc(handlers.PDFNavigateHandler)))
+	mux.Handle("/api/pdf/count", middleware.CORS(http.HandlerFunc(handlers.PDFCountHandler)))
 	mux.Handle("/display/pdf", middleware.CORS(http.HandlerFunc(handlers.PDFDisplayHandler)))
-	mux.Handle("/display/pdf-slides/", middleware.CORS(http.HandlerFunc(handlers.PDFSlidesServeHandler)))
+	mux.Handle("/display/pdf-file", middleware.CORS(http.HandlerFunc(handlers.PDFFileHandler)))
 
 	// 통합 API (프론트 DB 직접 연결 제거)
 	mux.Handle("/api/bible/books", middleware.CORS(http.HandlerFunc(handlers.BibleBooksHandler)))

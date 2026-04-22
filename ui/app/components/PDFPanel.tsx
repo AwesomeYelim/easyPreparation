@@ -58,7 +58,7 @@ export default function PDFPanel({ open, onClose }: PDFPanelProps) {
         r.json()
       );
       if (res.ok) {
-        showToast(`변환 완료: ${res.count}페이지`, "info");
+        showToast("업로드 완료 — OBS 소스에서 페이지 수 로딩 중", "info");
         await fetchStatus();
       } else {
         showToast(res.error || "업로드 실패");
