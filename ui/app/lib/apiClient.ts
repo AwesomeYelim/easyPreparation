@@ -38,7 +38,7 @@ export const apiClient = {
       body: JSON.stringify({ type, items }),
     }),
 
-  submitBulletin: (payload: { mark: string; targetInfo: WorshipOrderItem[]; target: string; email?: string }) =>
+  submitBulletin: (payload: { mark: string; targetInfo: WorshipOrderItem[]; target: string; email?: string; pdfType?: "print" | "presentation" | "both" }) =>
     fetch(`${BASE_URL}/submit`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -125,22 +125,25 @@ export const apiClient = {
       body: JSON.stringify({ from, to }),
     }),
 
-  downloadFile: async (fileName: string): Promise<void> => {
+  downloadFile: async (fileName: string, pdfType?: string): Promise<void> => {
+    const typeParam = pdfType ? `&type=${encodeURIComponent(pdfType)}` : "";
+    const isSingle = pdfType === "print" || pdfType === "presentation";
+    const downloadName = isSingle ? `${pdfType}_${fileName}.pdf` : `${fileName}.zip`;
     // Desktop 모드: 서버가 ~/Downloads에 직접 저장 + 폴더 열기
-    const saveRes = await fetch(`${BASE_URL}/api/save-to-downloads?target=${encodeURIComponent(fileName)}`);
+    const saveRes = await fetch(`${BASE_URL}/api/save-to-downloads?target=${encodeURIComponent(fileName)}${typeParam}`);
     if (saveRes.ok) return;
     if (saveRes.status !== 403) {
       throw new Error("다운로드 중 오류가 발생했습니다.");
     }
     // 웹 브라우저 모드: fetch+blob
-    const url = `${BASE_URL}/download?target=${encodeURIComponent(fileName)}`;
+    const url = `${BASE_URL}/download?target=${encodeURIComponent(fileName)}${typeParam}`;
     const r = await fetch(url);
     if (!r.ok) throw new Error(`다운로드 실패 (${r.status})`);
     const blob = await r.blob();
     const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = blobUrl;
-    a.download = `${fileName}.zip`;
+    a.download = downloadName;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -461,4 +464,13 @@ export const apiClient = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ip, port, password }),
     }).then((r) => r.json()) as Promise<{ ok: boolean; connected: boolean; host: string }>,
+
+  getOBSLogoHistory: async (): Promise<{ paths: string[] }> => {
+    const res = await fetch(`${BASE_URL}/api/obs/logo/history`);
+    if (!res.ok) return { paths: [] };
+    return res.json();
+  },
+
+  getOBSLogoImageUrl: (name: string) =>
+    `${BASE_URL}/api/obs/logo/image?name=${encodeURIComponent(name)}`,
 };

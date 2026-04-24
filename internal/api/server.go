@@ -128,6 +128,8 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/api/obs/sources", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSSourcesHandler))
 	mux.Handle("/api/obs/logo/upload", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSLogoUploadHandler))
 	mux.Handle("/api/obs/logo/apply", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSLogoApplyHandler))
+	mux.Handle("/api/obs/logo/history", middleware.CORS(http.HandlerFunc(handlers.OBSLogoHistoryHandler)))
+	mux.Handle("/api/obs/logo/image", middleware.CORS(http.HandlerFunc(handlers.OBSLogoImageHandler)))
 	mux.Handle("/api/obs/camera/devices", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSCameraDevicesHandler))
 	mux.Handle("/api/obs/camera/add", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSCameraAddHandler))
 	mux.Handle("/api/obs/sources/toggle", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSSourceToggleHandler))

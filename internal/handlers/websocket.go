@@ -226,10 +226,11 @@ func StopKeepAliveBroadcast() {
 	}
 }
 
-func BroadcastProcessDone(target, fileName string) {
+func BroadcastProcessDone(target, fileName, pdfType string) {
 	BroadcastMessage("done", map[string]interface{}{
 		"target":   target,
 		"fileName": fileName,
+		"pdfType":  pdfType,
 	})
 }
 

@@ -25,7 +25,7 @@ export default function EditChildNews({
 
   return (
     <div className="flex flex-col gap-1.5 mt-4">
-      <label htmlFor="obj" className="text-xs font-bold text-navy-dark uppercase tracking-wider">
+      <label htmlFor="obj" className="text-xs font-bold text-pro-text-dim uppercase tracking-wider">
         Content
       </label>
       <textarea
@@ -37,7 +37,7 @@ export default function EditChildNews({
           handleValueChange(selectedChild.key, { newObj });
         }}
         placeholder="Enter news content"
-        className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm text-navy-dark resize-none min-h-[120px] focus:outline-none focus:border-electric-blue focus:ring-2 focus:ring-electric-blue/20 transition-all"
+        className="w-full px-3 py-2.5 border border-pro-border bg-pro-elevated text-pro-text rounded-lg text-sm resize-none min-h-[120px] focus:outline-none focus:border-pro-accent focus:ring-2 focus:ring-pro-accent/20 transition-all"
       />
     </div>
   );

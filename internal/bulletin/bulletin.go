@@ -79,12 +79,21 @@ func CreateBulletin(data map[string]interface{}) {
 		PdfInfo: PdfInfo,
 	}
 
-	handlers.BroadcastProgress("Print PDF", 1, "A4 인쇄용 PDF 생성 중...")
-	printData.Create()
-	handlers.BroadcastProgress("Presentation PDF", 1, "프레젠테이션 PDF 생성 중...")
-	presentationData.Create()
+	pdfType, _ := data["pdfType"].(string)
+	if pdfType == "" {
+		pdfType = "both"
+	}
 
-	handlers.BroadcastProcessDone(target, outputFilename)
+	if pdfType == "print" || pdfType == "both" {
+		handlers.BroadcastProgress("Print PDF", 1, "A4 인쇄용 PDF 생성 중...")
+		printData.Create()
+	}
+	if pdfType == "presentation" || pdfType == "both" {
+		handlers.BroadcastProgress("Presentation PDF", 1, "예배 프레젠테이션 PDF 생성 중...")
+		presentationData.Create()
+	}
+
+	handlers.BroadcastProcessDone(target, outputFilename, pdfType)
 	handlers.BroadcastProgress("Finish Data Process", 1, "Finish Data Process !!")
 
 	// 생성 이력 기록

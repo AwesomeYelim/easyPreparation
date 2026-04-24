@@ -290,13 +290,13 @@ export default function BiblePage() {
     <div className="flex flex-col w-full" style={{ height: "calc(100vh - 70px)" }}>
 
       {/* ── 상단 컨트롤 바 ── */}
-      <div className="flex-shrink-0 flex items-center justify-between gap-2 px-4 py-3 bg-white border-b border-outline/50">
+      <div className="flex-shrink-0 flex items-center justify-between gap-2 px-4 py-3 bg-pro-surface border-b border-pro-border">
         {/* 좌측: 로고 + 버전 선택 */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          <h1 className="text-xl font-black tracking-tight text-primary whitespace-nowrap">Scripture Bible</h1>
+          <h1 className="text-xl font-black tracking-tight text-pro-text whitespace-nowrap">Scripture Bible</h1>
           {versions.length > 1 && (
             <select
-              className="px-3 py-1.5 text-sm font-semibold rounded-lg border border-outline/60 bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 cursor-pointer"
+              className="px-3 py-1.5 text-sm font-semibold rounded-lg border border-pro-border bg-pro-elevated text-pro-text focus:outline-none focus:ring-2 focus:ring-electric-blue/40 cursor-pointer"
               value={versionId}
               onChange={(e) => setVersionId(Number(e.target.value))}
             >
@@ -310,8 +310,8 @@ export default function BiblePage() {
             <button
               className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all ${
                 compareMode
-                  ? "bg-secondary text-white border-secondary"
-                  : "bg-surface-low text-on-surface-variant border-outline/60 hover:bg-surface-high hover:text-secondary hover:border-secondary/40"
+                  ? "bg-electric-blue text-white border-electric-blue"
+                  : "bg-pro-elevated text-pro-text-muted border-pro-border hover:bg-pro-hover hover:text-electric-blue hover:border-electric-blue/40"
               }`}
               onClick={() => setCompareMode(!compareMode)}
               title="비교 모드"
@@ -322,7 +322,7 @@ export default function BiblePage() {
 
           {compareMode && versions.length > 1 && (
             <select
-              className="px-3 py-1.5 text-sm font-semibold rounded-lg border border-outline/60 bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 cursor-pointer"
+              className="px-3 py-1.5 text-sm font-semibold rounded-lg border border-pro-border bg-pro-elevated text-pro-text focus:outline-none focus:ring-2 focus:ring-electric-blue/40 cursor-pointer"
               value={compareVersionId}
               onChange={(e) => setCompareVersionId(Number(e.target.value))}
             >
@@ -343,7 +343,7 @@ export default function BiblePage() {
                 {selectionLabel()}
               </span>
               <button
-                className="px-3 py-1 text-xs font-bold bg-secondary text-white rounded-md hover:bg-secondary/90 active:scale-95 transition-all"
+                className="px-4 py-2 text-xs font-bold bg-secondary text-white rounded-md hover:bg-secondary/90 active:scale-95 transition-all"
                 onClick={handleSendToDisplay}
               >
                 Display 전송
@@ -358,12 +358,12 @@ export default function BiblePage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyUp={(e) => e.key === "Enter" && handleSearch()}
-              className="w-32 flex-1 min-w-0 px-4 py-2 text-sm border border-r-0 border-outline/60 rounded-l-lg bg-surface text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20 transition-all"
+              className="w-32 flex-1 min-w-0 px-4 py-2 text-sm border border-r-0 border-pro-border rounded-l-lg bg-pro-elevated text-pro-text placeholder:text-pro-text-muted/60 focus:outline-none focus:border-electric-blue focus:ring-2 focus:ring-electric-blue/20 transition-all"
             />
             <button
               onClick={handleSearch}
               disabled={searching}
-              className="px-4 py-2 text-sm font-bold bg-secondary text-white rounded-r-lg hover:bg-secondary/90 disabled:bg-on-surface-variant/40 disabled:cursor-not-allowed transition-all"
+              className="px-4 py-2 text-sm font-bold bg-electric-blue text-white rounded-r-lg hover:bg-secondary disabled:bg-pro-text-muted/40 disabled:cursor-not-allowed transition-all"
             >
               {searching ? "..." : "검색"}
             </button>
@@ -375,14 +375,14 @@ export default function BiblePage() {
       <div className="flex flex-1 min-h-0">
 
         {/* ── 좌측 사이드바 ── */}
-        <aside className="w-44 flex-shrink-0 flex flex-col bg-surface-low border-r border-outline/40 overflow-hidden">
+        <aside className="w-44 flex-shrink-0 flex flex-col bg-pro-elevated border-r border-pro-border overflow-hidden">
           {/* 구약/신약 탭 */}
-          <div className="flex flex-shrink-0 border-b border-outline/40">
+          <div className="flex flex-shrink-0 border-b border-pro-border">
             <button
               className={`flex-1 py-2.5 text-xs font-bold text-center transition-all border-b-2 ${
                 tab === "ot"
-                  ? "text-secondary border-secondary bg-white"
-                  : "text-on-surface-variant border-transparent hover:text-on-surface hover:bg-surface-high"
+                  ? "text-electric-blue border-electric-blue bg-pro-surface"
+                  : "text-pro-text-muted border-transparent hover:text-pro-text hover:bg-pro-hover"
               }`}
               onClick={() => setTab("ot")}
             >
@@ -391,8 +391,8 @@ export default function BiblePage() {
             <button
               className={`flex-1 py-2.5 text-xs font-bold text-center transition-all border-b-2 ${
                 tab === "nt"
-                  ? "text-secondary border-secondary bg-white"
-                  : "text-on-surface-variant border-transparent hover:text-on-surface hover:bg-surface-high"
+                  ? "text-electric-blue border-electric-blue bg-pro-surface"
+                  : "text-pro-text-muted border-transparent hover:text-pro-text hover:bg-pro-hover"
               }`}
               onClick={() => setTab("nt")}
             >
@@ -407,13 +407,13 @@ export default function BiblePage() {
                 key={b.book_order}
                 className={`flex items-center gap-2 w-full px-3 py-2 text-left text-sm transition-all border-l-[3px] ${
                   selectedBook?.book_order === b.book_order
-                    ? "border-secondary bg-secondary/10 text-secondary font-semibold"
-                    : "border-transparent text-on-surface hover:bg-secondary/5 hover:text-secondary"
+                    ? "border-electric-blue bg-electric-blue/10 text-electric-blue font-semibold"
+                    : "border-transparent text-pro-text hover:bg-electric-blue/5 hover:text-electric-blue"
                 }`}
                 onClick={() => handleBookSelect(b)}
               >
                 <span className={`text-xs font-black min-w-[1.5rem] ${
-                  selectedBook?.book_order === b.book_order ? "text-secondary" : "text-on-surface-variant"
+                  selectedBook?.book_order === b.book_order ? "text-electric-blue" : "text-pro-text-muted"
                 }`}>
                   {b.abbr_kor}
                 </span>
@@ -426,19 +426,19 @@ export default function BiblePage() {
         {/* ── 우측 메인 ── */}
         <main
           ref={versesRef}
-          className="flex-1 overflow-y-auto px-8 py-6 bg-white [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-outline/40 [&::-webkit-scrollbar-thumb]:rounded-full"
+          className="flex-1 overflow-y-auto px-8 py-6 bg-pro-surface [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-pro-border/60 [&::-webkit-scrollbar-thumb]:rounded-full"
         >
 
           {/* ── 장 선택 그리드 ── */}
           {selectedBook && chapterCount > 0 && selectedChapter === 0 && (
             <div className="max-w-2xl mx-auto">
-              <h3 className="text-2xl font-bold text-on-surface mb-1">{selectedBook.name_kor}</h3>
-              <p className="text-sm text-on-surface-variant mb-5">{chapterCount}장</p>
+              <h3 className="text-2xl font-bold text-pro-text mb-1">{selectedBook.name_kor}</h3>
+              <p className="text-sm text-pro-text-muted mb-5">{chapterCount}장</p>
               <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(44px, 1fr))" }}>
                 {Array.from({ length: chapterCount }, (_, i) => i + 1).map((ch) => (
                   <button
                     key={ch}
-                    className="aspect-square flex items-center justify-center text-sm font-medium bg-surface-low border border-outline/40 rounded-xl text-on-surface hover:bg-secondary/10 hover:border-secondary/40 hover:text-secondary active:scale-95 transition-all"
+                    className="aspect-square flex items-center justify-center text-sm font-medium bg-pro-elevated border border-pro-border rounded-lg text-pro-text hover:bg-electric-blue/10 hover:border-electric-blue/40 hover:text-electric-blue active:scale-95 transition-all"
                     onClick={() => handleChapterSelect(ch)}
                   >
                     {ch}
@@ -452,19 +452,19 @@ export default function BiblePage() {
           {selectedChapter > 0 && verses.length > 0 && compareMode && compareVerses.length > 0 && (
             <div className="max-w-4xl mx-auto">
               {/* 헤더 */}
-              <div className="flex items-center justify-center gap-5 mb-7 pb-4 border-b border-outline/40">
+              <div className="flex items-center justify-center gap-5 mb-7 pb-4 border-b border-pro-border">
                 <button
-                  className="w-9 h-9 flex items-center justify-center text-lg rounded-full bg-surface-low border border-outline/40 text-on-surface hover:bg-secondary/10 hover:border-secondary/40 disabled:opacity-30 disabled:cursor-default transition-all"
+                  className="w-9 h-9 flex items-center justify-center text-lg rounded-full bg-pro-elevated border border-pro-border text-pro-text hover:bg-electric-blue/10 hover:border-electric-blue/40 disabled:opacity-30 disabled:cursor-default transition-all"
                   disabled={!canPrev}
                   onClick={() => handleChapterSelect(selectedChapter - 1)}
                 >
                   ‹
                 </button>
-                <h3 className="text-xl font-bold text-on-surface min-w-40 text-center">
+                <h3 className="text-xl font-bold text-pro-text min-w-40 text-center">
                   {selectedBook?.name_kor} {selectedChapter}장
                 </h3>
                 <button
-                  className="w-9 h-9 flex items-center justify-center text-lg rounded-full bg-surface-low border border-outline/40 text-on-surface hover:bg-secondary/10 hover:border-secondary/40 disabled:opacity-30 disabled:cursor-default transition-all"
+                  className="w-9 h-9 flex items-center justify-center text-lg rounded-full bg-pro-elevated border border-pro-border text-pro-text hover:bg-electric-blue/10 hover:border-electric-blue/40 disabled:opacity-30 disabled:cursor-default transition-all"
                   disabled={!canNext}
                   onClick={() => handleChapterSelect(selectedChapter + 1)}
                 >
@@ -473,22 +473,22 @@ export default function BiblePage() {
               </div>
 
               {/* 버전 레이블 */}
-              <div className="grid grid-cols-2 gap-3 px-7 pb-3 border-b border-outline/30 mb-4">
+              <div className="grid grid-cols-2 gap-3 px-7 pb-3 border-b border-pro-border mb-4">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-secondary flex-shrink-0" />
-                  <span className="text-xs font-black uppercase tracking-wider text-primary">
+                  <span className="w-2 h-2 rounded-full bg-electric-blue flex-shrink-0" />
+                  <span className="text-xs font-black uppercase tracking-wider text-pro-text">
                     {getVersionName(versionId)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-accent-cyan flex-shrink-0" />
-                  <span className="text-xs font-black uppercase tracking-wider text-primary">
+                  <span className="text-xs font-black uppercase tracking-wider text-pro-text">
                     {getVersionName(compareVersionId)}
                   </span>
                 </div>
               </div>
 
-              <p className="text-[11px] text-on-surface-variant mb-3 px-1">
+              <p className="text-[11px] text-pro-text-muted mb-3 px-1">
                 클릭하여 선택 · Shift+클릭으로 범위 선택
               </p>
 
@@ -502,24 +502,22 @@ export default function BiblePage() {
                       key={v.verse}
                       className={`grid gap-3 px-1 py-2 rounded-lg cursor-pointer select-none transition-colors ${
                         isSelected
-                          ? "bg-secondary/10"
-                          : "hover:bg-surface-low"
+                          ? "bg-electric-blue/10"
+                          : "hover:bg-pro-elevated"
                       }`}
                       style={{ gridTemplateColumns: "28px 1fr 1fr" }}
                       onClick={(e) => handleVerseClick(e, v.verse)}
                     >
-                      <sup className={`text-[11px] font-black text-right pt-0.5 ${
-                        isSelected ? "text-secondary" : "text-secondary"
-                      }`}>
+                      <sup className="text-[11px] font-black text-right pt-0.5 text-electric-blue">
                         {v.verse}
                       </sup>
                       <div className={`text-[15px] leading-[1.8] ${
-                        isSelected ? "text-secondary font-medium" : "text-on-surface"
+                        isSelected ? "text-electric-blue font-medium" : "text-pro-text"
                       }`}>
                         {v.text}
                       </div>
-                      <div className={`text-[15px] leading-[1.8] border-l-2 border-outline/30 pl-3 ${
-                        isSelected ? "text-secondary font-medium" : "text-on-surface-variant"
+                      <div className={`text-[15px] leading-[1.8] border-l-2 border-pro-border pl-3 ${
+                        isSelected ? "text-electric-blue font-medium" : "text-pro-text-muted"
                       }`}>
                         {cv?.text || ""}
                       </div>
@@ -529,16 +527,16 @@ export default function BiblePage() {
               </div>
 
               {/* 푸터 */}
-              <div className="flex justify-between pt-5 border-t border-outline/40 mt-3">
+              <div className="flex justify-between pt-5 border-t border-pro-border mt-3">
                 <button
-                  className="px-5 py-2.5 text-sm font-medium rounded-lg bg-surface-low border border-outline/40 text-on-surface hover:bg-secondary/10 hover:border-secondary/40 hover:text-secondary disabled:opacity-30 disabled:cursor-default transition-all"
+                  className="px-5 py-2.5 text-sm font-medium rounded-lg bg-pro-elevated border border-pro-border text-pro-text hover:bg-electric-blue/10 hover:border-electric-blue/40 hover:text-electric-blue disabled:opacity-30 disabled:cursor-default transition-all"
                   disabled={!canPrev}
                   onClick={() => handleChapterSelect(selectedChapter - 1)}
                 >
                   ‹ 이전 장
                 </button>
                 <button
-                  className="px-5 py-2.5 text-sm font-medium rounded-lg bg-surface-low border border-outline/40 text-on-surface hover:bg-secondary/10 hover:border-secondary/40 hover:text-secondary disabled:opacity-30 disabled:cursor-default transition-all"
+                  className="px-5 py-2.5 text-sm font-medium rounded-lg bg-pro-elevated border border-pro-border text-pro-text hover:bg-electric-blue/10 hover:border-electric-blue/40 hover:text-electric-blue disabled:opacity-30 disabled:cursor-default transition-all"
                   disabled={!canNext}
                   onClick={() => handleChapterSelect(selectedChapter + 1)}
                 >
@@ -552,19 +550,19 @@ export default function BiblePage() {
           {selectedChapter > 0 && verses.length > 0 && !(compareMode && compareVerses.length > 0) && (
             <div className="max-w-2xl mx-auto">
               {/* 헤더 */}
-              <div className="flex items-center justify-center gap-5 mb-7 pb-4 border-b border-outline/40">
+              <div className="flex items-center justify-center gap-5 mb-7 pb-4 border-b border-pro-border">
                 <button
-                  className="w-9 h-9 flex items-center justify-center text-lg rounded-full bg-surface-low border border-outline/40 text-on-surface hover:bg-secondary/10 hover:border-secondary/40 disabled:opacity-30 disabled:cursor-default transition-all"
+                  className="w-9 h-9 flex items-center justify-center text-lg rounded-full bg-pro-elevated border border-pro-border text-pro-text hover:bg-electric-blue/10 hover:border-electric-blue/40 disabled:opacity-30 disabled:cursor-default transition-all"
                   disabled={!canPrev}
                   onClick={() => handleChapterSelect(selectedChapter - 1)}
                 >
                   ‹
                 </button>
-                <h3 className="text-xl font-bold text-on-surface min-w-40 text-center">
+                <h3 className="text-xl font-bold text-pro-text min-w-40 text-center">
                   {selectedBook?.name_kor} {selectedChapter}장
                 </h3>
                 <button
-                  className="w-9 h-9 flex items-center justify-center text-lg rounded-full bg-surface-low border border-outline/40 text-on-surface hover:bg-secondary/10 hover:border-secondary/40 disabled:opacity-30 disabled:cursor-default transition-all"
+                  className="w-9 h-9 flex items-center justify-center text-lg rounded-full bg-pro-elevated border border-pro-border text-pro-text hover:bg-electric-blue/10 hover:border-electric-blue/40 disabled:opacity-30 disabled:cursor-default transition-all"
                   disabled={!canNext}
                   onClick={() => handleChapterSelect(selectedChapter + 1)}
                 >
@@ -572,7 +570,7 @@ export default function BiblePage() {
                 </button>
               </div>
 
-              <p className="text-[11px] text-on-surface-variant mb-3 px-1">
+              <p className="text-[11px] text-pro-text-muted mb-3 px-1">
                 클릭하여 선택 · Shift+클릭으로 범위 선택
               </p>
 
@@ -586,14 +584,12 @@ export default function BiblePage() {
                       data-verse={v.verse}
                       className={`group relative text-base leading-loose px-2 py-0.5 rounded-lg cursor-pointer select-none transition-colors ${
                         isSelected
-                          ? "bg-secondary/10 text-secondary"
-                          : "text-on-surface hover:bg-surface-low"
+                          ? "bg-electric-blue/10 text-electric-blue"
+                          : "text-pro-text hover:bg-pro-elevated"
                       }`}
                       onClick={(e) => handleVerseClick(e, v.verse)}
                     >
-                      <sup className={`font-black text-[11px] mr-1.5 ${
-                        isSelected ? "text-secondary" : "text-secondary"
-                      }`}>
+                      <sup className="font-black text-[11px] mr-1.5 text-electric-blue">
                         {v.verse}
                       </sup>
                       {v.text}
@@ -603,16 +599,16 @@ export default function BiblePage() {
               </div>
 
               {/* 푸터 */}
-              <div className="flex justify-between pt-5 border-t border-outline/40 mt-3">
+              <div className="flex justify-between pt-5 border-t border-pro-border mt-3">
                 <button
-                  className="px-5 py-2.5 text-sm font-medium rounded-lg bg-surface-low border border-outline/40 text-on-surface hover:bg-secondary/10 hover:border-secondary/40 hover:text-secondary disabled:opacity-30 disabled:cursor-default transition-all"
+                  className="px-5 py-2.5 text-sm font-medium rounded-lg bg-pro-elevated border border-pro-border text-pro-text hover:bg-electric-blue/10 hover:border-electric-blue/40 hover:text-electric-blue disabled:opacity-30 disabled:cursor-default transition-all"
                   disabled={!canPrev}
                   onClick={() => handleChapterSelect(selectedChapter - 1)}
                 >
                   ‹ 이전 장
                 </button>
                 <button
-                  className="px-5 py-2.5 text-sm font-medium rounded-lg bg-surface-low border border-outline/40 text-on-surface hover:bg-secondary/10 hover:border-secondary/40 hover:text-secondary disabled:opacity-30 disabled:cursor-default transition-all"
+                  className="px-5 py-2.5 text-sm font-medium rounded-lg bg-pro-elevated border border-pro-border text-pro-text hover:bg-electric-blue/10 hover:border-electric-blue/40 hover:text-electric-blue disabled:opacity-30 disabled:cursor-default transition-all"
                   disabled={!canNext}
                   onClick={() => handleChapterSelect(selectedChapter + 1)}
                 >
@@ -625,19 +621,19 @@ export default function BiblePage() {
           {/* ── 검색 결과 ── */}
           {searchResults.length > 0 && (
             <div className="max-w-2xl mx-auto">
-              <h3 className="text-lg font-bold text-on-surface mb-4">
+              <h3 className="text-lg font-bold text-pro-text mb-4">
                 검색 결과 ({searchResults.length}건)
               </h3>
               {searchResults.map((r, i) => (
                 <div
                   key={i}
-                  className="px-4 py-3 border border-outline/40 rounded-xl mb-2 cursor-pointer transition-all hover:border-secondary/40 hover:bg-secondary/5 hover:shadow-sm"
+                  className="px-4 py-3 border border-pro-border rounded-lg mb-2 cursor-pointer transition-all hover:border-electric-blue/40 hover:bg-electric-blue/5"
                   onClick={() => handleSearchResultClick(r)}
                 >
-                  <div className="text-[13px] font-bold text-secondary mb-1">
+                  <div className="text-[13px] font-bold text-electric-blue mb-1">
                     {r.book_name} {r.chapter}:{r.verse}
                   </div>
-                  <div className="text-sm text-on-surface-variant leading-relaxed">{r.text}</div>
+                  <div className="text-sm text-pro-text-muted leading-relaxed">{r.text}</div>
                 </div>
               ))}
             </div>
@@ -645,8 +641,8 @@ export default function BiblePage() {
 
           {/* ── 빈 상태 ── */}
           {!selectedBook && searchResults.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-on-surface-variant">
-              <div className="w-16 h-16 flex items-center justify-center text-3xl font-light bg-surface-low rounded-full mb-4 text-outline border border-outline/30">
+            <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-pro-text-muted">
+              <div className="w-16 h-16 flex items-center justify-center text-3xl font-light bg-pro-elevated rounded-full mb-4 text-pro-text-muted border border-pro-border">
                 +
               </div>
               <p className="text-[15px] my-0.5">성경 책을 선택하거나</p>

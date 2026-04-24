@@ -9,15 +9,15 @@ export default function Lyrics() {
 
   return (
     <div className="w-full flex flex-col">
-      <h1 className="text-3xl font-black tracking-tight text-primary mb-6">Find Your Worship</h1>
+      <h1 className="text-xl font-black tracking-tight text-pro-text mb-4">Find Your Worship</h1>
 
       {/* 탭 */}
       <div className="flex gap-1 mb-0">
         <button
           className={`px-5 py-2.5 text-sm font-bold rounded-t-lg border border-b-0 transition-all ${
             tab === "free"
-              ? "bg-white text-secondary border-outline/40 shadow-sm"
-              : "bg-surface-low text-on-surface-variant border-transparent hover:text-secondary hover:bg-white/60"
+              ? "bg-pro-elevated text-electric-blue border-pro-border"
+              : "bg-pro-surface text-pro-text-muted border-transparent hover:text-electric-blue hover:bg-pro-hover"
           }`}
           onClick={() => setTab("free")}
         >
@@ -26,8 +26,8 @@ export default function Lyrics() {
         <button
           className={`px-5 py-2.5 text-sm font-bold rounded-t-lg border border-b-0 transition-all ${
             tab === "hymnal"
-              ? "bg-white text-secondary border-outline/40 shadow-sm"
-              : "bg-surface-low text-on-surface-variant border-transparent hover:text-secondary hover:bg-white/60"
+              ? "bg-pro-elevated text-electric-blue border-pro-border"
+              : "bg-pro-surface text-pro-text-muted border-transparent hover:text-electric-blue hover:bg-pro-hover"
           }`}
           onClick={() => setTab("hymnal")}
         >
@@ -35,7 +35,7 @@ export default function Lyrics() {
         </button>
       </div>
 
-      <div className="border border-outline/40 rounded-b-xl rounded-tr-xl bg-white shadow-sm min-h-[500px]">
+      <div className="border border-pro-border rounded-b-xl rounded-tr-xl bg-pro-elevated min-h-[500px]">
         {tab === "free" ? <LyricsManager /> : <HymnSearch />}
       </div>
     </div>

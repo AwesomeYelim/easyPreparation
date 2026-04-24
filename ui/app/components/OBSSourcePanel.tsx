@@ -3,20 +3,23 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { apiClient } from "@/lib/apiClient";
 import { OBSSourceItem, OBSDevice, OBSInitialSetupResult } from "@/types";
+import PDFPanelInline from "./PDFPanelInline";
 
 interface OBSSourcePanelProps {
   open: boolean;
   onClose: () => void;
+  inline?: boolean;
 }
 
-type Tab = "setup" | "logo" | "camera" | "display" | "sources";
+type Tab = "setup" | "logo" | "camera" | "display" | "sources" | "pdf";
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: "setup", label: "초기 설정" },
-  { key: "logo", label: "로고" },
-  { key: "camera", label: "카메라" },
-  { key: "display", label: "Display" },
-  { key: "sources", label: "전체 소스" },
+const TABS: { key: Tab; label: string; icon: string }[] = [
+  { key: "setup", label: "초기 설정", icon: "tune" },
+  { key: "logo", label: "로고", icon: "image" },
+  { key: "camera", label: "카메라", icon: "videocam" },
+  { key: "display", label: "Display", icon: "monitor" },
+  { key: "sources", label: "전체 소스", icon: "layers" },
+  { key: "pdf", label: "PDF", icon: "picture_as_pdf" },
 ];
 
 const POSITIONS = [
@@ -26,7 +29,7 @@ const POSITIONS = [
   { key: "bottom-right", label: "우하" },
 ];
 
-export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
+export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSourcePanelProps) {
   const [tab, setTab] = useState<Tab>("logo");
   const [scenes, setScenes] = useState<string[]>([]);
   const [connected, setConnected] = useState(false);
@@ -40,7 +43,9 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
   const [logoApplied, setLogoApplied] = useState(false);
   const [logoItemId, setLogoItemId] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [logoHistory, setLogoHistory] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Camera state
   const [devices, setDevices] = useState<OBSDevice[]>([]);
@@ -72,6 +77,15 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
     setToastMsg({ msg, type });
     setTimeout(() => setToastMsg(null), 3000);
   };
+
+  const fetchLogoHistory = useCallback(async () => {
+    try {
+      const res = await apiClient.getOBSLogoHistory();
+      setLogoHistory(res.paths || []);
+    } catch {
+      setLogoHistory([]);
+    }
+  }, []);
 
   const fetchScenes = useCallback(async () => {
     try {
@@ -115,8 +129,11 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
   }, [selectedScene]);
 
   useEffect(() => {
-    if (open) fetchScenes();
-  }, [open, fetchScenes]);
+    if (open) {
+      fetchScenes();
+      if (tab === "logo") fetchLogoHistory();
+    }
+  }, [open, fetchScenes, fetchLogoHistory, tab]);
 
   useEffect(() => {
     if (open && selectedScene) fetchSources();
@@ -206,6 +223,7 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
       if (res.ok) {
         setLogoUploaded(true);
         showToast("로고 업로드 완료", "info");
+        fetchLogoHistory();
       }
     } catch {
       showToast("업로드 실패");
@@ -316,7 +334,7 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
     }
   };
 
-  if (!open) return null;
+  if (!inline && !open) return null;
 
   const selectClass =
     "w-full px-2.5 py-2 bg-white/10 border border-white/20 rounded-md text-white text-xs outline-none";
@@ -324,72 +342,78 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
     busy ? "opacity-60 cursor-default" : "cursor-pointer hover:bg-[#2d5a8a]"
   }`;
 
-  return (
-    <div className="fixed inset-0 z-[10600] flex items-center justify-center">
-      {/* overlay */}
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-
-      {/* modal */}
-      <div className="relative w-[640px] max-h-[80vh] bg-[#2c2c2c] rounded-xl flex flex-col overflow-hidden">
-        {/* header */}
-        <div className="flex justify-between items-center px-5 py-4 border-b border-white/10">
-          <h3 className="m-0 text-white text-base font-semibold">OBS 소스 관리</h3>
-          <div className="flex items-center gap-3">
-            <span
-              className={`text-[11px] font-medium ${
-                connected ? "text-[#4caf50]" : "text-[#f44336]"
-              }`}
-            >
-              {connected ? "OBS 연결됨" : "OBS 미연결"}
-            </span>
+  /* ── 공유 내부 콘텐츠 ── */
+  const innerContent = (
+    <>
+      {/* header */}
+      <div className="flex justify-between items-center px-5 py-4 border-b border-white/10">
+        <h3 className="m-0 text-white text-base font-semibold">OBS 소스 관리</h3>
+        <div className="flex items-center gap-3">
+          <span
+            className={`text-[11px] font-medium ${
+              connected ? "text-[#4caf50]" : "text-[#f44336]"
+            }`}
+          >
+            {connected ? "OBS 연결됨" : "OBS 미연결"}
+          </span>
+          {!inline && (
             <button
               onClick={onClose}
               className="bg-transparent border-none text-[#aaa] text-xl cursor-pointer leading-none hover:text-white transition-colors"
             >
               ✕
             </button>
-          </div>
+          )}
         </div>
+      </div>
 
-        {/* tabs */}
-        <div className="flex border-b border-white/10 px-5">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => {
-                setTab(t.key);
-                if (t.key === "camera" || t.key === "setup") fetchDevices();
-                if (t.key === "sources" || t.key === "camera" || t.key === "display") fetchSources();
-              }}
-              className={`px-4 py-2.5 bg-transparent border-none border-b-2 text-xs cursor-pointer transition-colors ${
-                tab === t.key
-                  ? "border-[#4a9eff] text-[#4a9eff] font-semibold"
-                  : "border-transparent text-[#aaa] font-normal hover:text-white"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {/* scene selector */}
-        <div className="px-5 pt-3">
-          <label className="text-[11px] text-[#888]">씬 선택</label>
-          <select
-            className={`${selectClass} mt-1`}
-            value={selectedScene}
-            onChange={(e) => setSelectedScene(e.target.value)}
+      {/* tabs */}
+      <div className="flex border-b border-white/10 px-2 overflow-x-hidden">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            title={t.label}
+            onClick={() => {
+              setTab(t.key);
+              if (t.key === "camera" || t.key === "setup") fetchDevices();
+              if (t.key === "sources" || t.key === "camera" || t.key === "display") fetchSources();
+              if (t.key === "logo") fetchLogoHistory();
+            }}
+            className={`w-9 h-9 flex items-center justify-center bg-transparent border-none border-b-2 cursor-pointer transition-colors flex-shrink-0 ${
+              tab === t.key
+                ? "border-[#4a9eff] text-[#4a9eff]"
+                : "border-transparent text-[#aaa] hover:text-white hover:bg-white/5"
+            }`}
           >
-            <option value="">-- 씬 선택 --</option>
-            {scenes.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </div>
+            <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>{t.icon}</span>
+          </button>
+        ))}
+      </div>
 
-        {/* body */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          {tab === "setup" ? (
+      {/* scene selector */}
+      <div className="px-5 pt-3">
+        <label className="text-[11px] text-[#888]">씬 선택</label>
+        <select
+          className={`${selectClass} mt-1`}
+          value={selectedScene}
+          onChange={(e) => setSelectedScene(e.target.value)}
+        >
+          <option value="">-- 씬 선택 --</option>
+          {scenes.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+      </div>
+    </>
+  );
+
+  /* ── 공유 body 콘텐츠 ── */
+  const bodyContent = (
+    <div className="flex-1 overflow-y-auto overflow-x-hidden px-5 py-4">
+      {tab === "pdf" ? (
+        /* ===== PDF Tab — OBS 연결 무관, 항상 사용 가능 ===== */
+        <PDFPanelInline connected={connected} />
+          ) : tab === "setup" ? (
             <div>
               {/* OBS 연결 설정 */}
               <div className="mb-5 pb-5 border-b border-white/10">
@@ -588,7 +612,12 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
                   {POSITIONS.map((p) => (
                     <button
                       key={p.key}
-                      onClick={() => setLogoPosition(p.key)}
+                      onClick={() => {
+                        setLogoPosition(p.key);
+                        if (logoApplied && selectedScene) {
+                          apiClient.applyOBSLogo(selectedScene, p.key, logoScale);
+                        }
+                      }}
                       className={`flex-1 py-2 rounded-md text-xs cursor-pointer transition-all ${
                         logoPosition === p.key
                           ? "bg-[rgba(74,158,255,0.2)] border border-[#4a9eff] text-[#4a9eff]"
@@ -603,19 +632,75 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
 
               {/* Scale slider */}
               <div className="mb-5">
-                <label className="text-[11px] text-[#888]">
-                  크기: {Math.round(logoScale * 100)}%
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[11px] text-[#888]">크기: {Math.round(logoScale * 100)}%</label>
+                  {/* 미니 캔버스 프리뷰 — 로고 위치/크기 시각화 */}
+                  <div
+                    className="relative rounded overflow-hidden border border-white/10 flex-shrink-0"
+                    style={{ width: 80, height: 45, background: "#0a0a0a" }}
+                  >
+                    <div
+                      style={{
+                        position: "absolute",
+                        width: `${logoScale * 100}%`,
+                        height: `${logoScale * 100}%`,
+                        background: "rgba(74,158,255,0.65)",
+                        borderRadius: 2,
+                        ...(logoPosition.includes("top") ? { top: 3 } : { bottom: 3 }),
+                        ...(logoPosition.includes("right") ? { right: 3 } : { left: 3 }),
+                      }}
+                    />
+                  </div>
+                </div>
                 <input
                   type="range"
                   min={0.05}
                   max={0.5}
                   step={0.01}
                   value={logoScale}
-                  onChange={(e) => setLogoScale(parseFloat(e.target.value))}
-                  className="w-full mt-1.5"
+                  onChange={(e) => {
+                    const newScale = parseFloat(e.target.value);
+                    setLogoScale(newScale);
+                    if (logoApplied && selectedScene) {
+                      if (debounceRef.current) clearTimeout(debounceRef.current);
+                      debounceRef.current = setTimeout(() => {
+                        apiClient.applyOBSLogo(selectedScene, logoPosition, newScale);
+                      }, 300);
+                    }
+                  }}
+                  className="w-full"
                 />
               </div>
+
+              {/* Logo history thumbnails */}
+              {logoHistory.length > 0 && (
+                <div className="mb-4">
+                  <label className="text-[11px] text-[#888]">최근 로고</label>
+                  <div className="flex gap-2 mt-1.5">
+                    {logoHistory.slice(0, 3).map((name) => (
+                      <button
+                        key={name}
+                        title={name.split("name=").pop() || name}
+                        onClick={async () => {
+                          if (logoApplied && selectedScene) {
+                            await apiClient.applyOBSLogo(selectedScene, logoPosition, logoScale);
+                            showToast("로고 적용 완료", "info");
+                            fetchSources();
+                          }
+                          setLogoUploaded(true);
+                        }}
+                        className="w-14 h-14 rounded-md overflow-hidden border border-white/20 hover:border-[#4a9eff] transition-all cursor-pointer flex-shrink-0 bg-white/[0.06] p-0"
+                      >
+                        <img
+                          src={apiClient.getOBSLogoImageUrl(name.split("name=").pop() || name)}
+                          alt={name.split("name=").pop() || name}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="flex gap-2">
                 <button onClick={handleLogoApply} disabled={busy} className={btnPrimaryClass}>
@@ -767,18 +852,49 @@ export default function OBSSourcePanel({ open, onClose }: OBSSourcePanelProps) {
             </div>
           )}
         </div>
-      </div>
+  );
 
-      {/* toast */}
-      {toastMsg && (
-        <div
-          className={`fixed top-6 left-1/2 -translate-x-1/2 px-6 py-2.5 rounded-lg text-white text-xs z-[11100] shadow-lg ${
-            toastMsg.type === "error" ? "bg-[#dc3545]" : "bg-[#204d87]"
-          }`}
-        >
-          {toastMsg.msg}
-        </div>
-      )}
+  // ── 인라인 모드 ──
+  if (inline) {
+    return (
+      <div className="flex flex-col h-full bg-transparent overflow-x-hidden">
+        {innerContent}
+        {bodyContent}
+        {/* toast (relative container 내부) */}
+        {toastMsg && (
+          <div
+            className={`absolute bottom-4 left-1/2 -translate-x-1/2 px-6 py-2.5 rounded-lg text-white text-xs shadow-lg ${
+              toastMsg.type === "error" ? "bg-[#dc3545]" : "bg-[#204d87]"
+            }`}
+          >
+            {toastMsg.msg}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── 모달 모드 ──
+  return (
+    <div className="fixed inset-0 z-[10600] flex items-center justify-center">
+      {/* overlay */}
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+
+      {/* modal */}
+      <div className="relative w-[640px] max-h-[80vh] bg-[#2c2c2c] rounded-xl flex flex-col overflow-hidden">
+        {innerContent}
+        {bodyContent}
+        {/* toast */}
+        {toastMsg && (
+          <div
+            className={`fixed top-6 left-1/2 -translate-x-1/2 px-6 py-2.5 rounded-lg text-white text-xs z-[11100] shadow-lg ${
+              toastMsg.type === "error" ? "bg-[#dc3545]" : "bg-[#204d87]"
+            }`}
+          >
+            {toastMsg.msg}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

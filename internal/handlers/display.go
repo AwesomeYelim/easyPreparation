@@ -152,6 +152,7 @@ const displayHTML = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <title>Display</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23020617'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='central' text-anchor='middle' fill='white' font-family='Arial' font-weight='900' font-size='20' font-style='italic'%3Eep%3C/text%3E%3C/svg%3E" type="image/svg+xml">
 <style>
   @font-face {
     font-family:'JacquesFrancois';
@@ -709,11 +710,6 @@ func GetCurrentInfo() string {
 		return info
 	}
 	return ""
-}
-
-// IsFadeBackItem — fade-back 대상 항목 여부 (현재 사용 안 함)
-func IsFadeBackItem(title string) bool {
-	return false
 }
 
 // ── 서버 사이드 타이머 함수 ──
@@ -1640,60 +1636,6 @@ func DisplayLyricsOrderHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "count": len(order)})
-}
-
-// lyricsSection — 가사 섹션 구조
-type lyricsSection struct {
-	Label string
-	Text  string
-}
-
-// splitLyricsSections — 빈 줄 기준으로 가사를 섹션 분리 + 라벨 자동 부여
-func splitLyricsSections(lyrics string) []lyricsSection {
-	lines := strings.Split(strings.TrimSpace(lyrics), "\n")
-	var sections []lyricsSection
-	var current []string
-
-	for _, line := range lines {
-		if strings.TrimSpace(line) == "" {
-			if len(current) > 0 {
-				sections = append(sections, lyricsSection{Text: strings.Join(current, "\n")})
-				current = nil
-			}
-			continue
-		}
-		current = append(current, line)
-	}
-	if len(current) > 0 {
-		sections = append(sections, lyricsSection{Text: strings.Join(current, "\n")})
-	}
-
-	if len(sections) == 0 {
-		return []lyricsSection{{Label: "전체", Text: lyrics}}
-	}
-
-	// 라벨 자동 부여: 반복 텍스트 감지
-	textMap := make(map[string]int)
-	for i := range sections {
-		textMap[sections[i].Text]++
-	}
-
-	verseNum := 1
-	chorusText := ""
-	for i := range sections {
-		if textMap[sections[i].Text] > 1 {
-			// 반복되는 블록 → 후렴
-			if chorusText == "" {
-				chorusText = sections[i].Text
-			}
-			sections[i].Label = "후렴"
-		} else {
-			sections[i].Label = fmt.Sprintf("%d절", verseNum)
-			verseNum++
-		}
-	}
-
-	return sections
 }
 
 // DisplayAppendHandler — POST /display/append

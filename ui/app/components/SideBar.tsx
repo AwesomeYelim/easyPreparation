@@ -8,9 +8,6 @@ import SettingsPanel from "./SettingsPanel";
 import HistoryList from "./HistoryList";
 import YouTubePanel from "./YouTubePanel";
 import LicensePanel from "./LicensePanel";
-import TemplatePanel from "./TemplatePanel";
-import OBSSourcePanel from "./OBSSourcePanel";
-import PDFPanel from "./PDFPanel";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -27,10 +24,6 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const [historyType, setHistoryType] = useState<string | undefined>();
   const [youtubeOpen, setYoutubeOpen] = useState(false);
   const [licenseOpen, setLicenseOpen] = useState(false);
-  const [templateOpen, setTemplateOpen] = useState(false);
-  const [obsSourceOpen, setObsSourceOpen] = useState(false);
-  const [pdfOpen, setPdfOpen] = useState(false);
-
   // 교회 정보 편집
   const [editingChurch, setEditingChurch] = useState(false);
   const [churchName, setChurchName] = useState("");
@@ -92,9 +85,6 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 
   const menuActions: { title: string; action?: () => void }[] = [
     { title: "설정", action: () => setSettingsOpen(true) },
-    { title: "배경 템플릿", action: () => setTemplateOpen(true) },
-    { title: "OBS 소스", action: () => setObsSourceOpen(true) },
-    { title: "외부 PDF", action: () => setPdfOpen(true) },
     { title: "YouTube", action: () => setYoutubeOpen(true) },
     { title: "라이선스 정보", action: () => setLicenseOpen(true) },
     { title: "생성 내역", action: () => openHistory() },
@@ -112,45 +102,45 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 right-0 w-80 h-screen bg-[#6b7280] flex flex-col items-center p-5 shadow-[-2px_0_6px_rgba(0,0,0,0.3)] transition-all duration-300 ease-in-out z-[10500] ${
+        className={`fixed top-0 right-0 w-80 h-screen bg-[#1a1a1a] border-l border-[#3a3a3a] flex flex-col items-center p-5 shadow-[-4px_0_16px_rgba(0,0,0,0.5)] transition-all duration-300 ease-in-out z-[10500] ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
         {/* 닫기 버튼 */}
         <button
-          className="self-end bg-transparent border-none text-xl text-white cursor-pointer leading-none"
+          className="self-end bg-transparent border-none text-xl text-[#e8e8e8] cursor-pointer leading-none"
           onClick={onClose}
         >
           ✕
         </button>
 
         {/* 아바타 */}
-        <div className="w-20 h-20 rounded-full mt-2.5 bg-[#204d87] flex items-center justify-center text-3xl text-white font-bold">
+        <div className="w-20 h-20 rounded-full mt-2.5 bg-[#1a3a5f] flex items-center justify-center text-3xl text-[#e8e8e8] font-bold">
           {(church?.name || userInfo?.name || "EP").charAt(0)}
         </div>
 
         {/* 교회명 */}
-        <div className="font-bold text-base text-[#204d87] mt-2.5">
+        <div className="font-bold text-base text-[#4a9eff] mt-2.5">
           {church?.name || userInfo?.name || "교회명 미설정"}
         </div>
         {/* 메뉴 카드 */}
-        <div className="bg-white/10 p-5 rounded-xl w-full">
+        <div className="bg-[#222222] border border-[#3a3a3a] p-4 rounded-xl w-full">
           {/* 교회 정보 편집 */}
           {editingChurch ? (
-            <div className="py-2 pb-3 border-b border-white/20">
+            <div className="py-2 pb-3 border-b border-[#3a3a3a]">
               <div className="mb-2.5">
-                <div className="font-bold text-xs text-white">소속교회</div>
+                <div className="font-bold text-xs text-[#e8e8e8]">소속교회</div>
                 <input
-                  className="w-full mt-1 px-2.5 py-1.5 border border-white/40 rounded-md bg-white/15 text-white text-xs outline-none"
+                  className="w-full mt-1 px-2.5 py-1.5 border border-[#4a4a4a] rounded-md bg-[#2a2a2a] text-[#e8e8e8] text-xs outline-none"
                   value={churchName}
                   onChange={(e) => setChurchName(e.target.value)}
                   placeholder="예: 사랑의교회"
                 />
               </div>
               <div className="mb-2.5">
-                <div className="font-bold text-xs text-white">교회표기 (영문)</div>
+                <div className="font-bold text-xs text-[#e8e8e8]">교회표기 (영문)</div>
                 <input
-                  className="w-full mt-1 px-2.5 py-1.5 border border-white/40 rounded-md bg-white/15 text-white text-xs outline-none"
+                  className="w-full mt-1 px-2.5 py-1.5 border border-[#4a4a4a] rounded-md bg-[#2a2a2a] text-[#e8e8e8] text-xs outline-none"
                   value={churchEngName}
                   onChange={(e) => setChurchEngName(e.target.value)}
                   placeholder="예: Sarang Church"
@@ -158,13 +148,13 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
               </div>
               <div className="flex gap-2 justify-end">
                 <button
-                  className="px-3.5 py-1 text-xs bg-white/20 border-none rounded-md text-white cursor-pointer"
+                  className="px-3.5 py-1 text-xs bg-[#333333] border-none rounded-md text-[#e8e8e8] cursor-pointer"
                   onClick={() => setEditingChurch(false)}
                 >
                   취소
                 </button>
                 <button
-                  className={`px-3.5 py-1 text-xs font-semibold bg-[#204d87] border-none rounded-md text-white ${
+                  className={`px-3.5 py-1 text-xs font-semibold bg-[#4a9eff] border-none rounded-md text-[#e8e8e8] ${
                     saving ? "opacity-60 cursor-default" : "cursor-pointer"
                   }`}
                   onClick={handleSaveChurch}
@@ -176,12 +166,12 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             </div>
           ) : (
             <div
-              className="flex justify-between items-center gap-2 py-2.5 border-b border-white/20 text-white cursor-pointer"
+              className="flex justify-between items-center gap-2 py-2.5 border-b border-[#3a3a3a] text-[#e8e8e8] cursor-pointer"
               onClick={() => setEditingChurch(true)}
             >
               <div className="min-w-0">
                 <div className="font-bold text-[15px]">교회 정보</div>
-                <div className="text-xs opacity-80 mt-0.5 truncate">
+                <div className="text-xs text-[#a0a0a0] mt-0.5 truncate">
                   {userInfo?.name || "미등록"}
                   {userInfo?.english_name ? ` (${userInfo.english_name})` : ""}
                 </div>
@@ -194,7 +184,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           {menuActions.map(({ title, action }) => (
             <div
               key={title}
-              className={`flex justify-between items-center py-2.5 border-b border-white/20 text-white ${
+              className={`flex justify-between items-center py-2.5 border-b border-[#3a3a3a] text-[#e8e8e8] ${
                 action ? "cursor-pointer" : "cursor-default"
               }`}
               onClick={action}
@@ -224,14 +214,6 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
       {/* License Modal */}
       <LicensePanel open={licenseOpen} onClose={() => setLicenseOpen(false)} />
 
-      {/* Template Modal */}
-      <TemplatePanel open={templateOpen} onClose={() => setTemplateOpen(false)} />
-
-      {/* OBS Source Modal */}
-      <OBSSourcePanel open={obsSourceOpen} onClose={() => setObsSourceOpen(false)} />
-
-      {/* PDF Panel Modal */}
-      <PDFPanel open={pdfOpen} onClose={() => setPdfOpen(false)} />
     </>
   );
 }

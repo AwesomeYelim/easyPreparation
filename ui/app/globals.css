@@ -73,10 +73,52 @@
   --shadow: rgba(0, 0, 0, 0.3);
 }
 
+/* ── Pro Console Shell (항상 다크) ── */
+.pro-shell {
+  /* Pro 전용 토큰 */
+  --pro-bg: #1a1a1a;
+  --pro-surface: #222222;
+  --pro-elevated: #2a2a2a;
+  --pro-border: #3a3a3a;
+  color-scheme: dark;
+
+  /* 표준 CSS 변수 다크 오버라이드 (BibleSelect.css 등 레거시 컴포넌트용) */
+  --background: #1a1a1a;
+  --foreground: #e8e8e8;
+  --surface: #222222;
+  --surface-elevated: #2a2a2a;
+  --surface-hover: #333333;
+  --surface-input: #2a2a2a;
+  --surface-secondary: #1e1e1e;
+  --border: #3a3a3a;
+  --border-light: #2a2a2a;
+  --border-input: #4a4a4a;
+  --text-primary: #e8e8e8;
+  --text-secondary: #a0a0a0;
+  --text-muted: #666666;
+  --accent: #4a9eff;
+  --accent-hover: #6ab0ff;
+  --accent-light: #1a2a3f;
+  --accent-light-hover: #1e3450;
+  --accent-border: #2a4a7f;
+  --selected-bg: #1a2a3f;
+  --selected-text: #4a9eff;
+  --badge-bg: #1a2a3f;
+  --badge-text: #4a9eff;
+  --success: #22c55e;
+  --error: #ef4444;
+  --error-bg: #2d1515;
+  --error-border: #5a1a1a;
+}
+
+/* ── Pro 스크롤바 ── */
+.pro-shell ::-webkit-scrollbar-thumb { background: #404040; }
+.pro-shell ::-webkit-scrollbar-thumb:hover { background: #555555; }
+
 /* ── Base ── */
 html, body {
   max-width: 100vw;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 body {

@@ -6,7 +6,13 @@ import { WebSocketProvider } from "./components/WebSocketProvider";
 import GlobalDisplayPanel from "./components/GlobalDisplayPanel";
 import SettingsLoader from "./components/SettingsLoader";
 import ToastProvider from "./components/ToastProvider";
-import AppShell from "./components/AppShell";
+import ProShell from "@/components/ProShell";
+import ProTopBar from "@/components/ProTopBar";
+import ProIconBar from "@/components/ProIconBar";
+import ProMainArea from "@/components/ProMainArea";
+import ProSequencePanel from "@/components/ProSequencePanel";
+import ProInspectorPanel from "@/components/ProInspectorPanel";
+import ProTimeline from "@/components/ProTimeline";
 import "@/globals.css";
 import type { Viewport, Metadata } from "next";
 
@@ -14,7 +20,10 @@ export const metadata: Metadata = {
   title: "easyPreparation",
   description: "예배 준비 자동화",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/images/ep-logo.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
     apple: "/images/apple-touch-icon.png",
   },
 };
@@ -31,8 +40,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko">
-      <body>
+    <html lang="ko" suppressHydrationWarning translate="no">
+      <body suppressHydrationWarning>
         <ToastProvider />
         <RecoilProvider>
           <LocalAuthProvider>
@@ -40,9 +49,16 @@ export default function RootLayout({
               <SetupWizard />
               <WebSocketProvider>
                 <SettingsLoader />
-                <AppShell>
-                  {children}
-                </AppShell>
+                <ProShell>
+                  <ProTopBar />
+                  <ProIconBar />
+                  <ProSequencePanel />
+                  <ProMainArea>
+                    {children}
+                  </ProMainArea>
+                  <ProInspectorPanel />
+                  <ProTimeline />
+                </ProShell>
                 <GlobalDisplayPanel />
               </WebSocketProvider>
             </LicenseProvider>

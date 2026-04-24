@@ -134,10 +134,10 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
 
           {i === newsList.length - 1 && (
             <span
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg cursor-pointer border border-dashed border-slate-300 text-slate-400 text-sm ml-1"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg cursor-pointer border border-dashed border-pro-border text-pro-text-muted text-sm ml-1"
               style={{ backgroundColor: "transparent" }}>
               <button
-                className="w-4 h-4 flex items-center justify-center rounded-full bg-slate-600 text-white text-[10px] font-black hover:bg-navy-dark transition-colors"
+                className="w-4 h-4 flex items-center justify-center rounded-full bg-pro-elevated text-pro-text text-[10px] font-black hover:bg-pro-hover transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleModifyChild("ADD", news.key);
@@ -163,7 +163,7 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
       </div>
 
       {addContent && (
-        <div className="mt-4 bg-surface-low p-4 rounded-xl border border-slate-200 flex flex-col gap-3">
+        <div className="mt-4 bg-pro-elevated p-4 rounded-lg border border-pro-border flex flex-col gap-3">
           <input
             type="text"
             placeholder="타이틀을 입력하세요"
@@ -174,7 +174,7 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
                 title: e.target.value,
               }))
             }
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-navy-dark focus:outline-none focus:border-electric-blue focus:ring-2 focus:ring-electric-blue/20 transition-all"
+            className="w-full px-3 py-2 border border-pro-border rounded-lg text-sm bg-pro-elevated text-pro-text focus:outline-none focus:border-electric-blue focus:ring-2 focus:ring-electric-blue/20 transition-all"
           />
           <input
             placeholder="내용을 입력하세요"
@@ -185,11 +185,11 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
                 obj: e.target.value,
               }))
             }
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-navy-dark h-12 focus:outline-none focus:border-electric-blue focus:ring-2 focus:ring-electric-blue/20 transition-all"
+            className="w-full px-3 py-2 border border-pro-border rounded-lg text-sm bg-pro-elevated text-pro-text h-12 focus:outline-none focus:border-electric-blue focus:ring-2 focus:ring-electric-blue/20 transition-all"
           />
           <button
             onClick={() => handleAddNewItem(addContent)}
-            className="w-full bg-electric-blue text-white py-2.5 rounded-xl font-bold text-sm hover:bg-secondary transition-all active:scale-[0.98] shadow-sm shadow-electric-blue/20"
+            className="w-full bg-electric-blue text-white py-2.5 rounded-lg font-bold text-sm hover:bg-secondary transition-all active:scale-[0.98] shadow-electric-blue/20"
           >
             항목 추가
           </button>

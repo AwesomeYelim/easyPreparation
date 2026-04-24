@@ -7,8 +7,8 @@ export function ResultPart({
   selectedItems: WorshipOrderItem[];
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 sticky top-0">
-      <h2 className="text-xs font-black uppercase tracking-[0.2em] text-on-surface-variant mb-4">
+    <div className="bg-pro-surface rounded-lg border border-pro-border p-6 sticky top-0">
+      <h2 className="text-xs font-black uppercase tracking-[0.2em] text-pro-text-muted mb-4">
         생성된 예배 내용
       </h2>
       <div className="flex flex-col gap-0">
@@ -20,13 +20,13 @@ export function ResultPart({
               result.push(
                 <div
                   key={el.title + el.obj}
-                  className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0 gap-2"
+                  className="flex items-center justify-between py-2.5 border-b border-pro-border last:border-0 gap-2"
                 >
-                  <div className="text-sm font-bold text-navy-dark min-w-0 flex-shrink-0 max-w-[100px] truncate">
+                  <div className="text-sm font-bold text-pro-text min-w-0 flex-shrink-0 max-w-[100px] truncate">
                     {el.title}
                   </div>
                   <div
-                    className="text-xs text-on-surface-variant flex-1 min-w-0 truncate text-center"
+                    className="text-xs text-pro-text-muted flex-1 min-w-0 truncate text-center"
                     title={
                       el.info === "b_edit"
                         ? formatBibleReference(el.obj)
@@ -37,7 +37,7 @@ export function ResultPart({
                       ? formatBibleReference(el.obj)
                       : el.obj}
                   </div>
-                  <div className="text-xs text-on-surface-variant flex-shrink-0 max-w-[80px] truncate text-right">
+                  <div className="text-xs text-pro-text-muted flex-shrink-0 max-w-[80px] truncate text-right">
                     {el.lead}
                   </div>
                 </div>

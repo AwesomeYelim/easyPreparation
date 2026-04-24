@@ -68,13 +68,13 @@ export default function HymnSearch() {
   return (
       <div className="flex h-full min-h-[500px]">
         {/* 좌측: 검색 & 목록 */}
-        <section className="w-80 flex-shrink-0 border-r border-outline/30 flex flex-col bg-surface-low rounded-bl-xl">
+        <section className="w-80 flex-shrink-0 border-r border-pro-border flex flex-col bg-pro-surface rounded-bl-xl">
           {/* 검색 헤더 */}
           <div className="p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-black tracking-tight text-primary">찬송가 검색</h2>
+              <h2 className="text-lg font-black tracking-tight text-pro-text">찬송가 검색</h2>
               {results.length > 0 && (
-                  <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
+                  <span className="text-[10px] font-bold text-pro-text-dim uppercase tracking-wider">
                 {results.length}곡
               </span>
               )}
@@ -88,10 +88,10 @@ export default function HymnSearch() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyUp={(e) => e.key === "Enter" && handleSearch()}
-                  className="w-full h-11 pl-10 pr-4 bg-white border border-outline/40 rounded-lg text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-1 focus:ring-secondary focus:border-secondary transition-all"
+                  className="w-full h-11 pl-10 pr-4 bg-pro-elevated border border-pro-border rounded-lg text-sm text-pro-text placeholder:text-pro-text-dim/60 focus:outline-none focus:ring-1 focus:ring-secondary focus:border-secondary transition-all"
               />
               <svg
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-pro-text-dim"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -110,9 +110,9 @@ export default function HymnSearch() {
           </div>
 
           {/* 결과 목록 */}
-          <div className="flex-1 overflow-y-auto divide-y divide-outline/10 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-outline/40 [&::-webkit-scrollbar-thumb]:rounded-full">
+          <div className="flex-1 overflow-y-auto divide-y divide-pro-border/30 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-pro-border [&::-webkit-scrollbar-thumb]:rounded-full">
             {results.length === 0 ? (
-                <div className="flex items-center justify-center min-h-[200px] text-sm text-on-surface-variant px-4 text-center">
+                <div className="flex items-center justify-center min-h-[200px] text-sm text-pro-text-dim px-4 text-center">
                   {query ? "검색 결과가 없습니다" : "번호나 제목으로 찬송가를 검색하세요"}
                 </div>
             ) : (
@@ -125,13 +125,13 @@ export default function HymnSearch() {
                           onClick={() => handleSelect(h)}
                           className={`flex items-center gap-3 px-5 py-3.5 cursor-pointer transition-colors group ${
                               isActive
-                                  ? "bg-secondary/5 border-l-4 border-secondary"
-                                  : "hover:bg-white border-l-4 border-transparent"
+                                  ? "bg-pro-accent/10 border-l-4 border-pro-accent"
+                                  : "hover:bg-pro-hover border-l-4 border-transparent"
                           }`}
                       >
                   <span
                       className={`text-sm font-black w-8 text-center flex-shrink-0 ${
-                          isActive ? "text-secondary" : "text-on-surface-variant"
+                          isActive ? "text-pro-accent" : "text-pro-text-dim"
                       }`}
                   >
                     {h.number}
@@ -139,19 +139,19 @@ export default function HymnSearch() {
                         <div className="flex-1 min-w-0">
                           <div
                               className={`text-sm font-bold truncate ${
-                                  isActive ? "text-primary" : "text-on-surface"
+                                  isActive ? "text-pro-text" : "text-pro-text"
                               }`}
                           >
                             {h.title}
                           </div>
                           {h.first_line && (
-                              <div className="text-[11px] text-on-surface-variant truncate mt-0.5">
+                              <div className="text-[11px] text-pro-text-dim truncate mt-0.5">
                                 {h.first_line}
                               </div>
                           )}
                         </div>
                         <svg
-                            className="w-4 h-4 text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                            className="w-4 h-4 text-pro-text-dim opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -166,28 +166,28 @@ export default function HymnSearch() {
 
           {/* 전송된 찬송가 목록 */}
           {pickedHymns.length > 0 && (
-              <div className="border-t border-outline/30 bg-white">
+              <div className="border-t border-pro-border bg-pro-surface">
                 <div className="px-5 py-3 flex items-center justify-between">
-              <span className="text-[10px] font-black text-secondary uppercase tracking-widest">
+              <span className="text-[10px] font-black text-pro-accent uppercase tracking-widest">
                 전송 목록 ({pickedHymns.length})
               </span>
                   <button
                       onClick={() => setPickedHymns([])}
-                      className="text-[10px] text-on-surface-variant hover:text-red-500 transition-colors"
+                      className="text-[10px] text-pro-text-dim hover:text-red-400 transition-colors"
                   >
                     전체 삭제
                   </button>
                 </div>
-                <div className="max-h-40 overflow-y-auto px-3 pb-3 space-y-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-outline/40 [&::-webkit-scrollbar-thumb]:rounded-full">
+                <div className="max-h-40 overflow-y-auto px-3 pb-3 space-y-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-pro-border [&::-webkit-scrollbar-thumb]:rounded-full">
                   {pickedHymns.map((h) => (
                       <div
                           key={`picked-${h.hymnbook}-${h.number}`}
-                          className="flex items-center gap-2 px-3 py-2 bg-secondary/5 rounded-lg group"
+                          className="flex items-center gap-2 px-3 py-2 bg-pro-accent/10 rounded-lg group"
                       >
-                  <span className="text-xs font-black text-secondary w-7 text-center flex-shrink-0">
+                  <span className="text-xs font-black text-pro-accent w-7 text-center flex-shrink-0">
                     {h.number}
                   </span>
-                        <span className="text-xs font-medium text-on-surface truncate flex-1">
+                        <span className="text-xs font-medium text-pro-text truncate flex-1">
                     {h.title}
                   </span>
                         <button
@@ -196,7 +196,7 @@ export default function HymnSearch() {
                                     prev.filter((p) => !(p.number === h.number && p.hymnbook === h.hymnbook))
                                 )
                             }
-                            className="w-4 h-4 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-red-100 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 text-[10px]"
+                            className="w-4 h-4 flex items-center justify-center rounded-full text-pro-text-dim hover:bg-red-900/30 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 text-[10px]"
                         >
                           ×
                         </button>
@@ -212,17 +212,17 @@ export default function HymnSearch() {
           {selected ? (
               <>
                 {/* 상세 헤더 */}
-                <div className="px-8 py-5 border-b border-outline/20 bg-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="px-8 py-5 border-b border-pro-border/40 bg-pro-elevated flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
                     <div className="flex items-center gap-2 mb-2">
-                  <span className="px-2 py-0.5 bg-secondary/10 text-secondary text-[10px] font-black rounded uppercase tracking-widest">
+                  <span className="px-2 py-0.5 bg-pro-accent/10 text-pro-accent text-[10px] font-black rounded uppercase tracking-widest">
                     찬송 #{selected.number}
                   </span>
                     </div>
-                    <h3 className="text-2xl font-black text-primary tracking-tight">
+                    <h3 className="text-2xl font-black text-pro-text tracking-tight">
                       {selected.title}
                     </h3>
-                    <p className="text-sm text-on-surface-variant mt-1">
+                    <p className="text-sm text-pro-text-dim mt-1">
                       {selected.number}장
                     </p>
                   </div>
@@ -238,7 +238,7 @@ export default function HymnSearch() {
                 </div>
 
                 {/* 가사 내용 */}
-                <div className="flex-1 overflow-y-auto p-8 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-outline/40 [&::-webkit-scrollbar-thumb]:rounded-full">
+                <div className="flex-1 overflow-y-auto p-8 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-pro-border [&::-webkit-scrollbar-thumb]:rounded-full">
                   {selected.lyrics ? (
                       <div className="max-w-2xl">
                         {/* 코러스/절 구분: 빈 줄 기준 블록 분리 */}
@@ -251,14 +251,14 @@ export default function HymnSearch() {
                                   key={blockIdx}
                                   className={`mb-7 ${
                                       isChorus
-                                          ? "pl-5 border-l-4 border-secondary bg-secondary/5 py-4 pr-4 rounded-r-lg"
+                                          ? "pl-5 border-l-4 border-pro-accent bg-pro-accent/10 py-4 pr-4 rounded-r-lg"
                                           : ""
                                   }`}
                               >
                         <pre className={`font-sans whitespace-pre-wrap leading-relaxed ${
                             isChorus
-                                ? "text-lg font-bold text-primary"
-                                : "text-base text-on-surface font-medium"
+                                ? "text-lg font-bold text-pro-text"
+                                : "text-base text-pro-text font-medium"
                         }`}>
                           {block.trim()}
                         </pre>
@@ -267,7 +267,7 @@ export default function HymnSearch() {
                         })}
                       </div>
                   ) : (
-                      <div className="flex items-center justify-center min-h-[200px] text-sm text-on-surface-variant">
+                      <div className="flex items-center justify-center min-h-[200px] text-sm text-pro-text-dim">
                         가사 데이터가 없습니다
                       </div>
                   )}
@@ -275,14 +275,14 @@ export default function HymnSearch() {
               </>
           ) : (
               /* 미선택 상태 */
-              <div className="flex-1 flex flex-col items-center justify-center gap-3 text-on-surface-variant">
-                <div className="w-16 h-16 rounded-full bg-surface-high flex items-center justify-center">
-                  <svg className="w-8 h-8 text-on-surface-variant/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 text-pro-text-dim">
+                <div className="w-16 h-16 rounded-full bg-pro-elevated flex items-center justify-center">
+                  <svg className="w-8 h-8 text-pro-text-dim/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                   </svg>
                 </div>
                 <p className="text-sm font-medium">찬송가를 선택하세요</p>
-                <p className="text-xs text-on-surface-variant/60">좌측 목록에서 찬송가를 클릭하면 가사가 표시됩니다</p>
+                <p className="text-xs text-pro-text-dim/60">좌측 목록에서 찬송가를 클릭하면 가사가 표시됩니다</p>
               </div>
           )}
         </section>

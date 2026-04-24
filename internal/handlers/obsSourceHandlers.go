@@ -3,10 +3,15 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -203,6 +208,29 @@ func OBSSourcesHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{"items": items})
 }
 
+// logoIndexPath — 순환 인덱스 파일 경로
+func logoIndexPath() string {
+	return filepath.Join(logoDir(), "logo_index.txt")
+}
+
+// readLogoIndex — 현재 순환 인덱스(1~3)를 읽는다. 파일 없으면 0 반환.
+func readLogoIndex() int {
+	data, err := os.ReadFile(logoIndexPath())
+	if err != nil {
+		return 0
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil || n < 1 || n > 3 {
+		return 0
+	}
+	return n
+}
+
+// writeLogoIndex — 순환 인덱스를 파일에 저장한다.
+func writeLogoIndex(idx int) error {
+	return os.WriteFile(logoIndexPath(), []byte(strconv.Itoa(idx)), 0644)
+}
+
 // OBSLogoUploadHandler — POST /api/obs/logo/upload (multipart: image)
 func OBSLogoUploadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
@@ -232,23 +260,116 @@ func OBSLogoUploadHandler(w http.ResponseWriter, r *http.Request) {
 	dir := logoDir()
 	os.MkdirAll(dir, 0755)
 
+	// 기존 logo.png 저장 (apply 핸들러 호환성 유지)
 	savePath := logoFilePath()
 	dst, err := os.Create(savePath)
 	if err != nil {
 		http.Error(w, "파일 저장 실패", http.StatusInternalServerError)
 		return
 	}
-	defer dst.Close()
 
 	if _, err := io.Copy(dst, file); err != nil {
+		dst.Close()
 		http.Error(w, "파일 쓰기 실패", http.StatusInternalServerError)
 		return
 	}
+	dst.Close()
+
+	// 순환 인덱스 계산 (1 -> 2 -> 3 -> 1 ...)
+	prev := readLogoIndex()
+	next := (prev % 3) + 1
+
+	// logo_N.png 에 복사
+	slotName := fmt.Sprintf("logo_%d.png", next)
+	slotPath := filepath.Join(dir, slotName)
+
+	srcFile, err := os.Open(savePath)
+	if err != nil {
+		http.Error(w, "파일 복사 실패", http.StatusInternalServerError)
+		return
+	}
+	defer srcFile.Close()
+
+	slotDst, err := os.Create(slotPath)
+	if err != nil {
+		http.Error(w, "순환 저장 실패", http.StatusInternalServerError)
+		return
+	}
+	defer slotDst.Close()
+
+	if _, err := io.Copy(slotDst, srcFile); err != nil {
+		http.Error(w, "순환 파일 쓰기 실패", http.StatusInternalServerError)
+		return
+	}
+
+	// 인덱스 갱신
+	_ = writeLogoIndex(next)
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"ok":   true,
 		"path": savePath,
+		"slot": slotName,
 	})
+}
+
+// OBSLogoHistoryHandler — GET /api/obs/logo/history
+// logo_1.png ~ logo_3.png 중 존재하는 파일을 mtime 기준 내림차순으로 반환한다.
+func OBSLogoHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	dir := logoDir()
+	type entry struct {
+		name  string
+		mtime int64
+	}
+	var entries []entry
+	for i := 1; i <= 3; i++ {
+		name := fmt.Sprintf("logo_%d.png", i)
+		fi, err := os.Stat(filepath.Join(dir, name))
+		if err != nil {
+			continue
+		}
+		entries = append(entries, entry{name: name, mtime: fi.ModTime().UnixNano()})
+	}
+
+	// mtime 내림차순 정렬
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].mtime > entries[j].mtime
+	})
+
+	paths := make([]string, 0, len(entries))
+	for _, e := range entries {
+		paths = append(paths, "/api/obs/logo/image?name="+e.name)
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{"paths": paths})
+}
+
+// OBSLogoImageHandler — GET /api/obs/logo/image?name=logo_N.png
+// logo_1.png / logo_2.png / logo_3.png 만 허용. path traversal 방지.
+func OBSLogoImageHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	name := filepath.Base(r.URL.Query().Get("name"))
+	allowed := map[string]bool{
+		"logo_1.png": true,
+		"logo_2.png": true,
+		"logo_3.png": true,
+	}
+	if !allowed[name] {
+		http.Error(w, "허용되지 않는 파일명", http.StatusBadRequest)
+		return
+	}
+
+	filePath := filepath.Join(logoDir(), name)
+	http.ServeFile(w, r, filePath)
 }
 
 // OBSLogoApplyHandler — POST /api/obs/logo/apply {scene, position, scale, x, y}
@@ -301,23 +422,37 @@ func OBSLogoApplyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 위치 계산 (1920x1080 기준, 로고 크기 추정 200x200 * scale)
+	// 실제 이미지 크기 읽기 → OBS 스케일 계산
+	// body.Scale = 캔버스 너비 대비 비율 (예: 0.15 → 1920 * 0.15 = 288px)
+	imgFile, err2 := os.Open(logoPath)
+	imgW, imgH := 300.0, 300.0
+	if err2 == nil {
+		if cfg, _, decErr := image.DecodeConfig(imgFile); decErr == nil && cfg.Width > 0 {
+			imgW = float64(cfg.Width)
+			imgH = float64(cfg.Height)
+		}
+		imgFile.Close()
+	}
+	targetW := 1920.0 * body.Scale            // 캔버스에서 차지할 목표 너비(px)
+	obsScale := targetW / imgW                  // OBS에 적용할 실제 스케일
+	logoRenderedW := targetW
+	logoRenderedH := imgH * obsScale
+
 	x, y := body.X, body.Y
-	logoSize := 200.0 * body.Scale
 	margin := 30.0
 	switch body.Position {
 	case "top-left":
 		x, y = margin, margin
 	case "top-right":
-		x, y = 1920-logoSize-margin, margin
+		x, y = 1920-logoRenderedW-margin, margin
 	case "bottom-left":
-		x, y = margin, 1080-logoSize-margin
+		x, y = margin, 1080-logoRenderedH-margin
 	case "bottom-right":
-		x, y = 1920-logoSize-margin, 1080-logoSize-margin
+		x, y = 1920-logoRenderedW-margin, 1080-logoRenderedH-margin
 	}
 
 	// 트랜스폼 설정
-	if err := m.SetItemTransform(body.Scene, sceneItemID, x, y, body.Scale, body.Scale); err != nil {
+	if err := m.SetItemTransform(body.Scene, sceneItemID, x, y, obsScale, obsScale); err != nil {
 		json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "sceneItemId": sceneItemID, "warning": "트랜스폼 설정 실패: " + err.Error()})
 		return
 	}

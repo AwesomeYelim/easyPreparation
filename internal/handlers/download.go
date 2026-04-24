@@ -25,25 +25,32 @@ func SetDesktopMode(downloadDir string) {
 }
 
 // buildBulletinZip — target에 해당하는 PDF 파일들을 ZIP으로 묶어 반환합니다.
-func buildBulletinZip(execPath, target string) ([]byte, error) {
+func buildBulletinZip(execPath, target, pdfType string) ([]byte, error) {
 	exeTarget := fmt.Sprintf("%s.pdf", target)
 
 	var filePaths []string
 	var fileNames []string
 
-	presPath := filepath.Join(execPath, "output", "bulletin", "presentation", exeTarget)
-	if _, err := os.Stat(presPath); err == nil {
-		filePaths = append(filePaths, presPath)
-		fileNames = append(fileNames, "presentation_"+exeTarget)
+	includePresentation := pdfType == "" || pdfType == "presentation" || pdfType == "both"
+	includePrint := pdfType == "" || pdfType == "print" || pdfType == "both"
+
+	if includePresentation {
+		presPath := filepath.Join(execPath, "output", "bulletin", "presentation", exeTarget)
+		if _, err := os.Stat(presPath); err == nil {
+			filePaths = append(filePaths, presPath)
+			fileNames = append(fileNames, "presentation_"+exeTarget)
+		}
 	}
 
-	printPath := filepath.Join(execPath, "output", "bulletin", "print", exeTarget)
-	if _, err := os.Stat(printPath); err == nil {
-		filePaths = append(filePaths, printPath)
-		fileNames = append(fileNames, "print_"+exeTarget)
+	if includePrint {
+		printPath := filepath.Join(execPath, "output", "bulletin", "print", exeTarget)
+		if _, err := os.Stat(printPath); err == nil {
+			filePaths = append(filePaths, printPath)
+			fileNames = append(fileNames, "print_"+exeTarget)
+		}
 	}
 
-	if strings.HasPrefix(target, "sun_") {
+	if includePresentation && strings.HasPrefix(target, "sun_") {
 		datePart := strings.TrimPrefix(target, "sun_")
 		for _, pfx := range []string{"after", "wed"} {
 			extraName := fmt.Sprintf("%s_%s.pdf", pfx, datePart)
@@ -63,6 +70,7 @@ func buildBulletinZip(execPath, target string) ([]byte, error) {
 
 func DownloadPDFHandler(w http.ResponseWriter, r *http.Request) {
 	target := r.URL.Query().Get("target")
+	pdfType := r.URL.Query().Get("type")
 	execPath := path.ExecutePath("easyPreparation")
 
 	if target == "" {
@@ -70,7 +78,27 @@ func DownloadPDFHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	zipBytes, err := buildBulletinZip(execPath, target)
+	// 단일 타입 요청: ZIP 없이 PDF 직접 서빙
+	if pdfType == "print" || pdfType == "presentation" {
+		var subDir string
+		if pdfType == "print" {
+			subDir = "print"
+		} else {
+			subDir = "presentation"
+		}
+		pdfPath := filepath.Join(execPath, "output", "bulletin", subDir, fmt.Sprintf("%s.pdf", target))
+		if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
+			http.Error(w, "PDF 파일이 없습니다", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/pdf")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s_%s.pdf\"", pdfType, target))
+		http.ServeFile(w, r, pdfPath)
+		return
+	}
+
+	// both 또는 기본: ZIP으로 묶어서 서빙
+	zipBytes, err := buildBulletinZip(execPath, target, pdfType)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -98,8 +126,9 @@ func SaveToDownloadsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pdfType := r.URL.Query().Get("type")
 	execPath := path.ExecutePath("easyPreparation")
-	zipBytes, err := buildBulletinZip(execPath, target)
+	zipBytes, err := buildBulletinZip(execPath, target, pdfType)
 	if err != nil {
 		log.Printf("[download] SaveToDownloads 빌드 실패: %v", err)
 		http.Error(w, err.Error(), http.StatusNotFound)

@@ -9,6 +9,7 @@ import (
 	"easyPreparation_1.0/internal/presentation"
 	"easyPreparation_1.0/internal/sanitize"
 	"easyPreparation_1.0/internal/utils"
+	_ "embed"
 	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
 	"image/color"
@@ -17,6 +18,9 @@ import (
 	"path/filepath"
 	"strings"
 )
+
+//go:embed Frame.png
+var defaultFramePNG []byte
 
 type LyricsPresentationManager struct {
 	ExecPath    string
@@ -95,26 +99,30 @@ func (lpm *LyricsPresentationManager) CreatePresentation(data map[string]interfa
 	labelWm, labelHm := 13.00, 10.00
 	labelP := 15.00
 
-	backgroundImages, err := os.ReadDir(lpm.TemplateDir)
-	if err != nil || len(backgroundImages) == 0 {
-		handlers.BroadcastProgress("Lyrics Error", -1, fmt.Sprintf("배경 이미지 없음: %s", lpm.TemplateDir))
-		return
-	}
 	// 이미지 파일만 필터 (PNG/JPG)
 	var bgImagePath string
-	for _, e := range backgroundImages {
-		if e.IsDir() {
-			continue
-		}
-		ext := strings.ToLower(filepath.Ext(e.Name()))
-		if ext == ".png" || ext == ".jpg" || ext == ".jpeg" {
-			bgImagePath = filepath.Join(lpm.TemplateDir, e.Name())
-			break
+	backgroundImages, err := os.ReadDir(lpm.TemplateDir)
+	if err == nil {
+		for _, e := range backgroundImages {
+			if e.IsDir() {
+				continue
+			}
+			ext := strings.ToLower(filepath.Ext(e.Name()))
+			if ext == ".png" || ext == ".jpg" || ext == ".jpeg" {
+				bgImagePath = filepath.Join(lpm.TemplateDir, e.Name())
+				break
+			}
 		}
 	}
+	// 템플릿 디렉토리에 이미지가 없으면 번들된 기본 Frame.png 사용
 	if bgImagePath == "" {
-		handlers.BroadcastProgress("Lyrics Error", -1, fmt.Sprintf("배경 이미지 없음: %s", lpm.TemplateDir))
-		return
+		defaultPath := filepath.Join(os.TempDir(), "Frame_default.png")
+		if writeErr := os.WriteFile(defaultPath, defaultFramePNG, 0644); writeErr != nil {
+			handlers.BroadcastProgress("Lyrics Error", -1, fmt.Sprintf("기본 배경 이미지 추출 실패: %v", writeErr))
+			return
+		}
+		bgImagePath = defaultPath
+		handlers.BroadcastProgress("Background Info", 1, "기본 배경 이미지(embed) 사용 중")
 	}
 
 	instanceSize := gofpdf.SizeType{

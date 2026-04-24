@@ -21,15 +21,15 @@ export function WorshipOrder({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-      <h2 className="text-xs font-black uppercase tracking-[0.2em] text-on-surface-variant mb-4">
+    <div className="bg-pro-surface rounded-lg border border-pro-border p-6">
+      <h2 className="text-xs font-black uppercase tracking-[0.2em] text-pro-text-muted mb-4">
         예배 순서 선택하기
       </h2>
       <div className="flex flex-wrap gap-2">
         {fixData.map((item: Partial<WorshipOrderItem>) => (
           <span
             key={item.title}
-            className="inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-semibold cursor-pointer select-none border border-slate-200 bg-surface-low text-navy-dark hover:border-electric-blue hover:bg-electric-blue/5 hover:text-electric-blue transition-all"
+            className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-semibold cursor-pointer select-none border border-pro-border bg-pro-elevated text-pro-text hover:border-electric-blue hover:bg-electric-blue/5 hover:text-electric-blue transition-all"
             onClick={() => handleSelectItem(item)}
           >
             {item.title}
