@@ -150,22 +150,20 @@ func SaveToDownloadsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 }
 
-// OpenDisplayInBrowserHandler — Desktop 모드: 시스템 브라우저에서 display 페이지 열기
-// GET /api/open-display
-func OpenDisplayInBrowserHandler(w http.ResponseWriter, r *http.Request) {
+// openInBrowser — Desktop 모드 공통 브라우저 열기 헬퍼
+func openInBrowser(w http.ResponseWriter, targetURL string) {
 	if desktopDownloadDir == "" {
 		http.Error(w, "not desktop mode", http.StatusForbidden)
 		return
 	}
 	var cmd *exec.Cmd
-	displayURL := "http://localhost:8080/display"
 	switch runtime.GOOS {
 	case "darwin":
-		cmd = exec.Command("open", displayURL)
+		cmd = exec.Command("open", targetURL)
 	case "windows":
-		cmd = exec.Command("cmd", "/c", "start", displayURL)
+		cmd = exec.Command("cmd", "/c", "start", targetURL)
 	default:
-		cmd = exec.Command("xdg-open", displayURL)
+		cmd = exec.Command("xdg-open", targetURL)
 	}
 	if err := cmd.Start(); err != nil {
 		log.Printf("[download] 브라우저 열기 실패: %v", err)
@@ -174,6 +172,22 @@ func OpenDisplayInBrowserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+}
+
+// OpenDisplayInBrowserHandler — Desktop 모드: 시스템 브라우저에서 display 페이지 열기
+// GET /api/open-display
+func OpenDisplayInBrowserHandler(w http.ResponseWriter, r *http.Request) {
+	openInBrowser(w, "http://localhost:8080/display")
+}
+
+// OpenPrintInBrowserHandler — Desktop 모드: 시스템 브라우저에서 인쇄 페이지 열기
+// GET /api/open-print?autoprint=1
+func OpenPrintInBrowserHandler(w http.ResponseWriter, r *http.Request) {
+	url := "http://localhost:8080/display/print"
+	if r.URL.Query().Get("autoprint") == "1" {
+		url += "?autoprint=1"
+	}
+	openInBrowser(w, url)
 }
 
 func openFolder(dir string) {

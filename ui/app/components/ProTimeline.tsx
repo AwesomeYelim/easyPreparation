@@ -1,11 +1,13 @@
 "use client";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
+import toast from "react-hot-toast";
 import {
   displayItemsState,
   serviceStartTimeState,
   itemTimersState,
   autoAdvanceState,
+  displayPositionState,
 } from "@/recoilState";
 import { useWS } from "@/components/WebSocketProvider";
 import { apiClient } from "@/lib/apiClient";
@@ -48,12 +50,23 @@ function formatDurationShort(secs: number) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+// 입력 파싱: "3:30" → 210초, "5m" → 300초, "120" → 120초
+function parseDuration(raw: string): number | null {
+  const t = raw.trim();
+  const colonMatch = t.match(/^(\d+):(\d{0,2})$/);
+  if (colonMatch) return parseInt(colonMatch[1], 10) * 60 + parseInt(colonMatch[2] || "0", 10);
+  const minsMatch = t.match(/^(\d+)m$/i);
+  if (minsMatch) return parseInt(minsMatch[1], 10) * 60;
+  const num = parseInt(t.replace(/[^0-9]/g, ""), 10);
+  return isNaN(num) ? null : num;
+}
+
 export default function ProTimeline() {
   const items = useRecoilValue(displayItemsState);
   const [serviceStart, setServiceStart] = useRecoilState(serviceStartTimeState);
   const [itemTimers, setItemTimers] = useRecoilState(itemTimersState);
   const [autoEnabled, setAutoEnabled] = useRecoilState(autoAdvanceState);
-  const [currentIdx, setCurrentIdx] = useState(0);
+  const [currentIdx, setCurrentIdx] = useRecoilState(displayPositionState);
   const [elapsed, setElapsed] = useState("00:00");
   const [autoCountdown, setAutoCountdown] = useState(0);
   const [hoverDivider, setHoverDivider] = useState<number | null>(null);
@@ -65,6 +78,11 @@ export default function ProTimeline() {
   const autoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
+  // items/itemTimers는 ref로 최신값만 참조 — 변경 시 카운트다운 재시작 방지
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  const itemTimersRef = useRef(itemTimers);
+  itemTimersRef.current = itemTimers;
   const { subscribe } = useWS();
 
   // ── WS: 현재 위치 추적 ──
@@ -97,31 +115,45 @@ export default function ProTimeline() {
   );
 
   // ── 자동 진행 ──
+  // deps: autoEnabled, currentIdx 만 — items/itemTimers 변경은 ref로 처리해
+  // WS "order" 메시지나 타이머 편집이 카운트다운을 재시작하지 않도록 한다
   useEffect(() => {
     if (autoIntervalRef.current) { clearInterval(autoIntervalRef.current); autoIntervalRef.current = null; }
     if (!autoEnabled) { setAutoCountdown(0); return; }
-    // 마지막 항목이면 자동 진행 종료
-    if (currentIdx >= items.length - 1 && items.length > 0) { setAutoCountdown(0); return; }
-    const item = items[currentIdx];
-    if (!item) return;
-    const secs = getEffectiveSecs(item.key);
+
+    const curItems = itemsRef.current;
+    if (curItems.length === 0) { setAutoCountdown(0); return; }
+
+    // 마지막 씬에서 AUTO를 켜면 → 첫 씬으로 이동 후 effect 재실행
+    if (currentIdx >= curItems.length - 1) {
+      apiClient.jumpDisplay(0);
+      setCurrentIdx(0);
+      return;
+    }
+
+    const item = curItems[currentIdx];
+    if (!item) { setAutoCountdown(0); return; }
+    const secs = (itemTimersRef.current[item.key] ?? DEFAULT_SECS);
     if (secs <= 0) { setAutoCountdown(0); return; }
-    setAutoCountdown(secs);
+
+    console.info(`[AUTO] idx=${currentIdx}/${curItems.length-1} key=${item.key} secs=${secs}`);
+
+    let remaining = secs;
+    setAutoCountdown(remaining);
+
     autoIntervalRef.current = setInterval(() => {
-      setAutoCountdown((prev) => {
-        if (prev <= 1) {
-          if (autoIntervalRef.current) { clearInterval(autoIntervalRef.current); autoIntervalRef.current = null; }
-          apiClient.navigateDisplay("next");
-          // display 페이지가 열려있지 않아도 루프 유지: 낙관적 idx 증가
-          // (display가 열려있으면 WS "position" 에코가 같은 값으로 덮어씀 — 무해)
-          setCurrentIdx((ci) => Math.min(ci + 1, items.length - 1));
-          return 0;
-        }
-        return prev - 1;
-      });
+      remaining -= 1;
+      setAutoCountdown(remaining);
+      if (remaining <= 0) {
+        if (autoIntervalRef.current) { clearInterval(autoIntervalRef.current); autoIntervalRef.current = null; }
+        apiClient.navigateDisplay("next");
+        const len = itemsRef.current.length;
+        setCurrentIdx((ci) => Math.min(ci + 1, len - 1));
+      }
     }, 1000);
+
     return () => { if (autoIntervalRef.current) { clearInterval(autoIntervalRef.current); autoIntervalRef.current = null; } };
-  }, [autoEnabled, currentIdx, items, itemTimers, getEffectiveSecs]);
+  }, [autoEnabled, currentIdx]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalSecs = items.reduce((sum, item) => sum + getEffectiveSecs(item.key), 0);
   // serviceStart가 없을 때 Date.now() 사용 금지 → 하이드레이션 불일치 방지
@@ -181,9 +213,16 @@ export default function ProTimeline() {
 
   const commitEdit = useCallback((key: string, raw: string) => {
     setEditingKey(null);
-    const s = parseInt(raw.replace(/[^0-9]/g, ""), 10);
-    if (!isNaN(s) && s >= 30) {
-      setItemTimers((prev) => ({ ...prev, [key]: s }));
+    const parsed = parseDuration(raw);
+    if (parsed !== null && parsed > 0) {
+      const clamped = Math.max(30, parsed);
+      setItemTimers((prev) => ({ ...prev, [key]: clamped }));
+      const title = itemsRef.current.find((it) => it.key === key)?.title ?? key;
+      toast.success(`${title}: ${formatDurationShort(clamped)}`, {
+        duration: 1500,
+        style: { background: "#1e1e1e", color: "#e8e8e8", border: "1px solid #2a2a2a", fontSize: "12px" },
+        iconTheme: { primary: "#3B82F6", secondary: "#0e0e0e" },
+      });
     }
   }, [setItemTimers]);
 
@@ -331,7 +370,7 @@ export default function ProTimeline() {
             return (
               <div
                 key={item.key || i}
-                className="relative flex flex-col overflow-hidden cursor-pointer"
+                className="relative flex flex-col overflow-hidden cursor-pointer group"
                 style={{
                   width: `${widthPct}%`,
                   minWidth: "20px",
@@ -365,7 +404,7 @@ export default function ProTimeline() {
                       }}
                       onClick={(e) => e.stopPropagation()}
                       className="w-full text-center text-[10px] font-mono bg-transparent border-b border-[#4a9eff] text-white outline-none"
-                      placeholder="초"
+                      placeholder="예: 3:00"
                     />
                   </div>
                 ) : (
@@ -388,7 +427,7 @@ export default function ProTimeline() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-[8px] font-mono text-[#444] leading-none">{timeLabel}</span>
-                      <span className="text-[8px] font-mono text-[#333] leading-none">
+                      <span className="text-[8px] font-mono text-[#333] leading-none transition-colors group-hover:text-[#4a9eff]/60 border-b border-transparent group-hover:border-dashed group-hover:border-[#4a9eff]/30">
                         {formatDurationShort(secs)}
                       </span>
                     </div>

@@ -8,6 +8,14 @@ data/logs/
 data/update/
 data/license.json
 data/templates/
+data/display_config.json
+data/logo.png
+data/logo.jpg
+data/logo.jpeg
+data/video-bg/
+logs/
+sample.png
+sample2.png
 output/bulletin/print/backgrounds/
 # IDE
 .idea/

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, useLayoutEffect } from "react";
 import { useRecoilState, useRecoilValue } from "recoil"; // eslint-disable-line @typescript-eslint/no-unused-vars
-import { displayItemsState, sequencePanelOpenState, itemTimersState } from "@/recoilState";
+import { displayItemsState, sequencePanelOpenState, itemTimersState, displayPositionState } from "@/recoilState";
 import { apiClient } from "@/lib/apiClient";
 import { WorshipOrderItem, OBSStatus, StreamStatus } from "@/types";
 import { useWS } from "@/components/WebSocketProvider";
@@ -18,7 +18,7 @@ export default function ProSequencePanel() {
   const seqOpen = useRecoilValue(sequencePanelOpenState);
   const [items, setItems] = useRecoilState(displayItemsState);
 
-  const [idx, setIdx] = useState(0);
+  const [idx, setIdx] = useRecoilState(displayPositionState);
   const [subPageIdx, setSubPageIdx] = useState(0);
   const [obsStatus, setObsStatus] = useState<OBSStatus>({ connected: false, currentScene: "" });
   const [streamStatus, setStreamStatus] = useState<StreamStatus>({ active: false, reconnecting: false, timecode: "", bytesSent: 0 });
@@ -344,6 +344,7 @@ export default function ProSequencePanel() {
           NEXT ▶
         </button>
       </div>
+
 
       {/* ── Order list ── */}
       <div className="flex-1 overflow-y-auto py-1" ref={listRef}>

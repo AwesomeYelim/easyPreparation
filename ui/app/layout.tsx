@@ -13,6 +13,7 @@ import ProMainArea from "@/components/ProMainArea";
 import ProSequencePanel from "@/components/ProSequencePanel";
 import ProInspectorPanel from "@/components/ProInspectorPanel";
 import ProTimeline from "@/components/ProTimeline";
+import ClientOnly from "@/components/ClientOnly";
 import "@/globals.css";
 import type { Viewport, Metadata } from "next";
 
@@ -42,28 +43,30 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning translate="no">
       <body suppressHydrationWarning>
-        <ToastProvider />
-        <RecoilProvider>
-          <LocalAuthProvider>
-            <LicenseProvider>
-              <SetupWizard />
-              <WebSocketProvider>
-                <SettingsLoader />
-                <ProShell>
-                  <ProTopBar />
-                  <ProIconBar />
-                  <ProSequencePanel />
-                  <ProMainArea>
-                    {children}
-                  </ProMainArea>
-                  <ProInspectorPanel />
-                  <ProTimeline />
-                </ProShell>
-                <GlobalDisplayPanel />
-              </WebSocketProvider>
-            </LicenseProvider>
-          </LocalAuthProvider>
-        </RecoilProvider>
+        <ClientOnly>
+          <ToastProvider />
+          <RecoilProvider>
+            <LocalAuthProvider>
+              <LicenseProvider>
+                <SetupWizard />
+                <WebSocketProvider>
+                  <SettingsLoader />
+                  <ProShell>
+                    <ProTopBar />
+                    <ProIconBar />
+                    <ProSequencePanel />
+                    <ProMainArea>
+                      {children}
+                    </ProMainArea>
+                    <ProInspectorPanel />
+                    <ProTimeline />
+                  </ProShell>
+                  <GlobalDisplayPanel />
+                </WebSocketProvider>
+              </LicenseProvider>
+            </LocalAuthProvider>
+          </RecoilProvider>
+        </ClientOnly>
       </body>
     </html>
   );

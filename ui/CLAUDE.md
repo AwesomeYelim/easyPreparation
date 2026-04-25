@@ -55,6 +55,15 @@ ProShell (CSS Grid: 48px | seqPanel | 1fr | inspPanel  ×  44px | 1fr | 90px)
 - 표시 형식: `1:30` (1분 이상), `45s` (1분 미만)
 - 드래그로 타일 너비 조정 → 비율 기반 초 재계산
 
+## Display 설정 (v1.4+)
+
+- **로고**: `SettingsPanel > DisplayTab` 에서 업로드 → `/api/logo` 서빙 → Display 우하단 `<img>`
+- **폰트**: `SettingsPanel > DisplayTab` 에서 선택 → `/api/display-config` 저장 → Display HTML Google Fonts CDN 로드
+- 지원 폰트: `default` (맑은 고딕) / `noto-sans-kr` / `gowun-dodum` / `nanum-myeongjo` / `black-han-sans`
+- **오버레이 커스터마이징**: 배경 투명도·텍스트 색상·위치·폰트 배율 → `/api/display-config` 저장 → overlay HTML이 시작 시 적용
+- **비디오 배경**: MP4/WebM/MOV 업로드 → `data/video-bg/` 저장 → 전역 배경 선택 → `/api/display-config`의 `globalVideoBg` → Display `<video>` 요소에 루프 재생
+- **Stage Display**: `/display/stage` — 예배팀/설교자용 무대 모니터 (현재 슬라이드 대형 + 다음 항목 + 경과 타이머), 기존 WebSocket 재활용
+
 ## CSS 주의
 
 - `globals.css`에서 `@import`는 반드시 `@tailwind` 보다 위에 위치 (Turbo dev 서버 스펙 준수)

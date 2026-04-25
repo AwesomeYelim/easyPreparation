@@ -38,6 +38,7 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/download", middleware.CORS(http.HandlerFunc(handlers.DownloadPDFHandler)))
 	mux.Handle("/api/save-to-downloads", middleware.CORS(http.HandlerFunc(handlers.SaveToDownloadsHandler)))
 	mux.Handle("/api/open-display", middleware.CORS(http.HandlerFunc(handlers.OpenDisplayInBrowserHandler)))
+	mux.Handle("/api/open-print", middleware.CORS(http.HandlerFunc(handlers.OpenPrintInBrowserHandler)))
 	mux.Handle("/searchLyrics", handlers.SearchLyrics())
 	mux.Handle("/submitLyrics", handlers.SubmitLyricsHandler(dataChan))
 
@@ -66,6 +67,15 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/display/timer", middleware.CORS(http.HandlerFunc(handlers.DisplayTimerHandler)))
 	mux.Handle("/display/lyrics-order", middleware.CORS(http.HandlerFunc(handlers.DisplayLyricsOrderHandler)))
 	mux.Handle("/display/overlay", middleware.CORS(http.HandlerFunc(handlers.DisplayOverlayHandler)))
+	mux.Handle("/display/stage", middleware.CORS(http.HandlerFunc(handlers.DisplayStageHandler)))
+	mux.Handle("/display/print", middleware.CORS(http.HandlerFunc(handlers.HandleDisplayPrint)))
+	mux.Handle("/api/display/print-info", middleware.CORS(http.HandlerFunc(handlers.HandleDisplayPrintJSON)))
+
+	// 비디오 배경
+	mux.Handle("/api/video-bg/upload", middleware.CORS(http.HandlerFunc(handlers.VideoBgUploadHandler)))
+	mux.Handle("/api/video-bg/list", middleware.CORS(http.HandlerFunc(handlers.VideoBgListHandler)))
+	mux.Handle("/api/video-bg/delete", middleware.CORS(http.HandlerFunc(handlers.VideoBgDeleteHandler)))
+	mux.Handle("/display/video-bg/", middleware.CORS(http.HandlerFunc(handlers.VideoBgServeHandler)))
 
 	// 외부 PDF OBS 표시
 	mux.Handle("/api/pdf/upload", middleware.CORS(http.HandlerFunc(handlers.PDFUploadHandler)))
@@ -90,6 +100,32 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/api/hymns", middleware.CORS(http.HandlerFunc(handlers.HymnListHandler)))
 	mux.Handle("/api/hymns/search", middleware.CORS(http.HandlerFunc(handlers.HymnSearchHandler)))
 	mux.Handle("/api/hymns/detail", middleware.CORS(http.HandlerFunc(handlers.HymnDetailHandler)))
+
+	// 로고 API
+	mux.Handle("/api/logo", middleware.CORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet, http.MethodHead:
+			handlers.HandleLogoGet(w, r)
+		case http.MethodPost:
+			handlers.HandleLogoUpload(w, r)
+		case http.MethodDelete:
+			handlers.HandleLogoDelete(w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	})))
+
+	// Display 전역 설정 (폰트 등)
+	mux.Handle("/api/display-config", middleware.CORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handlers.HandleDisplayConfigGet(w, r)
+		case http.MethodPut, http.MethodPost:
+			handlers.HandleDisplayConfigSet(w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	})))
 
 	// 설정 + 이력 API
 	mux.Handle("/api/settings", middleware.CORS(http.HandlerFunc(handlers.SettingsHandler)))

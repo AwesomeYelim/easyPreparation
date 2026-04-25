@@ -371,20 +371,53 @@ func (pdf *PDF) ForEdit(con types.WorshipInfo, config extract.Config) {
 }
 
 func (pdf *PDF) MarkName() {
-	labelW := 340.00
-	labelWm, labelHm := 13.00, 18.00
-	labelP := 11.00
+	logoCfg := handlers.GetPDFLogoConfig()
+	if logoCfg.LogoPath == "" {
+		// 로고 없음 — 기존 영어 이름 텍스트 fallback
+		labelW := 340.00
+		labelWm, labelHm := 13.00, 18.00
+		labelP := 11.00
+		fontSize := pdf.Config.FontInfo.FontSize / 1.5
+		pdf.SetText(classification.FontInfo{
+			FontFamily: "Jacques Francois", FontSize: fontSize,
+		}, false, color.RGBA{R: 255, G: 255, B: 255})
+		x := pdf.Config.Width - (labelW + labelWm + labelP)
+		y := pdf.Config.Height - (labelHm + labelP)
+		pdf.SetXY(x, y)
+		pdf.MultiCell(labelW, 0, pdf.PdfInfo.MarkName, "", "R", false)
+		return
+	}
 
-	fontSize := pdf.Config.FontInfo.FontSize / 1.5
-	pdf.SetText(classification.FontInfo{
-		FontFamily: "Jacques Francois", FontSize: fontSize,
-	}, false, color.RGBA{R: 255, G: 255, B: 255})
+	// 로고 이미지 배치 — Display와 동일한 위치/크기 설정 적용
+	pageW := pdf.Config.Width
+	pageH := pdf.Config.Height
 
-	x := pdf.Config.Width - (labelW + labelWm + labelP)
-	y := pdf.Config.Height - (labelHm + labelP)
+	imgInfo := pdf.RegisterImage(logoCfg.LogoPath, "")
+	if imgInfo == nil {
+		return
+	}
+	// 종횡비 계산 (gofpdf Width()/Height()는 해상도 독립적 픽셀값)
+	aspect := imgInfo.Width() / imgInfo.Height()
 
-	pdf.SetXY(x, y)
-	pdf.MultiCell(labelW, 0, pdf.PdfInfo.MarkName, "", "R", false)
+	hMargin := pageW * 0.02  // 2% 좌우 여백
+	vMargin := pageH * 0.015 // 1.5% 상하 여백
+
+	logoW := pageW * (logoCfg.LogoSizePercent / 100.0)
+	logoH := logoW / aspect
+
+	var x, y float64
+	switch logoCfg.LogoPosition {
+	case "top-left":
+		x, y = hMargin, vMargin
+	case "top-right":
+		x, y = pageW-logoW-hMargin, vMargin
+	case "bottom-left":
+		x, y = hMargin, pageH-logoH-vMargin
+	default: // bottom-right
+		x, y = pageW-logoW-hMargin, pageH-logoH-vMargin
+	}
+
+	pdf.Image(logoCfg.LogoPath, x, y, logoW, logoH, false, "", 0, "")
 }
 func (pdf *PDF) DrawChurchNews(fontInfo classification.FontInfo, con types.WorshipInfo, hLColor color.RGBA, x, y float64) {
 	// 재귀적으로 교회소식과 그 내부 children 데이터를 처리하는 함수

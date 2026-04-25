@@ -175,6 +175,7 @@ const displayHTML = `<!DOCTYPE html>
     justify-content:center; align-items:center;
     padding:7.4vh 6.25vw;
     position:relative;
+    z-index:1;
     background-size:cover;
     background-position:center;
     background-repeat:no-repeat;
@@ -314,15 +315,15 @@ const displayHTML = `<!DOCTYPE html>
     font-size:2vh; color:rgba(255,255,255,0.35);
   }
 
-  /* 교회명 (우하단) */
-  .church-box {
-    position:absolute; right:0; bottom:0;
-    background:rgba(60,55,50,0.55);
-    padding:1.2vh 2vw;
-    font-family:'JacquesFrancois',serif;
-    font-size:3.2vh; color:#fff;
-    font-weight:400;
-    letter-spacing:0.1em;
+  /* 로고 (우하단) */
+  .church-logo-box {
+    position:absolute; right:2vw; bottom:1.5vh;
+    display:flex; align-items:flex-end;
+  }
+  .church-logo-box img {
+    max-height:7vh; max-width:18vw;
+    object-fit:contain; opacity:0.88;
+    filter:drop-shadow(0 2px 6px rgba(0,0,0,0.55));
   }
 
   /* 카운트다운 오버레이 */
@@ -348,6 +349,11 @@ const displayHTML = `<!DOCTYPE html>
 </style>
 </head>
 <body>
+<!-- 비디오 배경 (전역 설정 또는 항목별 설정으로 활성화) -->
+<video id="bg-video" autoplay loop muted playsinline
+  style="position:fixed;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:0;display:none">
+  <source id="bg-video-src" src="" type="video/mp4">
+</video>
 <div id="slide"></div>
 <div id="countdown-overlay">
   <div id="countdown-label"></div>
@@ -362,6 +368,72 @@ let idx = 0;
 let subPages = [];   // 성경 본문 or 이미지 페이지
 let subPageIdx = 0;
 let churchName = '';
+let logoUrl = ''; // 로고 URL (없으면 '')
+let logoPosition = 'bottom-right'; // top-left | top-right | bottom-left | bottom-right
+let logoSizePercent = 18; // vw%
+
+/* ───── 초기화: 로고 + 폰트 설정 로드 ───── */
+async function initDisplayConfig() {
+  // 로고 체크
+  try {
+    const logoRes = await fetch('/api/logo', { method: 'HEAD' });
+    if (logoRes.ok) logoUrl = '/api/logo';
+  } catch (e) {}
+
+  // 폰트 + 비디오 배경 + 로고 위치 설정 로드
+  try {
+    const cfgRes = await fetch('/api/display-config');
+    if (cfgRes.ok) {
+      const cfg = await cfgRes.json();
+      applyFont(cfg.font);
+      if (cfg.globalVideoBg) applyVideoBg(cfg.globalVideoBg);
+      if (cfg.logoPosition) logoPosition = cfg.logoPosition;
+      if (cfg.logoSizePercent) logoSizePercent = cfg.logoSizePercent;
+    }
+  } catch (e) {}
+}
+
+/* 비디오 배경 적용 */
+var activeVideoBg = '';
+function applyVideoBg(filename) {
+  activeVideoBg = filename || '';
+  const vid = document.getElementById('bg-video');
+  const src = document.getElementById('bg-video-src');
+  if (!vid || !src) return;
+  if (!filename) {
+    vid.style.display = 'none';
+    document.body.style.background = '#000';
+    return;
+  }
+  src.src = '/display/video-bg/' + filename;
+  vid.load();
+  vid.style.display = 'block';
+  document.body.style.background = 'transparent';
+}
+
+const FONT_STACK = {
+  'default':        "'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif",
+  'noto-sans-kr':   "'Noto Sans KR',sans-serif",
+  'gowun-dodum':    "'Gowun Dodum',sans-serif",
+  'nanum-myeongjo': "'Nanum Myeongjo',serif",
+  'black-han-sans': "'Black Han Sans',sans-serif",
+};
+const GOOGLE_FONTS = {
+  'noto-sans-kr':   'https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap',
+  'gowun-dodum':    'https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap',
+  'nanum-myeongjo': 'https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700&display=swap',
+  'black-han-sans': 'https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap',
+};
+
+function applyFont(fontKey) {
+  const stack = FONT_STACK[fontKey] || FONT_STACK['default'];
+  document.body.style.fontFamily = stack;
+  if (GOOGLE_FONTS[fontKey]) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet'; link.href = GOOGLE_FONTS[fontKey];
+    document.head.appendChild(link);
+  }
+}
 
 /* ───── WebSocket ───── */
 function connect() {
@@ -390,6 +462,12 @@ function connect() {
       }
     }
     if (msg.type === 'display') renderSingle(msg);
+    if (msg.type === 'display_config') {
+      applyFont(msg.font);
+      applyVideoBg(msg.globalVideoBg || '');
+      if (msg.logoPosition) logoPosition = msg.logoPosition;
+      if (msg.logoSizePercent) logoSizePercent = msg.logoSizePercent;
+    }
     if (msg.type === 'schedule_countdown') {
       var overlay = document.getElementById('countdown-overlay');
       document.getElementById('countdown-label').textContent = msg.label;
@@ -509,9 +587,11 @@ function renderItem(item, pageIdx) {
   const bgImage  = item.bgImage  || '';
 
   // 항목별 배경 이미지 (있으면 사용, 없으면 기본)
-  // 컨텐츠 항목은 어두운 오버레이로 가독성 확보 (default 케이스에서 이미지 전용 항목은 재설정)
+  // 비디오 배경 활성 시 정적 이미지 제거 — 비디오가 투명하게 보이도록
   if (bgImage) {
     slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.35),rgba(0,0,0,0.35)), url('" + bgImage + "')";
+  } else if (activeVideoBg) {
+    slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.35),rgba(0,0,0,0.35))";
   } else {
     slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.4)), url('/display/bg')";
   }
@@ -519,7 +599,11 @@ function renderItem(item, pageIdx) {
 
   const posText = slides.length ? (idx + 1) + ' / ' + slides.length : '';
   const pageText = subPages.length > 1 ? (subPageIdx + 1) + ' / ' + subPages.length : '';
-  const churchBox = (bgImage && churchName) ? '<div class="church-box">' + esc(churchName) + '</div>' : '';
+  const churchBox = logoUrl ? (function() {
+    const vPos = logoPosition.startsWith('top') ? 'top:1.5vh' : 'bottom:1.5vh';
+    const hPos = logoPosition.endsWith('right') ? 'right:2vw' : 'left:2vw';
+    return '<div style="position:absolute;' + vPos + ';' + hPos + ';display:flex;align-items:flex-end"><img src="' + logoUrl + '" alt="logo" style="max-height:7vh;max-width:' + logoSizePercent + 'vw;object-fit:contain;opacity:0.88;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.55))"></div>';
+  })() : '';
   const footer =
     '<div class="divider"></div>' +
     '<div class="slide-pos">' + posText + '</div>' +
@@ -637,11 +721,12 @@ function renderItem(item, pageIdx) {
     return;
   }
 
-  // ── 8. 기본 (전주, 예배의 부름, 축도 등) ──
-  // 배경 이미지가 있는 단순 항목은 이미지만 표시 (제목 텍스트가 이미지에 포함)
+  // ── 8. 기본 (전주, 예배의 부름, 축도 등 — bgImage 항목) ──
+  // 배경 이미지 위에 인도자/순서 레이블 + 위치 표시 오버레이 유지
+  // (이미지만 단독으로 뜨면 이전 항목과 단절되어 붕뜨는 느낌이 생김)
   if (bgImage) {
     slide.style.backgroundImage = "url('" + bgImage + "')";
-    slide.innerHTML = churchBox;
+    slide.innerHTML = header + footer;
     return;
   }
   var mainText = (obj && obj !== '-') ? obj : '';
@@ -675,7 +760,7 @@ function esc(s) {
     .replace(/\n/g,'<br>');
 }
 
-connect();
+initDisplayConfig().finally(() => connect());
 </script>
 </body>
 </html>`
@@ -1108,6 +1193,7 @@ function connect() {
     if (msg.type === 'schedule_started') {
       document.getElementById('countdown-overlay').classList.remove('visible');
     }
+    if (msg.type === 'display_config') applyOverlayConfig(msg);
   };
   ws.onclose = () => {
     clearTimeout(reconnectTimer);
@@ -1275,7 +1361,53 @@ function esc(s) {
     .replace(/\n/g,'<br>');
 }
 
-connect();
+/* ── 오버레이 설정 로드 (cfg 직접 전달 또는 API 조회) ── */
+async function applyOverlayConfig(cfg) {
+  try {
+    if (!cfg) {
+      const res = await fetch('/api/display-config');
+      if (!res.ok) return;
+      cfg = await res.json();
+    }
+    const root = document.documentElement;
+    if (cfg.overlayBgOpacity != null)
+      root.style.setProperty('--overlay-bg', 'rgba(0,0,0,' + cfg.overlayBgOpacity + ')');
+    if (cfg.overlayTextColor)
+      root.style.setProperty('--overlay-color', cfg.overlayTextColor);
+    if (cfg.overlayPosition)
+      root.style.setProperty('--overlay-position', cfg.overlayPosition);
+    if (cfg.overlayFontScale && cfg.overlayFontScale !== 1) {
+      const base = Math.round(42 * cfg.overlayFontScale);
+      root.style.setProperty('--overlay-font-size', base + 'px');
+      root.style.setProperty('--title-font-size', Math.round(48 * cfg.overlayFontScale) + 'px');
+      root.style.setProperty('--sub-font-size', Math.round(32 * cfg.overlayFontScale) + 'px');
+      root.style.setProperty('--bible-font-size', Math.round(34 * cfg.overlayFontScale) + 'px');
+    }
+    /* 폰트도 적용 */
+    const FONT_STACK = {
+      'noto-sans-kr':   "'Noto Sans KR',sans-serif",
+      'gowun-dodum':    "'Gowun Dodum',sans-serif",
+      'nanum-myeongjo': "'Nanum Myeongjo',serif",
+      'black-han-sans': "'Black Han Sans',sans-serif",
+    };
+    const GOOGLE_FONTS = {
+      'noto-sans-kr':   'https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap',
+      'gowun-dodum':    'https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap',
+      'nanum-myeongjo': 'https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700&display=swap',
+      'black-han-sans': 'https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap',
+    };
+    if (cfg.font && FONT_STACK[cfg.font]) {
+      document.body.style.fontFamily = FONT_STACK[cfg.font];
+      if (GOOGLE_FONTS[cfg.font]) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet'; link.href = GOOGLE_FONTS[cfg.font];
+        document.head.appendChild(link);
+      }
+    }
+  } catch(e) {}
+}
+
+applyOverlayConfig().finally(() => connect());
 </script>
 </body>
 </html>`
@@ -1295,11 +1427,12 @@ func DisplayHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // DisplayAssetsHandler — GET /display/assets/{name}.png
-// 배경 이미지 서빙
+// 배경 이미지 서빙 (캐시 방지 — Studio에서 교체 즉시 반영)
 func DisplayAssetsHandler(w http.ResponseWriter, r *http.Request) {
 	name := filepath.Base(r.URL.Path)
 	execPath := path.ExecutePath("easyPreparation")
 	imgPath := filepath.Join(execPath, "data", "templates", "display", name)
+	w.Header().Set("Cache-Control", "no-store")
 	http.ServeFile(w, r, imgPath)
 }
 
@@ -2012,8 +2145,9 @@ func preprocessItem(item map[string]interface{}) map[string]interface{} {
 		displayDir := filepath.Join(execPath, "data", "templates", "display")
 		for _, ext := range []string{".png", ".jpg", ".jpeg"} {
 			bgPath := filepath.Join(displayDir, title+ext)
-			if _, err := os.Stat(bgPath); err == nil {
-				item["bgImage"] = "/display/assets/" + url.PathEscape(title+ext)
+			if info, err := os.Stat(bgPath); err == nil {
+				modTime := strconv.FormatInt(info.ModTime().Unix(), 10)
+				item["bgImage"] = "/display/assets/" + url.PathEscape(title+ext) + "?v=" + modTime
 				break
 			}
 		}

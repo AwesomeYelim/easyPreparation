@@ -136,3 +136,10 @@ export const autoAdvanceState = atom<boolean>({
   key: "autoAdvanceState",
   default: false,
 });
+
+// 현재 display 위치 — ProTimeline + ProSequencePanel 공유
+// 낙관적 업데이트(자동진행) + WS position 메시지 모두 이 atom을 통해 동기화
+export const displayPositionState = atom<number>({
+  key: "displayPositionState",
+  default: 0,
+});

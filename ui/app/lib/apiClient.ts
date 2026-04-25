@@ -1,5 +1,17 @@
 import { WorshipOrderItem, UserSettings, ScheduleConfig, ThumbnailConfig, LicenseStatus, OBSSourceItem, OBSDevice, OBSInitialSetupResult } from "@/types";
 
+export interface DisplayConfig {
+  font: string;
+  overlayBgOpacity: number;   // 0.0 ~ 1.0
+  overlayTextColor: string;   // "#ffffff"
+  overlayPosition: string;    // "flex-end" | "center" | "flex-start"
+  overlayFontScale: number;   // 0.5 ~ 2.0
+  globalVideoBg?: string;     // 파일명
+  // 프로젝터 로고 위치/크기
+  logoPosition?: string;      // "bottom-right" | "bottom-left" | "top-right" | "top-left"
+  logoSizePercent?: number;   // 5 ~ 30 (vw%)
+}
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
   || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8080');
 
@@ -23,6 +35,15 @@ export async function openDisplayWindow(force = false) {
     return;
   }
   displayWindow = window.open(`${BASE_URL}/display`, "display_window");
+}
+
+export async function openPrintWindow(autoprint = true) {
+  const q = autoprint ? "?autoprint=1" : "";
+  // Desktop 모드: 서버에 요청해서 시스템 브라우저로 열기 (Wails WebView window.open 차단 우회)
+  const res = await fetch(`${BASE_URL}/api/open-print${q}`).catch(() => null);
+  if (res?.ok) return;
+  // 웹 브라우저 모드: 새 탭
+  window.open(`${BASE_URL}/display/print${q}`, "_blank");
 }
 
 export const apiClient = {
@@ -473,4 +494,48 @@ export const apiClient = {
 
   getOBSLogoImageUrl: (name: string) =>
     `${BASE_URL}/api/obs/logo/image?name=${encodeURIComponent(name)}`,
+
+  // Display 로고 API
+  getLogoUrl: () => `${BASE_URL}/api/logo`,
+
+  uploadLogo: (file: File) => {
+    const fd = new FormData();
+    fd.append("logo", file);
+    return fetch(`${BASE_URL}/api/logo`, { method: "POST", body: fd })
+      .then((r) => r.json()) as Promise<{ ok: boolean }>;
+  },
+
+  deleteLogo: () =>
+    fetch(`${BASE_URL}/api/logo`, { method: "DELETE" })
+      .then((r) => r.json()) as Promise<{ ok: boolean }>,
+
+  hasLogo: () =>
+    fetch(`${BASE_URL}/api/logo`, { method: "HEAD" })
+      .then((r) => r.ok)
+      .catch(() => false),
+
+  // Display 전역 설정 (폰트 + 오버레이 + 비디오 배경)
+  getDisplayConfig: () =>
+    fetch(`${BASE_URL}/api/display-config`)
+      .then((r) => r.json()) as Promise<DisplayConfig>,
+
+  saveDisplayConfig: (config: Partial<DisplayConfig>) =>
+    fetch(`${BASE_URL}/api/display-config`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(config),
+    }).then((r) => r.json()) as Promise<DisplayConfig>,
+
+  // 비디오 배경
+  uploadVideoBg: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return fetch(`${BASE_URL}/api/video-bg/upload`, { method: "POST", body: fd }).then((r) => r.json());
+  },
+  listVideoBg: () =>
+    fetch(`${BASE_URL}/api/video-bg/list`).then((r) => r.json()) as Promise<{ filename: string; url: string }[]>,
+  deleteVideoBg: (filename: string) =>
+    fetch(`${BASE_URL}/api/video-bg/delete?filename=${encodeURIComponent(filename)}`, {
+      method: "DELETE",
+    }).then((r) => r.json()),
 };
