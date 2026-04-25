@@ -68,6 +68,7 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/display/lyrics-order", middleware.CORS(http.HandlerFunc(handlers.DisplayLyricsOrderHandler)))
 	mux.Handle("/display/overlay", middleware.CORS(http.HandlerFunc(handlers.DisplayOverlayHandler)))
 	mux.Handle("/display/stage", middleware.CORS(http.HandlerFunc(handlers.DisplayStageHandler)))
+	mux.Handle("/display/sw.js", http.HandlerFunc(handlers.HandleDisplaySW)) // Service Worker (캐시 — CORS 불필요)
 	mux.Handle("/display/print", middleware.CORS(http.HandlerFunc(handlers.HandleDisplayPrint)))
 	mux.Handle("/api/display/print-info", middleware.CORS(http.HandlerFunc(handlers.HandleDisplayPrintJSON)))
 

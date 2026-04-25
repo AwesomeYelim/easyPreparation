@@ -359,10 +359,20 @@ const displayHTML = `<!DOCTYPE html>
   <div id="countdown-label"></div>
   <div id="countdown-time"></div>
 </div>
+<!-- 서버 연결 끊김 표시 (예배 담당자용) -->
+<div id="offline-badge" style="display:none;position:fixed;bottom:14px;right:14px;z-index:10000;background:rgba(220,38,38,0.92);color:#fff;padding:5px 11px;border-radius:6px;font-size:13px;font-family:sans-serif;letter-spacing:0.02em;">⚠ 서버 연결 끊김 — 재연결 중...</div>
 
 <script>
+/* ── Service Worker 등록 (오프라인 캐시) ── */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/display/sw.js', {scope: '/display'})
+    .catch(function(e){ console.warn('[SW] 등록 실패:', e); });
+}
+
 const slide = document.getElementById('slide');
 let ws, reconnectTimer;
+let reconnectDelay = 2000;
+const MAX_RECONNECT_DELAY = 30000;
 let slides = [];
 let idx = 0;
 let subPages = [];   // 성경 본문 or 이미지 페이지
@@ -371,6 +381,44 @@ let churchName = '';
 let logoUrl = ''; // 로고 URL (없으면 '')
 let logoPosition = 'bottom-right'; // top-left | top-right | bottom-left | bottom-right
 let logoSizePercent = 18; // vw%
+
+/* ── sessionStorage: 마지막 슬라이드 즉시 복원 ── */
+(function restoreLastSlide(){
+  try {
+    var saved = sessionStorage.getItem('ep_display_state');
+    if (saved) {
+      var st = JSON.parse(saved);
+      if (st.html) { document.getElementById('slide').innerHTML = st.html; }
+    }
+  } catch(e) {}
+})();
+
+function saveDisplayState() {
+  try {
+    sessionStorage.setItem('ep_display_state', JSON.stringify({
+      html: document.getElementById('slide').innerHTML,
+      idx: idx,
+      sub: subPageIdx
+    }));
+  } catch(e) {}
+}
+
+function showOfflineBadge(show) {
+  var b = document.getElementById('offline-badge');
+  if (b) b.style.display = show ? 'block' : 'none';
+}
+
+/* 재연결 후 서버에서 현재 상태 복원 */
+async function restoreStateFromServer() {
+  try {
+    var res = await fetch('/display/status');
+    if (!res.ok) return;
+    var state = await res.json();
+    if (state.items && state.items.length > 0) {
+      loadOrder(state.items, state.idx);
+    }
+  } catch(e) { console.warn('[Display] 상태 복원 실패:', e); }
+}
 
 /* ───── 초기화: 로고 + 폰트 설정 로드 ───── */
 async function initDisplayConfig() {
@@ -439,8 +487,13 @@ function applyFont(fontKey) {
 function connect() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(proto + '://' + location.host + '/ws');
-  ws.onopen = () => { console.log('[Display] WS connected'); };
-  ws.onerror = (e) => { console.error('[Display] WS error', e); };
+  ws.onopen = () => {
+    console.log('[Display] WS 연결됨');
+    reconnectDelay = 2000;
+    showOfflineBadge(false);
+    restoreStateFromServer();
+  };
+  ws.onerror = (e) => { console.error('[Display] WS 오류', e); };
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
     console.log('[Display] WS msg:', msg.type, msg.items ? msg.items.length + ' items' : '');
@@ -480,8 +533,12 @@ function connect() {
     }
   };
   ws.onclose = () => {
+    showOfflineBadge(true);
     clearTimeout(reconnectTimer);
-    reconnectTimer = setTimeout(connect, 3000);
+    reconnectTimer = setTimeout(function() {
+      reconnectDelay = Math.min(Math.floor(reconnectDelay * 1.5), MAX_RECONNECT_DELAY);
+      connect();
+    }, reconnectDelay);
   };
 }
 
@@ -735,6 +792,7 @@ function renderItem(item, pageIdx) {
     (mainText ? '<div class="obj">' + esc(mainText) + '</div>' : '') +
     (lead && !mainText ? '<div class="prayer-name">' + esc(lead) + '</div>' : '') +
     footer;
+  saveDisplayState();
 }
 
 /* 단독 push 호환 */
@@ -1156,16 +1214,33 @@ const displayOverlayHTML = `<!DOCTYPE html>
 <script>
 const slide = document.getElementById('slide');
 let ws, reconnectTimer;
+let reconnectDelay = 2000;
+const MAX_RECONNECT_DELAY = 30000;
 let slides = [];
 let idx = 0;
 let subPages = [];
 let subPageIdx = 0;
 
+async function restoreStateFromServer() {
+  try {
+    var res = await fetch('/display/status');
+    if (!res.ok) return;
+    var state = await res.json();
+    if (state.items && state.items.length > 0) {
+      loadOrder(state.items, state.idx);
+    }
+  } catch(e) {}
+}
+
 function connect() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(proto + '://' + location.host + '/ws');
-  ws.onopen = () => { console.log('[Lyrics] WS connected'); };
-  ws.onerror = (e) => { console.error('[Lyrics] WS error', e); };
+  ws.onopen = () => {
+    console.log('[Lyrics] WS 연결됨');
+    reconnectDelay = 2000;
+    restoreStateFromServer();
+  };
+  ws.onerror = (e) => { console.error('[Lyrics] WS 오류', e); };
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
     if (msg.type === 'order') loadOrder(msg.items, msg.idx);
@@ -1197,7 +1272,10 @@ function connect() {
   };
   ws.onclose = () => {
     clearTimeout(reconnectTimer);
-    reconnectTimer = setTimeout(connect, 3000);
+    reconnectTimer = setTimeout(function() {
+      reconnectDelay = Math.min(Math.floor(reconnectDelay * 1.5), MAX_RECONNECT_DELAY);
+      connect();
+    }, reconnectDelay);
   };
 }
 
