@@ -1,20 +1,21 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRecoilState } from "recoil";
-import { inspectorOpenState } from "@/recoilState";
+import { useRecoilState, useRecoilValue } from "recoil";
+import { inspectorOpenState, displayPositionState } from "@/recoilState";
 import { apiClient } from "@/lib/apiClient";
 import { ThumbnailConfig, ScheduleConfig, ScheduleEntry } from "@/types";
 import ConfirmModal from "./ConfirmModal";
 import FeatureGate from "./FeatureGate";
 import OBSSourcePanel from "./OBSSourcePanel";
 
-type Category = "display" | "backgrounds" | "special" | "schedule" | "obs" | "config";
+type Category = "preview" | "display" | "backgrounds" | "special" | "schedule" | "obs" | "config";
 type FileItem = { name: string; url: string; size: number };
 
 const TABS: { key: Category; label: string; desc: string }[] = [
+  { key: "preview",     label: "미리보기", desc: "Display 화면 실시간 미리보기" },
   { key: "display",     label: "화면",   desc: "항목별 배경 이미지" },
-  { key: "backgrounds", label: "배경",   desc: "기본 배경 · 가사 배경 · 비디오 배경" },
+  { key: "backgrounds", label: "배경",   desc: "" },
   { key: "special",     label: "썸네일", desc: "기념주일 썸네일 배경" },
   { key: "schedule",    label: "스케줄", desc: "정기 스트리밍 스케줄" },
   { key: "obs",         label: "OBS",    desc: "OBS 소스 및 씬 관리" },
@@ -34,7 +35,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
 export default function ProInspectorPanel() {
   const [inspOpen, setInspOpen] = useRecoilState(inspectorOpenState);
 
-  const [tab, setTab] = useState<Category>("display");
+  const [tab, setTab] = useState<Category>("preview");
   const [files, setFiles] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -42,6 +43,13 @@ export default function ProInspectorPanel() {
   const [confirmTarget, setConfirmTarget] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<{ msg: string; type: "error" | "info" } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 미리보기 탭 상태
+  const [iframeKey, setIframeKey] = useState(0);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
+  const [previewScale, setPreviewScale] = useState(0.133);
+  // 현재 씬 인덱스 (ProSequencePanel과 공유)
+  const displayIdx = useRecoilValue(displayPositionState);
 
   // 특별일 탭 상태
   const [thumbConfig, setThumbConfig] = useState<ThumbnailConfig | null>(null);
@@ -104,6 +112,24 @@ export default function ProInspectorPanel() {
     }
   }, [inspOpen, tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 미리보기 컨테이너 너비 감지 → iframe scale 계산
+  useEffect(() => {
+    if (tab !== "preview") return;
+    const el = previewContainerRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = entry.contentRect.width;
+        if (w > 0) setPreviewScale(w / 1920);
+      }
+    });
+    obs.observe(el);
+    // 초기값
+    const w = el.clientWidth;
+    if (w > 0) setPreviewScale(w / 1920);
+    return () => obs.disconnect();
+  }, [tab, inspOpen]);
+
   const handleUpload = async (fileList: FileList | null, category?: "display" | "display-default" | "lyrics") => {
     if (!fileList || fileList.length === 0) return;
     const file = fileList[0];
@@ -126,6 +152,24 @@ export default function ProInspectorPanel() {
   const handleDelete = async (name: string) => {
     try {
       await apiClient.deleteTemplate("display", name);
+      fetchFiles();
+    } catch {
+      showToast("삭제 실패");
+    }
+  };
+
+  const handleDeleteDefault = async (name: string) => {
+    try {
+      await apiClient.deleteTemplate("display-default", name);
+      fetchFiles();
+    } catch {
+      showToast("삭제 실패");
+    }
+  };
+
+  const handleDeleteLyrics = async (name: string) => {
+    try {
+      await apiClient.deleteTemplate("lyrics", name);
       fetchFiles();
     } catch {
       showToast("삭제 실패");
@@ -194,13 +238,52 @@ export default function ProInspectorPanel() {
 
       {/* body */}
       <div className={`flex-1 overflow-y-auto overflow-x-hidden ${tab === "obs" ? "" : "px-3 py-3"}`}>
-        {tab !== "obs" && (
+        {tab !== "obs" && !!TABS.find((t) => t.key === tab)?.desc && (
           <div className="text-[10px] text-[#888] mb-2">
             {TABS.find((t) => t.key === tab)?.desc}
           </div>
         )}
 
-        {tab === "config" ? (
+        {tab === "preview" ? (
+          <div className="flex flex-col gap-3">
+            {/* iframe 미리보기 — paddingBottom 16:9 고정 */}
+            <div
+              ref={previewContainerRef}
+              className="relative bg-black w-full rounded-lg overflow-hidden"
+              style={{ paddingBottom: "56.25%" }}
+            >
+              <iframe
+                key={`${displayIdx}-${iframeKey}`}
+                src={`/display/preview?index=${displayIdx}`}
+                scrolling="no"
+                title="씬 미리보기"
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "1920px",
+                  height: "1080px",
+                  transform: `scale(${previewScale})`,
+                  transformOrigin: "top left",
+                  border: "none",
+                  pointerEvents: "none",
+                }}
+              />
+            </div>
+            {/* 새로고침 버튼 */}
+            <div className="flex justify-end">
+              <button
+                onClick={() => setIframeKey((k) => k + 1)}
+                className="bg-pro-surface hover:bg-pro-hover text-pro-text text-xs px-3 py-1 rounded border border-pro-border transition-colors cursor-pointer"
+              >
+                새로고침
+              </button>
+            </div>
+            <p className="text-[9px] text-[#555] leading-relaxed">
+              씬 클릭 시 해당 씬이 Display에 어떻게 보일지 미리봅니다. 순서를 변경해도 미리보기가 따라갑니다.
+            </p>
+          </div>
+        ) : tab === "config" ? (
           <DisplayConfigTab showToast={showToast} />
         ) : tab === "obs" ? (
           <OBSSourcePanel inline open onClose={() => setTab("display")} />
@@ -213,6 +296,7 @@ export default function ProInspectorPanel() {
             fileInputDefaultRef={fileInputDefaultRef}
             fileInputLyricsRef={fileInputLyricsRef}
             onUpload={handleUpload}
+            onDeleteLyrics={handleDeleteLyrics}
             baseUrl={BASE_URL}
             showToast={showToast}
           />
@@ -1025,6 +1109,7 @@ function BackgroundsTab({
   fileInputDefaultRef,
   fileInputLyricsRef,
   onUpload,
+  onDeleteLyrics,
   baseUrl,
   showToast,
 }: {
@@ -1035,23 +1120,29 @@ function BackgroundsTab({
   fileInputDefaultRef: React.RefObject<HTMLInputElement>;
   fileInputLyricsRef: React.RefObject<HTMLInputElement>;
   onUpload: (files: FileList | null, category?: "display" | "display-default" | "lyrics") => void;
+  onDeleteLyrics: (name: string) => void;
   baseUrl: string;
   showToast: (msg: string, type?: "error" | "info") => void;
 }) {
   const [videoBgList, setVideoBgList] = useState<{ filename: string; url: string }[]>([]);
   const [globalVideoBg, setGlobalVideoBg] = useState("");
+  const [globalImageBgDisabled, setGlobalImageBgDisabled] = useState(false);
   const videoBgRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     apiClient.listVideoBg().then(setVideoBgList).catch(() => {});
-    apiClient.getDisplayConfig().then((c) => setGlobalVideoBg(c.globalVideoBg || "")).catch(() => {});
+    apiClient.getDisplayConfig().then((c) => {
+      setGlobalVideoBg(c.globalVideoBg || "");
+      setGlobalImageBgDisabled(c.globalImageBgDisabled ?? false);
+    }).catch(() => {});
   }, []);
 
-  const saveVideoBg = async (filename: string) => {
+  const saveDisplayBg = async (patch: { globalVideoBg?: string; globalImageBgDisabled?: boolean }) => {
     try {
       const cfg = await apiClient.getDisplayConfig();
-      await apiClient.saveDisplayConfig({ ...cfg, globalVideoBg: filename });
-      setGlobalVideoBg(filename);
+      await apiClient.saveDisplayConfig({ ...cfg, ...patch });
+      if (patch.globalVideoBg !== undefined) setGlobalVideoBg(patch.globalVideoBg);
+      if (patch.globalImageBgDisabled !== undefined) setGlobalImageBgDisabled(patch.globalImageBgDisabled);
     } catch {
       showToast("저장 실패");
     }
@@ -1064,7 +1155,7 @@ function BackgroundsTab({
       const res = await apiClient.uploadVideoBg(file);
       const newList = await apiClient.listVideoBg();
       setVideoBgList(newList);
-      await saveVideoBg(res.filename);
+      await saveDisplayBg({ globalVideoBg: res.filename, globalImageBgDisabled: false });
       showToast("비디오 배경이 업로드되었습니다.", "info");
     } catch {
       showToast("업로드 실패");
@@ -1077,23 +1168,37 @@ function BackgroundsTab({
       await apiClient.deleteVideoBg(filename);
       const newList = await apiClient.listVideoBg();
       setVideoBgList(newList);
-      if (globalVideoBg === filename) await saveVideoBg("");
+      if (globalVideoBg === filename) {
+        await saveDisplayBg({ globalVideoBg: "", globalImageBgDisabled: false });
+      }
       showToast("삭제되었습니다.", "info");
     } catch {
       showToast("삭제 실패");
     }
   };
 
+  // 현재 선택된 배경 판별
+  const isNoneActive = globalVideoBg === "" && globalImageBgDisabled;
+  const isImageActive = globalVideoBg === "" && !globalImageBgDisabled;
+
   return (
     <div className="flex flex-col gap-4">
-      {/* 기본 배경 (Frame 2) */}
+      {/* ── Display 배경 (이미지 + 비디오 통합) ── */}
       <div>
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-[10px] font-semibold text-[#ccc]">기본 배경 (Frame 2)</span>
-          <button
-            className="px-2 py-1 text-[10px] bg-[#4a9eff] text-white border-none rounded cursor-pointer hover:opacity-90"
-            onClick={() => fileInputDefaultRef.current?.click()}
-          >업로드</button>
+        <div className="flex justify-between items-center mb-1">
+          <span className="text-[10px] font-semibold text-[#ccc]">Display 배경</span>
+          <div className="flex items-center gap-1.5">
+            <button
+              className="px-2 py-1 text-[10px] bg-pro-elevated text-pro-text-dim border border-pro-border rounded cursor-pointer hover:opacity-90"
+              onClick={() => fileInputDefaultRef.current?.click()}
+              title="이미지 배경 업로드 (Frame 2)"
+            >이미지</button>
+            <button
+              className="px-2 py-1 text-[10px] bg-[#4a9eff] text-white border-none rounded cursor-pointer hover:opacity-90"
+              onClick={() => videoBgRef.current?.click()}
+              title="비디오 배경 업로드 (MP4/WebM)"
+            >비디오</button>
+          </div>
           <input
             ref={fileInputDefaultRef}
             type="file"
@@ -1101,107 +1206,74 @@ function BackgroundsTab({
             className="hidden"
             onChange={(e) => onUpload(e.target.files, "display-default")}
           />
-        </div>
-        {loading ? (
-          <div className="text-[#888] text-center py-3 text-xs">로딩 중...</div>
-        ) : defaultFiles.length === 0 ? (
-          <div className="text-[#555] text-center py-3 text-xs">기본 배경 없음</div>
-        ) : (
-          <div className="flex flex-col gap-1.5">
-            {defaultFiles.map((f) => (
-              <div key={f.name} className="relative rounded overflow-hidden bg-[#1a1a1a]">
-                <img
-                  src={`${baseUrl}${f.url}?v=${imgRevision}`}
-                  alt={f.name}
-                  className="w-full object-cover max-h-[120px]"
-                />
-                <div className="px-2 py-1">
-                  <span className="text-[#aaa] text-[10px] truncate block">{f.name}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="h-px bg-pro-border" />
-
-      {/* 가사 배경 (Frame 1) */}
-      <div>
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-[10px] font-semibold text-[#ccc]">가사 배경 (Frame 1)</span>
-          <button
-            className="px-2 py-1 text-[10px] bg-[#4a9eff] text-white border-none rounded cursor-pointer hover:opacity-90"
-            onClick={() => fileInputLyricsRef.current?.click()}
-          >업로드</button>
-          <input
-            ref={fileInputLyricsRef}
-            type="file"
-            accept="image/png,image/jpeg"
-            className="hidden"
-            onChange={(e) => onUpload(e.target.files, "lyrics")}
-          />
-        </div>
-        {loading ? (
-          <div className="text-[#888] text-center py-3 text-xs">로딩 중...</div>
-        ) : lyricsFiles.length === 0 ? (
-          <div className="text-[#555] text-center py-3 text-xs">가사 배경 없음</div>
-        ) : (
-          <div className="flex flex-col gap-1.5">
-            {lyricsFiles.map((f) => (
-              <div key={f.name} className="relative rounded overflow-hidden bg-[#1a1a1a]">
-                <img
-                  src={`${baseUrl}${f.url}?v=${imgRevision}`}
-                  alt={f.name}
-                  className="w-full object-cover max-h-[120px]"
-                />
-                <div className="px-2 py-1">
-                  <span className="text-[#aaa] text-[10px] truncate block">{f.name}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="h-px bg-pro-border" />
-
-      {/* 비디오 배경 */}
-      <div>
-        <div className="flex justify-between items-center mb-1">
-          <span className="text-[10px] font-semibold text-[#ccc]">비디오 배경</span>
-          <button
-            className="px-2 py-1 text-[10px] bg-[#4a9eff] text-white border-none rounded cursor-pointer hover:opacity-90"
-            onClick={() => videoBgRef.current?.click()}
-          >업로드</button>
           <input ref={videoBgRef} type="file" accept="video/mp4,video/webm,video/quicktime,.mov"
             className="hidden" onChange={handleVideoBgUpload} />
         </div>
-        <p className="text-[10px] text-[#555] mb-2">MP4 · WebM · 최대 300MB · 클릭으로 적용/해제</p>
+        <p className="text-[10px] text-[#555] mb-2">클릭으로 적용 · Display 화면 및 예배 PDF에 함께 사용 · 비디오 MP4/WebM 최대 300MB</p>
 
         <div className="grid grid-cols-2 gap-2">
-          {/* 없음 (검정 배경) 타일 */}
+          {/* 없음 (검정) 타일 */}
           <div
-            onClick={() => saveVideoBg("")}
+            onClick={() => saveDisplayBg({ globalVideoBg: "", globalImageBgDisabled: true })}
             className={`relative rounded-lg overflow-hidden cursor-pointer border-2 transition-all flex flex-col items-center justify-center bg-[#0a0a0a] aspect-video ${
-              globalVideoBg === "" ? "border-[#4a9eff]" : "border-transparent hover:border-white/30"
+              isNoneActive ? "border-[#4a9eff]" : "border-transparent hover:border-white/30"
             }`}
           >
             <span className="text-[16px] mb-0.5">⬛</span>
             <span className="text-[10px] text-[#666]">없음</span>
-            {globalVideoBg === "" && (
+            {isNoneActive && (
               <div className="absolute top-1 right-1 bg-[#4a9eff] text-white text-[8px] font-bold px-1.5 py-0.5 rounded">
                 적용 중
               </div>
             )}
           </div>
 
+          {/* Frame 2 이미지 타일 */}
+          {loading ? (
+            <div className="rounded-lg bg-[#1a1a1a] aspect-video flex items-center justify-center">
+              <span className="text-[10px] text-[#555]">로딩 중...</span>
+            </div>
+          ) : defaultFiles.length > 0 ? (
+            defaultFiles.map((f) => (
+              <div
+                key={f.name}
+                onClick={() => saveDisplayBg({ globalVideoBg: "", globalImageBgDisabled: false })}
+                className={`relative rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
+                  isImageActive ? "border-[#4a9eff]" : "border-transparent hover:border-white/30"
+                }`}
+              >
+                <img
+                  src={`${baseUrl}${f.url}?v=${imgRevision}`}
+                  alt={f.name}
+                  className="w-full aspect-video object-cover block bg-[#1a1a1a]"
+                />
+                <div className="flex items-center px-1.5 py-1 bg-black/60 absolute bottom-0 left-0 right-0">
+                  <span className="text-[9px] text-white/80 truncate flex-1">{f.name}</span>
+                </div>
+                {isImageActive && (
+                  <div className="absolute top-1 right-1 bg-[#4a9eff] text-white text-[8px] font-bold px-1.5 py-0.5 rounded">
+                    적용 중
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
+            <div
+              onClick={() => fileInputDefaultRef.current?.click()}
+              className="rounded-lg border-2 border-dashed border-white/15 bg-white/5 aspect-video flex flex-col items-center justify-center cursor-pointer hover:border-white/30 transition-colors"
+            >
+              <span className="text-[20px] mb-1">🖼</span>
+              <span className="text-[10px] text-[#555]">이미지 없음</span>
+            </div>
+          )}
+
+          {/* 비디오 타일 */}
           {videoBgList.map((v) => {
             const isActive = globalVideoBg === v.filename;
             return (
               <div
                 key={v.filename}
-                onClick={() => saveVideoBg(isActive ? "" : v.filename)}
+                onClick={() => saveDisplayBg({ globalVideoBg: isActive ? "" : v.filename, globalImageBgDisabled: false })}
                 className={`relative rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
                   isActive ? "border-[#4a9eff]" : "border-transparent hover:border-white/30"
                 }`}
@@ -1231,6 +1303,54 @@ function BackgroundsTab({
             );
           })}
         </div>
+      </div>
+
+      <div className="h-px bg-pro-border" />
+
+      {/* ── 가사 배경 (Frame 1) — PDF 전용 ── */}
+      <div>
+        <div className="flex justify-between items-center mb-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-semibold text-[#ccc]">가사 배경</span>
+            <span className="text-[9px] font-semibold bg-[#2a1a00] text-[#f59e0b] px-1.5 py-0.5 rounded">PDF 전용</span>
+          </div>
+          <button
+            className="px-2 py-1 text-[10px] bg-[#4a9eff] text-white border-none rounded cursor-pointer hover:opacity-90"
+            onClick={() => fileInputLyricsRef.current?.click()}
+          >업로드</button>
+          <input
+            ref={fileInputLyricsRef}
+            type="file"
+            accept="image/png,image/jpeg"
+            className="hidden"
+            onChange={(e) => onUpload(e.target.files, "lyrics")}
+          />
+        </div>
+        <p className="text-[10px] text-[#555] mb-2">찬양 가사 PDF 생성에만 사용 · Display 화면에는 영향 없음</p>
+        {loading ? (
+          <div className="text-[#888] text-center py-3 text-xs">로딩 중...</div>
+        ) : lyricsFiles.length === 0 ? (
+          <div className="text-[#555] text-center py-3 text-xs">가사 배경 없음</div>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            {lyricsFiles.map((f) => (
+              <div key={f.name} className="relative rounded overflow-hidden bg-[#1a1a1a]">
+                <img
+                  src={`${baseUrl}${f.url}?v=${imgRevision}`}
+                  alt={f.name}
+                  className="w-full object-cover max-h-[120px]"
+                />
+                <div className="px-2 py-1 flex items-center justify-between">
+                  <span className="text-[#aaa] text-[10px] truncate flex-1">{f.name}</span>
+                  <button
+                    onClick={() => onDeleteLyrics(f.name)}
+                    className="bg-[rgba(255,60,60,0.2)] border-none text-[#ff6b6b] text-[10px] px-1.5 py-0.5 rounded cursor-pointer ml-1 flex-shrink-0 hover:bg-[rgba(255,60,60,0.35)] transition-colors"
+                  >삭제</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

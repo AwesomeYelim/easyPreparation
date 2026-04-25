@@ -1,10 +1,63 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRecoilValue, useRecoilState, useSetRecoilState } from "recoil";
 import { userInfoState, lyricsSongsState, displayPanelOpenState, userSettingsState } from "@/recoilState";
 import { apiClient, openDisplayWindow } from "@/lib/apiClient";
 import toast from "react-hot-toast";
+
+// ── 히스토리 (localStorage) ───────────────────────────────────────────────
+const HISTORY_KEY = "ep_lyrics_history";
+const MAX_HISTORY = 30;
+
+interface HistoryEntry {
+  title: string;
+  lyrics: string;
+  bpm: number;
+  usedAt: string; // ISO string
+}
+
+function loadHistory(): HistoryEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? (JSON.parse(raw) as HistoryEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistHistory(entries: HistoryEntry[]) {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(entries));
+  } catch {}
+}
+
+function addToHistory(songsToSave: { title: string; lyrics: string; bpm: number }[]) {
+  const now = new Date().toISOString();
+  const current = loadHistory();
+  const updated = [...current];
+  for (const s of songsToSave) {
+    if (!s.title.trim() || !s.lyrics.trim()) continue;
+    const idx = updated.findIndex((h) => h.title === s.title);
+    if (idx >= 0) {
+      updated[idx] = { ...updated[idx], lyrics: s.lyrics, bpm: s.bpm, usedAt: now };
+    } else {
+      updated.unshift({ title: s.title, lyrics: s.lyrics, bpm: s.bpm, usedAt: now });
+    }
+  }
+  updated.sort((a, b) => b.usedAt.localeCompare(a.usedAt));
+  persistHistory(updated.slice(0, MAX_HISTORY));
+}
+
+function formatRelative(isoStr: string): string {
+  const diff = Date.now() - new Date(isoStr).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return "오늘";
+  if (days === 1) return "어제";
+  if (days < 7) return `${days}일 전`;
+  return new Date(isoStr).toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
+}
 
 export default function LyricsManager() {
   const [input, setInput] = useState("");
@@ -12,9 +65,29 @@ export default function LyricsManager() {
   const setDisplayPanelOpen = useSetRecoilState(displayPanelOpenState);
   const [loadingInfo, setLoadingInfo] = useState({ is: false, msg: "" });
   const [dedupResult, setDedupResult] = useState<Record<number, string>>({});
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const historyRef = useRef<HTMLDivElement>(null);
 
   const userInfo = useRecoilValue(userInfoState);
   const settings = useRecoilValue(userSettingsState);
+
+  // 히스토리 패널 열릴 때 로드
+  useEffect(() => {
+    if (historyOpen) setHistory(loadHistory());
+  }, [historyOpen]);
+
+  // 패널 외부 클릭 시 닫기
+  useEffect(() => {
+    if (!historyOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (historyRef.current && !historyRef.current.contains(e.target as Node)) {
+        setHistoryOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [historyOpen]);
 
   const handler = {
     add: () => {
@@ -25,6 +98,9 @@ export default function LyricsManager() {
       }
     },
     delete: (index: number) => {
+      // 가사 있으면 삭제 전 히스토리 저장
+      const s = songs[index];
+      if (s.lyrics.trim()) addToHistory([{ title: s.title, lyrics: s.lyrics, bpm: s.bpm }]);
       setSongs(songs.filter((_, i) => i !== index));
     },
     lyricsChange: (index: number, value: string) => {
@@ -229,6 +305,8 @@ export default function LyricsManager() {
 
       const res = await apiClient.appendToDisplay(appendItems, "lyrics");
       if (!res.ok) throw new Error("전송 실패");
+      // Display 전송 성공 시 히스토리 저장
+      addToHistory(payload.map((s) => ({ title: s.title, lyrics: s.lyrics, bpm: s.bpm })));
     } catch (error) {
       console.error("Display 전송 에러:", error);
       toast.error("Display 전송 중 오류가 발생했습니다.");
@@ -273,6 +351,76 @@ export default function LyricsManager() {
             >
               +
             </button>
+          </div>
+
+          {/* 히스토리 버튼 */}
+          <div className="relative" ref={historyRef}>
+            <button
+              onClick={() => setHistoryOpen((v) => !v)}
+              className={`flex items-center gap-1.5 px-3 py-2.5 text-sm rounded-lg border transition-all ${
+                historyOpen
+                  ? "bg-secondary/10 border-secondary/40 text-secondary"
+                  : "bg-surface-high border-outline/30 text-on-surface-variant hover:text-on-surface hover:bg-surface-highest"
+              }`}
+              title="최근 사용 곡 히스토리"
+            >
+              <span className="text-base leading-none">⏱</span>
+              히스토리
+            </button>
+
+            {/* 히스토리 드롭다운 */}
+            {historyOpen && (
+              <div className="absolute left-0 top-[calc(100%+6px)] w-72 bg-[#1e1e1e] border border-white/15 rounded-xl shadow-2xl z-50 overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
+                  <span className="text-xs font-semibold text-[#ccc]">최근 사용 곡</span>
+                  <span className="text-[10px] text-[#666]">클릭하면 목록에 추가</span>
+                </div>
+                {history.length === 0 ? (
+                  <div className="px-3 py-6 text-center text-xs text-[#555]">
+                    히스토리가 없습니다.<br />
+                    <span className="text-[11px]">Display 전송하거나 곡을 삭제하면 자동 기록됩니다.</span>
+                  </div>
+                ) : (
+                  <ul className="max-h-72 overflow-y-auto">
+                    {history.map((h) => {
+                      const alreadyAdded = songs.some((s) => s.title === h.title);
+                      return (
+                        <li key={h.title}>
+                          <button
+                            disabled={alreadyAdded}
+                            onClick={() => {
+                              if (alreadyAdded) return;
+                              setSongs([...songs, {
+                                title: h.title,
+                                lyrics: h.lyrics,
+                                bpm: h.bpm,
+                                expanded: true,
+                              }]);
+                              setHistoryOpen(false);
+                              toast.success(`"${h.title}" 추가됨`);
+                            }}
+                            className={`w-full text-left px-3 py-2.5 transition-colors flex items-center gap-2 ${
+                              alreadyAdded
+                                ? "opacity-40 cursor-default"
+                                : "hover:bg-white/5 cursor-pointer"
+                            }`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-medium text-[#ddd] truncate">{h.title}</div>
+                              <div className="text-[10px] text-[#666] mt-0.5 truncate">
+                                {h.lyrics.split("\n")[0].slice(0, 30)}
+                                {h.lyrics.split("\n")[0].length > 30 ? "…" : ""}
+                              </div>
+                            </div>
+                            <span className="text-[10px] text-[#555] shrink-0">{formatRelative(h.usedAt)}</span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
 
           {/* 액션 버튼들 */}

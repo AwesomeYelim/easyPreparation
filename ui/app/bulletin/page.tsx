@@ -218,30 +218,17 @@ export default function Bulletin() {
             <option value="fri_worship">금요예배</option>
           </select>
 
-          {/* 주보 PDF (A4 인쇄용) */}
+          {/* PDF 다운로드 (주보 + 예배 통합) */}
           <button
-            onClick={() => sendDataToGoServer("print")}
+            onClick={() => sendDataToGoServer("both")}
             disabled={loading}
-            title="A4 인쇄용 주보 PDF를 생성하여 다운로드합니다"
+            title="주보 PDF와 예배 PDF를 함께 생성하여 다운로드합니다"
             className="flex items-center gap-2 bg-pro-surface text-pro-text px-4 py-2.5 rounded-lg font-bold text-sm border border-pro-border hover:bg-pro-hover transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-default"
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M8 2V10M8 10L5 7M8 10L11 7M3 13H13" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            주보 PDF
-          </button>
-
-          {/* 예배 PDF (프레젠테이션용) */}
-          <button
-            onClick={() => sendDataToGoServer("presentation")}
-            disabled={loading}
-            title="프레젠테이션용 예배 순서 PDF를 생성하여 다운로드합니다"
-            className="flex items-center gap-2 bg-pro-surface text-pro-text px-4 py-2.5 rounded-lg font-bold text-sm border border-pro-border hover:bg-pro-hover transition-all whitespace-nowrap"
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M4 5V2h8v3M4 11H2V6h12v5h-2M4 8h8M4 11v3h8v-3" stroke="#a855f7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            예배 PDF
+            PDF 다운로드
           </button>
 
           {/* 프로젝터 전송 버튼 */}

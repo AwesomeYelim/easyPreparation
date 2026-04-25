@@ -147,3 +147,9 @@ export type OBSInitialSetupResult = {
   sources_created: string[];
   warnings: string[];
 };
+
+declare global {
+  interface Window {
+    __resetTour?: () => void;
+  }
+}
