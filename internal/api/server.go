@@ -101,6 +101,11 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/api/hymns/search", middleware.CORS(http.HandlerFunc(handlers.HymnSearchHandler)))
 	mux.Handle("/api/hymns/detail", middleware.CORS(http.HandlerFunc(handlers.HymnDetailHandler)))
 
+	// 커스텀 찬양 곡 API (CRUD)
+	mux.Handle("/api/songs/search", middleware.CORS(http.HandlerFunc(handlers.CustomSongSearchHandler)))
+	mux.Handle("/api/songs/import", middleware.CORS(http.HandlerFunc(handlers.CustomSongImportHandler)))
+	mux.Handle("/api/songs/", middleware.CORS(http.HandlerFunc(handlers.CustomSongCRUDHandler)))
+
 	// 로고 API
 	mux.Handle("/api/logo", middleware.CORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {

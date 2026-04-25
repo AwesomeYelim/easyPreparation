@@ -98,6 +98,21 @@ func InitDB(dataSourceName string) error {
 		}
 	}
 
+	// custom_songs 테이블 초기화 (커스텀 찬양 곡 DB)
+	_, _ = db.Exec(`
+		CREATE TABLE IF NOT EXISTS custom_songs (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			title TEXT NOT NULL,
+			artist TEXT DEFAULT '',
+			lyrics TEXT NOT NULL,
+			tags TEXT DEFAULT '[]',
+			used_count INTEGER DEFAULT 0,
+			last_used TEXT DEFAULT '',
+			created_at TEXT DEFAULT (datetime('now'))
+		)
+	`)
+	_, _ = db.Exec(`CREATE INDEX IF NOT EXISTS idx_custom_songs_title ON custom_songs(title)`)
+
 	// 기존 DB 마이그레이션 — 누락된 컬럼 추가
 	migrations := []string{
 		"ALTER TABLE licenses ADD COLUMN last_verified TEXT",

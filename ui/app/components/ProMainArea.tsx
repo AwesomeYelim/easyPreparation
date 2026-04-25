@@ -1,5 +1,6 @@
 "use client";
 import UpdateChecker from "./UpdateChecker";
+import OnboardingChecklist from "./OnboardingChecklist";
 
 export default function ProMainArea({ children }: { children: React.ReactNode }) {
   return (
@@ -9,6 +10,7 @@ export default function ProMainArea({ children }: { children: React.ReactNode })
     >
       <UpdateChecker />
       <div className="p-6 lg:p-8">
+        <OnboardingChecklist />
         {children}
       </div>
     </main>

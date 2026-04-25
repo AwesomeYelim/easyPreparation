@@ -242,9 +242,10 @@ export default function ProSequencePanel() {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       if (blocked) return;
-      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft" || e.key === " " || e.key === "Spacebar") {
+        if (e.key === " " || e.key === "Spacebar") e.preventDefault();
         blocked = true;
-        handleNav(e.key === "ArrowRight" ? "next" : "prev");
+        handleNav(e.key === "ArrowLeft" ? "prev" : "next");
         debounceTimer = setTimeout(() => { blocked = false; }, 300);
       }
     };
@@ -356,16 +357,28 @@ export default function ProSequencePanel() {
         )}
 
         {items.length === 0 && !loadingMsg && (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-pro-text-dim px-4 py-8">
+          <div className="flex flex-col items-center justify-center h-full gap-4 px-4 py-8 text-center">
             <span
-              className="material-symbols-outlined opacity-30"
+              className="material-symbols-outlined text-pro-text-dim opacity-30"
               style={{ fontSize: "32px" }}
             >
               queue_music
             </span>
-            <span className="text-[11px] text-center opacity-50">
-              예배 순서를 전송하면<br />여기에 표시됩니다
-            </span>
+            <div className="text-[13px] font-semibold text-pro-text">예배 순서를 시작해보세요</div>
+            <div className="flex flex-col gap-2 w-full mt-2">
+              {[
+                { step: "1", label: "상단 탭에서 예배 타입 선택" },
+                { step: "2", label: "예배 순서 편집 후 저장" },
+                { step: "3", label: "Display 전송 버튼 클릭" },
+              ].map(({ step, label }) => (
+                <div key={step} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
+                  <span className="w-5 h-5 rounded-full bg-[#4a9eff]/20 text-[#4a9eff] text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                    {step}
+                  </span>
+                  <span className="text-[11px] text-pro-text-dim text-left">{label}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
