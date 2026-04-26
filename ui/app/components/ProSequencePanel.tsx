@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, useLayoutEffect } from "react";
+import { useEffect, useState, useCallback, useRef, useLayoutEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil"; // eslint-disable-line @typescript-eslint/no-unused-vars
 import { displayItemsState, sequencePanelOpenState, itemTimersState, displayPositionState } from "@/recoilState";
 import { apiClient } from "@/lib/apiClient";
@@ -24,6 +24,9 @@ export default function ProSequencePanel() {
   const [streamStatus, setStreamStatus] = useState<StreamStatus>({ active: false, reconnecting: false, timecode: "", bytesSent: 0 });
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
   const [loadingMsg, setLoadingMsg] = useState("");
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [gridCellWidth, setGridCellWidth] = useState(120);
   const [schedCountdown, setSchedCountdown] = useState<ScheduleCountdown>(null);
 
   // Per-item timer state: Recoil (shared with ProTimeline)
@@ -234,6 +237,21 @@ export default function ProSequencePanel() {
     });
   }, []);
 
+  // --- Grid cell width measurement ---
+  useLayoutEffect(() => {
+    if (viewMode !== "grid" || !gridRef.current) return;
+    const el = gridRef.current;
+    const obs = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w) setGridCellWidth((w - 4) / 2); // 2 cols, gap-1(4px)
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [viewMode]);
+
+  // grid iframe key: changes when items list changes (force re-render on order change)
+  const itemsHash = useMemo(() => items.map(it => it.key || it.title).join(","), [items]);
+
   // --- Keyboard arrow navigation ---
   useEffect(() => {
     let blocked = false;
@@ -327,7 +345,7 @@ export default function ProSequencePanel() {
         </div>
       )}
 
-      {/* ── Navigation row + AUTO toggle ── */}
+      {/* ── Navigation row + view toggle ── */}
       <div className="flex items-center gap-1.5 px-3 py-2 border-b border-pro-border flex-shrink-0">
         <button
           className="flex-1 py-1.5 text-xs font-semibold bg-pro-elevated text-pro-text border border-pro-border rounded cursor-pointer hover:bg-pro-hover transition-colors"
@@ -344,10 +362,89 @@ export default function ProSequencePanel() {
         >
           NEXT ▶
         </button>
+        <button
+          className={`p-1.5 rounded border transition-colors flex-shrink-0 ${
+            viewMode === "grid"
+              ? "bg-pro-accent/20 border-pro-accent text-pro-accent"
+              : "bg-pro-elevated border-pro-border text-pro-text-dim hover:bg-pro-hover"
+          }`}
+          onClick={() => setViewMode((v) => (v === "list" ? "grid" : "list"))}
+          title={viewMode === "list" ? "그리드 보기" : "목록 보기"}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: "13px", lineHeight: 1 }}>
+            {viewMode === "list" ? "grid_view" : "view_list"}
+          </span>
+        </button>
       </div>
 
 
+      {/* ── Grid view ── */}
+      {viewMode === "grid" && (
+        <div ref={gridRef} className="flex-1 overflow-y-auto">
+          {items.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-pro-text-dim text-[12px] px-4 text-center">
+              예배 순서가 없습니다
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-1 p-2">
+              {items.map((item, i) => {
+                const isActive = i === idx;
+                const isPdfOnly = item.info === "pdf_only";
+                const cellHeight = Math.round(gridCellWidth * 9 / 16);
+                const scale = gridCellWidth / 1920;
+                return (
+                  <div
+                    key={item.key || i}
+                    className="relative rounded overflow-hidden cursor-pointer border-2 transition-all hover:opacity-90"
+                    style={{
+                      height: `${cellHeight}px`,
+                      borderColor: isActive
+                        ? "#3B82F6"
+                        : isPdfOnly
+                        ? "#92400e"
+                        : "#2a2a2a",
+                    }}
+                    onClick={() => handleJump(i)}
+                    title={`${i + 1}. ${item.title}${item.obj && item.obj !== "-" ? ` — ${item.obj}` : ""}`}
+                  >
+                    <iframe
+                      key={`${i}-${itemsHash}`}
+                      src={`/display/preview?index=${i}`}
+                      scrolling="no"
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "1920px",
+                        height: "1080px",
+                        transform: `scale(${scale})`,
+                        transformOrigin: "top left",
+                        border: "none",
+                        pointerEvents: "none",
+                      }}
+                    />
+                    {/* Label overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/70 px-1 py-0.5 flex items-center gap-1">
+                      <span className="text-[7px] text-white/60 flex-shrink-0">{i + 1}</span>
+                      <span className="text-[7px] text-white truncate">{item.title}</span>
+                      {isPdfOnly && (
+                        <span className="text-[6px] font-bold text-[#f59e0b] flex-shrink-0">PDF</span>
+                      )}
+                    </div>
+                    {/* Active indicator */}
+                    {isActive && (
+                      <div className="absolute inset-0 ring-2 ring-inset ring-pro-accent pointer-events-none rounded" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Order list ── */}
+      {viewMode === "list" && (
       <div className="flex-1 overflow-y-auto py-1" ref={listRef}>
         {loadingMsg && (
           <div className="flex items-center gap-2 px-3 py-3 text-pro-text-dim text-[12px]">
@@ -490,6 +587,7 @@ export default function ProSequencePanel() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }

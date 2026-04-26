@@ -6,7 +6,7 @@
 
 - 4-job: `build-frontend` → `build-server`(4플랫폼) + `build-desktop`(3플랫폼) → `release`
 - Server: CGO_ENABLED=0 크로스컴파일 (darwin arm64/amd64, linux, windows)
-- Desktop: macOS arm64 (.zip), Windows (NSIS), Linux (binary)
+- Desktop: macOS arm64 (.dmg), Windows (NSIS setup .exe), Linux (binary)
 - 8개 아티팩트 + checksums.txt
 
 ```bash
