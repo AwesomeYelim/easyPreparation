@@ -87,9 +87,9 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            artifact: easyPreparation_desktop_darwin_arm64.zip
+            artifact: easyPreparation_desktop_darwin_arm64.dmg
           - os: windows-latest
-            artifact: easyPreparation_desktop_windows_amd64.exe
+            artifact: easyPreparation_desktop_windows_amd64_setup.exe
           - os: ubuntu-latest
             artifact: easyPreparation_desktop_linux_amd64
     runs-on: ${{ matrix.os }}
@@ -140,7 +140,11 @@ jobs:
           wails build -s -o easyPreparation -ldflags "${LDFLAGS}"
           codesign --force --deep -s - build/bin/easyPreparation.app
           xattr -cr build/bin/easyPreparation.app
-          cd build/bin && zip -r "$GITHUB_WORKSPACE/easyPreparation_desktop_darwin_arm64.zip" easyPreparation.app
+          hdiutil create \
+            -volname "easyPreparation" \
+            -srcfolder build/bin/easyPreparation.app \
+            -ov -format UDZO \
+            "$GITHUB_WORKSPACE/easyPreparation_desktop_darwin_arm64.dmg"
       - name: Build desktop app (Windows amd64)
         if: matrix.os == 'windows-latest'
         shell: pwsh
@@ -150,8 +154,8 @@ jobs:
           $BUILD_TIME = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
           $LDFLAGS = "-X main.Version=$VERSION -X main.Commit=$COMMIT -X main.BuildTime=$BUILD_TIME"
           Set-Location cmd/desktop
-          wails build -s -o easyPreparation.exe -ldflags "$LDFLAGS" -platform windows/amd64
-          Copy-Item build/bin/easyPreparation.exe "../../easyPreparation_desktop_windows_amd64.exe"
+          wails build -s -o easyPreparation -ldflags "$LDFLAGS" -platform windows/amd64 -nsis
+          Copy-Item build/bin/easyPreparation-amd64-installer.exe "../../easyPreparation_desktop_windows_amd64_setup.exe"
       - name: Build desktop app (Linux amd64)
         if: matrix.os == 'ubuntu-latest'
         env:
@@ -205,7 +209,7 @@ jobs:
           echo "" >> release_notes.md
           echo "**Windows**" >> release_notes.md
           echo "" >> release_notes.md
-          echo "\`easyPreparation_desktop_windows_amd64.exe\` 다운로드 후 더블클릭" >> release_notes.md
+          echo "\`easyPreparation_desktop_windows_amd64_setup.exe\` 다운로드 후 더블클릭 (NSIS 설치 마법사)" >> release_notes.md
           echo "" >> release_notes.md
           echo "또는 PowerShell:" >> release_notes.md
           echo '```powershell' >> release_notes.md
