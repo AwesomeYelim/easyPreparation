@@ -7,6 +7,7 @@ import GlobalDisplayPanel from "./components/GlobalDisplayPanel";
 import SettingsLoader from "./components/SettingsLoader";
 import ToastProvider from "./components/ToastProvider";
 import WebSocketToastBridge from "./components/WebSocketToastBridge";
+import WelcomeTour from "./components/WelcomeTour";
 import ProShell from "@/components/ProShell";
 import ProTopBar from "@/components/ProTopBar";
 import ProIconBar from "@/components/ProIconBar";
@@ -52,6 +53,7 @@ export default function RootLayout({
                 <SetupWizard />
                 <WebSocketProvider>
                   <WebSocketToastBridge />
+                  <WelcomeTour />
                   <SettingsLoader />
                   <ProShell>
                     <ProTopBar />

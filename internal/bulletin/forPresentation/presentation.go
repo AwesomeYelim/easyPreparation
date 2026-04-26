@@ -96,6 +96,7 @@ func (pi PdfInfo) Create() {
 				objPdf.CheckImgPlaced(objPdf.Path, 0)
 			}
 			objPdf.MarkName()
+			objPdf.DrawSlideHeader(con.Lead, con.Title)
 			if hasContent {
 				objPdf.ForEdit(con, config)
 			}

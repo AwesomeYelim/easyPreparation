@@ -360,7 +360,7 @@ const displayHTML = `<!DOCTYPE html>
   <div id="countdown-time"></div>
 </div>
 <!-- 서버 연결 끊김 표시 (예배 담당자용) -->
-<div id="offline-badge" style="display:none;position:fixed;bottom:14px;right:14px;z-index:10000;background:rgba(220,38,38,0.92);color:#fff;padding:5px 11px;border-radius:6px;font-size:13px;font-family:sans-serif;letter-spacing:0.02em;">⚠ 서버 연결 끊김 — 재연결 중...</div>
+<div id="offline-badge" style="display:none;position:fixed;bottom:14px;left:14px;z-index:10000;background:rgba(0,0,0,0.35);color:rgba(255,255,255,0.45);padding:3px 7px;border-radius:3px;font-size:9px;font-family:monospace;letter-spacing:0.03em;">● offline</div>
 
 <script>
 /* ── Service Worker 등록 (오프라인 캐시) ── */
@@ -434,7 +434,8 @@ async function initDisplayConfig() {
     if (cfgRes.ok) {
       const cfg = await cfgRes.json();
       applyFont(cfg.font);
-      if (cfg.globalVideoBg) applyVideoBg(cfg.globalVideoBg);
+      globalImageBgDisabled = !!cfg.globalImageBgDisabled;
+      applyVideoBg(cfg.globalVideoBg || ''); // 비디오 없어도 body 배경 적용
       if (cfg.logoPosition) logoPosition = cfg.logoPosition;
       if (cfg.logoSizePercent) logoSizePercent = cfg.logoSizePercent;
     }
@@ -443,6 +444,7 @@ async function initDisplayConfig() {
 
 /* 비디오 배경 적용 */
 var activeVideoBg = '';
+var globalImageBgDisabled = false;
 function applyVideoBg(filename) {
   activeVideoBg = filename || '';
   const vid = document.getElementById('bg-video');
@@ -450,12 +452,20 @@ function applyVideoBg(filename) {
   if (!vid || !src) return;
   if (!filename) {
     vid.style.display = 'none';
-    document.body.style.background = '#000';
+    if (!globalImageBgDisabled) {
+      document.body.style.backgroundImage = "url('/display/bg')";
+      document.body.style.backgroundSize = 'cover';
+      document.body.style.backgroundPosition = 'center';
+    } else {
+      document.body.style.backgroundImage = 'none';
+      document.body.style.background = '#000';
+    }
     return;
   }
   src.src = '/display/video-bg/' + filename;
   vid.load();
   vid.style.display = 'block';
+  document.body.style.backgroundImage = 'none';
   document.body.style.background = 'transparent';
 }
 
@@ -517,7 +527,8 @@ function connect() {
     if (msg.type === 'display') renderSingle(msg);
     if (msg.type === 'display_config') {
       applyFont(msg.font);
-      applyVideoBg(msg.globalVideoBg || '');
+      globalImageBgDisabled = !!msg.globalImageBgDisabled;
+      applyVideoBg(msg.globalVideoBg || ''); // body 배경도 함께 업데이트
       if (msg.logoPosition) logoPosition = msg.logoPosition;
       if (msg.logoSizePercent) logoSizePercent = msg.logoSizePercent;
     }
@@ -558,9 +569,16 @@ function loadOrder(items, startIdx) {
 
 /* ───── 슬라이드 표시 ───── */
 let lastReportedIdx = -1;
-function showSlide(i) {
+function showSlide(i, skipDir) {
   if (!slides.length) return;
   i = Math.max(0, Math.min(i, slides.length - 1));
+  // pdf_only 항목 자동 스킵 (방향 유지)
+  if ((slides[i].info || '') === 'pdf_only') {
+    const d = (typeof skipDir === 'number') ? skipDir : 1;
+    const next = i + d;
+    if (next >= 0 && next < slides.length) showSlide(next, d);
+    return;
+  }
   idx = i;
   subPageIdx = 0;
   // 항목 변경 시 서버에 위치 보고
@@ -612,7 +630,7 @@ function navigate(dir) {
       renderItem(slides[idx], subPageIdx);
       reportPosition();
     } else {
-      showSlide(idx + 1);
+      showSlide(idx + 1, 1);
     }
   } else if (dir === 'prev') {
     if (subPages.length > 1 && subPageIdx > 0) {
@@ -620,7 +638,7 @@ function navigate(dir) {
       renderItem(slides[idx], subPageIdx);
       reportPosition();
     } else {
-      showSlide(idx - 1);
+      showSlide(idx - 1, -1);
     }
   }
 }
@@ -649,8 +667,10 @@ function renderItem(item, pageIdx) {
     slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.35),rgba(0,0,0,0.35)), url('" + bgImage + "')";
   } else if (activeVideoBg) {
     slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.35),rgba(0,0,0,0.35))";
-  } else {
+  } else if (!globalImageBgDisabled) {
     slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.4)), url('/display/bg')";
+  } else {
+    slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.4))";
   }
   slide.className = 'visible';
 
@@ -661,10 +681,16 @@ function renderItem(item, pageIdx) {
     const hPos = logoPosition.endsWith('right') ? 'right:2vw' : 'left:2vw';
     return '<div style="position:absolute;' + vPos + ';' + hPos + ';display:flex;align-items:flex-end"><img src="' + logoUrl + '" alt="logo" style="max-height:7vh;max-width:' + logoSizePercent + 'vw;object-fit:contain;opacity:0.88;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.55))"></div>';
   })() : '';
+  // 로고와 텍스트 겹침 방지 — 로고 크기만큼 여백 확보
+  const _logoAtBottom = logoUrl && logoPosition.startsWith('bottom');
+  const _pageIndStyle = (_logoAtBottom && logoPosition.endsWith('right'))
+    ? ' style="right:' + (logoSizePercent + 3) + 'vw"' : '';
+  const _slidePosStyle = (_logoAtBottom && logoPosition.endsWith('left'))
+    ? ' style="left:' + (logoSizePercent + 3) + 'vw"' : '';
   const footer =
     '<div class="divider"></div>' +
-    '<div class="slide-pos">' + posText + '</div>' +
-    (pageText ? '<div class="page-indicator">' + pageText + '</div>' : '') +
+    '<div class="slide-pos"' + _slidePosStyle + '>' + posText + '</div>' +
+    (pageText ? '<div class="page-indicator"' + _pageIndStyle + '>' + pageText + '</div>' : '') +
     churchBox;
   const header =
     '<div class="label">' + esc(lead) + '</div>' +

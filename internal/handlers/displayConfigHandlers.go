@@ -21,6 +21,9 @@ type DisplayConfig struct {
 	// 비디오 배경
 	GlobalVideoBg string `json:"globalVideoBg,omitempty"` // 파일명 (data/video-bg/ 하위)
 
+	// 이미지 배경 비활성화 (Display 배경 탭에서 "없음" 선택 시 true)
+	GlobalImageBgDisabled bool `json:"globalImageBgDisabled,omitempty"`
+
 	// 프로젝터 로고 위치/크기
 	LogoPosition    string  `json:"logoPosition,omitempty"`    // "bottom-right" | "bottom-left" | "top-right" | "top-left"
 	LogoSizePercent float64 `json:"logoSizePercent,omitempty"` // 5 ~ 30 (vw%), 기본 18
@@ -166,14 +169,15 @@ func HandleDisplayConfigSet(w http.ResponseWriter, r *http.Request) {
 
 	// Display/Overlay 페이지에 실시간 반영
 	BroadcastMessage("display_config", map[string]interface{}{
-		"font":             cfg.Font,
-		"overlayBgOpacity": cfg.OverlayBgOpacity,
-		"overlayTextColor": cfg.OverlayTextColor,
-		"overlayPosition":  cfg.OverlayPosition,
-		"overlayFontScale": cfg.OverlayFontScale,
-		"globalVideoBg":    cfg.GlobalVideoBg,
-		"logoPosition":     cfg.LogoPosition,
-		"logoSizePercent":  cfg.LogoSizePercent,
+		"font":                   cfg.Font,
+		"overlayBgOpacity":       cfg.OverlayBgOpacity,
+		"overlayTextColor":       cfg.OverlayTextColor,
+		"overlayPosition":        cfg.OverlayPosition,
+		"overlayFontScale":       cfg.OverlayFontScale,
+		"globalVideoBg":          cfg.GlobalVideoBg,
+		"globalImageBgDisabled":  cfg.GlobalImageBgDisabled,
+		"logoPosition":           cfg.LogoPosition,
+		"logoSizePercent":        cfg.LogoSizePercent,
 	})
 
 	w.Header().Set("Content-Type", "application/json")

@@ -7,6 +7,7 @@ export interface DisplayConfig {
   overlayPosition: string;    // "flex-end" | "center" | "flex-start"
   overlayFontScale: number;   // 0.5 ~ 2.0
   globalVideoBg?: string;     // 파일명
+  globalImageBgDisabled?: boolean; // true = 이미지 배경 비활성 (없음)
   // 프로젝터 로고 위치/크기
   logoPosition?: string;      // "bottom-right" | "bottom-left" | "top-right" | "top-left"
   logoSizePercent?: number;   // 5 ~ 30 (vw%)

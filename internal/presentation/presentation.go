@@ -370,6 +370,35 @@ func (pdf *PDF) ForEdit(con types.WorshipInfo, config extract.Config) {
 	}
 }
 
+// DrawSlideHeader — 슬라이드 상단에 인도자(좌)·순서명(우) 헤더 렌더링
+// Display 화면 헤더와 동일한 레이아웃
+func (pdf *PDF) DrawSlideHeader(lead, title string) {
+	if lead == "" && title == "" {
+		return
+	}
+	// 본문 폰트 크기의 55% — 헤더는 본문보다 작게
+	fontInfo := classification.FontInfo{
+		FontFamily: pdf.Config.FontInfo.FontFamily,
+		FontSize:   pdf.Config.FontInfo.FontSize * 0.55,
+	}
+	xMargin := pdf.Config.Width * 0.042
+	yPos := xMargin // 좌우 여백과 동일한 상단 여백
+	cellW := pdf.Config.Width * 0.4
+
+	pdf.SetText(fontInfo, false, color.RGBA{R: 255, G: 255, B: 255, A: 255})
+	pdf.Fpdf.SetAlpha(0.65, "Normal")
+	defer pdf.Fpdf.SetAlpha(1.0, "Normal")
+
+	if lead != "" {
+		pdf.SetXY(xMargin, yPos)
+		pdf.CellFormat(cellW, 0, lead, "", 0, "L", false, 0, "")
+	}
+	if title != "" {
+		pdf.SetXY(pdf.Config.Width-cellW-xMargin, yPos)
+		pdf.CellFormat(cellW, 0, title, "", 0, "R", false, 0, "")
+	}
+}
+
 func (pdf *PDF) MarkName() {
 	logoCfg := handlers.GetPDFLogoConfig()
 	if logoCfg.LogoPath == "" {

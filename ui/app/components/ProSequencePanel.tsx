@@ -386,12 +386,15 @@ export default function ProSequencePanel() {
           const hasSections = item.sections && item.sections.length > 0;
           const isExpanded = expandedItems.has(i);
           const isActive = i === idx;
+          const isPdfOnly = item.info === "pdf_only";
 
           return (
             <div key={item.key || i}>
               <div
                 className={`flex items-center gap-1.5 px-3 py-2 cursor-pointer border-l-2 transition-all ${
-                  isActive
+                  isPdfOnly
+                    ? "opacity-45 border-l-transparent hover:bg-pro-hover hover:opacity-60"
+                    : isActive
                     ? "bg-pro-accent/10 border-l-pro-accent"
                     : "border-l-transparent hover:bg-pro-hover"
                 } data-[dragover]:border-t-2 data-[dragover]:border-t-pro-accent data-[dragover]:bg-pro-accent/5`}
@@ -410,9 +413,16 @@ export default function ProSequencePanel() {
                 </span>
 
                 {/* Title */}
-                <span className="text-[12px] font-medium text-pro-text flex-shrink-0">
+                <span className={`text-[12px] font-medium flex-shrink-0 ${isPdfOnly ? "text-pro-text-dim" : "text-pro-text"}`}>
                   {item.title}
                 </span>
+
+                {/* PDF 전용 배지 */}
+                {isPdfOnly && (
+                  <span className="text-[8px] font-semibold bg-[#2a1a00] text-[#f59e0b] px-1 py-0.5 rounded flex-shrink-0">
+                    PDF
+                  </span>
+                )}
 
                 {/* Obj */}
                 <span className="text-[11px] text-pro-text-dim overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0">
