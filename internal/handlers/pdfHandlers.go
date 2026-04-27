@@ -205,6 +205,7 @@ const pdfDisplayHTML = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <title>PDF Display</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23020617'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='central' text-anchor='middle' fill='white' font-family='Arial' font-weight='900' font-size='20' font-style='italic'%3Eep%3C/text%3E%3C/svg%3E" type="image/svg+xml">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   html, body { width:1920px; height:1080px; background:#000; overflow:hidden; position:relative; }

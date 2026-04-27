@@ -73,6 +73,17 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/display/print", middleware.CORS(http.HandlerFunc(handlers.HandleDisplayPrint)))
 	mux.Handle("/api/display/print-info", middleware.CORS(http.HandlerFunc(handlers.HandleDisplayPrintJSON)))
 
+	// 주보 시안 출력 (React+Babel 렌더링 → go-rod PDF)
+	mux.Handle("/display/bulletin-print", middleware.CORS(http.HandlerFunc(handlers.BulletinPrintHandler)))
+	mux.Handle("/display/bulletin-template/", middleware.CORS(http.HandlerFunc(handlers.BulletinTemplateFileHandler)))
+	mux.Handle("/api/bulletin-data", middleware.CORS(http.HandlerFunc(handlers.BulletinDataHandler)))
+	mux.Handle("/api/bulletin-pdf", middleware.CORS(http.HandlerFunc(handlers.BulletinPdfHandler)))
+	mux.Handle("/api/bulletin-pdf-save", middleware.CORS(http.HandlerFunc(handlers.BulletinPdfSaveHandler)))
+	mux.Handle("/api/bulletin-preview", middleware.CORS(http.HandlerFunc(handlers.BulletinPreviewHandler)))
+	mux.Handle("/api/bulletin-cover", middleware.CORS(http.HandlerFunc(handlers.BulletinCoverHandler)))
+	mux.Handle("/api/bulletin-theme", middleware.CORS(http.HandlerFunc(handlers.BulletinThemeHandler)))
+	mux.Handle("/api/church-info", middleware.CORS(http.HandlerFunc(handlers.ChurchInfoHandler)))
+
 	// 비디오 배경
 	mux.Handle("/api/video-bg/upload", middleware.CORS(http.HandlerFunc(handlers.VideoBgUploadHandler)))
 	mux.Handle("/api/video-bg/list", middleware.CORS(http.HandlerFunc(handlers.VideoBgListHandler)))

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { inspectorOpenState, displayPositionState } from "@/recoilState";
+import { inspectorOpenState, displayPositionState, bulletinPreviewState } from "@/recoilState";
 import { apiClient } from "@/lib/apiClient";
 import { ThumbnailConfig, ScheduleConfig, ScheduleEntry } from "@/types";
 import ConfirmModal from "./ConfirmModal";
@@ -50,6 +50,8 @@ export default function ProInspectorPanel() {
   const [previewScale, setPreviewScale] = useState(0.133);
   // 현재 씬 인덱스 (ProSequencePanel과 공유)
   const displayIdx = useRecoilValue(displayPositionState);
+  // 주보 시안 미리보기 상태
+  const [bulletinPreview, setBulletinPreview] = useRecoilState(bulletinPreviewState);
 
   // 특별일 탭 상태
   const [thumbConfig, setThumbConfig] = useState<ThumbnailConfig | null>(null);
@@ -111,6 +113,13 @@ export default function ProInspectorPanel() {
       apiClient.getSchedule().then(setScheduleConfig).catch(console.error);
     }
   }, [inspOpen, tab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 주보 미리보기 설정 시 자동으로 preview 탭으로 전환
+  useEffect(() => {
+    if (bulletinPreview.template !== null) {
+      setTab("preview");
+    }
+  }, [bulletinPreview.template]);
 
   // 미리보기 컨테이너 너비 감지 → iframe scale 계산
   useEffect(() => {
@@ -246,32 +255,92 @@ export default function ProInspectorPanel() {
 
         {tab === "preview" ? (
           <div className="flex flex-col gap-3">
-            {/* iframe 미리보기 — paddingBottom 16:9 고정 */}
+            {/* 주보 시안 미리보기 헤더 */}
+            {bulletinPreview.template !== null && (
+              <div className="flex items-center justify-between -mb-1">
+                <span className="text-[10px] font-bold text-pro-text">
+                  시안 {bulletinPreview.template} 주보 미리보기
+                </span>
+                <button
+                  onClick={() => setBulletinPreview({ template: null, worshipType: "main_worship" })}
+                  className="text-[9px] text-pro-text-muted hover:text-electric-blue transition-colors px-1.5 py-0.5 rounded hover:bg-pro-hover"
+                >
+                  ← Display 미리보기
+                </button>
+              </div>
+            )}
+
+            {/* iframe 미리보기 */}
             <div
               ref={previewContainerRef}
               className="relative bg-black w-full rounded-lg overflow-hidden"
-              style={{ paddingBottom: "56.25%" }}
+              style={bulletinPreview.template !== null
+                ? { paddingBottom: `${(1700 / 1200) * 100}%` }
+                : { paddingBottom: "56.25%" }
+              }
             >
-              <iframe
-                key={`${displayIdx}-${iframeKey}`}
-                src={`/display/preview?index=${displayIdx}`}
-                scrolling="no"
-                title="씬 미리보기"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "1920px",
-                  height: "1080px",
-                  transform: `scale(${previewScale})`,
-                  transformOrigin: "top left",
-                  border: "none",
-                  pointerEvents: "none",
-                }}
-              />
+              {bulletinPreview.template !== null ? (
+                <iframe
+                  key={`bulletin-${bulletinPreview.worshipType}-${bulletinPreview.template}-${iframeKey}`}
+                  src={`/display/bulletin-print?type=${bulletinPreview.worshipType}&template=${bulletinPreview.template}`}
+                  scrolling="no"
+                  title="주보 시안 미리보기"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "1200px",
+                    height: "1700px",
+                    transform: `scale(${previewScale * (1920 / 1200)})`,
+                    transformOrigin: "top left",
+                    border: "none",
+                    pointerEvents: "none",
+                  }}
+                />
+              ) : (
+                <iframe
+                  key={`${displayIdx}-${iframeKey}`}
+                  src={`/display/preview?index=${displayIdx}`}
+                  scrolling="no"
+                  title="씬 미리보기"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "1920px",
+                    height: "1080px",
+                    transform: `scale(${previewScale})`,
+                    transformOrigin: "top left",
+                    border: "none",
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
             </div>
-            {/* 새로고침 버튼 */}
-            <div className="flex justify-end">
+
+            {/* 새로고침 + 새 탭 열기 */}
+            <div className="flex justify-end gap-2">
+              {bulletinPreview.template !== null && (
+                <button
+                  onClick={async () => {
+                    const url = `/display/bulletin-print?type=${bulletinPreview.worshipType}&template=${bulletinPreview.template}`;
+                    // Desktop 모드: 서버가 시스템 브라우저로 열어줌
+                    const res = await fetch(
+                      `/api/bulletin-preview?type=${bulletinPreview.worshipType}&template=${bulletinPreview.template}`
+                    ).catch(() => null);
+                    if (res && res.ok) return;
+                    // 웹 브라우저 모드 fallback
+                    window.open(url, "_blank");
+                  }}
+                  className="bg-pro-surface hover:bg-pro-hover text-electric-blue text-xs px-3 py-1 rounded border border-pro-border transition-colors cursor-pointer flex items-center gap-1"
+                  title="전체 크기로 보기"
+                >
+                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+                    <path d="M7 3H3V13H13V9M9 3H13V7M13 3L8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  확대 보기
+                </button>
+              )}
               <button
                 onClick={() => setIframeKey((k) => k + 1)}
                 className="bg-pro-surface hover:bg-pro-hover text-pro-text text-xs px-3 py-1 rounded border border-pro-border transition-colors cursor-pointer"
@@ -279,9 +348,11 @@ export default function ProInspectorPanel() {
                 새로고침
               </button>
             </div>
-            <p className="text-[9px] text-[#555] leading-relaxed">
-              씬 클릭 시 해당 씬이 Display에 어떻게 보일지 미리봅니다. 순서를 변경해도 미리보기가 따라갑니다.
-            </p>
+            {bulletinPreview.template === null && (
+              <p className="text-[9px] text-[#555] leading-relaxed">
+                씬 클릭 시 해당 씬이 Display에 어떻게 보일지 미리봅니다. 순서를 변경해도 미리보기가 따라갑니다.
+              </p>
+            )}
           </div>
         ) : tab === "config" ? (
           <DisplayConfigTab showToast={showToast} />

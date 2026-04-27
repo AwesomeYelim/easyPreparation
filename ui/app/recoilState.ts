@@ -143,3 +143,9 @@ export const displayPositionState = atom<number>({
   key: "displayPositionState",
   default: 0,
 });
+
+// 주보 시안 미리보기 상태 — TemplateSelector → ProInspectorPanel 통신
+export const bulletinPreviewState = atom<{ template: number | null; worshipType: string }>({
+  key: "bulletinPreviewState",
+  default: { template: null, worshipType: "main_worship" },
+});

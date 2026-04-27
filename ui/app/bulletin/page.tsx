@@ -3,6 +3,7 @@
 import { WorshipOrder } from "./components/WorshipOrder";
 import SelectedOrder from "./components/SelectedOrder";
 import Detail from "./components/Detail";
+import TemplateSelector from "./components/TemplateSelector";
 import { useState, useEffect, useRef } from "react";
 import { WorshipType, userInfoState, worshipOrderState, displayPanelOpenState } from "@/recoilState";
 import { WorshipOrderItem } from "@/types";
@@ -218,7 +219,10 @@ export default function Bulletin() {
             <option value="fri_worship">금요예배</option>
           </select>
 
-          {/* PDF 다운로드 (주보 + 예배 통합) */}
+          {/* 주보 시안 선택 드롭다운 */}
+          <TemplateSelector worshipType={selectedWorshipType} />
+
+          {/* PDF 다운로드 (예배 PDF) */}
           <button
             onClick={() => sendDataToGoServer("both")}
             disabled={loading}
@@ -230,6 +234,7 @@ export default function Bulletin() {
             </svg>
             PDF 다운로드
           </button>
+
 
           {/* 프로젝터 전송 버튼 */}
           <button
@@ -275,7 +280,7 @@ export default function Bulletin() {
           />
           <Detail setSelectedItems={setSelectedInfo} />
         </div>
-        {/* 우측: 미리보기 */}
+        {/* 우측: 예배 순서 결과 */}
         <div className="w-80 flex-shrink-0">
           <ResultPart selectedItems={selectedInfo} />
         </div>
