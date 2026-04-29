@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 $AppName    = "easyPreparation"
-$ExeName    = "${AppName}_desktop_windows_amd64.exe"
+$ExeName    = "${AppName}_desktop_windows_amd64_setup.exe"
 $DownloadUrl = "https://github.com/AwesomeYelim/easyPreparation/releases/latest/download/$ExeName"
 $InstallDir = Join-Path $env:LOCALAPPDATA $AppName
 $ExePath    = Join-Path $InstallDir "${AppName}.exe"
