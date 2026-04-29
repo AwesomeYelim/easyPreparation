@@ -2,17 +2,16 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { inspectorOpenState, displayPositionState, bulletinPreviewState } from "@/recoilState";
+import { inspectorOpenState, bulletinPreviewState, inspectorTabState, InspectorCategory } from "@/recoilState";
 import { apiClient } from "@/lib/apiClient";
 import { ThumbnailConfig, ScheduleConfig, ScheduleEntry } from "@/types";
 import ConfirmModal from "./ConfirmModal";
 import FeatureGate from "./FeatureGate";
 import OBSSourcePanel from "./OBSSourcePanel";
 
-type Category = "preview" | "display" | "backgrounds" | "special" | "schedule" | "obs" | "config";
 type FileItem = { name: string; url: string; size: number };
 
-const TABS: { key: Category; label: string; desc: string }[] = [
+const TABS: { key: InspectorCategory; label: string; desc: string }[] = [
   { key: "preview",     label: "미리보기", desc: "Display 화면 실시간 미리보기" },
   { key: "display",     label: "화면",   desc: "항목별 배경 이미지" },
   { key: "backgrounds", label: "배경",   desc: "" },
@@ -32,10 +31,16 @@ const WORSHIP_LABELS: Record<string, string> = {
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
   || (typeof window !== "undefined" ? window.location.origin : "http://localhost:8080");
 
+// Display iframe은 Next.js(:3000)를 거치면 WebSocket 프록시가 안 되므로
+// 개발 환경에서는 Go 서버(:8080)로 직접 연결
+const DISPLAY_ORIGIN = typeof window !== "undefined" && window.location.port === "3000"
+  ? "http://localhost:8080"
+  : "";
+
 export default function ProInspectorPanel() {
   const [inspOpen, setInspOpen] = useRecoilState(inspectorOpenState);
 
-  const [tab, setTab] = useState<Category>("preview");
+  const [tab, setTab] = useRecoilState(inspectorTabState);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -48,18 +53,17 @@ export default function ProInspectorPanel() {
   const [iframeKey, setIframeKey] = useState(0);
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const [previewScale, setPreviewScale] = useState(0.133);
-  // 현재 씬 인덱스 (ProSequencePanel과 공유)
-  const displayIdx = useRecoilValue(displayPositionState);
   // 주보 시안 미리보기 상태
   const [bulletinPreview, setBulletinPreview] = useRecoilState(bulletinPreviewState);
 
   // 특별일 탭 상태
   const [thumbConfig, setThumbConfig] = useState<ThumbnailConfig | null>(null);
-  const [thumbSaving, setThumbSaving] = useState(false);
 
   // 스케줄 탭 상태
   const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(null);
-  const [scheduleSaving, setScheduleSaving] = useState(false);
+
+  const scheduleLoadedRef = useRef(false);
+  const thumbLoadedRef = useRef(false);
 
   // 이미지 캐시 버스팅 — 렌더 중 Date.now() 사용 금지 (hydration mismatch 방지)
   const [imgRevision, setImgRevision] = useState(0);
@@ -113,6 +117,30 @@ export default function ProInspectorPanel() {
       apiClient.getSchedule().then(setScheduleConfig).catch(console.error);
     }
   }, [inspOpen, tab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 스케줄 자동 저장 (600ms 디바운스, 초기 로드 skip)
+  useEffect(() => {
+    if (!scheduleLoadedRef.current) {
+      if (scheduleConfig) scheduleLoadedRef.current = true;
+      return;
+    }
+    const t = setTimeout(() => {
+      apiClient.saveSchedule(scheduleConfig!).catch(console.error);
+    }, 600);
+    return () => clearTimeout(t);
+  }, [scheduleConfig]);
+
+  // 썸네일 설정 자동 저장 (600ms 디바운스, 초기 로드 skip)
+  useEffect(() => {
+    if (!thumbLoadedRef.current) {
+      if (thumbConfig) thumbLoadedRef.current = true;
+      return;
+    }
+    const t = setTimeout(() => {
+      apiClient.saveThumbnailConfig(thumbConfig!).catch(console.error);
+    }, 600);
+    return () => clearTimeout(t);
+  }, [thumbConfig]);
 
   // 주보 미리보기 설정 시 자동으로 preview 탭으로 전환
   useEffect(() => {
@@ -182,20 +210,6 @@ export default function ProInspectorPanel() {
       fetchFiles();
     } catch {
       showToast("삭제 실패");
-    }
-  };
-
-  const handleThumbSave = async () => {
-    if (!thumbConfig) return;
-    setThumbSaving(true);
-    try {
-      await apiClient.saveThumbnailConfig(thumbConfig);
-      showToast("특별일 설정이 저장되었습니다.", "info");
-    } catch (e) {
-      console.error("썸네일 설정 저장 에러:", e);
-      showToast("저장 실패");
-    } finally {
-      setThumbSaving(false);
     }
   };
 
@@ -299,8 +313,8 @@ export default function ProInspectorPanel() {
                 />
               ) : (
                 <iframe
-                  key={`${displayIdx}-${iframeKey}`}
-                  src={`/display/preview?index=${displayIdx}`}
+                  key={`display-live-${iframeKey}`}
+                  src={`${DISPLAY_ORIGIN}/display`}
                   scrolling="no"
                   title="씬 미리보기"
                   style={{
@@ -374,8 +388,6 @@ export default function ProInspectorPanel() {
         ) : tab === "schedule" ? (
           <ScheduleTabInline
             config={scheduleConfig}
-            saving={scheduleSaving}
-            setSaving={setScheduleSaving}
             setConfig={setScheduleConfig}
           />
         ) : tab === "special" ? (
@@ -383,8 +395,6 @@ export default function ProInspectorPanel() {
             <SpecialSection
               thumbConfig={thumbConfig}
               setThumbConfig={setThumbConfig}
-              onSave={handleThumbSave}
-              saving={thumbSaving}
             />
           ) : (
             <div className="text-[#888] text-center py-5 text-xs">로딩 중...</div>
@@ -504,13 +514,9 @@ const WEEKDAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
 
 function ScheduleTabInline({
   config,
-  saving,
-  setSaving,
   setConfig,
 }: {
   config: ScheduleConfig | null;
-  saving: boolean;
-  setSaving: (v: boolean) => void;
   setConfig: React.Dispatch<React.SetStateAction<ScheduleConfig | null>>;
 }) {
   if (!config) {
@@ -522,17 +528,6 @@ function ScheduleTabInline({
       ...config,
       entries: config.entries.map((e, i) => i === idx ? { ...e, ...patch } : e),
     });
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await apiClient.saveSchedule(config);
-    } catch (e) {
-      console.error("저장 에러:", e);
-    } finally {
-      setSaving(false);
-    }
   };
 
   return (
@@ -596,16 +591,6 @@ function ScheduleTabInline({
         </div>
 
         <div className="h-px bg-pro-border my-1" />
-
-        <div className="flex justify-end">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-4 py-1.5 text-[10px] font-semibold bg-[#4a9eff] text-white border-none rounded-lg cursor-pointer hover:bg-[#3b8fe8] disabled:opacity-50 transition-colors"
-          >
-            {saving ? "저장 중..." : "저장"}
-          </button>
-        </div>
       </div>
     </FeatureGate>
   );
@@ -677,14 +662,30 @@ function DarkImageDropZone({
 function SpecialSection({
   thumbConfig,
   setThumbConfig,
-  onSave,
-  saving,
 }: {
   thumbConfig: ThumbnailConfig;
   setThumbConfig: React.Dispatch<React.SetStateAction<ThumbnailConfig | null>>;
-  onSave: () => void;
-  saving: boolean;
 }) {
+  const [thumbLogoPos, setThumbLogoPos] = useState("bottom-right");
+  const [thumbLogoSize, setThumbLogoSize] = useState(0);
+
+  // Load thumbnail logo config on mount
+  useEffect(() => {
+    apiClient.getThumbnailConfig().then((cfg) => {
+      setThumbLogoPos(cfg.logoPosition || "bottom-right");
+      setThumbLogoSize(cfg.logoSizePercent ?? 0);
+    }).catch(() => {});
+  }, []);
+
+  const saveThumbnailLogoConfig = useCallback(async (patch: { logoPosition?: string; logoSizePercent?: number }) => {
+    if (patch.logoPosition !== undefined) setThumbLogoPos(patch.logoPosition);
+    if (patch.logoSizePercent !== undefined) setThumbLogoSize(patch.logoSizePercent);
+    try {
+      const current = await apiClient.getThumbnailConfig();
+      await apiClient.saveThumbnailConfig({ ...current, ...patch });
+    } catch {}
+  }, []);
+
   const [newDate, setNewDate] = useState("");
   const [newLabel, setNewLabel] = useState("");
   const [newBgFile, setNewBgFile] = useState<File | null>(null);
@@ -695,6 +696,7 @@ function SpecialSection({
   useEffect(() => { setPreviewDate(new Date().toISOString().slice(0, 10)); }, []);
   const [previewKey, setPreviewKey] = useState(0);
   const [generating, setGenerating] = useState(false);
+  const [bgVersions, setBgVersions] = useState<Record<string, number>>({});
 
   const previewSpecial = thumbConfig.specials.find((s) => s.date === previewDate);
 
@@ -736,6 +738,7 @@ function SpecialSection({
           updated[idx] = { ...updated[idx], background: res.path };
           return { ...prev, specials: updated };
         });
+        setBgVersions(prev => ({ ...prev, [`special_${idx}`]: (prev[`special_${idx}`] || 0) + 1 }));
       }
     } catch (e) { console.error("배경 업로드 실패:", e); }
     finally { setUploading(null); }
@@ -750,6 +753,7 @@ function SpecialSection({
           ...prev,
           defaults: { ...prev.defaults, [worshipType]: { ...prev.defaults[worshipType], background: res.path } },
         } : prev);
+        setBgVersions(prev => ({ ...prev, [worshipType]: (prev[worshipType] || 0) + 1 }));
       }
     } catch (e) { console.error("기본 배경 업로드 실패:", e); }
     finally { setUploading(null); }
@@ -770,6 +774,50 @@ function SpecialSection({
 
   return (
     <div className="flex flex-col gap-3">
+      {/* 폰트 선택 */}
+      <div className="text-[10px] font-semibold text-[#ccc]">썸네일 폰트</div>
+      <select
+        value={(thumbConfig as any).fontName || "NanumBrush"}
+        onChange={(e) => setThumbConfig(prev => prev ? { ...(prev as any), fontName: e.target.value } : prev)}
+        className="w-full px-2 py-1 border border-white/20 rounded-md text-[10px] bg-white/10 text-white outline-none"
+      >
+        <option value="NanumBrush">나눔손글씨 붓 (기본)</option>
+        <option value="NanumGothic">나눔고딕</option>
+        <option value="NanumGothicBold">나눔고딕 Bold</option>
+        <option value="JacquesFrancois">Jacques François</option>
+      </select>
+
+      {/* 썸네일 로고 */}
+      <div className="mt-3">
+        <div className="text-[10px] font-semibold text-pro-text mb-1">썸네일 로고</div>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-[10px] text-pro-text-dim w-10">위치</span>
+          <div className="grid grid-cols-2 gap-1 flex-1">
+            {[
+              { key: "top-left", label: "↖ 좌상" },
+              { key: "top-right", label: "↗ 우상" },
+              { key: "bottom-left", label: "↙ 좌하" },
+              { key: "bottom-right", label: "↘ 우하" },
+            ].map((p) => (
+              <button key={p.key}
+                onClick={() => saveThumbnailLogoConfig({ logoPosition: p.key })}
+                className={`py-1 rounded text-[10px] cursor-pointer border transition-all ${
+                  (thumbLogoPos === p.key)
+                    ? "bg-[rgba(74,158,255,0.2)] border-[#4a9eff] text-[#4a9eff]"
+                    : "bg-white/[0.06] border-white/15 text-[#aaa] hover:border-white/30"
+                }`}
+              >{p.label}</button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-pro-text-dim w-10">크기: {thumbLogoSize === 0 ? "없음" : `${Math.round(thumbLogoSize)}%`}</span>
+          <input type="range" min={0} max={30} step={1} value={thumbLogoSize}
+            onChange={(e) => saveThumbnailLogoConfig({ logoSizePercent: Number(e.target.value) })}
+            className="flex-1 accent-[#4a9eff]" />
+        </div>
+      </div>
+
       {/* 기본 배경 이미지 */}
       <div className="text-[10px] font-semibold text-[#ccc]">기본 배경 이미지</div>
       <div className="grid grid-cols-2 gap-2">
@@ -787,7 +835,7 @@ function SpecialSection({
                 </span>
               </div>
               <DarkImageDropZone
-                imageUrl={hasBg ? apiClient.getThumbnailImageUrl(theme.background) : undefined}
+                imageUrl={hasBg ? apiClient.getThumbnailImageUrl(theme.background) + `&v=${bgVersions[type] || 0}` : undefined}
                 loading={uploading === `default_${type}`}
                 onFile={(f) => handleDefaultBgUpload(type, f)}
                 height={55}
@@ -809,7 +857,7 @@ function SpecialSection({
         <div key={i} className="flex gap-2 px-2 py-2 bg-white/5 rounded-lg items-stretch border border-white/10">
           <div className="w-[100px] flex-shrink-0">
             <DarkImageDropZone
-              imageUrl={s.background ? apiClient.getThumbnailImageUrl(s.background) : undefined}
+              imageUrl={s.background ? apiClient.getThumbnailImageUrl(s.background) + `&v=${bgVersions['special_'+i] || 0}` : undefined}
               loading={uploading === `special_${i}`}
               onFile={(f) => handleSpecialBgUpload(i, f)}
               onClear={s.background ? () => {
@@ -929,17 +977,56 @@ function SpecialSection({
         />
       )}
 
-      {/* 저장 버튼 */}
-      <div className="flex justify-end pt-1">
-        <button
-          onClick={onSave}
-          disabled={saving}
-          className="px-4 py-1.5 text-[10px] font-semibold bg-[#4a9eff] text-white border-none rounded-lg cursor-pointer hover:bg-[#3b8fe8] disabled:opacity-50 transition-colors"
-        >
-          {saving ? "저장 중..." : "저장"}
-        </button>
-      </div>
+      <GeneratedThumbnailSection />
+
     </div>
+  );
+}
+
+/* ── 생성된 썸네일 섹션 ── */
+function GeneratedThumbnailSection() {
+  const [list, setList] = useState<Array<{filename: string; label: string; date: string; worshipType: string; url: string}>>([]);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = () => {
+    setLoading(true);
+    fetch(`${BASE_URL}/api/thumbnail/generated`)
+      .then(r => r.json())
+      .then(setList)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { refresh(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleDelete = async (filename: string) => {
+    await fetch(`${BASE_URL}/api/thumbnail/generated?filename=${encodeURIComponent(filename)}`, { method: "DELETE" });
+    refresh();
+  };
+
+  if (list.length === 0 && !loading) return null;
+
+  return (
+    <>
+      <div className="h-px bg-white/10" />
+      <div className="flex items-center justify-between">
+        <div className="text-[10px] font-semibold text-[#ccc]">생성된 썸네일</div>
+        <button onClick={refresh} className="text-[9px] text-[#666] hover:text-[#aaa]">새로고침</button>
+      </div>
+      {loading && <div className="text-[10px] text-[#666]">로딩 중...</div>}
+      {list.map((item) => (
+        <div key={item.filename} className="flex items-center gap-2 px-2 py-1.5 bg-white/5 rounded-lg border border-white/10">
+          <div className="flex-1">
+            <div className="text-[10px] font-medium text-white">{item.label}</div>
+          </div>
+          <button
+            onClick={() => handleDelete(item.filename)}
+            className="text-[#666] hover:text-[#ff6b6b] transition-colors text-[10px]"
+            title="삭제"
+          >×</button>
+        </div>
+      ))}
+    </>
   );
 }
 

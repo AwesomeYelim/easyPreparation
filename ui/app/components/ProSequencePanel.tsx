@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, useLayoutEffect, useMemo } from "react";
-import { useRecoilState, useRecoilValue } from "recoil"; // eslint-disable-line @typescript-eslint/no-unused-vars
-import { displayItemsState, sequencePanelOpenState, itemTimersState, displayPositionState } from "@/recoilState";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil"; // eslint-disable-line @typescript-eslint/no-unused-vars
+import { displayItemsState, sequencePanelOpenState, itemTimersState, displayPositionState, inspectorTabState, displaySubPageState } from "@/recoilState";
 import { apiClient } from "@/lib/apiClient";
 import { WorshipOrderItem, OBSStatus, StreamStatus } from "@/types";
 import { useWS } from "@/components/WebSocketProvider";
@@ -17,9 +17,10 @@ type ScheduleCountdown = {
 export default function ProSequencePanel() {
   const seqOpen = useRecoilValue(sequencePanelOpenState);
   const [items, setItems] = useRecoilState(displayItemsState);
+  const setInspectorTab = useSetRecoilState(inspectorTabState);
 
   const [idx, setIdx] = useRecoilState(displayPositionState);
-  const [subPageIdx, setSubPageIdx] = useState(0);
+  const [subPageIdx, setSubPageIdx] = useRecoilState(displaySubPageState);
   const [obsStatus, setObsStatus] = useState<OBSStatus>({ connected: false, currentScene: "" });
   const [streamStatus, setStreamStatus] = useState<StreamStatus>({ active: false, reconnecting: false, timecode: "", bytesSent: 0 });
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
@@ -147,13 +148,15 @@ export default function ProSequencePanel() {
   const handleJump = useCallback((index: number) => {
     setIdx(index);
     apiClient.jumpDisplay(index);
-  }, []);
+    setInspectorTab("preview");
+  }, [setInspectorTab]);
 
   const handleSectionJump = useCallback((itemIdx: number, subPage: number) => {
     setIdx(itemIdx);
     setSubPageIdx(subPage);
     apiClient.jumpDisplay(itemIdx, subPage);
-  }, []);
+    setInspectorTab("preview");
+  }, [setInspectorTab]);
 
   const handleRemove = useCallback((index: number) => {
     apiClient.removeFromDisplay(index);

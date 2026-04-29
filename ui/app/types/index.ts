@@ -98,6 +98,9 @@ export type SpecialDate = {
 export type ThumbnailConfig = {
   defaults: Record<string, DefaultTheme>;
   specials: SpecialDate[];
+  fontName?: string;
+  logoPosition?: string;     // "bottom-right" | "bottom-left" | "top-right" | "top-left"
+  logoSizePercent?: number;  // 0~30 (0=없음)
 };
 
 export type YouTubeStatus = {

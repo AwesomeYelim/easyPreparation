@@ -13,6 +13,8 @@ if (!isDev) {
 if (isDev) {
   config.rewrites = async () => [
     { source: "/api/:path*", destination: "http://localhost:8080/api/:path*" },
+    { source: "/display", destination: "http://localhost:8080/display" },
+    { source: "/display/", destination: "http://localhost:8080/display" },
     { source: "/display/:path*", destination: "http://localhost:8080/display/:path*" },
     { source: "/ws", destination: "http://localhost:8080/ws" },
     { source: "/submit", destination: "http://localhost:8080/submit" },

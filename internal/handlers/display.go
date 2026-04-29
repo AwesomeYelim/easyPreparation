@@ -531,6 +531,7 @@ function connect() {
       applyVideoBg(msg.globalVideoBg || ''); // body 배경도 함께 업데이트
       if (msg.logoPosition) logoPosition = msg.logoPosition;
       if (msg.logoSizePercent) logoSizePercent = msg.logoSizePercent;
+      if (slides.length > 0) { renderItem(slides[idx], subPageIdx); }
     }
     if (msg.type === 'schedule_countdown') {
       var overlay = document.getElementById('countdown-overlay');
@@ -679,7 +680,7 @@ function renderItem(item, pageIdx) {
   const churchBox = logoUrl ? (function() {
     const vPos = logoPosition.startsWith('top') ? 'top:1.5vh' : 'bottom:1.5vh';
     const hPos = logoPosition.endsWith('right') ? 'right:2vw' : 'left:2vw';
-    return '<div style="position:absolute;' + vPos + ';' + hPos + ';display:flex;align-items:flex-end"><img src="' + logoUrl + '" alt="logo" style="max-height:7vh;max-width:' + logoSizePercent + 'vw;object-fit:contain;opacity:0.88;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.55))"></div>';
+    return '<div style="position:absolute;' + vPos + ';' + hPos + ';display:flex;align-items:flex-end"><img src="' + logoUrl + '" alt="logo" style="max-height:7vh;width:' + logoSizePercent + 'vw;object-fit:contain;opacity:0.88;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.55))"></div>';
   })() : '';
   // 로고와 텍스트 겹침 방지 — 로고 크기만큼 여백 확보
   const _logoAtBottom = logoUrl && logoPosition.startsWith('bottom');
@@ -2711,7 +2712,8 @@ func splitIntoChunks(text string, linesPerChunk int) []string {
 	return chunks
 }
 
-// mapLyricsToPages — 전체 가사를 페이지 수에 맞게 빠짐없이 균등 분배
+// mapLyricsToPages — 전체 가사를 2줄 청크로 나눈 뒤 페이지 수에 맞게 균등 배분
+// 오버레이에서 한 슬라이드에 최대 2줄만 표시되도록 보장한다.
 func mapLyricsToPages(verses []string, pageCount int) []string {
 	if pageCount <= 0 || len(verses) == 0 {
 		return nil
@@ -2732,18 +2734,25 @@ func mapLyricsToPages(verses []string, pageCount int) []string {
 		return nil
 	}
 
-	// 각 페이지에 연속된 줄을 균등 배분
-	result := make([]string, pageCount)
-	for i := 0; i < pageCount; i++ {
-		start := i * n / pageCount
-		end := (i + 1) * n / pageCount
-		if start >= n {
-			start = n - 1
-		}
+	// 2줄씩 청크로 분할 (슬라이드당 최대 2줄 보장)
+	var chunks []string
+	for i := 0; i < n; i += 2 {
+		end := i + 2
 		if end > n {
 			end = n
 		}
-		result[i] = strings.Join(allLines[start:end], "\n")
+		chunks = append(chunks, strings.Join(allLines[i:end], "\n"))
+	}
+
+	// 청크를 페이지 수에 맞게 균등 배분
+	numChunks := len(chunks)
+	result := make([]string, pageCount)
+	for i := 0; i < pageCount; i++ {
+		chunkIdx := i * numChunks / pageCount
+		if chunkIdx >= numChunks {
+			chunkIdx = numChunks - 1
+		}
+		result[i] = chunks[chunkIdx]
 	}
 	return result
 }

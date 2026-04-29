@@ -13,7 +13,7 @@ const v5Styles = {
     overflow: "hidden",
     display: "flex",
   },
-  half: { flex: 1, padding: 0, position: "relative", display: "flex", flexDirection: "column" },
+  half: { flex: 1, padding: 0, position: "relative", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 },
   ink: "#161412",
   cream: "#EDE6D7",
   point: "#D85B2A",
@@ -94,7 +94,7 @@ function V5Cover({ data }) {
 
 function V5Back({ data }) {
   return (
-    <div style={{ ...v5Styles.half, borderLeft: `1.5px solid ${v5Styles.ink}` }}>
+    <div style={{ ...v5Styles.half, borderLeft: `1.5px solid ${v5Styles.ink}`, overflow: "hidden" }}>
       <div style={{
         background: v5Styles.cream, color: v5Styles.ink,
         padding: "14px 36px", display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -105,7 +105,7 @@ function V5Back({ data }) {
         <span style={{ color: v5Styles.point }}>● UPDATED</span>
       </div>
 
-      <div style={{ padding: "24px 36px", flex: 1, display: "flex", flexDirection: "column", gap: 0 }}>
+      <div style={{ padding: "24px 36px", flex: 1, display: "flex", flexDirection: "column", gap: 0, overflow: "hidden", minHeight: 0 }}>
         {data.announcements.map((a, i) => (
           <div key={i} style={{
             display: "grid",

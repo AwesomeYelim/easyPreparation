@@ -220,6 +220,16 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/api/thumbnail/config", middleware.CORS(http.HandlerFunc(handlers.ThumbnailConfigHandler)))
 	mux.Handle("/api/thumbnail/upload", middleware.FeatureGate(license.FeatureThumbnail, handlers.ThumbnailUploadHandler))
 	mux.Handle("/api/thumbnail/image", middleware.CORS(http.HandlerFunc(handlers.ThumbnailImageHandler)))
+	mux.Handle("/api/thumbnail/generated", middleware.CORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handlers.ThumbnailGeneratedListHandler(w, r)
+		case http.MethodDelete, http.MethodPost:
+			handlers.ThumbnailGeneratedDeleteHandler(w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	})))
 
 	// YouTube API (auth/setup-obs = Pro, callback/status = 무료)
 	mux.Handle("/api/youtube/auth", middleware.FeatureGate(license.FeatureYouTube, youtube.AuthHandler))

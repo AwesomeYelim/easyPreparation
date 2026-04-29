@@ -60,7 +60,7 @@ function V10Photo({ src, height = "100%", caption }) {
 
 function V10Cover({ data }) {
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", borderRight: `1px solid ${v10Styles.rule}`, position: "relative" }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", borderRight: `1px solid ${v10Styles.rule}`, position: "relative", overflow: "hidden", minHeight: 0 }}>
       {/* 풀블리드 사진 (상단 ~62%) */}
       <div style={{ height: "62%", position: "relative" }}>
         <V10Photo src={data.coverImage} caption={`${data.date}`} />
@@ -123,7 +123,7 @@ function V10Cover({ data }) {
 
 function V10Back({ data }) {
   return (
-    <div style={{ flex: 1, padding: "40px 44px", display: "flex", flexDirection: "column", background: v10Styles.bgWhite }}>
+    <div style={{ flex: 1, padding: "40px 44px", display: "flex", flexDirection: "column", background: v10Styles.bgWhite, overflow: "hidden", minHeight: 0 }}>
       {/* 제목 — 비대칭, 좌측 강조 */}
       <div style={{
         display: "flex", alignItems: "baseline", justifyContent: "space-between",
@@ -146,7 +146,7 @@ function V10Back({ data }) {
       </div>
 
       {/* 소식 — 단순한 세로 리스트 (그리드 대칭 없음) */}
-      <div style={{ marginTop: 16, fontFamily: v10Styles.sans, flex: 1 }}>
+      <div style={{ marginTop: 16, fontFamily: v10Styles.sans, flex: 1, overflow: "hidden", minHeight: 0 }}>
         {data.announcements.map((a, i) => (
           <div key={i} style={{
             display: "grid",

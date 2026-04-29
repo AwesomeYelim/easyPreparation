@@ -26,8 +26,12 @@ func DisplayPreviewHandler(w http.ResponseWriter, r *http.Request) {
 
 	allJSON, _ := json.Marshal(order)
 
+	subPageStr := r.URL.Query().Get("subPage")
+	subPage, _ := strconv.Atoi(subPageStr)
+
 	html := strings.Replace(displayPreviewHTML, "/*__SLIDES__*/[]", "/*__SLIDES__*/"+string(allJSON), 1)
 	html = strings.Replace(html, "/*__IDX__*/0", "/*__IDX__*/"+strconv.Itoa(index), 1)
+	html = strings.Replace(html, "/*__SUBPAGE__*/0", "/*__SUBPAGE__*/"+strconv.Itoa(subPage), 1)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
@@ -100,7 +104,7 @@ const displayPreviewHTML = `<!DOCTYPE html>
 const slide = document.getElementById('slide');
 var slides = /*__SLIDES__*/[];
 var idx    = /*__IDX__*/0;
-var subPageIdx = 0;
+var subPageIdx = /*__SUBPAGE__*/0;
 var subPages   = [];
 var logoUrl    = '';
 var logoPosition     = 'bottom-right';
@@ -214,7 +218,7 @@ function renderItem(item, pageIdx) {
     const vPos = logoPosition.startsWith('top') ? 'top:1.5vh' : 'bottom:1.5vh';
     const hPos = logoPosition.endsWith('right')  ? 'right:2vw'  : 'left:2vw';
     return '<div style="position:absolute;' + vPos + ';' + hPos + ';display:flex;align-items:flex-end">' +
-      '<img src="' + logoUrl + '" alt="logo" style="max-height:7vh;max-width:' + logoSizePercent + 'vw;object-fit:contain;opacity:0.88;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.55))"></div>';
+      '<img src="' + logoUrl + '" alt="logo" style="max-height:7vh;width:' + logoSizePercent + 'vw;object-fit:contain;opacity:0.88;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.55))"></div>';
   })() : '';
   const footer = '<div class="divider"></div>' +
     '<div class="slide-pos">' + posText + '</div>' +
@@ -328,7 +332,7 @@ initDisplayConfig().finally(function() {
   } else if (item.images && item.images.length > 0) {
     subPages = ['__cover__'].concat(item.images);
   }
-  renderItem(item, 0);
+  renderItem(item, subPageIdx);
 });
 </script>
 </body>

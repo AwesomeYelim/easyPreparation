@@ -23,11 +23,24 @@ import (
 // GenerateConfig — 썸네일 생성 설정
 type GenerateConfig struct {
 	BackgroundPath string // 배경 이미지 경로
-	Title          string // "4월 첫째주 주일예배"
-	SubTitle       string // 선택: 말씀 제목 등
-	OutputPath     string // 출력 경로
-	Width          int    // 1280 (YouTube 표준)
-	Height         int    // 720
+
+	// Legacy fields (backward compat)
+	Title    string // DEPRECATED: DateLabel이 비어 있을 때 fallback
+	SubTitle string // DEPRECATED: SermonTitle이 비어 있을 때 fallback
+
+	// New layout fields
+	DateLabel       string  // 상단 소 텍스트: "26.04.05 주일예배"
+	SermonTitle     string  // 중앙 대 텍스트: 말씀 제목
+	Scripture       string  // 하단 소 텍스트: 성경 참조
+	LogoPath        string  // 선택: 로고 이미지 경로
+	LogoPosition    string  // "top-left" | "top-right" | "bottom-left" | "bottom-right"
+	LogoSizePercent float64 // 5~30 (캔버스 폭 %)
+
+	FontName string // 폰트명 (빈 값 → NanumBrush 기본)
+
+	OutputPath string // 출력 경로
+	Width      int    // 1280 (YouTube 표준)
+	Height     int    // 720
 }
 
 // Generate — 배경 위에 한글 텍스트를 합성하여 썸네일 PNG 생성
@@ -39,7 +52,18 @@ func Generate(cfg GenerateConfig) (string, error) {
 		cfg.Height = 720
 	}
 
-	// 1. 배경 이미지 로드
+	// 1. effective 값 결정 (backward compat)
+	effectiveDateLabel := cfg.DateLabel
+	if effectiveDateLabel == "" {
+		effectiveDateLabel = cfg.Title
+	}
+	effectiveSermonTitle := cfg.SermonTitle
+	if effectiveSermonTitle == "" {
+		effectiveSermonTitle = cfg.SubTitle
+	}
+	effectiveScripture := cfg.Scripture
+
+	// 2. 배경 이미지 로드
 	bg, err := loadImage(cfg.BackgroundPath)
 	if err != nil {
 		// fallback: 어두운 그라데이션 배경
@@ -48,39 +72,81 @@ func Generate(cfg GenerateConfig) (string, error) {
 		bg = solid
 	}
 
-	// 2. 1280x720 리사이즈
+	// 3. 1280x720 리사이즈
 	canvas := image.NewRGBA(image.Rect(0, 0, cfg.Width, cfg.Height))
 	xdraw.CatmullRom.Scale(canvas, canvas.Bounds(), bg, bg.Bounds(), xdraw.Over, nil)
 
-	// 3. 반투명 검정 오버레이 (rgba(0,0,0,0.3))
+	// 4. 반투명 검정 오버레이 (rgba(0,0,0,0.3))
 	overlay := image.NewUniform(color.RGBA{0, 0, 0, 76})
 	draw.Draw(canvas, canvas.Bounds(), overlay, image.Point{}, draw.Over)
 
-	// 4. 폰트 로드
-	f, err := loadFont()
+	// 5. 폰트 로드
+	f, err := loadFontByName(cfg.FontName)
 	if err != nil {
 		return "", err
 	}
 
-	// 5. Title 텍스트 — 나눔손글씨 붓 (크게 + 두껍게, 그림자 없음)
-	titleSize := 130.0
-	titleY := cfg.Height/2 + 10
 	white := color.Color(color.White)
-	for _, off := range [][2]int{{-1, 0}, {1, 0}, {0, -1}, {0, 1}, {0, 0}} {
-		drawTextCentered(canvas, f, cfg.Title, titleSize, cfg.Width, titleY+off[1], white, off[0])
-	}
+	shadowColor := color.Color(color.RGBA{0, 0, 0, 180})
 
-	// 6. SubTitle (선택)
-	if cfg.SubTitle != "" {
-		subSize := 60.0
-		subY := cfg.Height/2 + 100
-		subWhite := color.Color(color.RGBA{255, 255, 255, 230})
-		for _, off := range [][2]int{{-1, 0}, {1, 0}, {0, 0}} {
-			drawTextCentered(canvas, f, cfg.SubTitle, subSize, cfg.Width, subY+off[1], subWhite, off[0])
+	// 6. 텍스트 렌더링
+	if effectiveSermonTitle != "" {
+		// 새 레이아웃: 상단 dateLabel + 중앙 sermonTitle + 하단 scripture
+		if effectiveDateLabel != "" {
+			// 상단 소 (50px), Y = Height * 0.12
+			dateY := int(float64(cfg.Height) * 0.12)
+
+			// 그림자 먼저
+			drawTextCenteredReturnPos(canvas, f, effectiveDateLabel, 50.0, cfg.Width, dateY+1, shadowColor)
+			// 본문
+			drawTextCenteredReturnPos(canvas, f, effectiveDateLabel, 50.0, cfg.Width, dateY, white)
+
+			// 구분선: 텍스트 양쪽에 수평선 추가
+			face50 := truetype.NewFace(f, &truetype.Options{Size: 50.0, DPI: 72})
+			tw := measureString(face50, effectiveDateLabel)
+			face50.Close()
+			cx := cfg.Width / 2
+			textLeft := cx - tw/2
+			textRight := cx + tw/2
+			gap := 20
+			lineY := dateY - 25 // FreeType y는 baseline이므로 텍스트 중앙 위치로 조정 (50px 폰트 기준 -25)
+			if textLeft-gap > 40 {
+				drawHLine(canvas, 40, textLeft-gap, lineY, white)
+				drawHLine(canvas, 40, textLeft-gap, lineY+1, white)
+			}
+			if textRight+gap < cfg.Width-40 {
+				drawHLine(canvas, textRight+gap, cfg.Width-40, lineY, white)
+				drawHLine(canvas, textRight+gap, cfg.Width-40, lineY+1, white)
+			}
+		}
+
+		// 중앙 대 (100px), Y = Height/2 + 20
+		sermonY := cfg.Height/2 + 20
+		drawTextCenteredWithShadow(canvas, f, effectiveSermonTitle, 100.0, cfg.Width, sermonY, white, shadowColor)
+
+		if effectiveScripture != "" {
+			// 하단 소 (45px), Y = Height * 0.88
+			scriptureY := int(float64(cfg.Height) * 0.88)
+			subWhite := color.Color(color.RGBA{255, 255, 255, 230})
+			drawTextCenteredWithShadow(canvas, f, effectiveScripture, 45.0, cfg.Width, scriptureY, subWhite, shadowColor)
+		}
+	} else if effectiveDateLabel != "" {
+		// legacy: dateLabel만 있으면 중앙에 크게 (130px) — 하위 호환
+		titleY := cfg.Height/2 + 10
+		for _, off := range [][2]int{{-1, 0}, {1, 0}, {0, -1}, {0, 1}, {0, 0}} {
+			drawTextCentered(canvas, f, effectiveDateLabel, 130.0, cfg.Width, titleY+off[1], white, off[0])
 		}
 	}
 
-	// 7. PNG 저장
+	// 7. 로고 오버레이
+	if cfg.LogoPath != "" {
+		if err := composeLogo(canvas, cfg); err != nil {
+			// 로고 실패는 무시하고 계속
+			_ = err
+		}
+	}
+
+	// 8. PNG 저장
 	if err := os.MkdirAll(filepath.Dir(cfg.OutputPath), 0755); err != nil {
 		return "", fmt.Errorf("출력 디렉토리 생성 실패: %w", err)
 	}
@@ -97,18 +163,111 @@ func Generate(cfg GenerateConfig) (string, error) {
 	return cfg.OutputPath, nil
 }
 
-func loadFont() (*truetype.Font, error) {
+// composeLogo — 로고 이미지를 캔버스에 합성
+func composeLogo(canvas *image.RGBA, cfg GenerateConfig) error {
+	logoImg, err := loadImage(cfg.LogoPath)
+	if err != nil {
+		return fmt.Errorf("로고 로드 실패: %w", err)
+	}
+
+	// 로고 크기 결정
+	sizePct := cfg.LogoSizePercent
+	if sizePct <= 0 {
+		sizePct = 18
+	}
+	logoW := int(float64(cfg.Width) * sizePct / 100)
+	origBounds := logoImg.Bounds()
+	origW := origBounds.Dx()
+	origH := origBounds.Dy()
+	if origW == 0 || origH == 0 {
+		return fmt.Errorf("로고 크기가 0")
+	}
+	logoH := int(float64(logoW) * float64(origH) / float64(origW))
+
+	// 리사이즈
+	resized := image.NewRGBA(image.Rect(0, 0, logoW, logoH))
+	xdraw.CatmullRom.Scale(resized, resized.Bounds(), logoImg, logoImg.Bounds(), xdraw.Over, nil)
+
+	// 위치 결정
+	const padding = 20
+	var x, y int
+	switch cfg.LogoPosition {
+	case "top-left":
+		x, y = padding, padding
+	case "top-right":
+		x, y = cfg.Width-logoW-padding, padding
+	case "bottom-left":
+		x, y = padding, cfg.Height-logoH-padding
+	default: // "bottom-right"
+		x, y = cfg.Width-logoW-padding, cfg.Height-logoH-padding
+	}
+
+	logoRect := image.Rect(x, y, x+logoW, y+logoH)
+	draw.Draw(canvas, logoRect, resized, image.Point{}, draw.Over)
+	return nil
+}
+
+// drawTextCenteredWithShadow — 텍스트 + 그림자 합성
+func drawTextCenteredWithShadow(canvas *image.RGBA, f *truetype.Font, text string, size float64, canvasWidth, y int, col, shadowCol color.Color) {
+	// 그림자 (오프셋 2px)
+	for _, off := range [][2]int{{2, 2}, {-2, 2}, {2, -2}, {-2, -2}} {
+		drawTextCentered(canvas, f, text, size, canvasWidth, y+off[1], shadowCol, off[0])
+	}
+	// 본문 (단일, 테두리 없음)
+	drawTextCentered(canvas, f, text, size, canvasWidth, y, col, 0)
+}
+
+// loadFontByName — 이름으로 폰트 파일 로드 (빈 값 또는 "NanumBrush" → NanumBrush.ttf)
+func loadFontByName(name string) (*truetype.Font, error) {
+	fontFileMap := map[string]string{
+		"":               "NanumBrush.ttf",
+		"NanumBrush":     "NanumBrush.ttf",
+		"NanumGothic":    "NanumGothic-regular.ttf",
+		"NanumGothicBold": "NanumGothic-800.ttf",
+		"JacquesFrancois": "JacquesFrancois-regular.ttf",
+	}
+	fileName, ok := fontFileMap[name]
+	if !ok {
+		fileName = "NanumBrush.ttf"
+	}
 	execPath := path.ExecutePath("easyPreparation")
-	fontPath := filepath.Join(execPath, "public", "font", "NanumBrush.ttf")
+	fontPath := filepath.Join(execPath, "public", "font", fileName)
 	fontData, err := os.ReadFile(fontPath)
 	if err != nil {
-		return nil, fmt.Errorf("폰트 로드 실패: %w", err)
+		return nil, fmt.Errorf("폰트 로드 실패 (%s): %w", fileName, err)
 	}
 	f, err := truetype.Parse(fontData)
 	if err != nil {
-		return nil, fmt.Errorf("폰트 파싱 실패: %w", err)
+		return nil, fmt.Errorf("폰트 파싱 실패 (%s): %w", fileName, err)
 	}
 	return f, nil
+}
+
+// drawHLine — 수평선 그리기 (두께 1px, 두 번 호출해서 2px)
+func drawHLine(canvas *image.RGBA, x1, x2, y int, col color.Color) {
+	for x := x1; x <= x2; x++ {
+		canvas.Set(x, y, col)
+	}
+}
+
+// drawTextCenteredReturnPos — 텍스트를 중앙에 그리고 시작x와 텍스트 너비 반환
+func drawTextCenteredReturnPos(canvas *image.RGBA, f *truetype.Font, text string, size float64, canvasWidth, y int, col color.Color) (startX, textWidth int) {
+	face := truetype.NewFace(f, &truetype.Options{Size: size, DPI: 72})
+	defer face.Close()
+	textWidth = measureString(face, text)
+	startX = (canvasWidth - textWidth) / 2
+
+	ctx := freetype.NewContext()
+	ctx.SetDPI(72)
+	ctx.SetFont(f)
+	ctx.SetFontSize(size)
+	ctx.SetClip(canvas.Bounds())
+	ctx.SetDst(canvas)
+	ctx.SetSrc(image.NewUniform(col))
+	ctx.SetHinting(font.HintingFull)
+	pt := freetype.Pt(startX, y)
+	ctx.DrawString(text, pt)
+	return
 }
 
 func loadImage(p string) (image.Image, error) {

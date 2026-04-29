@@ -15,6 +15,30 @@ import (
 	"easyPreparation_1.0/internal/youtube"
 )
 
+// loadSermonDataFromConfig — config/{worshipType}.json에서 말씀 제목과 성경봉독 참조 추출
+func loadSermonDataFromConfig(configPath string) (sermonTitle, scripture string) {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return
+	}
+	var items []map[string]interface{}
+	if err := json.Unmarshal(data, &items); err != nil {
+		return
+	}
+	for _, item := range items {
+		title, _ := item["title"].(string)
+		obj, _ := item["obj"].(string)
+		info, _ := item["info"].(string)
+		if title == "말씀" && obj != "" && obj != "-" {
+			sermonTitle = obj
+		}
+		if (title == "성경봉독" || strings.HasPrefix(info, "b_")) && obj != "" && obj != "-" && scripture == "" {
+			scripture = obj
+		}
+	}
+	return
+}
+
 // ThumbnailGenerateHandler — POST /api/thumbnail/generate
 // {worshipType: "main_worship", date?: "2026-04-05"}
 func ThumbnailGenerateHandler(w http.ResponseWriter, r *http.Request) {
@@ -170,7 +194,7 @@ func generateThumbnail(worshipType string, date time.Time) (string, error) {
 		return "", fmt.Errorf("설정 로드 실패: %w", err)
 	}
 
-	bgPath, title := cfg.ResolveTheme(worshipType, date)
+	bgPath, _ := cfg.ResolveTheme(worshipType, date)
 
 	execPath := path.ExecutePath("easyPreparation")
 	outPath := filepath.Join(execPath, "data", "templates", "thumbnail", "generated",
@@ -181,12 +205,47 @@ func generateThumbnail(worshipType string, date time.Time) (string, error) {
 		bgPath = filepath.Join(execPath, bgPath)
 	}
 
+	// dateLabel 빌드: "26.04.05 주일예배"
+	worshipTypeLabels := map[string]string{
+		"main_worship":  "주일예배",
+		"after_worship": "오후예배",
+		"wed_worship":   "수요예배",
+		"fri_worship":   "금요예배",
+	}
+	typeLabel := worshipTypeLabels[worshipType]
+	if typeLabel == "" {
+		typeLabel = "예배"
+	}
+	dateLabel := date.Format("06.01.02") + " " + typeLabel
+
+	// 예배 순서 config에서 말씀 제목 + 성경봉독 추출
+	configPath := filepath.Join(execPath, "config", worshipType+".json")
+	sermonTitle, scripture := loadSermonDataFromConfig(configPath)
+
+	// 로고 설정 — 썸네일 전용 설정 우선, 없으면 Display 설정 fallback
+	displayCfg := loadDisplayConfig()
+	logoPath := findLogoPath()
+	logoPosition := displayCfg.LogoPosition
+	logoSizePercent := displayCfg.LogoSizePercent
+	if cfg.LogoPosition != "" {
+		logoPosition = cfg.LogoPosition
+	}
+	if cfg.LogoSizePercent > 0 {
+		logoSizePercent = cfg.LogoSizePercent
+	}
+
 	return thumbnail.Generate(thumbnail.GenerateConfig{
-		BackgroundPath: bgPath,
-		Title:          title,
-		OutputPath:     outPath,
-		Width:          1280,
-		Height:         720,
+		BackgroundPath:  bgPath,
+		DateLabel:       dateLabel,
+		SermonTitle:     sermonTitle,
+		Scripture:       scripture,
+		LogoPath:        logoPath,
+		LogoPosition:    logoPosition,
+		LogoSizePercent: logoSizePercent,
+		FontName:        cfg.FontName,
+		OutputPath:      outPath,
+		Width:           1280,
+		Height:          720,
 	})
 }
 
@@ -366,6 +425,146 @@ func GenerateAndUploadThumbnail(worshipType string) {
 	if err := youtube.UploadThumbnail(outPath); err != nil {
 		log.Printf("[thumbnail] YouTube 업로드 실패: %v", err)
 	}
+}
+
+// ThumbnailGeneratedListHandler — GET /api/thumbnail/generated
+// 생성된 썸네일 목록 반환: [{filename, date, worshipType, label, url}]
+func ThumbnailGeneratedListHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	execPath := path.ExecutePath("easyPreparation")
+	genDir := filepath.Join(execPath, "data", "templates", "thumbnail", "generated")
+
+	entries, err := os.ReadDir(genDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode([]interface{}{})
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	type GeneratedItem struct {
+		Filename    string `json:"filename"`
+		Date        string `json:"date"`
+		WorshipType string `json:"worshipType"`
+		Label       string `json:"label"`
+		URL         string `json:"url"`
+	}
+
+	worshipTypeLabels := map[string]string{
+		"main_worship":  "주일예배",
+		"after_worship": "오후예배",
+		"wed_worship":   "수요예배",
+		"fri_worship":   "금요예배",
+	}
+
+	var items []GeneratedItem
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".png") {
+			continue
+		}
+		// 파일명 형식: YYYY-MM-DD_worship_type.png
+		base := strings.TrimSuffix(name, ".png")
+		// 첫 번째 _ 로 날짜와 예배유형 분리
+		idx := strings.Index(base, "_")
+		if idx < 0 {
+			continue
+		}
+		dateStr := base[:idx]
+		worshipType := base[idx+1:]
+		if _, err := time.Parse("2006-01-02", dateStr); err != nil {
+			continue
+		}
+		// 레이블: "2026.04.06 주일예배"
+		typeLabel := worshipTypeLabels[worshipType]
+		if typeLabel == "" {
+			typeLabel = "예배"
+		}
+		dateParts := strings.Split(dateStr, "-")
+		var labelDate string
+		if len(dateParts) == 3 {
+			labelDate = dateParts[0] + "." + dateParts[1] + "." + dateParts[2]
+		} else {
+			labelDate = dateStr
+		}
+		label := labelDate + " " + typeLabel
+		url := "/api/thumbnail/preview?worshipType=" + worshipType + "&date=" + dateStr
+
+		items = append(items, GeneratedItem{
+			Filename:    name,
+			Date:        dateStr,
+			WorshipType: worshipType,
+			Label:       label,
+			URL:         url,
+		})
+	}
+
+	// 날짜 기준 내림차순 정렬 (최신 먼저)
+	for i := 0; i < len(items)-1; i++ {
+		for j := i + 1; j < len(items); j++ {
+			if items[i].Date < items[j].Date {
+				items[i], items[j] = items[j], items[i]
+			}
+		}
+	}
+
+	if items == nil {
+		items = []GeneratedItem{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(items)
+}
+
+// ThumbnailGeneratedDeleteHandler — DELETE /api/thumbnail/generated?filename=xxx
+// 특정 생성 썸네일 삭제 (DELETE 또는 POST 메서드 허용)
+func ThumbnailGeneratedDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	filename := r.URL.Query().Get("filename")
+	if filename == "" {
+		http.Error(w, "filename 파라미터 없음", http.StatusBadRequest)
+		return
+	}
+
+	// 경로 순회 방지
+	filename = filepath.Base(filename)
+	if strings.Contains(filename, "..") || filename == "." || filename == "" {
+		http.Error(w, "잘못된 파일명", http.StatusBadRequest)
+		return
+	}
+
+	execPath := path.ExecutePath("easyPreparation")
+	targetPath := filepath.Join(execPath, "data", "templates", "thumbnail", "generated", filename)
+
+	if err := os.Remove(targetPath); err != nil {
+		if os.IsNotExist(err) {
+			http.Error(w, "파일 없음", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
 }
 
 // GenerateAndUploadThumbnailTo — 특정 broadcastID에 썸네일 생성 + 업로드

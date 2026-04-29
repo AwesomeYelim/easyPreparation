@@ -152,15 +152,17 @@ export default function Bulletin() {
   const processSelectedInfo = (
     data: WorshipOrderItem[]
   ): WorshipOrderItem[] => {
-    return data.map((item) => {
-      if (item.title === "교회소식" && item.children) {
-        return {
-          ...item,
-          children: removeEmptyNodes(item.children),
-        };
-      }
-      return item;
-    });
+    return data
+      .filter((item) => item.title !== "말씀내용")
+      .map((item) => {
+        if (item.title === "교회소식" && item.children) {
+          return {
+            ...item,
+            children: removeEmptyNodes(item.children),
+          };
+        }
+        return item;
+      });
   };
 
   const sendDataToGoServer = async (pdfType: "print" | "presentation" | "both" = "both") => {

@@ -111,11 +111,11 @@ export const inspectorOpenState = atom<boolean>({
   default: true,
 });
 
-// Inspector 현재 탭
-export type InspectorTab = "cue" | "background" | "obs" | "pdf";
-export const inspectorTabState = atom<InspectorTab>({
+// Inspector 현재 탭 (ProSequencePanel → ProInspectorPanel 자동 전환)
+export type InspectorCategory = "preview" | "display" | "backgrounds" | "special" | "schedule" | "obs" | "config";
+export const inspectorTabState = atom<InspectorCategory>({
   key: "inspectorTabState",
-  default: "cue",
+  default: "preview",
 });
 
 // 서비스 시작 시각 (하단 타임라인 경과 시간 표시용, Phase 4에서 사용)
@@ -141,6 +141,12 @@ export const autoAdvanceState = atom<boolean>({
 // 낙관적 업데이트(자동진행) + WS position 메시지 모두 이 atom을 통해 동기화
 export const displayPositionState = atom<number>({
   key: "displayPositionState",
+  default: 0,
+});
+
+// 현재 서브페이지 인덱스 — ProSequencePanel + ProInspectorPanel 공유
+export const displaySubPageState = atom<number>({
+  key: "displaySubPageState",
   default: 0,
 });
 

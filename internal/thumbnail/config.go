@@ -13,8 +13,11 @@ import (
 
 // ThumbnailConfig — 썸네일 전체 설정
 type ThumbnailConfig struct {
-	Defaults map[string]DefaultTheme `json:"defaults"`
-	Specials []SpecialDate           `json:"specials"`
+	Defaults        map[string]DefaultTheme `json:"defaults"`
+	Specials        []SpecialDate           `json:"specials"`
+	FontName        string                  `json:"fontName,omitempty"`
+	LogoPosition    string                  `json:"logoPosition,omitempty"`    // "bottom-right" | "bottom-left" | "top-right" | "top-left"
+	LogoSizePercent float64                 `json:"logoSizePercent,omitempty"` // 5~30 (캔버스 폭 %), 0=없음
 }
 
 // DefaultTheme — 예배 유형별 기본 테마
@@ -119,6 +122,9 @@ func weekOrdinal(date time.Time) string {
 
 func defaultConfig() *ThumbnailConfig {
 	return &ThumbnailConfig{
+		FontName:        "NanumBrush",
+		LogoPosition:    "bottom-right",
+		LogoSizePercent: 0, // 기본: 로고 없음
 		Defaults: map[string]DefaultTheme{
 			"main_worship":  {Background: "data/templates/thumbnail/main_worship.png", TitleFormat: "{month}월 {weekOrd} 주일예배"},
 			"after_worship": {Background: "data/templates/thumbnail/after_worship.png", TitleFormat: "{month}월 {weekOrd} 오후예배"},
