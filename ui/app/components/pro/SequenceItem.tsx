@@ -13,6 +13,7 @@ export default function SequenceItem({ item, index, isActive, onClick }: Props) 
   return (
     <button
       onClick={onClick}
+      data-testid="seq-item"
       className={`w-full flex items-start gap-2 px-3 py-2.5 text-left transition-all border-l-2 ${
         isActive
           ? "bg-pro-accent/10 border-l-pro-accent"

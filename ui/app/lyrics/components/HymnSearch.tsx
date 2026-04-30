@@ -196,7 +196,7 @@ export default function HymnSearch() {
                                     prev.filter((p) => !(p.number === h.number && p.hymnbook === h.hymnbook))
                                 )
                             }
-                            className="w-4 h-4 flex items-center justify-center rounded-full text-pro-text-dim hover:bg-red-900/30 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 text-[10px]"
+                            className="w-6 h-6 flex items-center justify-center rounded-full text-pro-text-dim hover:bg-red-900/30 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 text-[10px]"
                         >
                           ×
                         </button>

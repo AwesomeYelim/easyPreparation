@@ -236,7 +236,7 @@ export default function ProInspectorPanel() {
         <span className="text-[12px] font-semibold text-pro-text">Studio</span>
         <button
           onClick={() => setInspOpen(false)}
-          className="bg-transparent border-none text-pro-text-dim text-base cursor-pointer leading-none hover:text-pro-text transition-colors p-0"
+          className="bg-transparent border-none text-pro-text-dim text-base cursor-pointer leading-none hover:text-pro-text transition-colors w-9 h-9 flex items-center justify-center"
         >
           ✕
         </button>
@@ -634,7 +634,7 @@ function DarkImageDropZone({
           <img src={imageUrl} alt="" className="w-full h-full object-cover" />
           {onClear && (
             <button
-              className="absolute top-1 right-1 w-[20px] h-[20px] rounded-full bg-black/70 text-white border-none text-sm leading-none cursor-pointer flex items-center justify-center hover:bg-[rgba(239,68,68,0.8)] transition-colors"
+              className="absolute top-0 right-0 w-9 h-9 bg-black/50 text-white border-none text-sm cursor-pointer flex items-center justify-center hover:bg-[rgba(239,68,68,0.8)] transition-colors rounded-bl-lg"
               onClick={(e) => { e.stopPropagation(); onClear(); }}
               title="기본 배경으로"
             >
@@ -1021,7 +1021,7 @@ function GeneratedThumbnailSection() {
           </div>
           <button
             onClick={() => handleDelete(item.filename)}
-            className="text-[#666] hover:text-[#ff6b6b] transition-colors text-[10px]"
+            className="text-[#666] hover:text-[#ff6b6b] transition-colors text-[10px] w-9 h-9 flex items-center justify-center border-none bg-transparent cursor-pointer"
             title="삭제"
           >×</button>
         </div>

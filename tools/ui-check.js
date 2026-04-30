@@ -19,6 +19,7 @@ function runScript(scriptName, tag, color) {
     const proc = spawn('node', [path.join(__dirname, scriptName)], {
       cwd: path.join(__dirname, '../ui'),
       stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, NODE_PATH: path.join(__dirname, '../ui/node_modules') },
     });
 
     let ok = true;

@@ -85,18 +85,18 @@ export default function SelectedOrder({
                 <span className="cursor-grab text-pro-text-muted/40 text-xs">⠿</span>
                 {item.title}
                 <button
-                  className={[
-                    "w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-black transition-colors",
-                    isSelected
-                      ? "bg-white/20 text-white hover:bg-white/30"
-                      : "bg-pro-border text-pro-text-muted hover:bg-red-900/40 hover:text-red-400",
-                  ].join(" ")}
+                  className="w-9 h-9 flex items-center justify-center bg-transparent border-none cursor-pointer flex-shrink-0 rounded-full transition-colors hover:bg-red-900/10"
                   onClick={(e) => {
                     e.stopPropagation();
                     setConfirmDelete({ idx: i, title: item.title });
                   }}
                 >
-                  ×
+                  <span className={[
+                    "w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-black pointer-events-none",
+                    isSelected
+                      ? "bg-white/20 text-white"
+                      : "bg-pro-border text-pro-text-muted",
+                  ].join(" ")}>×</span>
                 </button>
               </span>
             );

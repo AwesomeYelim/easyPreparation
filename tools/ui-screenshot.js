@@ -19,14 +19,38 @@ const VIEWS = [
   { url: 'http://localhost:8080/display/stage', name: 'display-stage', w: 1920, h: 1080 },
 ];
 
+async function dismissModal(page) {
+  try {
+    // 온보딩 모달 "건너뛰기" 버튼 클릭
+    const skip = await page.$('button:has-text("건너뛰기")');
+    if (skip) {
+      await skip.click();
+      await page.waitForTimeout(400);
+    }
+  } catch {}
+}
+
 async function capture(browser, view) {
-  const ctx = await browser.newContext({ viewport: { width: view.w, height: view.h } });
+  const ctx = await browser.newContext({
+    viewport: { width: view.w, height: view.h },
+    // localStorage로 온보딩 완료 상태 주입 (Next.js 앱용)
+    storageState: {
+      cookies: [],
+      origins: [{
+        origin: 'http://localhost:3000',
+        localStorage: [{ name: 'ep_tour_done', value: '1' }],
+      }],
+    },
+  });
   const page = await ctx.newPage();
   try {
     await page.goto(view.url, { waitUntil: 'networkidle', timeout: 15000 });
-    await page.waitForTimeout(600);
+    await page.waitForTimeout(500);
+    // localStorage로 안 닫히면 버튼으로 닫기
+    await dismissModal(page);
+    await page.waitForTimeout(300);
     const file = path.join(OUT_DIR, `${view.name}.png`);
-    await page.screenshot({ path: file });
+    await page.screenshot({ path: file, fullPage: false });
     console.log(`✓ ${view.name}`);
     return { name: view.name, ok: true };
   } catch (e) {

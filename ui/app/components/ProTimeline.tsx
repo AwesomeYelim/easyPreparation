@@ -242,7 +242,8 @@ export default function ProTimeline() {
 
   return (
     <div
-      className="flex flex-col bg-[#0e0e0e] border-t border-pro-border select-none overflow-hidden"
+      className="hidden sm:flex flex-col bg-[#0e0e0e] border-t border-pro-border select-none overflow-hidden"
+      data-testid="timeline"
       style={{ gridColumn: "1 / -1", gridRow: "3" }}
     >
       {/* ── 헤더 ── */}
@@ -345,15 +346,15 @@ export default function ProTimeline() {
         </div>
       </div>
 
-      {/* ── 타임라인 블록 ── */}
+      {/* ── 타임라인 블록 (모바일에서는 숨김) ── */}
       {items.length === 0 ? (
-        <div className="flex items-center justify-center flex-1 text-[#444] text-[9px]">
+        <div className="hidden sm:flex items-center justify-center flex-1 text-[#444] text-[9px]">
           예배 순서를 전송하면 타임라인이 표시됩니다
         </div>
       ) : (
         <div
           ref={containerRef}
-          className="flex flex-1 items-stretch overflow-hidden relative"
+          className="hidden sm:flex flex-1 items-stretch overflow-hidden relative"
         >
           {items.map((item, i) => {
             const secs = getEffectiveSecs(item.key);

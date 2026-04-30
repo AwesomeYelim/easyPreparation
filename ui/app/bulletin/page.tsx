@@ -224,32 +224,31 @@ export default function Bulletin() {
           {/* 주보 시안 선택 드롭다운 */}
           <TemplateSelector worshipType={selectedWorshipType} />
 
-          {/* PDF 다운로드 (예배 PDF) */}
-          <button
-            onClick={() => sendDataToGoServer("both")}
-            disabled={loading}
-            title="주보 PDF와 예배 PDF를 함께 생성하여 다운로드합니다"
-            className="flex items-center gap-2 bg-pro-surface text-pro-text px-4 py-2.5 rounded-lg font-bold text-sm border border-pro-border hover:bg-pro-hover transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-default"
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M8 2V10M8 10L5 7M8 10L11 7M3 13H13" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            PDF 다운로드
-          </button>
-
-
-          {/* 프로젝터 전송 버튼 */}
-          <button
-            onClick={sendToDisplay}
-            title="예배 순서를 프로젝터 화면에 전송합니다"
-            className="flex items-center gap-2 bg-electric-blue text-white px-5 py-2.5 rounded-lg font-bold text-sm shadow-sm shadow-electric-blue/30 hover:bg-secondary transition-all active:scale-[0.98] whitespace-nowrap"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M2 3H14V11H2V3Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M5 14H11M8 11V14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            프로젝터에 보내기
-          </button>
+          {/* PDF + 프로젝터 버튼 — 모바일에서 한 줄 공유 */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => sendDataToGoServer("both")}
+              disabled={loading}
+              title="주보 PDF와 예배 PDF를 함께 생성하여 다운로드합니다"
+              className="flex items-center gap-2 bg-pro-surface text-pro-text px-3 sm:px-4 py-2.5 rounded-lg font-bold text-sm border border-pro-border hover:bg-pro-hover transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-default"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M8 2V10M8 10L5 7M8 10L11 7M3 13H13" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              PDF 다운로드
+            </button>
+            <button
+              onClick={sendToDisplay}
+              title="예배 순서를 프로젝터 화면에 전송합니다"
+              className="flex items-center gap-2 bg-electric-blue text-white px-3 sm:px-5 py-2.5 rounded-lg font-bold text-sm shadow-sm shadow-electric-blue/30 hover:bg-secondary transition-all active:scale-[0.98] whitespace-nowrap flex-1 sm:flex-none justify-center"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className="hidden sm:block flex-shrink-0">
+                <path d="M2 3H14V11H2V3Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M5 14H11M8 11V14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              프로젝터에 보내기
+            </button>
+          </div>
         </div>
       </div>
 
@@ -269,8 +268,8 @@ export default function Bulletin() {
       )}
 
       {/* 메인 콘텐츠 그리드 */}
-      <div className="flex gap-6 w-full min-h-0">
-        {/* 좌측: 편집 영역 */}
+      <div className="flex flex-col xl:flex-row gap-6 w-full min-h-0">
+        {/* 편집 영역 */}
         <div className="flex flex-col gap-5 flex-1 min-w-0">
           <WorshipOrder
             selectedItems={selectedInfo}
@@ -282,8 +281,8 @@ export default function Bulletin() {
           />
           <Detail setSelectedItems={setSelectedInfo} />
         </div>
-        {/* 우측: 예배 순서 결과 */}
-        <div className="w-80 flex-shrink-0">
+        {/* 예배 순서 결과 */}
+        <div className="xl:w-80 xl:flex-shrink-0">
           <ResultPart selectedItems={selectedInfo} />
         </div>
       </div>

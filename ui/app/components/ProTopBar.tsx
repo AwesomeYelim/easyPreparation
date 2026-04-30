@@ -7,9 +7,9 @@ import { inspectorOpenState } from "@/recoilState";
 import { useAuth } from "@/lib/LocalAuthContext";
 
 const TABS = [
-  { href: "/bulletin", label: "Bulletin", shortcut: "F1" },
-  { href: "/lyrics", label: "Hymns", shortcut: "F2" },
-  { href: "/bible", label: "Scripture", shortcut: "F3" },
+  { href: "/bulletin", label: "Bulletin", short: "주보", shortcut: "F1" },
+  { href: "/lyrics", label: "Hymns", short: "찬양", shortcut: "F2" },
+  { href: "/bible", label: "Scripture", short: "성경", shortcut: "F3" },
 ];
 
 export default function ProTopBar() {
@@ -38,6 +38,7 @@ export default function ProTopBar() {
   return (
     <div
       className="flex items-center bg-pro-surface border-b border-pro-border px-3 gap-3 select-none"
+      data-testid="topbar"
       style={{ gridColumn: "1 / -1", gridRow: "1" }}
     >
       {/* 로고 + 브랜드 */}
@@ -52,10 +53,10 @@ export default function ProTopBar() {
       </div>
 
       {/* 구분선 */}
-      <div className="w-px h-5 bg-pro-border flex-shrink-0" />
+      <div className="w-px h-5 bg-pro-border flex-shrink-0 hidden sm:block" />
 
       {/* 상태 표시 */}
-      <div className="flex items-center gap-1.5 flex-shrink-0">
+      <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0">
         <div className="w-1.5 h-1.5 rounded-full bg-pro-draft" />
         <span className="text-pro-text-dim text-[10px] hidden sm:block">OFF AIR</span>
       </div>
@@ -66,21 +67,22 @@ export default function ProTopBar() {
       </div>
 
       {/* 탭 네비게이션 */}
-      <nav className="flex items-center flex-1 overflow-hidden self-stretch">
-        {TABS.map(({ href, label, shortcut }) => {
+      <nav className="flex items-center flex-1 overflow-x-auto self-stretch [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {TABS.map(({ href, label, short, shortcut }) => {
           const isActive = pathname?.startsWith(href);
           return (
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-1 px-3 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 h-full ${
+              className={`flex items-center gap-1 px-2 sm:px-3 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 h-full ${
                 isActive
                   ? "bg-pro-tab-active text-pro-accent border-pro-tab-border"
                   : "text-pro-text-muted hover:text-pro-text hover:bg-pro-hover border-transparent"
               }`}
             >
-              {label}
-              <span className="text-[9px] opacity-30">{shortcut}</span>
+              <span className="sm:hidden">{short}</span>
+              <span className="hidden sm:inline">{label}</span>
+              <span className="text-[9px] opacity-30 hidden sm:inline">{shortcut}</span>
             </Link>
           );
         })}
@@ -94,12 +96,14 @@ export default function ProTopBar() {
           </span>
         )}
         <button
-          className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-bold transition-all ${
+          className={`flex items-center gap-1.5 px-3 py-2 min-h-[36px] rounded text-xs font-bold transition-all ${
             inspOpen
               ? "bg-pro-accent text-white shadow-lg"
               : "bg-pro-elevated text-pro-text-muted border border-pro-border hover:bg-pro-hover hover:text-pro-text"
           }`}
           onClick={() => setInspOpen((v) => !v)}
+          aria-label={inspOpen ? "인스펙터 패널 닫기" : "인스펙터 패널 열기"}
+          aria-expanded={inspOpen}
         >
           Broadcast
         </button>

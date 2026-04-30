@@ -82,7 +82,7 @@ export default function OnboardingChecklist() {
         </div>
         <button
           onClick={handleDismiss}
-          className="text-pro-text-dim hover:text-pro-text transition-colors text-[11px] px-1.5 py-0.5 rounded hover:bg-pro-hover cursor-pointer"
+          className="w-9 h-9 flex items-center justify-center text-pro-text-dim hover:text-pro-text transition-colors text-[11px] rounded hover:bg-pro-hover cursor-pointer border-none bg-transparent flex-shrink-0"
           title="닫기"
         >
           ✕

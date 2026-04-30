@@ -111,12 +111,12 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
               }}>
               {depthLabel}{news.title}
               <button
-                className="w-4 h-4 flex items-center justify-center rounded-full bg-white/20 text-white text-[9px] font-black hover:bg-white/40 transition-colors ml-1"
+                className="w-9 h-9 flex items-center justify-center bg-transparent border-none cursor-pointer transition-colors ml-1 flex-shrink-0 rounded-full hover:bg-white/10"
                 onClick={(e) => {
                   e.stopPropagation();
                   setConfirmDelete({ key: news.key, title: news.title });
                 }}>
-                ×
+                <span className="w-4 h-4 flex items-center justify-center rounded-full bg-white/20 text-white text-[9px] font-black pointer-events-none">×</span>
               </button>
             </span>
           )}

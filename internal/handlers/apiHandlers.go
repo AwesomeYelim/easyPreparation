@@ -154,12 +154,12 @@ func BibleVersesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	bookOrder, err := strconv.Atoi(bookStr)
-	if err != nil {
+	if err != nil || bookOrder <= 0 || bookOrder > 66 {
 		http.Error(w, `{"error":"invalid book"}`, http.StatusBadRequest)
 		return
 	}
 	chapter, err := strconv.Atoi(chapterStr)
-	if err != nil {
+	if err != nil || chapter < 0 {
 		http.Error(w, `{"error":"invalid chapter"}`, http.StatusBadRequest)
 		return
 	}

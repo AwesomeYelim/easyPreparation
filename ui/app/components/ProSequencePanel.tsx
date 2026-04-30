@@ -284,6 +284,7 @@ export default function ProSequencePanel() {
   return (
     <div
       className="flex flex-col bg-pro-surface border-r border-pro-border overflow-hidden"
+      data-testid="seq-panel"
       style={{ gridColumn: "2", gridRow: "2" }}
     >
       {/* ── Header: OBS dot + scene | LIVE badge | stream button ── */}
@@ -498,6 +499,7 @@ export default function ProSequencePanel() {
                     ? "bg-pro-accent/10 border-l-pro-accent"
                     : "border-l-transparent hover:bg-pro-hover"
                 } data-[dragover]:border-t-2 data-[dragover]:border-t-pro-accent data-[dragover]:bg-pro-accent/5`}
+                data-testid="seq-item"
                 data-active={isActive ? "true" : undefined}
                 onClick={() => { if (!dragRef.current?.wasDragging) handleJump(i); }}
                 draggable
@@ -532,7 +534,7 @@ export default function ProSequencePanel() {
                 {/* Expand/collapse sections */}
                 {hasSections && (
                   <button
-                    className="bg-transparent border-none text-pro-text-dim/50 text-[9px] cursor-pointer px-0.5 flex-shrink-0 hover:text-pro-text transition-colors"
+                    className="bg-transparent border-none text-pro-text-dim/50 text-[9px] cursor-pointer flex-shrink-0 hover:text-pro-text transition-colors w-9 h-9 flex items-center justify-center"
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleItemExpand(i);
@@ -544,7 +546,7 @@ export default function ProSequencePanel() {
 
                 {/* Remove button */}
                 <button
-                  className="bg-transparent border-none text-pro-text-dim/25 text-[10px] cursor-pointer px-0.5 flex-shrink-0 hover:text-red-500 transition-colors"
+                  className="bg-transparent border-none text-pro-text-dim/25 text-[10px] cursor-pointer flex-shrink-0 hover:text-red-500 transition-colors w-9 h-9 flex items-center justify-center"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleRemove(i);
