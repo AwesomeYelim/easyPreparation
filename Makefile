@@ -38,7 +38,7 @@ endif
 .PHONY: dev restart build clean build-desktop build-desktop-macos \
         build-desktop-windows build-desktop-linux dev-desktop \
         build-go build-go-dev build-ui build-frontend build-landing upload-r2 \
-        sync-ai install-hooks dev-license health
+        sync-ai install-hooks dev-license health ui-check
 
 # ── 포트 킬 헬퍼 (크로스 플랫폼) ─────────────────────────────────────────────
 # 사용: $(call kill_ports,3000 8080)
@@ -209,6 +209,12 @@ build-devlicense-windows:
 	@echo "✅ tools/output/devlicense.exe 생성 완료"
 	@echo "   Windows에서 실행: devlicense.exe      (Pro)"
 	@echo "                    devlicense.exe free  (Free)"
+
+# ── UI 체크 (스크린샷 + 기능 테스트 병렬, 실시간 출력) ─────────────────────
+# 전제: make dev 로 서버 실행 중
+# 초기 설정: cd ui && npm install && npx playwright install chromium
+ui-check:
+	@cd ui && $(RUN_NPM) run ui:check
 
 # ── 코드 헬스 체크 (빌드 검증 + 타입 체크) ──────────────────────────────────
 health:

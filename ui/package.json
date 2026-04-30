@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "screenshot": "node ../tools/ui-screenshot.js",
-    "test:ui": "node ../tools/ui-test.js"
+    "test:ui": "node ../tools/ui-test.js",
+    "ui:check": "node ../tools/ui-check.js"
   },
   "dependencies": {
     "classnames": "^2.5.1",
