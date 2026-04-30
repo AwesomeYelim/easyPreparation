@@ -42,23 +42,17 @@ endif
 
 # ── 포트 킬 헬퍼 (크로스 플랫폼) ─────────────────────────────────────────────
 # 사용: $(call kill_ports,3000 8080)
-# Unix  → lsof -ti:<port> | xargs kill -9
-# Windows → netstat -ano + taskkill.exe
+# Windows → PowerShell + Get-NetTCPConnection (Windows 8+)
+# Unix    → lsof -ti:<port> | xargs kill -9
+ifdef IS_WINDOWS
 define kill_ports
-@-{ \
-  PORTS="$(1)"; \
-  if command -v lsof >/dev/null 2>&1; then \
-    for p in $$PORTS; do lsof -ti:$$p | xargs kill -9 2>/dev/null || true; done; \
-  else \
-    for p in $$PORTS; do \
-      for _pid in $$(netstat -ano 2>/dev/null | \
-          awk '/:'"$$p"' /&&/LISTEN/{print $$NF}' | sort -u); do \
-        taskkill.exe //PID $$_pid //F 2>/dev/null || true; \
-      done; \
-    done; \
-  fi; \
-} || true
+@-powershell -NoProfile -Command "foreach ($$p in ('$(1)' -split '\s+')) { Get-NetTCPConnection -LocalPort $$p -State Listen -EA SilentlyContinue | ForEach-Object { Stop-Process -Id $$_.OwningProcess -Force -EA SilentlyContinue } }" 2>/dev/null; exit 0
 endef
+else
+define kill_ports
+@-{ for p in $(1); do lsof -ti:$$p | xargs kill -9 2>/dev/null || true; done; } || true
+endef
+endif
 
 # ── 개발 모드: Go 서버 + Next.js dev server 동시 실행 ───────────────────────
 dev:
@@ -185,13 +179,21 @@ build-landing:
 
 # ── R2에 PDF 에셋 업로드 ──────────────────────────────────────────────────────
 upload-r2:
+ifdef IS_WINDOWS
+	@echo "upload-r2: Windows 미지원 — Git Bash 또는 WSL에서 실행하세요."
+else
 	bash tools/upload-r2.sh
+endif
 
 # ── ai_supporter sync ────────────────────────────────────────────────────────
 # auto-runs after git pull (when install-hooks is set)
 # manual: make sync-ai
 sync-ai:
+ifdef IS_WINDOWS
+	@echo "sync-ai: Windows 미지원 — Git Bash 또는 WSL에서 실행하세요."
+else
 	@bash tools/sync-ai-supporter.sh
+endif
 
 # ── 개발용 Pro 라이선스 생성 (data/license.json 덮어씀) ──────────────────────
 # 사용: make dev-license           (Pro, 무기한)
@@ -220,8 +222,12 @@ health:
 # .githooks/post-merge -> auto-syncs ai_supporter on git pull
 install-hooks:
 	@git config core.hooksPath .githooks
+ifdef IS_WINDOWS
+	@echo "Git hooks installed. (Windows: chmod 생략)"
+else
 	@chmod +x .githooks/post-merge tools/sync-ai-supporter.sh
 	@echo "Git hooks installed."
+endif
 	@echo "  'git pull' will auto-sync ai_supporter."
 	@echo ""
 	@echo "Set ai_supporter path (pick one):"

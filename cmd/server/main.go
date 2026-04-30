@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 )
 
@@ -28,9 +29,13 @@ func main() {
 	})
 	defer a.Shutdown()
 
-	// Graceful shutdown
+	// Graceful shutdown — Windows는 SIGTERM 미지원, os.Interrupt(Ctrl+C)만 사용
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	sigs := []os.Signal{os.Interrupt}
+	if runtime.GOOS != "windows" {
+		sigs = append(sigs, syscall.SIGTERM)
+	}
+	signal.Notify(sigChan, sigs...)
 
 	go func() {
 		sig := <-sigChan
