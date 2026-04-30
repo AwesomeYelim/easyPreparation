@@ -438,6 +438,8 @@ async function initDisplayConfig() {
       applyVideoBg(cfg.globalVideoBg || ''); // 비디오 없어도 body 배경 적용
       if (cfg.logoPosition) logoPosition = cfg.logoPosition;
       if (cfg.logoSizePercent) logoSizePercent = cfg.logoSizePercent;
+      // sessionStorage 복원 슬라이드가 있으면 새 config로 다시 렌더
+      if (slides.length > 0) { renderItem(slides[idx], subPageIdx); }
     }
   } catch (e) {}
 }
@@ -680,14 +682,14 @@ function renderItem(item, pageIdx) {
   const churchBox = logoUrl ? (function() {
     const vPos = logoPosition.startsWith('top') ? 'top:1.5vh' : 'bottom:1.5vh';
     const hPos = logoPosition.endsWith('right') ? 'right:2vw' : 'left:2vw';
-    return '<div style="position:absolute;' + vPos + ';' + hPos + ';display:flex;align-items:flex-end"><img src="' + logoUrl + '" alt="logo" style="max-height:7vh;width:' + logoSizePercent + 'vw;object-fit:contain;opacity:0.88;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.55))"></div>';
+    return '<div style="position:absolute;' + vPos + ';' + hPos + ';"><img src="' + logoUrl + '" alt="logo" style="height:' + Math.max(3, Math.round(logoSizePercent * 0.5)) + 'vh;max-width:' + Math.round(logoSizePercent * 2.5) + 'vw;width:auto;object-fit:contain;opacity:0.88;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.55))"></div>';
   })() : '';
   // 로고와 텍스트 겹침 방지 — 로고 크기만큼 여백 확보
   const _logoAtBottom = logoUrl && logoPosition.startsWith('bottom');
   const _pageIndStyle = (_logoAtBottom && logoPosition.endsWith('right'))
-    ? ' style="right:' + (logoSizePercent + 3) + 'vw"' : '';
+    ? ' style="right:' + (Math.round(logoSizePercent * 2.5) + 3) + 'vw"' : '';
   const _slidePosStyle = (_logoAtBottom && logoPosition.endsWith('left'))
-    ? ' style="left:' + (logoSizePercent + 3) + 'vw"' : '';
+    ? ' style="left:' + (Math.round(logoSizePercent * 2.5) + 3) + 'vw"' : '';
   const footer =
     '<div class="divider"></div>' +
     '<div class="slide-pos"' + _slidePosStyle + '>' + posText + '</div>' +
@@ -1719,6 +1721,7 @@ func DisplayNavigateHandler(w http.ResponseWriter, r *http.Request) {
 	if payload.Direction == "jump_sub" {
 		msg["subPageIdx"] = payload.SubPageIdx
 	}
+
 	log.Printf("[navigate] direction=%s broadcast to clients", payload.Direction)
 	BroadcastMessage("navigate", msg)
 	w.Header().Set("Content-Type", "application/json")

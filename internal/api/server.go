@@ -39,6 +39,7 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/api/save-to-downloads", middleware.CORS(http.HandlerFunc(handlers.SaveToDownloadsHandler)))
 	mux.Handle("/api/open-display", middleware.CORS(http.HandlerFunc(handlers.OpenDisplayInBrowserHandler)))
 	mux.Handle("/api/open-print", middleware.CORS(http.HandlerFunc(handlers.OpenPrintInBrowserHandler)))
+	mux.Handle("/api/open-mobile", middleware.CORS(http.HandlerFunc(handlers.OpenMobileInBrowserHandler)))
 	mux.Handle("/searchLyrics", handlers.SearchLyrics())
 	mux.Handle("/submitLyrics", handlers.SubmitLyricsHandler(dataChan))
 

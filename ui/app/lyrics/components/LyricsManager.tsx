@@ -471,7 +471,7 @@ export default function LyricsManager() {
       </div>
 
       {/* 곡 목록 */}
-      <div className="flex flex-wrap gap-4">
+      <div className="grid grid-cols-2 gap-3">
         {songs.length === 0 && (
           <div className="w-full text-center py-10 text-on-surface-variant">
             <p className="text-sm">아직 추가된 곡이 없습니다.</p>
@@ -481,7 +481,7 @@ export default function LyricsManager() {
         {songs.map((song, idx) => (
           <div
             key={idx}
-            className="min-w-[280px] flex-1 basis-[300px] max-w-[500px] h-fit bg-surface-low border border-outline/30 rounded-xl shadow-sm transition-all"
+            className="bg-surface-low border border-outline/30 rounded-xl shadow-sm transition-all min-w-0"
           >
             {/* 곡 헤더 */}
             <div

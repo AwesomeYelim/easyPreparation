@@ -83,7 +83,7 @@ export default function Detail({
                   })
                 }
                 placeholder={selectedDetail?.title}
-                className="w-full px-3 py-2.5 border border-pro-border rounded-lg text-sm bg-pro-elevated text-pro-text resize-none min-h-[100px] focus:outline-none focus:border-electric-blue focus:ring-2 focus:ring-electric-blue/20 transition-all"
+                className="w-full px-3 py-2.5 border border-pro-border rounded-lg text-sm bg-pro-elevated text-pro-text resize-none min-h-[60px] focus:outline-none focus:border-electric-blue focus:ring-2 focus:ring-electric-blue/20 transition-all"
               />
             )}
           </div>

@@ -16,6 +16,8 @@
 
 **교회 주보 · 가사 PPT · 예배 화면 자동화 플랫폼** ✝️
 
+[![CI](https://github.com/AwesomeYelim/easyPreparation/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/AwesomeYelim/easyPreparation/actions/workflows/test.yml)
+[![Release](https://img.shields.io/github/v/release/AwesomeYelim/easyPreparation?logo=github&color=brightgreen)](https://github.com/AwesomeYelim/easyPreparation/releases/latest)
 [![Go](https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)

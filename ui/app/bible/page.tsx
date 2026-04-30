@@ -296,7 +296,7 @@ export default function BiblePage() {
           <h1 className="text-xl font-black tracking-tight text-pro-text whitespace-nowrap">Scripture Bible</h1>
           {versions.length > 1 && (
             <select
-              className="px-3 py-1.5 text-sm font-semibold rounded-lg border border-pro-border bg-pro-elevated text-pro-text focus:outline-none focus:ring-2 focus:ring-electric-blue/40 cursor-pointer"
+              className="px-3 py-2 text-sm font-semibold rounded-lg border border-pro-border bg-pro-elevated text-pro-text focus:outline-none focus:ring-2 focus:ring-electric-blue/40 cursor-pointer"
               value={versionId}
               onChange={(e) => setVersionId(Number(e.target.value))}
             >
@@ -308,7 +308,7 @@ export default function BiblePage() {
 
           {versions.length > 1 && (
             <button
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all ${
+              className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${
                 compareMode
                   ? "bg-electric-blue text-white border-electric-blue"
                   : "bg-pro-elevated text-pro-text-muted border-pro-border hover:bg-pro-hover hover:text-electric-blue hover:border-electric-blue/40"
@@ -322,7 +322,7 @@ export default function BiblePage() {
 
           {compareMode && versions.length > 1 && (
             <select
-              className="px-3 py-1.5 text-sm font-semibold rounded-lg border border-pro-border bg-pro-elevated text-pro-text focus:outline-none focus:ring-2 focus:ring-electric-blue/40 cursor-pointer"
+              className="px-3 py-2 text-sm font-semibold rounded-lg border border-pro-border bg-pro-elevated text-pro-text focus:outline-none focus:ring-2 focus:ring-electric-blue/40 cursor-pointer"
               value={compareVersionId}
               onChange={(e) => setCompareVersionId(Number(e.target.value))}
             >

@@ -85,7 +85,7 @@ export default function SelectedOrder({
                 <span className="cursor-grab text-pro-text-muted/40 text-xs">⠿</span>
                 {item.title}
                 <button
-                  className="w-9 h-9 flex items-center justify-center bg-transparent border-none cursor-pointer flex-shrink-0 rounded-full transition-colors hover:bg-red-900/10"
+                  className="flex items-center justify-center bg-transparent border-none cursor-pointer flex-shrink-0 rounded-full transition-colors hover:bg-red-900/10 p-0.5"
                   onClick={(e) => {
                     e.stopPropagation();
                     setConfirmDelete({ idx: i, title: item.title });

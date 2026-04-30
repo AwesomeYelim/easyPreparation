@@ -492,7 +492,7 @@ export default function ProSequencePanel() {
           return (
             <div key={item.key || i}>
               <div
-                className={`flex items-center gap-1.5 px-3 py-2 cursor-pointer border-l-2 transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1 cursor-pointer border-l-2 transition-all ${
                   isPdfOnly
                     ? "opacity-45 border-l-transparent hover:bg-pro-hover hover:opacity-60"
                     : isActive
@@ -534,7 +534,7 @@ export default function ProSequencePanel() {
                 {/* Expand/collapse sections */}
                 {hasSections && (
                   <button
-                    className="bg-transparent border-none text-pro-text-dim/50 text-[9px] cursor-pointer flex-shrink-0 hover:text-pro-text transition-colors w-9 h-9 flex items-center justify-center"
+                    className="bg-transparent border-none text-pro-text-dim/50 text-[9px] cursor-pointer flex-shrink-0 hover:text-pro-text transition-colors w-6 h-6 flex items-center justify-center"
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleItemExpand(i);
@@ -546,7 +546,7 @@ export default function ProSequencePanel() {
 
                 {/* Remove button */}
                 <button
-                  className="bg-transparent border-none text-pro-text-dim/25 text-[10px] cursor-pointer flex-shrink-0 hover:text-red-500 transition-colors w-9 h-9 flex items-center justify-center"
+                  className="bg-transparent border-none text-pro-text-dim/25 text-[10px] cursor-pointer flex-shrink-0 hover:text-red-500 transition-colors w-6 h-6 flex items-center justify-center"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleRemove(i);

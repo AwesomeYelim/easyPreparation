@@ -190,6 +190,12 @@ func OpenPrintInBrowserHandler(w http.ResponseWriter, r *http.Request) {
 	openInBrowser(w, url)
 }
 
+// OpenMobileInBrowserHandler — Desktop 모드: 시스템 브라우저에서 모바일 리모컨 열기
+// GET /api/open-mobile
+func OpenMobileInBrowserHandler(w http.ResponseWriter, r *http.Request) {
+	openInBrowser(w, "http://localhost:8080/mobile")
+}
+
 func openFolder(dir string) {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {

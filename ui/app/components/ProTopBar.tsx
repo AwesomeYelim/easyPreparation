@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useRecoilState } from "recoil";
 import { inspectorOpenState } from "@/recoilState";
@@ -14,9 +14,24 @@ const TABS = [
 
 export default function ProTopBar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [time, setTime] = useState("--:--:--");
   const [inspOpen, setInspOpen] = useRecoilState(inspectorOpenState);
   const { church } = useAuth();
+
+  // F1/F2/F3 단축키
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // 입력 필드 포커스 중엔 무시
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.key === "F1") { e.preventDefault(); router.push("/bulletin"); }
+      if (e.key === "F2") { e.preventDefault(); router.push("/lyrics"); }
+      if (e.key === "F3") { e.preventDefault(); router.push("/bible"); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [router]);
 
   useEffect(() => {
     const update = () => {

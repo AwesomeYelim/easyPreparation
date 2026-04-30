@@ -943,7 +943,7 @@ function SpecialSection({
         <select
           value={previewType}
           onChange={(e) => setPreviewType(e.target.value)}
-          className="px-2 py-1 border border-white/20 rounded-md text-[10px] bg-white/10 text-white outline-none"
+          className="h-7 px-2 border border-white/20 rounded-md text-[10px] bg-white/10 text-white outline-none"
         >
           {Object.entries(WORSHIP_LABELS).map(([k, v]) => (
             <option key={k} value={k} className="bg-[#2c2c2c]">{v}</option>
@@ -953,12 +953,12 @@ function SpecialSection({
           type="date"
           value={previewDate}
           onChange={(e) => setPreviewDate(e.target.value)}
-          className="px-2 py-1 border border-white/20 rounded-md text-[10px] bg-white/10 text-white outline-none"
+          className="h-7 px-2 border border-white/20 rounded-md text-[10px] bg-white/10 text-white outline-none"
         />
         <button
           onClick={handlePreview}
           disabled={generating}
-          className="px-2.5 py-1 text-[10px] font-semibold bg-[#22c55e] text-white border-none rounded-md cursor-pointer hover:bg-[#16a34a] disabled:opacity-50 transition-colors"
+          className="h-7 px-2.5 text-[10px] font-semibold bg-[#22c55e] text-white border-none rounded-md cursor-pointer hover:bg-[#16a34a] disabled:opacity-50 transition-colors"
         >
           {generating ? "생성 중..." : "생성"}
         </button>
@@ -1015,13 +1015,13 @@ function GeneratedThumbnailSection() {
       </div>
       {loading && <div className="text-[10px] text-[#666]">로딩 중...</div>}
       {list.map((item) => (
-        <div key={item.filename} className="flex items-center gap-2 px-2 py-1.5 bg-white/5 rounded-lg border border-white/10">
-          <div className="flex-1">
-            <div className="text-[10px] font-medium text-white">{item.label}</div>
+        <div key={item.filename} className="flex items-center gap-1.5 px-2 py-1 bg-white/5 rounded border border-white/10">
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] font-medium text-white truncate">{item.label}</div>
           </div>
           <button
             onClick={() => handleDelete(item.filename)}
-            className="text-[#666] hover:text-[#ff6b6b] transition-colors text-[10px] w-9 h-9 flex items-center justify-center border-none bg-transparent cursor-pointer"
+            className="text-[#666] hover:text-[#ff6b6b] transition-colors text-[10px] flex-shrink-0 border-none bg-transparent cursor-pointer px-1"
             title="삭제"
           >×</button>
         </div>

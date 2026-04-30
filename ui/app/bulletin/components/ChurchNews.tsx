@@ -100,18 +100,18 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
           }}>
           {news.title !== "-" && (
             <span
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-lg cursor-pointer"
               onClick={() => setSelectedChild(news)}
               style={{
                 backgroundColor,
                 color: lightness > 60 ? "#000" : "#fff",
-                padding: "7px 14px",
+                padding: "4px 10px",
                 borderRadius: "8px",
                 fontSize: depth === 0 ? "14px" : "13px",
               }}>
               {depthLabel}{news.title}
               <button
-                className="w-9 h-9 flex items-center justify-center bg-transparent border-none cursor-pointer transition-colors ml-1 flex-shrink-0 rounded-full hover:bg-white/10"
+                className="flex items-center justify-center bg-transparent border-none cursor-pointer transition-colors ml-1 flex-shrink-0 rounded-full hover:bg-white/10 p-0.5"
                 onClick={(e) => {
                   e.stopPropagation();
                   setConfirmDelete({ key: news.key, title: news.title });
@@ -185,11 +185,11 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
                 obj: e.target.value,
               }))
             }
-            className="w-full px-3 py-2 border border-pro-border rounded-lg text-sm bg-pro-elevated text-pro-text h-12 focus:outline-none focus:border-electric-blue focus:ring-2 focus:ring-electric-blue/20 transition-all"
+            className="w-full px-3 py-2 border border-pro-border rounded-lg text-sm bg-pro-elevated text-pro-text focus:outline-none focus:border-electric-blue focus:ring-2 focus:ring-electric-blue/20 transition-all"
           />
           <button
             onClick={() => handleAddNewItem(addContent)}
-            className="w-full bg-electric-blue text-white py-2.5 rounded-lg font-bold text-sm hover:bg-secondary transition-all active:scale-[0.98] shadow-electric-blue/20"
+            className="w-full bg-electric-blue text-white py-2 rounded-lg font-bold text-sm hover:bg-secondary transition-all active:scale-[0.98] shadow-electric-blue/20"
           >
             항목 추가
           </button>

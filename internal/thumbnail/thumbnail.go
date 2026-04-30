@@ -89,53 +89,46 @@ func Generate(cfg GenerateConfig) (string, error) {
 	white := color.Color(color.White)
 	shadowColor := color.Color(color.RGBA{0, 0, 0, 180})
 
-	// 6. 텍스트 렌더링
-	if effectiveSermonTitle != "" {
-		// 새 레이아웃: 상단 dateLabel + 중앙 sermonTitle + 하단 scripture
-		if effectiveDateLabel != "" {
-			// 상단 소 (50px), Y = Height * 0.12
-			dateY := int(float64(cfg.Height) * 0.12)
+	// 6. 텍스트 렌더링 — 항상 주일예배 스타일 사용
+	if effectiveDateLabel != "" {
+		// 상단 소 (50px), Y = Height * 0.12
+		dateY := int(float64(cfg.Height) * 0.12)
+		drawTextCenteredReturnPos(canvas, f, effectiveDateLabel, 50.0, cfg.Width, dateY+1, shadowColor)
+		drawTextCenteredReturnPos(canvas, f, effectiveDateLabel, 50.0, cfg.Width, dateY, white)
 
-			// 그림자 먼저
-			drawTextCenteredReturnPos(canvas, f, effectiveDateLabel, 50.0, cfg.Width, dateY+1, shadowColor)
-			// 본문
-			drawTextCenteredReturnPos(canvas, f, effectiveDateLabel, 50.0, cfg.Width, dateY, white)
-
-			// 구분선: 텍스트 양쪽에 수평선 추가
-			face50 := truetype.NewFace(f, &truetype.Options{Size: 50.0, DPI: 72})
-			tw := measureString(face50, effectiveDateLabel)
-			face50.Close()
-			cx := cfg.Width / 2
-			textLeft := cx - tw/2
-			textRight := cx + tw/2
-			gap := 20
-			lineY := dateY - 25 // FreeType y는 baseline이므로 텍스트 중앙 위치로 조정 (50px 폰트 기준 -25)
-			if textLeft-gap > 40 {
-				drawHLine(canvas, 40, textLeft-gap, lineY, white)
-				drawHLine(canvas, 40, textLeft-gap, lineY+1, white)
-			}
-			if textRight+gap < cfg.Width-40 {
-				drawHLine(canvas, textRight+gap, cfg.Width-40, lineY, white)
-				drawHLine(canvas, textRight+gap, cfg.Width-40, lineY+1, white)
-			}
+		// 구분선
+		face50 := truetype.NewFace(f, &truetype.Options{Size: 50.0, DPI: 72})
+		tw := measureString(face50, effectiveDateLabel)
+		face50.Close()
+		cx := cfg.Width / 2
+		textLeft := cx - tw/2
+		textRight := cx + tw/2
+		gap := 20
+		lineY := dateY - 25
+		if textLeft-gap > 40 {
+			drawHLine(canvas, 40, textLeft-gap, lineY, white)
+			drawHLine(canvas, 40, textLeft-gap, lineY+1, white)
 		}
+		if textRight+gap < cfg.Width-40 {
+			drawHLine(canvas, textRight+gap, cfg.Width-40, lineY, white)
+			drawHLine(canvas, textRight+gap, cfg.Width-40, lineY+1, white)
+		}
+	}
 
+	if effectiveSermonTitle != "" {
 		// 중앙 대 (100px), Y = Height/2 + 20
 		sermonY := cfg.Height/2 + 20
 		drawTextCenteredWithShadow(canvas, f, effectiveSermonTitle, 100.0, cfg.Width, sermonY, white, shadowColor)
-
-		if effectiveScripture != "" {
-			// 하단 소 (45px), Y = Height * 0.88
-			scriptureY := int(float64(cfg.Height) * 0.88)
-			subWhite := color.Color(color.RGBA{255, 255, 255, 230})
-			drawTextCenteredWithShadow(canvas, f, effectiveScripture, 45.0, cfg.Width, scriptureY, subWhite, shadowColor)
-		}
 	} else if effectiveDateLabel != "" {
-		// legacy: dateLabel만 있으면 중앙에 크게 (130px) — 하위 호환
-		titleY := cfg.Height/2 + 10
-		for _, off := range [][2]int{{-1, 0}, {1, 0}, {0, -1}, {0, 1}, {0, 0}} {
-			drawTextCentered(canvas, f, effectiveDateLabel, 130.0, cfg.Width, titleY+off[1], white, off[0])
-		}
+		// 말씀 제목이 없을 때: 날짜/예배명을 중앙에 크게
+		titleY := cfg.Height/2 + 20
+		drawTextCenteredWithShadow(canvas, f, effectiveDateLabel, 100.0, cfg.Width, titleY, white, shadowColor)
+	}
+
+	if effectiveScripture != "" {
+		// 하단 소 (45px), Y = Height * 0.88
+		scriptureY := int(float64(cfg.Height) * 0.88)
+		drawTextCentered(canvas, f, effectiveScripture, 45.0, cfg.Width, scriptureY, color.White, 0)
 	}
 
 	// 7. 로고 오버레이
@@ -207,13 +200,11 @@ func composeLogo(canvas *image.RGBA, cfg GenerateConfig) error {
 	return nil
 }
 
-// drawTextCenteredWithShadow — 텍스트 + 그림자 합성
+// drawTextCenteredWithShadow — 텍스트 + 그림자 합성 (단방향, 테두리 없음)
 func drawTextCenteredWithShadow(canvas *image.RGBA, f *truetype.Font, text string, size float64, canvasWidth, y int, col, shadowCol color.Color) {
-	// 그림자 (오프셋 2px)
-	for _, off := range [][2]int{{2, 2}, {-2, 2}, {2, -2}, {-2, -2}} {
-		drawTextCentered(canvas, f, text, size, canvasWidth, y+off[1], shadowCol, off[0])
-	}
-	// 본문 (단일, 테두리 없음)
+	// 그림자 (오른쪽 하단 1방향 — 4방향 제거로 테두리 효과 없앰)
+	drawTextCentered(canvas, f, text, size, canvasWidth, y+2, shadowCol, 2)
+	// 본문
 	drawTextCentered(canvas, f, text, size, canvasWidth, y, col, 0)
 }
 

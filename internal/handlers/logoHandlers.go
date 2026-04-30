@@ -18,7 +18,7 @@ func GetLogoPath() string {
 func findLogoPath() string {
 	execPath := path.ExecutePath("easyPreparation")
 	dataDir := filepath.Join(execPath, "data")
-	for _, ext := range []string{".png", ".jpg", ".jpeg"} {
+	for _, ext := range []string{".png", ".jpg", ".jpeg", ".svg"} {
 		p := filepath.Join(dataDir, "logo"+ext)
 		if _, err := os.Stat(p); err == nil {
 			return p
@@ -39,6 +39,8 @@ func HandleLogoGet(w http.ResponseWriter, r *http.Request) {
 	switch ext {
 	case ".jpg", ".jpeg":
 		w.Header().Set("Content-Type", "image/jpeg")
+	case ".svg":
+		w.Header().Set("Content-Type", "image/svg+xml")
 	default:
 		w.Header().Set("Content-Type", "image/png")
 	}
@@ -66,8 +68,8 @@ func HandleLogoUpload(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	ext := strings.ToLower(filepath.Ext(header.Filename))
-	if ext != ".png" && ext != ".jpg" && ext != ".jpeg" {
-		http.Error(w, "PNG/JPG 파일만 업로드 가능합니다", http.StatusBadRequest)
+	if ext != ".png" && ext != ".jpg" && ext != ".jpeg" && ext != ".svg" {
+		http.Error(w, "PNG/JPG/SVG 파일만 업로드 가능합니다", http.StatusBadRequest)
 		return
 	}
 
@@ -75,7 +77,7 @@ func HandleLogoUpload(w http.ResponseWriter, r *http.Request) {
 	dataDir := filepath.Join(execPath, "data")
 
 	// 기존 로고 파일 삭제
-	for _, oldExt := range []string{".png", ".jpg", ".jpeg"} {
+	for _, oldExt := range []string{".png", ".jpg", ".jpeg", ".svg"} {
 		os.Remove(filepath.Join(dataDir, "logo"+oldExt))
 	}
 
@@ -105,7 +107,7 @@ func HandleLogoDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	execPath := path.ExecutePath("easyPreparation")
 	dataDir := filepath.Join(execPath, "data")
-	for _, ext := range []string{".png", ".jpg", ".jpeg"} {
+	for _, ext := range []string{".png", ".jpg", ".jpeg", ".svg"} {
 		os.Remove(filepath.Join(dataDir, "logo"+ext))
 	}
 	w.Header().Set("Content-Type", "application/json")

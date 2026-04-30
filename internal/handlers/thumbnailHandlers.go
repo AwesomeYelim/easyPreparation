@@ -29,7 +29,7 @@ func loadSermonDataFromConfig(configPath string) (sermonTitle, scripture string)
 		title, _ := item["title"].(string)
 		obj, _ := item["obj"].(string)
 		info, _ := item["info"].(string)
-		if title == "말씀" && obj != "" && obj != "-" {
+		if (title == "말씀" || title == "설교") && obj != "" && obj != "-" {
 			sermonTitle = obj
 		}
 		if (title == "성경봉독" || strings.HasPrefix(info, "b_")) && obj != "" && obj != "-" && scripture == "" {

@@ -584,7 +584,7 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
                 onDragLeave={() => setDragOver(false)}
                 onDrop={(e) => { e.preventDefault(); setDragOver(false); handleLogoUpload(e.dataTransfer.files); }}
                 onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer mb-4 transition-all ${
+                className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer mb-4 transition-colors ${
                   dragOver
                     ? "border-[#4a9eff] bg-[rgba(74,158,255,0.1)]"
                     : "border-white/20 bg-transparent hover:border-white/40"
