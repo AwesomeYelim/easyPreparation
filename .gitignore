@@ -60,6 +60,9 @@ ui/node_modules/
 ui/.next/
 ui/tsconfig.tsbuildinfo
 
+# UI 디버그 스크린샷 (자동 생성)
+.claude/screenshots/
+
 # misc
 .DS_Store
 node_modules/

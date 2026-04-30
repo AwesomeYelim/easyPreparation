@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "screenshot": "node ../tools/ui-screenshot.js",
+    "test:ui": "node ../tools/ui-test.js"
   },
   "dependencies": {
     "classnames": "^2.5.1",
@@ -26,6 +28,7 @@
     "swiper": "11.0.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.50.0",
     "@eslint/eslintrc": "^3",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^20",

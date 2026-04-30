@@ -66,6 +66,16 @@
             "command": "cd \"$CLAUDE_PROJECT_DIR\" && CHANGED=$(git diff --name-only 2>/dev/null | grep '\\.go$' | head -1) && [ -n \"$CHANGED\" ] && export PATH=\"/usr/local/go/bin:$PATH\" && go vet ./cmd/... ./internal/... 2>&1 | head -12 || true"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | grep -q 'ui/' && cd \"$CLAUDE_PROJECT_DIR/ui\" && node ../tools/ui-screenshot.js > /dev/null 2>&1 || true",
+            "async": true
+          }
+        ]
       }
     ],
     "Stop": [
