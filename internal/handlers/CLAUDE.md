@@ -15,6 +15,31 @@
 | `obsSourceHandlers.go` | OBS 소스 관리 API (EP_PDF 소스명 분기 포함) |
 | `templateHandlers.go` | 예배 템플릿 관리 API |
 | `pdfHandlers.go` | 외부 PDF 업로드·Ghostscript 변환·슬라이드 제어·OBS Browser Source HTML |
+| `logoHandlers.go` | 교회 로고 업로드·서빙·삭제 (`data/logo.*`) — PNG/JPG/SVG 지원 |
+| `download.go` | PDF 다운로드·Desktop 저장·시스템 브라우저 열기 핸들러 (`open-display`, `open-mobile`, `open-print`) |
+
+## 로고 (`logoHandlers.go`)
+
+- 저장 경로: `data/logo.{png|jpg|jpeg|svg}` (확장자별 1파일)
+- 업로드 시 기존 로고 모든 확장자 삭제 후 새 파일 저장
+- `GET /api/logo` — 서빙 (`Cache-Control: no-cache`)
+- `POST /api/logo` — 업로드 (최대 5MB, PNG/JPG/SVG)
+- `DELETE /api/logo` — 삭제
+- Display HTML은 시작 시 `/api/logo` 로드 → `logoUrl` 전역 변수에 저장
+- **로고 크기**: `height: Xvh` 기반 스케일링 (`logoSizePercent * 0.5`vh), 최소 3vh
+  - `max-width: logoSizePercent * 2.5 vw` 로 가로 방향 과다 확장 방지
+  - width 기반 → height 기반으로 변경 이유: 와이드 로고에서 크기 조절 시 옆으로만 늘어나는 현상 수정
+
+## Desktop 브라우저 열기 (`download.go`)
+
+| 핸들러 | 엔드포인트 | 설명 |
+|--------|-----------|------|
+| `OpenDisplayInBrowserHandler` | `GET /api/open-display` | Display 페이지를 시스템 브라우저로 열기 |
+| `OpenMobileInBrowserHandler` | `GET /api/open-mobile` | 모바일 리모컨을 시스템 브라우저로 열기 |
+| `OpenPrintInBrowserHandler` | `GET /api/open-print` | 인쇄 페이지를 시스템 브라우저로 열기 |
+
+- `desktopDownloadDir == ""` 이면 403 (서버 모드에서 호출 불가)
+- Wails WebView에서 `<a target="_blank">` 가 동작하지 않으므로 fetch로 이 API 호출
 
 ## Display 시스템
 
