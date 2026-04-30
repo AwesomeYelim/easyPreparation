@@ -29,6 +29,7 @@ export default function ProSequencePanel() {
   const gridRef = useRef<HTMLDivElement>(null);
   const [gridCellWidth, setGridCellWidth] = useState(120);
   const [schedCountdown, setSchedCountdown] = useState<ScheduleCountdown>(null);
+  const [timerEnabled, setTimerEnabled] = useState(false);
 
   // Per-item timer state: Recoil (shared with ProTimeline)
   const itemTimers = useRecoilValue(itemTimersState);
@@ -66,6 +67,7 @@ export default function ProSequencePanel() {
       if (msg.type === "timer_state") {
         if (typeof msg.idx === "number") setIdx(msg.idx);
         if (typeof msg.subPageIdx === "number") setSubPageIdx(msg.subPageIdx);
+        if (typeof msg.enabled === "boolean") setTimerEnabled(msg.enabled);
       }
       if (msg.type === "order" && Array.isArray(msg.items)) {
         setLoadingMsg("");
@@ -111,6 +113,7 @@ export default function ProSequencePanel() {
         .then((data: any) => {
           if (data.obs) setObsStatus(data.obs);
           if (data.stream) setStreamStatus(data.stream);
+          if (typeof data.timerEnabled === "boolean") setTimerEnabled(data.timerEnabled);
           if (Array.isArray(data.items) && data.items.length > 0 && itemsRef.current.length === 0) {
             setItems(ensureUniqueKeys(data.items as WorshipOrderItem[]));
             if (typeof data.idx === "number") setIdx(data.idx);
@@ -307,6 +310,11 @@ export default function ProSequencePanel() {
               </span>
             )}
           </FeatureGate>
+          {timerEnabled && (
+            <span className="text-[9px] font-bold text-white bg-blue-600 px-1.5 py-0.5 rounded flex-shrink-0">
+              AUTO
+            </span>
+          )}
         </div>
         <FeatureGate
           feature="obs_control"

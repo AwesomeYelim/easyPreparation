@@ -109,12 +109,19 @@ func LoadDisplayState() {
 	if len(state.Items) == 0 {
 		return
 	}
+	// lyricsMap/sections 재생성 — 알고리즘 변경 시 캐시된 값이 남아있지 않도록
+	processed := make([]map[string]interface{}, 0, len(state.Items))
+	for _, item := range state.Items {
+		delete(item, "lyricsMap") // 강제 재계산
+		delete(item, "sections")  // startPage 공식 변경 시 구형 값 제거
+		processed = append(processed, preprocessItem(item))
+	}
 	orderMu.Lock()
-	currentOrder = state.Items
+	currentOrder = processed
 	currentIdx = state.Idx
 	displayChurchName = state.ChurchName
 	orderMu.Unlock()
-	log.Printf("[display] 상태 복원: %d개 항목, idx=%d", len(state.Items), state.Idx)
+	log.Printf("[display] 상태 복원: %d개 항목, idx=%d", len(processed), state.Idx)
 }
 
 // ── 서버 사이드 자동 넘김 타이머 ──
@@ -180,7 +187,7 @@ const displayHTML = `<!DOCTYPE html>
     background-position:center;
     background-repeat:no-repeat;
     opacity:0;
-    transition:opacity 0.4s ease;
+    transition:opacity 0.12s ease;
   }
   #slide.visible { opacity:1; }
 
@@ -611,18 +618,46 @@ function showSlide(i, skipDir) {
   else if (itemTitle === '성시교독' && item.images && item.images.length > 0) {
     subPages = item.images;
   }
-  // 찬송/헌금봉헌 이미지 → 표지 + 이미지 페이지
+  // 찬송/헌금봉헌: lyricsMap[i]가 3줄 이상이면 2줄씩 분할 (같은 이미지, 누락 없음)
   else if (item.images && item.images.length > 0) {
-    subPages = ['__cover__'].concat(item.images);
+    subPages = ['__cover__'].concat(expandHymnSubPages(item));
   }
 
   renderItem(item, 0);
 }
 
+/* ───── 찬송 서브페이지 확장 (2줄씩, 동일 이미지 유지) ───── */
+function expandHymnSubPages(item) {
+  var images = item.images || [];
+  var lm = item.lyricsMap || [];
+  var pages = [];
+  for (var i = 0; i < images.length; i++) {
+    var entry = (i < lm.length) ? lm[i] : '';
+    var lines = entry.split('\n').filter(function(l){ return l.trim(); });
+    if (lines.length <= 2) {
+      pages.push({img: i, lyric: entry});
+    } else {
+      var chunks = [];
+      for (var j = 0; j < lines.length; j += 2) {
+        chunks.push(lines.slice(j, j + 2).join('\n'));
+      }
+      // 마지막 청크가 1줄(고아)이면 이전 청크에 병합 (아멘 등 짧은 trailing 줄 처리)
+      if (chunks.length >= 2 && chunks[chunks.length - 1].indexOf('\n') === -1) {
+        chunks[chunks.length - 2] += '\n' + chunks[chunks.length - 1];
+        chunks.pop();
+      }
+      for (var k = 0; k < chunks.length; k++) {
+        pages.push({img: i, lyric: chunks[k]});
+      }
+    }
+  }
+  return pages;
+}
+
 /* ───── 키보드 / 네비게이션 ───── */
 function reportPosition() {
   if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({type:'position', idx:idx, subPageIdx:subPageIdx}));
+    ws.send(JSON.stringify({type:'position', idx:idx, subPageIdx:subPageIdx, subPageTotal:subPages.length}));
   }
 }
 
@@ -655,6 +690,21 @@ document.addEventListener('keydown', (e) => {
 
 /* ───── 렌더링 (title 기반 분기) ───── */
 function renderItem(item, pageIdx) {
+  // OBS 깜빡임 방지: opacity=0 → DOM 교체 → reportPosition → fade-in
+  var slideEl = document.getElementById('slide');
+  slideEl.classList.remove('visible');
+  setTimeout(function() {
+    _doRenderItem(item, pageIdx);
+    reportPosition();
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        slideEl.classList.add('visible');
+      });
+    });
+  }, 120);
+}
+
+function _doRenderItem(item, pageIdx) {
   console.log('[Display] renderItem idx=' + idx + ' pageIdx=' + pageIdx + ' info=' + (item.info||''));
   const info     = item.info     || '';
   const title    = item.title    || '';
@@ -675,7 +725,7 @@ function renderItem(item, pageIdx) {
   } else {
     slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.4))";
   }
-  slide.className = 'visible';
+  // fade-in은 renderItem 래퍼의 rAF에서 수행 — 여기서 visible 직접 설정 안 함
 
   const posText = slides.length ? (idx + 1) + ' / ' + slides.length : '';
   const pageText = subPages.length > 1 ? (subPageIdx + 1) + ' / ' + subPages.length : '';
@@ -719,12 +769,15 @@ function renderItem(item, pageIdx) {
     return;
   }
 
-  // ── 2. 찬송 / 헌금봉헌 (표지 + 이미지 페이지) ──
+  // ── 2. 찬송 / 헌금봉헌 ──
   if (title === '찬송' || title === '헌금봉헌') {
     if (images.length > 0 && pageIdx > 0) {
       slide.style.backgroundImage = 'none';
+      var sp2 = subPages[pageIdx];
+      var imgIdx2 = (sp2 && typeof sp2 === 'object') ? sp2.img : pageIdx - 1;
+      imgIdx2 = Math.min(imgIdx2, images.length - 1);
       slide.innerHTML =
-        '<img class="slide-image" src="' + images[pageIdx - 1] + '">' +
+        '<img class="slide-image" src="' + images[imgIdx2] + '">' +
         footer;
       return;
     }
@@ -1337,10 +1390,36 @@ function showSlide(i) {
   } else if (itemTitle === '성시교독' && item.images && item.images.length > 0) {
     subPages = item.images;
   } else if (item.images && item.images.length > 0) {
-    subPages = ['__cover__'].concat(item.images);
+    subPages = ['__cover__'].concat(expandHymnSubPages(item));
   }
 
   renderLyricsItem(item, 0);
+}
+
+function expandHymnSubPages(item) {
+  var images = item.images || [];
+  var lm = item.lyricsMap || [];
+  var pages = [];
+  for (var i = 0; i < images.length; i++) {
+    var entry = (i < lm.length) ? lm[i] : '';
+    var lines = entry.split('\n').filter(function(l){ return l.trim(); });
+    if (lines.length <= 2) {
+      pages.push({img: i, lyric: entry});
+    } else {
+      var chunks = [];
+      for (var j = 0; j < lines.length; j += 2) {
+        chunks.push(lines.slice(j, j + 2).join('\n'));
+      }
+      if (chunks.length >= 2 && chunks[chunks.length - 1].indexOf('\n') === -1) {
+        chunks[chunks.length - 2] += '\n' + chunks[chunks.length - 1];
+        chunks.pop();
+      }
+      for (var k = 0; k < chunks.length; k++) {
+        pages.push({img: i, lyric: chunks[k]});
+      }
+    }
+  }
+  return pages;
 }
 
 function navigate(dir) {
@@ -1414,7 +1493,8 @@ function renderLyricsItem(item, pageIdx) {
       slide.innerHTML = '<div class="overlay-box center"><div class="title-overlay" style="text-align:center;width:100%">' + esc(obj) + '</div></div>';
       return;
     }
-    var lyric = (pageIdx - 1 < lyricsMap.length) ? lyricsMap[pageIdx - 1] : '';
+    var sp = subPages[pageIdx];
+    var lyric = (sp && typeof sp === 'object') ? sp.lyric : (pageIdx - 1 < lyricsMap.length ? lyricsMap[pageIdx - 1] : '');
     slide.innerHTML = '<div class="overlay-box center"><div class="lyrics-overlay">' + esc(lyric) + '</div></div>';
     return;
   }
@@ -2206,14 +2286,19 @@ func DisplayStatusHandler(w http.ResponseWriter, r *http.Request) {
 
 	streamStatus := obs.Get().GetStreamStatus()
 
+	timerMu.Lock()
+	tEnabled := timerEnabled
+	timerMu.Unlock()
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"idx":    idx,
-		"count":  count,
-		"title":  title,
-		"items":  items,
-		"obs":    obsStatus,
-		"stream": streamStatus,
+		"idx":          idx,
+		"count":        count,
+		"title":        title,
+		"items":        items,
+		"obs":          obsStatus,
+		"stream":       streamStatus,
+		"timerEnabled": tEnabled,
 	})
 }
 
@@ -2366,10 +2451,26 @@ func buildSections(item map[string]interface{}) map[string]interface{} {
 				}
 			} else {
 				// 찬송/헌금봉헌: 표지 + 이미지
+				// startPage는 expandHymnSubPages 고아-병합 로직과 동기화:
+				//   lineCount <= 2: subSteps=1 / lineCount>=3: subSteps=lineCount/2 (정수 나눗셈)
 				sections = []map[string]interface{}{
 					{"label": "표지", "startPage": 0, "text": obj},
 				}
+				subPageOffset := 0
 				for i := range images {
+					startPage := subPageOffset + 1
+					subSteps := 1
+					if i < len(lyricsMap) && lyricsMap[i] != "" {
+						lineCount := 0
+						for _, line := range strings.Split(lyricsMap[i], "\n") {
+							if strings.TrimSpace(line) != "" {
+								lineCount++
+							}
+						}
+						if lineCount >= 3 {
+							subSteps = lineCount / 2 // JS orphan-merge와 동일 결과
+						}
+					}
 					preview := ""
 					if i < len(lyricsMap) && lyricsMap[i] != "" {
 						preview = lyricsMap[i]
@@ -2381,9 +2482,10 @@ func buildSections(item map[string]interface{}) map[string]interface{} {
 					}
 					sections = append(sections, map[string]interface{}{
 						"label":     fmt.Sprintf("%d", i+1),
-						"startPage": i + 1,
+						"startPage": startPage,
 						"text":      preview,
 					})
+					subPageOffset += subSteps
 				}
 			}
 			item["sections"] = sections
@@ -2715,8 +2817,7 @@ func splitIntoChunks(text string, linesPerChunk int) []string {
 	return chunks
 }
 
-// mapLyricsToPages — 전체 가사를 2줄 청크로 나눈 뒤 페이지 수에 맞게 균등 배분
-// 오버레이에서 한 슬라이드에 최대 2줄만 표시되도록 보장한다.
+// mapLyricsToPages — 전체 가사를 PNG 장수에 맞게 균등 분배 (lyricsMap.length == pageCount)
 func mapLyricsToPages(verses []string, pageCount int) []string {
 	if pageCount <= 0 || len(verses) == 0 {
 		return nil
@@ -2737,25 +2838,18 @@ func mapLyricsToPages(verses []string, pageCount int) []string {
 		return nil
 	}
 
-	// 2줄씩 청크로 분할 (슬라이드당 최대 2줄 보장)
-	var chunks []string
-	for i := 0; i < n; i += 2 {
-		end := i + 2
+	// 각 페이지(PNG)에 연속된 줄을 균등 배분 (누락 없이, lyricsMap[i] ↔ images[i])
+	result := make([]string, pageCount)
+	for i := 0; i < pageCount; i++ {
+		start := i * n / pageCount
+		end := (i + 1) * n / pageCount
+		if start >= n {
+			start = n - 1
+		}
 		if end > n {
 			end = n
 		}
-		chunks = append(chunks, strings.Join(allLines[i:end], "\n"))
-	}
-
-	// 청크를 페이지 수에 맞게 균등 배분
-	numChunks := len(chunks)
-	result := make([]string, pageCount)
-	for i := 0; i < pageCount; i++ {
-		chunkIdx := i * numChunks / pageCount
-		if chunkIdx >= numChunks {
-			chunkIdx = numChunks - 1
-		}
-		result[i] = chunks[chunkIdx]
+		result[i] = strings.Join(allLines[start:end], "\n")
 	}
 	return result
 }

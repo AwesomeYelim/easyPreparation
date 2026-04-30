@@ -193,6 +193,9 @@ const mobileRemoteHTML = `<!DOCTYPE html>
 
   html, body {
     width:100%; height:100%;
+    touch-action: manipulation;
+    position: fixed;
+    overflow: hidden;
     background: var(--surface);
     color: var(--on-surface);
     font-family: 'Inter', -apple-system, sans-serif;
@@ -213,8 +216,9 @@ const mobileRemoteHTML = `<!DOCTYPE html>
   #app {
     display: flex;
     flex-direction: column;
-    height: 100dvh;
-    height: 100vh;
+    height: 100vh;                    /* fallback */
+    height: -webkit-fill-available;   /* iOS Safari 구형 */
+    height: 100dvh;                   /* iOS 15.4+ / Chrome — 브라우저 chrome 제외 */
     max-width: 480px;
     margin: 0 auto;
     position: relative;
@@ -227,11 +231,11 @@ const mobileRemoteHTML = `<!DOCTYPE html>
     background: rgba(249,249,255,0.85);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    padding: 0 20px;
+    padding: env(safe-area-inset-top) 20px 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 64px;
+    height: calc(64px + env(safe-area-inset-top));
     border-bottom: 1px solid var(--outline-variant);
     z-index: 50;
   }
@@ -278,92 +282,70 @@ const mobileRemoteHTML = `<!DOCTYPE html>
     flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 80px;
+    padding-bottom: 156px;
   }
 
-  /* ── Live Monitor ── */
+  /* ── Live Monitor (16:9 슬라이드 카드) ── */
   #live-monitor {
-    margin: 16px 16px 0;
-    background: var(--primary);
+    margin: 12px 16px 12px;
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0,32,69,0.25);
+    border: 1.5px solid #3B82F6;
+    box-shadow: 0 4px 20px rgba(59,130,246,0.2);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--surface);
   }
   #live-monitor-inner {
     position: relative;
-    background: #000;
-    min-height: 120px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: 12px 16px 16px;
+    overflow: hidden;
+    width: 100%;
   }
-  #live-badge-row {
-    display: flex;
+  #display-preview-outer {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    background: #000;
+  }
+  #display-scaler {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1920px;
+    height: 1080px;
+    transform-origin: top left;
+    pointer-events: none;
+  }
+  #display-iframe {
+    width: 1920px;
+    height: 1080px;
+    border: none;
+    display: block;
+  }
+  #offline-overlay {
+    display: none;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
     align-items: center;
+    justify-content: center;
+    flex-direction: column;
     gap: 8px;
   }
-  #live-badge {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    background: var(--error);
-    color: #fff;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    padding: 3px 8px;
-    border-radius: 4px;
-  }
-  #live-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: #fff;
-    animation: pulse 1.5s infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
-  #live-badge.offline {
-    background: var(--outline);
-  }
-  #progress-pill {
-    background: rgba(255,255,255,0.12);
-    color: rgba(255,255,255,0.7);
-    font-size: 10px;
-    font-weight: 600;
-    padding: 3px 8px;
-    border-radius: 20px;
-  }
-  #monitor-bottom {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  #next-label {
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.5);
-  }
-  #next-title {
-    font-size: 18px;
-    font-weight: 700;
-    color: #fff;
-    line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
 
-  /* ── Nav Buttons ── */
+  /* ── Nav Buttons (fixed) ── */
   #nav-area {
+    position: fixed;
+    bottom: calc(env(safe-area-inset-bottom) + 76px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
     display: flex;
     gap: 10px;
-    padding: 12px 16px;
+    padding: 0 16px;
+    z-index: 40;
   }
   .nav-btn {
     flex: 1;
@@ -485,6 +467,7 @@ const mobileRemoteHTML = `<!DOCTYPE html>
     gap: 8px;
   }
   .order-item {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -553,14 +536,108 @@ const mobileRemoteHTML = `<!DOCTYPE html>
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .item-icon {
+  .drag-handle {
     color: var(--outline);
     flex-shrink: 0;
     margin-left: 8px;
+    cursor: grab;
+    touch-action: none;
   }
-  .order-item.active .item-icon {
+  .order-item.active .drag-handle {
     color: var(--secondary);
     font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  .item-expand-btn {
+    color: var(--outline);
+    flex-shrink: 0;
+    transition: transform 0.2s;
+    cursor: pointer;
+    padding: 4px;
+  }
+  .item-detail {
+    margin: -6px 16px 6px;
+    padding: 12px 16px;
+    background: var(--surface-container);
+    border-radius: 0 0 12px 12px;
+    border: 1px solid var(--outline-variant);
+    border-top: none;
+  }
+  .section-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .section-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 8px;
+    border-bottom: 1px solid var(--outline-variant);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.15s, opacity 0.15s, border-left 0.15s;
+    border-left: 3px solid transparent;
+  }
+  .section-row:last-child { border-bottom: none; }
+  .section-row:active { background: var(--surface-container-high); }
+  /* 현재 진행 중인 절 */
+  .section-row.active {
+    background: rgba(0,81,213,0.10);
+    border-left-color: var(--primary);
+  }
+  .section-row.active .section-num {
+    background: var(--primary);
+    color: #fff;
+  }
+  .section-row.active .section-text {
+    color: var(--on-surface);
+    font-weight: 600;
+  }
+  /* 이미 지난 절 */
+  .section-row.done {
+    opacity: 0.38;
+  }
+  .section-num {
+    min-width: 32px;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--secondary);
+    text-align: center;
+    padding: 2px 4px;
+    background: rgba(0,81,213,0.08);
+    border-radius: 4px;
+    flex-shrink: 0;
+    line-height: 1.3;
+    transition: background 0.15s, color 0.15s;
+  }
+  .section-text {
+    font-size: 12px;
+    color: var(--on-surface-variant);
+    line-height: 1.5;
+    flex: 1;
+    min-width: 0;
+    word-break: keep-all;
+  }
+  .section-pages-count {
+    font-size: 11px;
+    color: var(--secondary);
+    padding: 4px 0;
+  }
+  /* 아이템 진행 바 (접힌 상태에서도 진행 표시) */
+  .item-progress-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: rgba(0,81,213,0.12);
+    border-radius: 0 0 12px 12px;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .item-progress-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 3px;
+    transition: width 0.35s ease;
   }
 
   #empty-msg {
@@ -848,31 +925,16 @@ const mobileRemoteHTML = `<!DOCTYPE html>
   <div id="scroll-area">
     <!-- Live Monitor -->
     <div id="live-monitor">
-      <div id="live-monitor-inner">
-        <div id="live-badge-row">
-          <div id="live-badge" class="offline">
-            <span id="live-dot"></span>
-            <span id="live-badge-text">OFFLINE</span>
+      <div id="live-monitor-inner" style="position:relative; overflow:hidden; width:100%;">
+        <div id="display-preview-outer" style="position:relative; width:100%; overflow:hidden; background:#000;">
+          <div id="display-scaler" style="position:absolute; top:0; left:0; width:1920px; height:1080px; transform-origin:top left; pointer-events:none;">
+            <iframe id="display-iframe" src="/display" style="width:1920px; height:1080px; border:none; display:block;"></iframe>
           </div>
-          <span id="progress-pill">-/-</span>
         </div>
-        <div id="monitor-bottom">
-          <div id="next-label">현재 항목</div>
-          <div id="next-title">연결 중...</div>
+        <div id="offline-overlay" style="display:none; position:absolute; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; flex-direction:column; gap:8px;">
+          <span style="color:#fff;font-size:12px;font-weight:700;letter-spacing:0.1em;">OFFLINE</span>
         </div>
       </div>
-    </div>
-
-    <!-- Nav Buttons -->
-    <div id="nav-area">
-      <button class="nav-btn" id="btn-prev" onclick="navigate('prev')">
-        <span class="material-symbols-outlined" style="font-size:18px;">arrow_back</span>
-        <span>이전</span>
-      </button>
-      <button class="nav-btn" id="btn-next" onclick="navigate('next')">
-        <span>다음</span>
-        <span class="material-symbols-outlined" style="font-size:18px;">arrow_forward</span>
-      </button>
     </div>
 
     <!-- Quick Controls -->
@@ -904,8 +966,41 @@ const mobileRemoteHTML = `<!DOCTYPE html>
       <div>예배 순서가 없습니다.<br>주보 탭에서 순서를 전송해주세요.</div>
     </div>
 
+    <!-- Settings Panel -->
+    <div id="settings-panel" style="display:none; padding:16px; display:none;">
+      <div style="font-size:22px;font-weight:900;color:var(--primary);letter-spacing:-0.03em;margin-bottom:16px;">Settings</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button onclick="window.open('/display','_blank')" style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface-container-low);border:1px solid var(--outline-variant);border-radius:12px;cursor:pointer;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--primary);text-align:left;">
+          <span class="material-symbols-outlined fill-icon" style="color:var(--secondary);">monitor</span>
+          <div>
+            <div style="font-size:14px;font-weight:700;">Display 열기</div>
+            <div style="font-size:11px;color:var(--on-surface-variant);margin-top:2px;">프로젝터용 슬라이드 화면</div>
+          </div>
+        </button>
+        <button onclick="window.open('/display/stage','_blank')" style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface-container-low);border:1px solid var(--outline-variant);border-radius:12px;cursor:pointer;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--primary);text-align:left;">
+          <span class="material-symbols-outlined fill-icon" style="color:var(--secondary-container);">desktop_windows</span>
+          <div>
+            <div style="font-size:14px;font-weight:700;">Stage Monitor 열기</div>
+            <div style="font-size:11px;color:var(--on-surface-variant);margin-top:2px;">무대 모니터용 화면 (예배팀·설교자)</div>
+          </div>
+        </button>
+      </div>
+    </div>
+
     <!-- 하단 여백 -->
     <div style="height:16px;"></div>
+  </div>
+
+  <!-- Nav Buttons (fixed above bottom nav) -->
+  <div id="nav-area">
+    <button class="nav-btn" id="btn-prev" onclick="navigate('prev')">
+      <span class="material-symbols-outlined" style="font-size:18px;">arrow_back</span>
+      <span>이전</span>
+    </button>
+    <button class="nav-btn" id="btn-next" onclick="navigate('next')">
+      <span>다음</span>
+      <span class="material-symbols-outlined" style="font-size:18px;">arrow_forward</span>
+    </button>
   </div>
 
   <!-- Bottom Nav Bar -->
@@ -977,6 +1072,8 @@ const mobileRemoteHTML = `<!DOCTYPE html>
 // ── 상태 ──
 let items = [];
 let currentIdx = 0;
+let currentSubPageIdx = 0;
+let currentSubPageTotal = 0;
 let timerEnabled = false;
 let streamLive = false;
 let streamBusy = false;
@@ -1022,20 +1119,32 @@ function handleWS(msg) {
       if (typeof msg.idx === 'number') currentIdx = msg.idx;
       renderList();
       updateMonitor();
+      updateSectionHighlights();
+      updateProgressBar();
       break;
 
     case 'position':
       if (typeof msg.idx === 'number') {
+        var idxChanged = msg.idx !== currentIdx;
         currentIdx = msg.idx;
-        updateMonitor();
-        highlightCurrent();
-        scrollToActive();
+        if (typeof msg.subPageIdx === 'number') currentSubPageIdx = msg.subPageIdx;
+        if (typeof msg.subPageTotal === 'number') currentSubPageTotal = msg.subPageTotal;
+        if (idxChanged) {
+          currentSubPageIdx = 0;
+          updateMonitor();
+          highlightCurrent();
+          scrollToActive();
+        }
+        updateSectionHighlights();
+        updateProgressBar();
       }
       break;
 
     case 'navigate':
       if (msg.direction === 'jump' && typeof msg.idx === 'number') {
         currentIdx = msg.idx;
+        currentSubPageIdx = 0;
+        currentSubPageTotal = 0;
         updateMonitor();
         highlightCurrent();
         scrollToActive();
@@ -1055,6 +1164,10 @@ function handleWS(msg) {
 function setWsDot(state) {
   const badge = document.getElementById('ws-badge');
   badge.className = state;
+  const overlay = document.getElementById('offline-overlay');
+  if (overlay) {
+    overlay.style.display = (state === 'connected') ? 'none' : 'flex';
+  }
 }
 
 // ── 네비게이션 ──
@@ -1078,7 +1191,7 @@ function openDisplay() {
   window.open('/display', '_blank');
 }
 
-// ── 탭 전환 (시각적 토글만) ──
+// ── 탭 전환 ──
 function switchTab(tab) {
   const tabs = ['sequence', 'live', 'controls', 'settings'];
   tabs.forEach(function(t) {
@@ -1087,7 +1200,27 @@ function switchTab(tab) {
   });
   const active = document.getElementById('tab-' + tab);
   if (active) active.classList.add('active');
-  if (tab === 'live') { toggleStream(); }
+
+  // sequence/settings 콘텐츠 토글
+  const seqEls = [
+    document.getElementById('order-list'),
+    document.getElementById('empty-msg'),
+    document.getElementById('sequence-header'),
+    document.getElementById('quick-controls'),
+    document.getElementById('live-monitor')
+  ];
+  const settingsPanel = document.getElementById('settings-panel');
+
+  if (tab === 'settings') {
+    seqEls.forEach(function(el) { if (el) el.style.display = 'none'; });
+    settingsPanel.style.display = 'block';
+    document.getElementById('nav-area').style.display = 'none';
+  } else {
+    seqEls.forEach(function(el) { if (el) el.style.display = ''; });
+    settingsPanel.style.display = 'none';
+    document.getElementById('nav-area').style.display = 'flex';
+    if (tab === 'live') { toggleStream(); }
+  }
 }
 
 // ── 타이머 제어 ──
@@ -1096,10 +1229,10 @@ function toggleTimer() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'toggle' })
-  }).then(function() {
-    timerEnabled = !timerEnabled;
-    updateTimerBtn();
   }).catch(function() { showToast('연결 오류'); });
+  // 로컬 상태 즉시 반영 (WS 브로드캐스트 도달 전 UX)
+  timerEnabled = !timerEnabled;
+  updateTimerBtn();
 }
 
 function updateTimerBtn() {
@@ -1207,15 +1340,7 @@ function updateStreamBtn(forceCls) {
 }
 
 function updateLiveBadge() {
-  const badge = document.getElementById('live-badge');
-  const text = document.getElementById('live-badge-text');
-  if (streamLive) {
-    badge.classList.remove('offline');
-    text.textContent = 'LIVE';
-  } else {
-    badge.classList.add('offline');
-    text.textContent = 'OFFLINE';
-  }
+  // overlay는 WS 연결 상태(setWsDot)에서만 제어 — 스트리밍 ON/OFF와 무관
 }
 
 // ── 확인 모달 ──
@@ -1240,7 +1365,47 @@ function confirmAction() {
   if (action) action();
 }
 
+// ── 섹션 점프 ──
+function jumpToSection(itemIdx, subPage) {
+  fetch('/display/jump', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ index: itemIdx })
+  }).then(function() {
+    if (subPage > 0) {
+      return fetch('/display/navigate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ direction: 'jump_sub', subPageIdx: subPage })
+      });
+    }
+  }).catch(function() { showToast('연결 오류'); });
+}
+
 // ── 렌더링 ──
+function buildDetailHTML(item, itemIdx) {
+  var sections = item.sections;
+  if (Array.isArray(sections) && sections.length > 0) {
+    var rows = sections.map(function(sec, si) {
+      var label = escHtml(String(sec.label || (si + 1)));
+      var text = escHtml(String(sec.text || ''));
+      var sp = typeof sec.startPage === 'number' ? sec.startPage : si;
+      return '<div class="section-row" data-sp="' + sp + '" onclick="jumpToSection(' + itemIdx + ',' + sp + ')">' +
+        '<span class="section-num">' + label + '</span>' +
+        '<span class="section-text">' + text + '</span>' +
+        '</div>';
+    }).join('');
+    return '<div class="section-list">' + rows + '</div>';
+  }
+  var pages = item.pages;
+  if (Array.isArray(pages) && pages.length > 0) {
+    return '<div class="section-pages-count">' + pages.length + '페이지</div>';
+  }
+  var obj = item.obj || '';
+  if (!obj) return '';
+  return '<span style="font-size:12px;color:var(--on-surface-variant);">' + escHtml(obj) + '</span>';
+}
+
 function getBadgeText(i) {
   if (i === currentIdx) return 'Current';
   if (i === currentIdx + 1) return 'Next';
@@ -1265,8 +1430,12 @@ function renderList() {
     const isActive = i === currentIdx;
     const badge = getBadgeText(i);
     const numStr = String(i + 1).padStart(2, '0');
-    return '<div class="order-item' + (isActive ? ' active' : '') + '" onclick="jumpTo(' + i + ')" data-idx="' + i + '">' +
-      '<div class="item-left">' +
+    var progPct = 0;
+    if (isActive && currentSubPageTotal > 1) {
+      progPct = Math.round(currentSubPageIdx / (currentSubPageTotal - 1) * 100);
+    }
+    var html = '<div class="order-item' + (isActive ? ' active' : '') + '" data-idx="' + i + '">' +
+      '<div class="item-left" onclick="jumpTo(' + i + ')">' +
         '<div class="item-num-circle">' + numStr + '</div>' +
         '<div class="item-text">' +
           (badge ? '<span class="item-badge">' + badge + '</span>' : '<span class="item-badge">&nbsp;</span>') +
@@ -1274,9 +1443,20 @@ function renderList() {
           (obj ? '<span class="item-obj">' + escHtml(obj) + '</span>' : '') +
         '</div>' +
       '</div>' +
-      '<span class="material-symbols-outlined item-icon">' + (isActive ? 'equalizer' : 'drag_indicator') + '</span>' +
+      (obj || (Array.isArray(item.sections) && item.sections.length > 0) || (Array.isArray(item.pages) && item.pages.length > 0) ? '<span class="material-symbols-outlined item-expand-btn" onclick="toggleExpand(' + i + ')">expand_more</span>' : '') +
+      '<span class="material-symbols-outlined drag-handle">' + (isActive ? 'equalizer' : 'drag_indicator') + '</span>' +
+      (isActive && currentSubPageTotal > 1 ? '<div class="item-progress-bar"><div class="item-progress-fill" id="item-progress-fill" style="width:' + progPct + '%"></div></div>' : '') +
     '</div>';
+    var detailContent = buildDetailHTML(item, i);
+    if (detailContent) {
+      html += '<div class="item-detail" id="item-detail-' + i + '" style="display:none;">' +
+        detailContent +
+      '</div>';
+    }
+    return html;
   }).join('');
+
+  initDragHandles();
 }
 
 function highlightCurrent() {
@@ -1286,10 +1466,12 @@ function highlightCurrent() {
     const isActive = idx === currentIdx;
     if (isActive) {
       el.classList.add('active');
-      el.querySelector('.item-icon').textContent = 'equalizer';
+      var handle = el.querySelector('.drag-handle');
+      if (handle) handle.textContent = 'equalizer';
     } else {
       el.classList.remove('active');
-      el.querySelector('.item-icon').textContent = 'drag_indicator';
+      var handle = el.querySelector('.drag-handle');
+      if (handle) handle.textContent = 'drag_indicator';
     }
     const badge = el.querySelector('.item-badge');
     if (badge) {
@@ -1297,6 +1479,54 @@ function highlightCurrent() {
       badge.textContent = b || '\u00a0';
     }
   });
+}
+
+// updateSectionHighlights — 현재 서브페이지에 따라 섹션 행 active/done 업데이트
+function updateSectionHighlights() {
+  var activeItem = document.querySelector('.order-item.active');
+  if (!activeItem) return;
+  var detailId = 'item-detail-' + currentIdx;
+  var detail = document.getElementById(detailId);
+  if (!detail) return;
+  var rows = detail.querySelectorAll('.section-row');
+  var activeSectionSp = -1;
+  // 현재 subPageIdx에 해당하는 섹션 찾기 (startPage <= subPageIdx인 마지막 섹션)
+  rows.forEach(function(row) {
+    var sp = parseInt(row.getAttribute('data-sp') || '-1', 10);
+    if (sp >= 0 && sp <= currentSubPageIdx) activeSectionSp = sp;
+  });
+  rows.forEach(function(row) {
+    var sp = parseInt(row.getAttribute('data-sp') || '-1', 10);
+    row.classList.remove('active', 'done');
+    if (sp === activeSectionSp) {
+      row.classList.add('active');
+    } else if (sp >= 0 && sp < activeSectionSp) {
+      row.classList.add('done');
+    }
+  });
+}
+
+// updateProgressBar — active 아이템의 진행 바 업데이트 (DOM 직접 조작, 리렌더 없이)
+function updateProgressBar() {
+  var fill = document.getElementById('item-progress-fill');
+  if (!fill) {
+    // 진행 바가 없으면 추가 (서브페이지가 처음 생긴 경우)
+    var activeItem = document.querySelector('.order-item.active');
+    if (!activeItem || currentSubPageTotal <= 1) return;
+    var bar = document.createElement('div');
+    bar.className = 'item-progress-bar';
+    bar.innerHTML = '<div class="item-progress-fill" id="item-progress-fill" style="width:0%"></div>';
+    activeItem.appendChild(bar);
+    fill = document.getElementById('item-progress-fill');
+    if (!fill) return;
+  }
+  if (currentSubPageTotal <= 1) {
+    fill.parentElement.style.display = 'none';
+    return;
+  }
+  fill.parentElement.style.display = '';
+  var pct = Math.round(currentSubPageIdx / (currentSubPageTotal - 1) * 100);
+  fill.style.width = pct + '%';
 }
 
 function scrollToActive() {
@@ -1307,20 +1537,10 @@ function scrollToActive() {
 }
 
 function updateMonitor() {
-  const nextTitle = document.getElementById('next-title');
-  const progressPill = document.getElementById('progress-pill');
-  const nextLabel = document.getElementById('next-label');
   const seqMeta = document.getElementById('sequence-meta');
-
   if (items && items.length > 0 && currentIdx >= 0 && currentIdx < items.length) {
-    nextTitle.textContent = items[currentIdx].title || '';
-    progressPill.textContent = (currentIdx + 1) + ' / ' + items.length;
-    nextLabel.textContent = '현재 항목';
     seqMeta.textContent = (currentIdx + 1) + ' / ' + items.length;
   } else {
-    nextTitle.textContent = '순서 없음';
-    progressPill.textContent = '-/-';
-    nextLabel.textContent = '현재 항목';
     seqMeta.textContent = '';
   }
 }
@@ -1364,6 +1584,13 @@ function showToast(msg) {
   toastTimer = setTimeout(function() { el.classList.remove('show'); }, 2200);
 }
 
+// ── 핀치 줌 방지 (iOS Safari 포함) ──
+document.addEventListener('gesturestart', function(e) { e.preventDefault(); }, { passive: false });
+document.addEventListener('gesturechange', function(e) { e.preventDefault(); }, { passive: false });
+document.addEventListener('touchmove', function(e) {
+  if (e.touches.length > 1) e.preventDefault();
+}, { passive: false });
+
 // ── 터치 스와이프 ──
 document.addEventListener('touchstart', function(e) {
   touchStartX = e.touches[0].clientX;
@@ -1372,9 +1599,11 @@ document.addEventListener('touchstart', function(e) {
 }, { passive: true });
 
 document.addEventListener('touchmove', function(e) {
-  const dx = Math.abs(e.touches[0].clientX - touchStartX);
-  const dy = Math.abs(e.touches[0].clientY - touchStartY);
-  if (dx > 10 || dy > 10) touchMoved = true;
+  if (e.touches.length === 1) {
+    const dx = Math.abs(e.touches[0].clientX - touchStartX);
+    const dy = Math.abs(e.touches[0].clientY - touchStartY);
+    if (dx > 10 || dy > 10) touchMoved = true;
+  }
 }, { passive: true });
 
 document.addEventListener('touchend', function(e) {
@@ -1418,16 +1647,119 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/mobile/sw.js').catch(function() {});
 }
 
+// ── Display 스케일 ──
+function updateDisplayScale() {
+  var outer = document.getElementById('display-preview-outer');
+  var scaler = document.getElementById('display-scaler');
+  if (!outer || !scaler) return;
+  var w = outer.offsetWidth;
+  var scale = w / 1920;
+  scaler.style.transform = 'scale(' + scale + ')';
+  outer.style.height = Math.round(1080 * scale) + 'px';
+}
+
+// ── 아이템 확장 ──
+function toggleExpand(idx) {
+  var detail = document.getElementById('item-detail-' + idx);
+  if (!detail) return;
+  var isOpen = detail.style.display !== 'none';
+  detail.style.display = isOpen ? 'none' : 'block';
+  var btn = document.querySelector('[data-idx="' + idx + '"] .item-expand-btn');
+  if (btn) btn.style.transform = isOpen ? '' : 'rotate(180deg)';
+}
+
+// ── 터치 드래그 순서 변경 ──
+var dragSrc = null;
+
+function initDragHandles() {
+  document.querySelectorAll('.drag-handle').forEach(function(handle) {
+    handle.addEventListener('touchstart', onDragStart, { passive: false });
+  });
+}
+
+function onDragStart(e) {
+  e.preventDefault();
+  var item = e.target.closest('.order-item');
+  if (!item) return;
+  dragSrc = parseInt(item.getAttribute('data-idx'), 10);
+  item.style.opacity = '0.5';
+  document.addEventListener('touchmove', onDragMove, { passive: false });
+  document.addEventListener('touchend', onDragEnd);
+}
+
+function onDragMove(e) {
+  e.preventDefault();
+  var touch = e.touches[0];
+  var els = document.elementsFromPoint(touch.clientX, touch.clientY);
+  var target = null;
+  for (var i = 0; i < els.length; i++) {
+    if (els[i].classList.contains('order-item')) { target = els[i]; break; }
+  }
+  if (target) {
+    var targetIdx = parseInt(target.getAttribute('data-idx'), 10);
+    if (targetIdx !== dragSrc) {
+      highlightDropTarget(targetIdx);
+    }
+  }
+}
+
+function onDragEnd(e) {
+  document.removeEventListener('touchmove', onDragMove);
+  document.removeEventListener('touchend', onDragEnd);
+  var touch = e.changedTouches[0];
+  var els = document.elementsFromPoint(touch.clientX, touch.clientY);
+  var target = null;
+  for (var i = 0; i < els.length; i++) {
+    if (els[i].classList.contains('order-item')) { target = els[i]; break; }
+  }
+  document.querySelectorAll('.order-item').forEach(function(el) {
+    el.style.opacity = '';
+    el.style.background = '';
+  });
+  if (target) {
+    var targetIdx = parseInt(target.getAttribute('data-idx'), 10);
+    if (targetIdx !== dragSrc && dragSrc !== null) {
+      doReorder(dragSrc, targetIdx);
+    }
+  }
+  dragSrc = null;
+}
+
+function doReorder(from, to) {
+  var newItems = items.slice();
+  var moved = newItems.splice(from, 1)[0];
+  newItems.splice(to, 0, moved);
+  items = newItems;
+  renderList();
+  fetch('/display/order', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items: items })
+  }).catch(function() { showToast('순서 변경 실패'); });
+}
+
+function highlightDropTarget(idx) {
+  document.querySelectorAll('.order-item').forEach(function(el) {
+    el.style.background = '';
+  });
+  var el = document.querySelector('[data-idx="' + idx + '"]');
+  if (el) el.style.background = 'rgba(0,81,213,0.08)';
+}
+
 // ── HTML 이스케이프 ──
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ── 초기화 ──
+window.addEventListener('resize', updateDisplayScale);
+document.addEventListener('DOMContentLoaded', updateDisplayScale);
+
 (function init() {
   connectWS();
   pollStreamStatus();
   setInterval(pollStreamStatus, 10000);
+  updateDisplayScale();
 
   try {
     if (!localStorage.getItem('ep_remote_hint_seen')) {

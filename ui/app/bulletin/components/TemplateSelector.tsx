@@ -122,7 +122,7 @@ export default function TemplateSelector({ worshipType }: TemplateSelectorProps)
       {/* 트리거 버튼 */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg font-bold text-sm border transition-all whitespace-nowrap ${
+        className={`flex items-center gap-1.5 px-4 h-9 rounded-lg font-bold text-sm border transition-all whitespace-nowrap ${
           open
             ? "bg-pro-hover border-electric-blue text-pro-text"
             : "bg-pro-surface text-pro-text border-pro-border hover:bg-pro-hover"
