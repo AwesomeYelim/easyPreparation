@@ -28,7 +28,9 @@ export default function TemplateSelector({ worshipType }: TemplateSelectorProps)
   const [coverTs, setCoverTs] = useState(0);
   const [coverUploading, setCoverUploading] = useState(false);
   const [accentColor, setAccentColor] = useState<string | null>(null);
+  const [dropPos, setDropPos] = useState<{ top: number; right: number } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const setBulletinPreview = useSetRecoilState(bulletinPreviewState);
   const setInspOpen = useSetRecoilState(inspectorOpenState);
@@ -48,13 +50,27 @@ export default function TemplateSelector({ worshipType }: TemplateSelectorProps)
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
+        triggerRef.current && !triggerRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
+
+  const handleToggle = () => {
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropPos({
+        top: rect.bottom + 6,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setOpen((v) => !v);
+  };
 
   const handleDownloadPDF = async (n: number) => {
     setLoading(n);
@@ -118,10 +134,11 @@ export default function TemplateSelector({ worshipType }: TemplateSelectorProps)
   };
 
   return (
-    <div className="relative flex-shrink-0" ref={dropdownRef}>
+    <div className="relative flex-shrink-0">
       {/* 트리거 버튼 */}
       <button
-        onClick={() => setOpen((v) => !v)}
+        ref={triggerRef}
+        onClick={handleToggle}
         className={`flex items-center gap-1.5 px-4 h-9 rounded-lg font-bold text-sm border transition-all whitespace-nowrap ${
           open
             ? "bg-pro-hover border-electric-blue text-pro-text"
@@ -144,10 +161,13 @@ export default function TemplateSelector({ worshipType }: TemplateSelectorProps)
         </svg>
       </button>
 
-      {/* 드롭다운 패널 */}
-      {open && (
-        <div className="absolute top-full right-0 mt-1.5 bg-pro-surface border border-pro-border rounded-xl shadow-2xl z-50 overflow-hidden"
-          style={{ width: 400 }}>
+      {/* 드롭다운 패널 — fixed로 overflow 클리핑 탈출 */}
+      {open && dropPos && (
+        <div
+          ref={dropdownRef}
+          className="fixed bg-pro-surface border border-pro-border rounded-xl shadow-2xl z-[200] overflow-hidden"
+          style={{ width: 400, top: dropPos.top, right: dropPos.right }}
+        >
 
           {/* ── 표지 이미지 ── */}
           <div className="px-3 pt-3 pb-2.5 border-b border-pro-border">
