@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef, useLayoutEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil"; // eslint-disable-line @typescript-eslint/no-unused-vars
 import { displayItemsState, sequencePanelOpenState, itemTimersState, displayPositionState, inspectorTabState, displaySubPageState } from "@/recoilState";
-import { apiClient } from "@/lib/apiClient";
+import { apiClient, openDisplayWindow } from "@/lib/apiClient";
 import { WorshipOrderItem, OBSStatus, StreamStatus } from "@/types";
 import { useWS } from "@/components/WebSocketProvider";
 import FeatureGate from "@/components/FeatureGate";
@@ -316,23 +316,36 @@ export default function ProSequencePanel() {
             </span>
           )}
         </div>
-        <FeatureGate
-          feature="obs_control"
-          fallback={
-            <span className="text-[10px] text-pro-text-dim/40 px-2">Pro</span>
-          }
-        >
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {/* Display 새 창 열기 */}
           <button
-            className={`px-2 py-1 text-[10px] font-semibold rounded cursor-pointer flex-shrink-0 ${
-              streamStatus.active
-                ? "bg-pro-elevated text-pro-text-dim hover:bg-pro-hover"
-                : "bg-red-600 text-white hover:bg-red-700"
-            }`}
-            onClick={handleStreamToggle}
+            onClick={() => openDisplayWindow(true)}
+            title="Display 새 창으로 열기"
+            className="w-6 h-6 flex items-center justify-center rounded hover:bg-pro-hover text-pro-text-dim hover:text-pro-text transition-colors"
           >
-            {streamStatus.active ? "방송 종료" : "방송 시작"}
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+              <rect x="1" y="2" width="14" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+              <path d="M5 14H11M8 12V14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
           </button>
-        </FeatureGate>
+          <FeatureGate
+            feature="obs_control"
+            fallback={
+              <span className="text-[10px] text-pro-text-dim/40 px-2">Pro</span>
+            }
+          >
+            <button
+              className={`px-2 py-1 text-[10px] font-semibold rounded cursor-pointer flex-shrink-0 ${
+                streamStatus.active
+                  ? "bg-pro-elevated text-pro-text-dim hover:bg-pro-hover"
+                  : "bg-red-600 text-white hover:bg-red-700"
+              }`}
+              onClick={handleStreamToggle}
+            >
+              {streamStatus.active ? "방송 종료" : "방송 시작"}
+            </button>
+          </FeatureGate>
+        </div>
       </div>
 
       {/* ── Schedule countdown bar ── */}
