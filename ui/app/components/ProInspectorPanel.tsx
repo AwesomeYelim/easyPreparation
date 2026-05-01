@@ -1015,7 +1015,15 @@ function GeneratedThumbnailSection() {
       </div>
       {loading && <div className="text-[10px] text-[#666]">로딩 중...</div>}
       {list.map((item) => (
-        <div key={item.filename} className="flex items-center gap-1.5 px-2 py-1 bg-white/5 rounded border border-white/10">
+        <div key={item.filename} className="flex items-center gap-2 px-2 py-1.5 bg-white/5 rounded border border-white/10 hover:border-white/20 transition-colors">
+          {/* 썸네일 미리보기 이미지 */}
+          <a href={item.url} target="_blank" rel="noreferrer" className="flex-shrink-0" title="원본 보기">
+            <img
+              src={item.url}
+              alt={item.label}
+              className="w-16 h-9 object-cover rounded border border-white/10 hover:border-electric-blue/50 transition-colors"
+            />
+          </a>
           <div className="flex-1 min-w-0">
             <div className="text-[10px] font-medium text-white truncate">{item.label}</div>
           </div>
