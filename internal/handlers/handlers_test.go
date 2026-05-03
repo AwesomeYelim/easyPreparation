@@ -19,19 +19,27 @@ func TestMain(m *testing.M) {
 		panic("프로젝트 루트로 이동 실패: " + err.Error())
 	}
 
+	// EASYPREP_DATA_DIR을 CWD로 설정 → ExecutePath()가 프로젝트 루트를 반환하도록 보장
+	cwd, _ := os.Getwd()
+	os.Setenv("EASYPREP_DATA_DIR", cwd)
+
 	// config/ 디렉토리 없으면 생성 (CI 환경)
 	os.MkdirAll("config", 0755)
 	os.MkdirAll("data", 0755)
 
 	// main_worship.json 없으면 최소 더미 생성
 	configFile := "config/main_worship.json"
+	createdDummy := false
 	if _, err := os.Stat(configFile); os.IsNotExist(err) {
 		os.WriteFile(configFile, []byte("[]"), 0644)
-		// 테스트 끝나면 CI에서 생성한 더미 삭제
-		defer os.Remove(configFile)
+		createdDummy = true
 	}
 
-	os.Exit(m.Run())
+	code := m.Run()
+	if createdDummy {
+		os.Remove(configFile)
+	}
+	os.Exit(code)
 }
 
 // ---------- 1. 헬스체크 ----------
