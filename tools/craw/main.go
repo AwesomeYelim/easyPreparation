@@ -62,7 +62,7 @@ type BibleBook struct {
 
 func main() {
 	versionFlag := flag.String("version", "all", "크롤링할 버전: all 또는 DB ID (예: 2)")
-	bibleInfoFlag := flag.String("bible-info", "bible_info.json", "bible_info.json 경로")
+	bibleInfoFlag := flag.String("bible-info", "data/defaults/bible_info.json", "bible_info.json 경로")
 	dsnFlag := flag.String("dsn", "postgres://postgres:02031122@138.2.119.220:5432/bible_db?sslmode=disable", "PostgreSQL DSN")
 	flag.Parse()
 

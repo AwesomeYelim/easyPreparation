@@ -578,22 +578,27 @@ export default function ProSequencePanel() {
                   {i + 1}
                 </span>
 
-                {/* Title */}
-                <span className={`text-[12px] font-medium flex-shrink-0 ${isPdfOnly ? "text-pro-text-dim" : "text-pro-text"}`}>
-                  {item.title}
-                </span>
-
-                {/* PDF 전용 배지 */}
-                {isPdfOnly && (
-                  <span className="text-[8px] font-semibold bg-[#2a1a00] text-[#f59e0b] px-1 py-0.5 rounded flex-shrink-0">
-                    PDF
+                {/* Title + Obj (flex-1 min-w-0으로 묶어 패널 너비 초과 방지) */}
+                <div className="flex-1 flex items-center gap-1.5 min-w-0 overflow-hidden">
+                  <span
+                    className={`text-[12px] font-medium truncate flex-shrink min-w-0 ${isPdfOnly ? "text-pro-text-dim" : "text-pro-text"}`}
+                    title={item.title}
+                  >
+                    {item.title}
                   </span>
-                )}
 
-                {/* Obj */}
-                <span className="text-[11px] text-pro-text-dim overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0">
-                  {item.obj && item.obj !== "-" ? item.obj : ""}
-                </span>
+                  {/* PDF 전용 배지 */}
+                  {isPdfOnly && (
+                    <span className="text-[8px] font-semibold bg-[#2a1a00] text-[#f59e0b] px-1 py-0.5 rounded flex-shrink-0">
+                      PDF
+                    </span>
+                  )}
+
+                  {/* Obj */}
+                  <span className="text-[11px] text-pro-text-dim truncate flex-1 min-w-0">
+                    {item.obj && item.obj !== "-" ? item.obj : ""}
+                  </span>
+                </div>
 
                 {/* OBS 씬 매핑 배지 (obs.json scenes 기반) */}
                 {(() => {

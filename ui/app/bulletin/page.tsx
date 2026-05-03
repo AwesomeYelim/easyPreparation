@@ -14,8 +14,18 @@ import { ResultPart } from "./components/ResultPage";
 import { useWS } from "@/components/WebSocketProvider";
 
 export default function Bulletin() {
-  const [selectedWorshipType, setSelectedWorshipType] =
-    useState<WorshipType>("main_worship");
+  const [selectedWorshipType, setSelectedWorshipTypeRaw] = useState<WorshipType>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("ep_selected_worship_type") as WorshipType) || "main_worship";
+    }
+    return "main_worship";
+  });
+  const setSelectedWorshipType = (type: WorshipType) => {
+    setSelectedWorshipTypeRaw(type);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ep_selected_worship_type", type);
+    }
+  };
   const [worshipOrder, setWorshipOrder] = useRecoilState(worshipOrderState);
   const selectedInfo = worshipOrder[selectedWorshipType];
   const setSelectedInfo: React.Dispatch<React.SetStateAction<WorshipOrderItem[]>> = (updater) => {

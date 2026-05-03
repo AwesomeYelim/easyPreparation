@@ -33,7 +33,7 @@ output/display/
 config/*
 /server
 .next/
-craw/.next/
+tools/craw/.next/
 
 # ai_supporter tools
 .ai-supporter-path
@@ -41,6 +41,8 @@ tools/.venv/
 tools/output/*.pptx
 tools/output/*.docx
 tools/output/*.xlsx
+tools/output/*.png
+tools/output/*.exe
 tools/output/.gtoken
 tools/output/doc_registry.json
 tools/output/_tmp.py

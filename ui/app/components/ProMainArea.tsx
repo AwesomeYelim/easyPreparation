@@ -5,7 +5,7 @@ import OnboardingChecklist from "./OnboardingChecklist";
 export default function ProMainArea({ children }: { children: React.ReactNode }) {
   return (
     <main
-      className="overflow-auto min-h-0 bg-pro-bg"
+      className="overflow-y-auto overflow-x-hidden min-h-0 bg-pro-bg"
       style={{ gridColumn: "3", gridRow: "2" }}
     >
       <UpdateChecker />

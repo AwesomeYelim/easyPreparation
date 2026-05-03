@@ -21,7 +21,7 @@ const localStorageEffect = <T>(key: string) => ({ setSelf, onSet }: any) => {
   return () => clearTimeout(timer);
 };
 
-// 예배 순서 상태 (API에서 로드)
+// 예배 순서 상태 (API에서 로드 + localStorage 영속화 — 수동 추가 항목 보존)
 export const worshipOrderState = atom<Record<WorshipType, WorshipOrderItem[]>>({
   key: "worshipOrderState",
   default: {
@@ -30,6 +30,7 @@ export const worshipOrderState = atom<Record<WorshipType, WorshipOrderItem[]>>({
     wed_worship: [],
     fri_worship: [],
   },
+  effects: [localStorageEffect<Record<WorshipType, WorshipOrderItem[]>>("ep_worship_order")],
 });
 
 export const selectedDetailState = atom<WorshipOrderItem>({
