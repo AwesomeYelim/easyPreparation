@@ -11,34 +11,31 @@ import (
 	"testing"
 )
 
-// TestMain — 프로젝트 루트로 CWD 변경 + CI용 최소 환경 보장
+// TestMain — 테스트 전용 임시 디렉토리 생성 (실제 config를 절대 건드리지 않음)
 func TestMain(m *testing.M) {
+	// 프로젝트 루트 확인 (go vet용)
 	_, thisFile, _, _ := runtime.Caller(0)
 	projectRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
 	if err := os.Chdir(projectRoot); err != nil {
 		panic("프로젝트 루트로 이동 실패: " + err.Error())
 	}
 
-	// EASYPREP_DATA_DIR을 CWD로 설정 → ExecutePath()가 프로젝트 루트를 반환하도록 보장
-	cwd, _ := os.Getwd()
-	os.Setenv("EASYPREP_DATA_DIR", cwd)
-
-	// config/ 디렉토리 없으면 생성 (CI 환경)
-	os.MkdirAll("config", 0755)
-	os.MkdirAll("data", 0755)
-
-	// main_worship.json 없으면 최소 더미 생성
-	configFile := "config/main_worship.json"
-	createdDummy := false
-	if _, err := os.Stat(configFile); os.IsNotExist(err) {
-		os.WriteFile(configFile, []byte("[]"), 0644)
-		createdDummy = true
+	// 테스트 전용 임시 디렉토리 — 실제 config/data를 건드리지 않음
+	tmpDir, err := os.MkdirTemp("", "easyprep-test-*")
+	if err != nil {
+		panic("임시 디렉토리 생성 실패: " + err.Error())
 	}
+	os.MkdirAll(filepath.Join(tmpDir, "config"), 0755)
+	os.MkdirAll(filepath.Join(tmpDir, "data"), 0755)
+	os.WriteFile(filepath.Join(tmpDir, "config", "main_worship.json"), []byte("[]"), 0644)
+
+	// ExecutePath()가 임시 디렉토리를 반환하도록 설정
+	os.Setenv("EASYPREP_DATA_DIR", tmpDir)
 
 	code := m.Run()
-	if createdDummy {
-		os.Remove(configFile)
-	}
+
+	// 정리
+	os.RemoveAll(tmpDir)
 	os.Exit(code)
 }
 
@@ -63,8 +60,8 @@ func TestSmokeHealthCheck(t *testing.T) {
 		t.Fatalf("JSON decode error: %v", err)
 	}
 
-	// config + data가 보장되므로 unhealthy면 실패
-	// (Ghostscript 없으면 degraded — 허용)
+	// config+data는 임시 디렉토리에 보장됨
+	// Ghostscript 없으면 degraded — 허용. unhealthy만 실패.
 	if body.Status == "unhealthy" {
 		t.Fatalf("health status is unhealthy — checks: %+v", body.Checks)
 	}
@@ -74,23 +71,7 @@ func TestSmokeHealthCheck(t *testing.T) {
 // ---------- 2. 예배 순서 왕복 (PUT → GET) ----------
 
 func TestSmokeWorshipOrderRoundtrip(t *testing.T) {
-	// 원본 파일 백업
-	const configFile = "config/main_worship.json"
-	original, readErr := os.ReadFile(configFile)
-	if readErr != nil && !os.IsNotExist(readErr) {
-		t.Fatalf("config 파일 읽기 실패: %v", readErr)
-	}
-	t.Cleanup(func() {
-		if readErr == nil {
-			if err := os.WriteFile(configFile, original, 0644); err != nil {
-				t.Errorf("원본 복원 실패: %v", err)
-			}
-		} else {
-			os.Remove(configFile)
-		}
-	})
-
-	// PUT: 테스트 데이터 저장
+	// PUT: 테스트 데이터 저장 (임시 디렉토리에 저장됨 — 실제 config 안 건드림)
 	putBody := map[string]interface{}{
 		"type": "main_worship",
 		"items": []map[string]interface{}{
