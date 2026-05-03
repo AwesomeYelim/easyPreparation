@@ -11,14 +11,26 @@ import (
 	"testing"
 )
 
-// TestMain — 프로젝트 루트로 CWD 변경 (config/, data/ 접근용)
+// TestMain — 프로젝트 루트로 CWD 변경 + CI용 최소 환경 보장
 func TestMain(m *testing.M) {
-	// 이 파일의 위치: internal/handlers/handlers_test.go → 프로젝트 루트는 2단계 위
 	_, thisFile, _, _ := runtime.Caller(0)
 	projectRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
 	if err := os.Chdir(projectRoot); err != nil {
 		panic("프로젝트 루트로 이동 실패: " + err.Error())
 	}
+
+	// config/ 디렉토리 없으면 생성 (CI 환경)
+	os.MkdirAll("config", 0755)
+	os.MkdirAll("data", 0755)
+
+	// main_worship.json 없으면 최소 더미 생성
+	configFile := "config/main_worship.json"
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+		os.WriteFile(configFile, []byte("[]"), 0644)
+		// 테스트 끝나면 CI에서 생성한 더미 삭제
+		defer os.Remove(configFile)
+	}
+
 	os.Exit(m.Run())
 }
 
@@ -36,15 +48,17 @@ func TestSmokeHealthCheck(t *testing.T) {
 	}
 
 	var body struct {
-		Status string `json:"status"`
+		Status string                 `json:"status"`
+		Checks map[string]interface{} `json:"checks"`
 	}
 	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
 		t.Fatalf("JSON decode error: %v", err)
 	}
 
-	// healthy 또는 degraded 허용, unhealthy는 실패
+	// config + data가 보장되므로 unhealthy면 실패
+	// (Ghostscript 없으면 degraded — 허용)
 	if body.Status == "unhealthy" {
-		t.Fatalf("health status is unhealthy — config 디렉토리 확인 필요")
+		t.Fatalf("health status is unhealthy — checks: %+v", body.Checks)
 	}
 	t.Logf("health status: %s", body.Status)
 }
@@ -64,7 +78,6 @@ func TestSmokeWorshipOrderRoundtrip(t *testing.T) {
 				t.Errorf("원본 복원 실패: %v", err)
 			}
 		} else {
-			// 원래 파일이 없었으면 테스트 후 삭제
 			os.Remove(configFile)
 		}
 	})
