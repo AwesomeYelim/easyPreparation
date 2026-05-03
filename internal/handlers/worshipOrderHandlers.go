@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"easyPreparation_1.0/internal/path"
+	"easyPreparation_1.0/internal/safefile"
 	"log"
 	"net/http"
 	"os"
@@ -46,7 +47,7 @@ func getWorshipOrder(w http.ResponseWriter, r *http.Request) {
 	execPath := path.ExecutePath("easyPreparation")
 	filePath := filepath.Join(execPath, "config", worshipType+".json")
 
-	data, err := os.ReadFile(filePath)
+	data, err := safefile.ReadJSONWithRecovery(filePath)
 	if err != nil {
 		// 파일 없으면 빈 배열 반환
 		w.Header().Set("Content-Type", "application/json")
@@ -77,14 +78,9 @@ func putWorshipOrder(w http.ResponseWriter, r *http.Request) {
 	execPath := path.ExecutePath("easyPreparation")
 	filePath := filepath.Join(execPath, "config", body.Type+".json")
 
-	marshaled, err := json.MarshalIndent(body.Items, "", "  ")
-	if err != nil {
-		http.Error(w, "JSON marshal error", http.StatusInternalServerError)
-		return
-	}
-
-	if err := os.WriteFile(filePath, marshaled, 0644); err != nil {
-		http.Error(w, "File write error", http.StatusInternalServerError)
+	if err := safefile.WriteJSON(filePath, body.Items); err != nil {
+		log.Printf("[worship-order] 안전 저장 실패: %v", err)
+		http.Error(w, "File write error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 

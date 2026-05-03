@@ -6,6 +6,7 @@ import (
 	"easyPreparation_1.0/internal/path"
 	"easyPreparation_1.0/internal/ptz"
 	"easyPreparation_1.0/internal/quote"
+	"easyPreparation_1.0/internal/safefile"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -55,13 +56,8 @@ func saveDisplayState() {
 		"churchName": cn,
 	}
 
-	data, err := json.Marshal(state)
-	if err != nil {
-		log.Printf("[display] 상태 저장 실패 (marshal): %v", err)
-		return
-	}
-	if err := os.WriteFile(displayStatePath(), data, 0644); err != nil {
-		log.Printf("[display] 상태 저장 실패 (write): %v", err)
+	if err := safefile.WriteJSON(displayStatePath(), state); err != nil {
+		log.Printf("[display] 상태 저장 실패: %v", err)
 	}
 }
 
@@ -92,9 +88,9 @@ func getOrderSnapshotLocked() ([]map[string]interface{}, int, string) {
 	return deepCopyOrder(currentOrder), currentIdx, displayChurchName
 }
 
-// LoadDisplayState — 서버 시작 시 파일에서 복원
+// LoadDisplayState — 서버 시작 시 파일에서 복원 (깨지면 .backup에서 자동 복구)
 func LoadDisplayState() {
-	data, err := os.ReadFile(displayStatePath())
+	data, err := safefile.ReadJSONWithRecovery(displayStatePath())
 	if err != nil {
 		return // 파일 없으면 무시
 	}

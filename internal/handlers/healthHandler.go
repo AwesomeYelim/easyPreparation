@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"easyPreparation_1.0/internal/path"
 	"easyPreparation_1.0/internal/version"
 	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -71,7 +73,10 @@ func HealthCheck(w http.ResponseWriter, r *http.Request) {
 
 // checkConfig — config/ 디렉토리 존재 + main_worship.json 읽기 가능 여부
 func checkConfig() checkResult {
-	info, err := os.Stat("config")
+	execPath := path.ExecutePath("easyPreparation")
+	configDir := filepath.Join(execPath, "config")
+
+	info, err := os.Stat(configDir)
 	if err != nil {
 		return checkResult{Status: "fail", Message: "config 디렉토리 없음"}
 	}
@@ -79,7 +84,7 @@ func checkConfig() checkResult {
 		return checkResult{Status: "fail", Message: "config가 디렉토리가 아님"}
 	}
 
-	f, err := os.Open("config/main_worship.json")
+	f, err := os.Open(filepath.Join(configDir, "main_worship.json"))
 	if err != nil {
 		return checkResult{Status: "fail", Message: fmt.Sprintf("main_worship.json 읽기 실패: %v", err)}
 	}
@@ -90,13 +95,14 @@ func checkConfig() checkResult {
 
 // checkDataWritable — data/ 디렉토리 쓰기 가능 여부
 func checkDataWritable() checkResult {
-	// 디렉토리가 없으면 생성 시도
-	if err := os.MkdirAll("data", 0755); err != nil {
+	execPath := path.ExecutePath("easyPreparation")
+	dataDir := filepath.Join(execPath, "data")
+
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		return checkResult{Status: "fail", Message: fmt.Sprintf("data 디렉토리 생성 실패: %v", err)}
 	}
 
-	// 임시 파일 생성/삭제로 쓰기 가능 확인
-	tmp := "data/.health_check_tmp"
+	tmp := filepath.Join(dataDir, ".health_check_tmp")
 	if err := os.WriteFile(tmp, []byte("ok"), 0644); err != nil {
 		return checkResult{Status: "fail", Message: fmt.Sprintf("data 디렉토리 쓰기 불가: %v", err)}
 	}
