@@ -12,6 +12,24 @@ export type WorshipOrderItem = {
   sections?: { label: string; startPage: number; text: string }[];
   source?: string;
   versionId?: number;
+  ptzPreset?: number; // PTZ 카메라 프리셋 (0=없음, 1~9)
+};
+
+export type PTZConfig = {
+  ip: string;
+  port: number;
+  username: string;
+  password: string;
+  profileToken: string;
+  streamPath: string;
+  presetCount: number;
+  presetNames?: Record<string, string>; // {"1":"강대상","2":"피아노"}
+  enabled: boolean;
+};
+
+export type PTZPreset = {
+  token: string; // "1", "2", ...
+  name: string;  // 카메라에 저장된 이름 (e.g. "강대상", "피아노")
 };
 
 export type OBSStatus = { connected: boolean; currentScene: string };

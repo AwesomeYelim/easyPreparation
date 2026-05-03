@@ -7,7 +7,7 @@ import { useRecoilState } from "recoil";
 import SettingsPanel from "./SettingsPanel";
 import HistoryList from "./HistoryList";
 import YouTubePanel from "./YouTubePanel";
-import LicensePanel from "./LicensePanel";
+import { useLicense } from "@/lib/LicenseContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -23,7 +23,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyType, setHistoryType] = useState<string | undefined>();
   const [youtubeOpen, setYoutubeOpen] = useState(false);
-  const [licenseOpen, setLicenseOpen] = useState(false);
+  const { openLicensePanel } = useLicense();
   // 교회 정보 편집
   const [editingChurch, setEditingChurch] = useState(false);
   const [churchName, setChurchName] = useState("");
@@ -86,7 +86,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const menuActions: { title: string; action?: () => void }[] = [
     { title: "설정", action: () => setSettingsOpen(true) },
     { title: "YouTube", action: () => setYoutubeOpen(true) },
-    { title: "라이선스 정보", action: () => setLicenseOpen(true) },
+    { title: "라이선스 정보", action: () => openLicensePanel() },
     { title: "생성 내역", action: () => openHistory() },
   ];
 
@@ -210,9 +210,6 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 
       {/* YouTube Modal */}
       <YouTubePanel open={youtubeOpen} onClose={() => setYoutubeOpen(false)} />
-
-      {/* License Modal */}
-      <LicensePanel open={licenseOpen} onClose={() => setLicenseOpen(false)} />
 
     </>
   );

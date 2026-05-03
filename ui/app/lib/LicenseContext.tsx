@@ -10,6 +10,9 @@ interface LicenseContextType {
   hasFeature: (feature: LicenseFeature) => boolean;
   refresh: () => Promise<void>;
   isLoading: boolean;
+  isLicensePanelOpen: boolean;
+  openLicensePanel: () => void;
+  closeLicensePanel: () => void;
 }
 
 const DEFAULT_LICENSE: LicenseStatus = {
@@ -27,6 +30,9 @@ const LicenseContext = createContext<LicenseContextType>({
   hasFeature: () => false,
   refresh: async () => {},
   isLoading: true,
+  isLicensePanelOpen: false,
+  openLicensePanel: () => {},
+  closeLicensePanel: () => {},
 });
 
 export function useLicense() {
@@ -36,7 +42,11 @@ export function useLicense() {
 export function LicenseProvider({ children }: { children: ReactNode }) {
   const [license, setLicense] = useState<LicenseStatus>(DEFAULT_LICENSE);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLicensePanelOpen, setIsLicensePanelOpen] = useState(false);
   const setRecoilLicense = useSetRecoilState(licenseState);
+
+  const openLicensePanel = useCallback(() => setIsLicensePanelOpen(true), []);
+  const closeLicensePanel = useCallback(() => setIsLicensePanelOpen(false), []);
 
   const refresh = useCallback(async () => {
     try {
@@ -66,7 +76,7 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <LicenseContext.Provider value={{ license, hasFeature, refresh, isLoading }}>
+    <LicenseContext.Provider value={{ license, hasFeature, refresh, isLoading, isLicensePanelOpen, openLicensePanel, closeLicensePanel }}>
       {children}
     </LicenseContext.Provider>
   );

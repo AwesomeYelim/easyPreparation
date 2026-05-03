@@ -30,6 +30,14 @@ export default function ProSequencePanel() {
   const [gridCellWidth, setGridCellWidth] = useState(120);
   const [schedCountdown, setSchedCountdown] = useState<ScheduleCountdown>(null);
   const [timerEnabled, setTimerEnabled] = useState(false);
+  const [cameraMode, setCameraMode] = useState(false);
+  // obs.json scenes + presets 맵 (title 기반, 서버 저장)
+  const [obsSceneMapping, setObsSceneMapping] = useState<Record<string, string>>({});
+  const [obsPresetMapping, setObsPresetMapping] = useState<Record<string, number>>({});
+  const [obsCameraScene, setObsCameraScene] = useState("camera");
+  const [obsDisplayScene, setObsDisplayScene] = useState("monitor");
+  // 카메라에 저장된 프리셋 목록
+  const [cameraPresets, setCameraPresets] = useState<{ token: string; name: string }[]>([]);
 
   // Per-item timer state: Recoil (shared with ProTimeline)
   const itemTimers = useRecoilValue(itemTimersState);
@@ -123,6 +131,19 @@ export default function ProSequencePanel() {
     };
     poll();
     const t = setInterval(poll, 5000);
+    // obs.json scenes + presets 매핑 1회 로드
+    apiClient.getObsSceneMapping()
+      .then((data: any) => {
+        setObsSceneMapping(data.mapping ?? {});
+        setObsPresetMapping(data.presets ?? {});
+        if (data.cameraScene) setObsCameraScene(data.cameraScene);
+        if (data.displayScene) setObsDisplayScene(data.displayScene);
+      })
+      .catch(() => {});
+    // 카메라 프리셋 목록 로드 (연결 안 돼있으면 조용히 실패)
+    apiClient.ptzGetPresets()
+      .then((res) => { if (res.ok && res.presets) setCameraPresets(res.presets); })
+      .catch(() => {});
     return () => clearInterval(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -165,6 +186,13 @@ export default function ProSequencePanel() {
     apiClient.removeFromDisplay(index);
   }, []);
 
+
+  // --- Camera mode toggle (live override) ---
+  const handleCameraToggle = useCallback(() => {
+    const newMode = !cameraMode;
+    setCameraMode(newMode);
+    apiClient.ptzSetSource(newMode ? "camera" : "slides");
+  }, [cameraMode]);
 
   // --- Stream toggle ---
   const handleStreamToggle = useCallback(() => {
@@ -317,6 +345,21 @@ export default function ProSequencePanel() {
           )}
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
+          {/* 카메라/슬라이드 수동 전환 */}
+          <button
+            onClick={handleCameraToggle}
+            title={cameraMode ? "슬라이드로 전환" : "카메라로 전환"}
+            className={`w-6 h-6 flex items-center justify-center rounded transition-colors ${
+              cameraMode
+                ? "bg-[#4a9eff]/20 text-[#4a9eff] hover:bg-[#4a9eff]/30"
+                : "hover:bg-pro-hover text-pro-text-dim hover:text-pro-text"
+            }`}
+          >
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+              <rect x="1" y="4" width="9" height="8" rx="1.2" stroke="currentColor" strokeWidth="1.4"/>
+              <path d="M10 7L15 5V11L10 9V7Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+            </svg>
+          </button>
           {/* Display 새 창 열기 */}
           <button
             onClick={() => openDisplayWindow(true)}
@@ -551,6 +594,123 @@ export default function ProSequencePanel() {
                 <span className="text-[11px] text-pro-text-dim overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0">
                   {item.obj && item.obj !== "-" ? item.obj : ""}
                 </span>
+
+                {/* OBS 씬 매핑 배지 (obs.json scenes 기반) */}
+                {(() => {
+                  const mapped = obsSceneMapping[item.title];
+                  const isCamera = mapped === obsCameraScene;
+                  const isDisplay = mapped === obsDisplayScene;
+                  return (
+                    <button
+                      className={`w-5 h-5 flex items-center justify-center rounded border cursor-pointer transition-all flex-shrink-0 ${
+                        isCamera
+                          ? "bg-blue-900/50 text-[#4a9eff] border-blue-700/60"
+                          : isDisplay
+                          ? "bg-emerald-900/40 text-emerald-400 border-emerald-700/50"
+                          : "bg-transparent text-pro-text-muted/20 border-transparent hover:border-pro-border hover:text-pro-text-muted/60"
+                      }`}
+                      title={`씬 매핑: ${mapped || "없음"} (클릭: 카메라→슬라이드→없음 순환)`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // 순환: 없음 → cameraScene → displayScene → 없음
+                        const next = !mapped
+                          ? obsCameraScene
+                          : mapped === obsCameraScene
+                          ? obsDisplayScene
+                          : "";
+                        setObsSceneMapping((prev) => {
+                          const updated = { ...prev };
+                          if (next) updated[item.title] = next;
+                          else delete updated[item.title];
+                          return updated;
+                        });
+                        apiClient.setObsSceneMapping(item.title, next).catch(() => {});
+                      }}
+                    >
+                      {isCamera ? (
+                        <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+                          <rect x="1" y="4" width="9" height="8" rx="1.2" stroke="currentColor" strokeWidth="1.4"/>
+                          <path d="M10 7L15 5V11L10 9V7Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+                        </svg>
+                      ) : isDisplay ? (
+                        <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+                          <rect x="1" y="2" width="14" height="10" rx="1.2" stroke="currentColor" strokeWidth="1.4"/>
+                          <path d="M5 12L8 15L11 12" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+                        </svg>
+                      ) : (
+                        <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+                          <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.4"/>
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })()}
+
+                {/* PTZ 프리셋 셀렉트 (카메라 씬 항목만 — monitor 씬은 숨김) */}
+                {obsSceneMapping[item.title] !== obsDisplayScene && (() => {
+                  const currentToken = String(obsPresetMapping[item.title] ?? "");
+                  // 카메라 프리셋 있으면 셀렉트, 없으면 P· 사이클 버튼
+                  if (cameraPresets.length > 0) {
+                    return (
+                      <select
+                        className={`text-[9px] rounded border cursor-pointer flex-shrink-0 leading-none font-mono bg-transparent outline-none transition-all px-0.5 py-0.5 appearance-none ${
+                          currentToken
+                            ? "text-[#4a9eff] border-blue-700/60 bg-blue-900/30"
+                            : "text-pro-text-muted/30 border-transparent hover:border-pro-border hover:text-pro-text-muted/60"
+                        }`}
+                        style={{ maxWidth: "52px" }}
+                        title="PTZ 프리셋"
+                        value={currentToken}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          const val = parseInt(e.target.value) || 0;
+                          setObsPresetMapping((prev) => {
+                            const updated = { ...prev };
+                            if (val > 0) updated[item.title] = val;
+                            else delete updated[item.title];
+                            return updated;
+                          });
+                          apiClient.setObsPresetMapping(item.title, val).catch(() => {});
+                          // 선택 즉시 카메라 이동 (미리보기)
+                          if (val > 0) apiClient.ptzGoto(val).catch(() => {});
+                        }}
+                      >
+                        <option value="">P·</option>
+                        {cameraPresets.map((p) => (
+                          <option key={p.token} value={p.token}>
+                            {p.name || `P${p.token}`}
+                          </option>
+                        ))}
+                      </select>
+                    );
+                  }
+                  // 카메라 미연결 — 숫자 사이클 버튼 fallback
+                  const preset = parseInt(currentToken) || 0;
+                  return (
+                    <button
+                      className={`text-[9px] px-1 py-0.5 rounded border cursor-pointer transition-all flex-shrink-0 leading-none font-mono ${
+                        preset > 0
+                          ? "bg-blue-900/50 text-[#4a9eff] border-blue-700/60"
+                          : "bg-transparent text-pro-text-muted/20 border-transparent hover:border-pro-border hover:text-pro-text-muted/60"
+                      }`}
+                      title="PTZ 프리셋 (없음→P1→P2→P3→없음, 카메라 미연결)"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const next = (preset + 1) % 4;
+                        setObsPresetMapping((prev) => {
+                          const updated = { ...prev };
+                          if (next > 0) updated[item.title] = next;
+                          else delete updated[item.title];
+                          return updated;
+                        });
+                        apiClient.setObsPresetMapping(item.title, next).catch(() => {});
+                      }}
+                    >
+                      {preset > 0 ? `P${preset}` : "P·"}
+                    </button>
+                  );
+                })()}
 
                 {/* Expand/collapse sections */}
                 {hasSections && (

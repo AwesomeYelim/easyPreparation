@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"easyPreparation_1.0/internal/obs"
+	"easyPreparation_1.0/internal/ptz"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
@@ -129,10 +130,28 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 							globalObsIdxMu.Unlock()
 							if currentIdx == capturedIdx {
 								// lyrics_display 항목은 항상 camera 씬
+								title := ""
 								if info := GetCurrentInfo(); info == "lyrics_display" {
 									obs.Get().SwitchScene("찬양")
-								} else if title := GetCurrentTitle(); title != "" {
-									obs.Get().SwitchScene(title)
+								} else {
+									title = GetCurrentTitle()
+									if title != "" {
+										obs.Get().SwitchScene(title)
+									}
+								}
+								// PTZ 프리셋 자동 이동 (navigate PREV/NEXT)
+								if title == "" {
+									title = GetCurrentTitle()
+								}
+								if title != "" {
+									cfg := obs.Get().GetConfig()
+									if preset, ok := cfg.Presets[title]; ok && preset > 0 {
+										go func(p int) {
+											if err := ptz.GotoPreset(p); err != nil {
+												log.Printf("[ptz] GotoPreset(%d) 실패 (navigate): %v", p, err)
+											}
+										}(preset)
+									}
 								}
 							}
 						})

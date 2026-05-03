@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useRecoilState } from "recoil";
 import { inspectorOpenState } from "@/recoilState";
 import { useAuth } from "@/lib/LocalAuthContext";
+import { useLicense } from "@/lib/LicenseContext";
 
 const TABS = [
   { href: "/bulletin", label: "Bulletin", short: "주보", shortcut: "F1" },
@@ -18,6 +19,7 @@ export default function ProTopBar() {
   const [time, setTime] = useState("--:--:--");
   const [inspOpen, setInspOpen] = useRecoilState(inspectorOpenState);
   const { church } = useAuth();
+  const { license, openLicensePanel } = useLicense();
 
   // F1/F2/F3 단축키
   useEffect(() => {
@@ -50,12 +52,42 @@ export default function ProTopBar() {
     return () => clearInterval(id);
   }, []);
 
+  const expiryWarning =
+    license.plan === "pro" &&
+    license.is_active &&
+    license.days_remaining > 0 &&
+    license.days_remaining <= 7;
+
+  const isExpired =
+    license.plan === "pro" && !license.is_active && !license.grace_period;
+
   return (
     <div
-      className="flex items-center bg-pro-surface border-b border-pro-border px-3 gap-3 select-none"
+      className="flex flex-col bg-pro-surface border-b border-pro-border select-none"
       data-testid="topbar"
       style={{ gridColumn: "1 / -1", gridRow: "1" }}
     >
+      {/* 만료 임박 / 만료 배너 */}
+      {(expiryWarning || isExpired) && (
+        <button
+          type="button"
+          onClick={openLicensePanel}
+          className={`w-full flex items-center justify-center gap-2 py-1 text-[11px] font-semibold transition-colors ${
+            isExpired
+              ? "bg-red-900/80 text-red-200 hover:bg-red-900"
+              : "bg-amber-900/70 text-amber-200 hover:bg-amber-900/90"
+          }`}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: "13px" }}>
+            {isExpired ? "error" : "schedule"}
+          </span>
+          {isExpired
+            ? "Pro 라이선스가 만료되었습니다 — 갱신하려면 클릭하세요"
+            : `Pro 라이선스가 ${license.days_remaining}일 후 만료됩니다 — 지금 갱신하세요`}
+        </button>
+      )}
+      {/* TopBar 본문 */}
+      <div className="flex items-center px-3 gap-3 h-[44px]">
       {/* 로고 + 브랜드 */}
       <div className="flex items-center gap-2 flex-shrink-0">
         <img src="/images/ep-logo.svg" alt="EP" width={20} height={20} className="opacity-80" />
@@ -122,6 +154,7 @@ export default function ProTopBar() {
         >
           Broadcast
         </button>
+      </div>
       </div>
     </div>
   );

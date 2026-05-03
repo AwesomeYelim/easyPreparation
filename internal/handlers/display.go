@@ -4,6 +4,7 @@ import (
 	"easyPreparation_1.0/internal/assets"
 	"easyPreparation_1.0/internal/obs"
 	"easyPreparation_1.0/internal/path"
+	"easyPreparation_1.0/internal/ptz"
 	"easyPreparation_1.0/internal/quote"
 	"encoding/json"
 	"fmt"
@@ -1885,12 +1886,21 @@ func DisplayJumpHandler(w http.ResponseWriter, r *http.Request) {
 		"info":       info,
 	}
 
-	// OBS 씬 전환 — /display 페이지 없이도 동작하도록 직접 호출
+	// OBS 씬 전환 + PTZ 프리셋 — /display 없이도 동작하도록 직접 호출
 	go func() {
+		obsM := obs.Get()
+		// obs.json scenes 맵 기반 자동 전환 (title → 씬 이름)
 		if info == "lyrics_display" {
-			obs.Get().SwitchScene("찬양")
+			obsM.SwitchScene("찬양")
 		} else if title != "" {
-			obs.Get().SwitchScene(title)
+			obsM.SwitchScene(title)
+		}
+		// PTZ 프리셋 자동 이동 — obs.json presets 맵 기반 (씬 매핑 여부 무관)
+		cfg := obsM.GetConfig()
+		if preset, ok := cfg.Presets[title]; ok && preset > 0 {
+			if err := ptz.GotoPreset(preset); err != nil {
+				log.Printf("[ptz] GotoPreset(%d) 실패: %v", preset, err)
+			}
 		}
 	}()
 
@@ -2086,6 +2096,49 @@ func DisplayRemoveHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "count": len(order)})
+}
+
+// DisplayItemPatchHandler — POST /display/item-patch
+// 개별 항목의 cameraView, ptzPreset 필드만 조용히 업데이트 (WS broadcast 없음)
+func DisplayItemPatchHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var payload struct {
+		Index     int  `json:"index"`
+		PtzPreset int  `json:"ptzPreset"`  // 1~9 | 0 (삭제)
+		HasPtzPreset bool `json:"hasPtzPreset"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	orderMu.Lock()
+	if payload.Index < 0 || payload.Index >= len(currentOrder) {
+		orderMu.Unlock()
+		http.Error(w, "Index out of range", http.StatusBadRequest)
+		return
+	}
+	item := currentOrder[payload.Index]
+	if payload.HasPtzPreset {
+		if payload.PtzPreset <= 0 {
+			delete(item, "ptzPreset")
+		} else {
+			item["ptzPreset"] = float64(payload.PtzPreset)
+		}
+	}
+	orderMu.Unlock()
+
+	go saveDisplayState()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 }
 
 // DisplayTimerHandler — POST /display/timer

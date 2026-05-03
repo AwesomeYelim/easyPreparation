@@ -72,9 +72,11 @@ func Generate(cfg GenerateConfig) (string, error) {
 		bg = solid
 	}
 
-	// 3. 1280x720 리사이즈
+	// 3. 1280x720 cover-crop 스케일 (비율 유지, 중앙 크롭 — 세로 사진도 전체 채움)
 	canvas := image.NewRGBA(image.Rect(0, 0, cfg.Width, cfg.Height))
-	xdraw.CatmullRom.Scale(canvas, canvas.Bounds(), bg, bg.Bounds(), xdraw.Over, nil)
+	draw.Draw(canvas, canvas.Bounds(), &image.Uniform{color.RGBA{20, 20, 20, 255}}, image.Point{}, draw.Src)
+	srcCrop := coverCropSrcBounds(bg.Bounds(), canvas.Bounds())
+	xdraw.CatmullRom.Scale(canvas, canvas.Bounds(), bg, srcCrop, xdraw.Over, nil)
 
 	// 4. 반투명 검정 오버레이 (rgba(0,0,0,0.3))
 	overlay := image.NewUniform(color.RGBA{0, 0, 0, 76})
@@ -182,7 +184,7 @@ func composeLogo(canvas *image.RGBA, cfg GenerateConfig) error {
 	xdraw.CatmullRom.Scale(resized, resized.Bounds(), logoImg, logoImg.Bounds(), xdraw.Over, nil)
 
 	// 위치 결정
-	const padding = 20
+	const padding = 4
 	var x, y int
 	switch cfg.LogoPosition {
 	case "top-left":
@@ -298,6 +300,33 @@ func drawTextCentered(canvas *image.RGBA, f *truetype.Font, text string, size fl
 	x := (canvasWidth-textWidth)/2 + shadowOffset
 	pt := freetype.Pt(x, y+shadowOffset)
 	ctx.DrawString(text, pt)
+}
+
+// coverCropSrcBounds — CSS object-fit:cover 방식으로 소스 크롭 영역 계산
+// 비율을 유지하면서 dst 전체를 채우는 src 크롭 영역 반환 (중앙 크롭)
+func coverCropSrcBounds(srcBounds, dstBounds image.Rectangle) image.Rectangle {
+	srcW := float64(srcBounds.Dx())
+	srcH := float64(srcBounds.Dy())
+	dstW := float64(dstBounds.Dx())
+	dstH := float64(dstBounds.Dy())
+
+	scaleX := dstW / srcW
+	scaleY := dstH / srcH
+	scale := math.Max(scaleX, scaleY) // cover: 더 큰 스케일 사용 → 전체 채움
+
+	cropW := int(math.Round(dstW / scale))
+	cropH := int(math.Round(dstH / scale))
+
+	// 중앙 크롭
+	offsetX := (srcBounds.Dx() - cropW) / 2
+	offsetY := (srcBounds.Dy() - cropH) / 2
+
+	return image.Rect(
+		srcBounds.Min.X+offsetX,
+		srcBounds.Min.Y+offsetY,
+		srcBounds.Min.X+offsetX+cropW,
+		srcBounds.Min.Y+offsetY+cropH,
+	)
 }
 
 func measureString(face font.Face, s string) int {

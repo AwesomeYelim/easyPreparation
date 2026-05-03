@@ -1,4 +1,4 @@
-import { WorshipOrderItem, UserSettings, ScheduleConfig, ThumbnailConfig, LicenseStatus, OBSSourceItem, OBSDevice, OBSInitialSetupResult } from "@/types";
+import { WorshipOrderItem, UserSettings, ScheduleConfig, ThumbnailConfig, LicenseStatus, OBSSourceItem, OBSDevice, OBSInitialSetupResult, PTZConfig, PTZPreset } from "@/types";
 
 export interface DisplayConfig {
   font: string;
@@ -539,4 +539,57 @@ export const apiClient = {
     fetch(`${BASE_URL}/api/video-bg/delete?filename=${encodeURIComponent(filename)}`, {
       method: "DELETE",
     }).then((r) => r.json()),
+
+  // PTZ 카메라 API
+  getPTZConfig: () =>
+    fetch(`${BASE_URL}/api/ptz/config`).then((r) => r.json()) as Promise<PTZConfig>,
+
+  savePTZConfig: (config: PTZConfig) =>
+    fetch(`${BASE_URL}/api/ptz/config`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(config),
+    }).then((r) => r.json()) as Promise<{ ok: boolean }>,
+
+  ptzGoto: (preset: number) =>
+    fetch(`${BASE_URL}/api/ptz/goto`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ preset }),
+    }).then((r) => r.json()) as Promise<{ ok: boolean }>,
+
+  ptzSetSource: (mode: "camera" | "slides") =>
+    fetch(`${BASE_URL}/api/ptz/source`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode }),
+    }).then((r) => r.json()) as Promise<{ ok: boolean }>,
+
+  ptzPing: () =>
+    fetch(`${BASE_URL}/api/ptz/ping`).then((r) => r.json()) as Promise<{ ok: boolean; latency_ms?: number; error?: string }>,
+
+  ptzGetPresets: () =>
+    fetch(`${BASE_URL}/api/ptz/presets`).then((r) => r.json()) as Promise<{ ok: boolean; presets?: PTZPreset[]; error?: string }>,
+
+  // OBS 씬 매핑 (obs.json scenes 맵) 조회/수정
+  getObsSceneMapping: () =>
+    fetch(`${BASE_URL}/api/obs/scene-mapping`).then((r) => r.json()) as Promise<{
+      mapping: Record<string, string>;
+      cameraScene: string;
+      displayScene: string;
+    }>,
+
+  setObsSceneMapping: (title: string, scene: string) =>
+    fetch(`${BASE_URL}/api/obs/scene-mapping`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, scene }),
+    }).then((r) => r.json()) as Promise<{ ok: boolean }>,
+
+  setObsPresetMapping: (title: string, preset: number) =>
+    fetch(`${BASE_URL}/api/obs/scene-mapping`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, preset }),
+    }).then((r) => r.json()) as Promise<{ ok: boolean }>,
 };

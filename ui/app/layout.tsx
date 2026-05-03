@@ -16,6 +16,7 @@ import ProSequencePanel from "@/components/ProSequencePanel";
 import ProInspectorPanel from "@/components/ProInspectorPanel";
 import ProTimeline from "@/components/ProTimeline";
 import ClientOnly from "@/components/ClientOnly";
+import LicensePanelMount from "@/components/LicensePanelMount";
 import "@/globals.css";
 import type { Viewport, Metadata } from "next";
 
@@ -66,6 +67,7 @@ export default function RootLayout({
                     <ProTimeline />
                   </ProShell>
                   <GlobalDisplayPanel />
+                  <LicensePanelMount />
                 </WebSocketProvider>
               </LicenseProvider>
             </LocalAuthProvider>

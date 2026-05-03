@@ -25,6 +25,7 @@ type Config struct {
 	Host         string            `json:"host"`         // "localhost:4455"
 	Password     string            `json:"password"`
 	Scenes       map[string]string `json:"scenes"`       // "찬송" → "camera"
+	Presets      map[string]int    `json:"presets"`      // "찬송" → PTZ 프리셋 번호 (1~9)
 	CameraScene  string            `json:"cameraScene"`  // fade-back 복귀 씬 (기본: "camera")
 	DisplayScene string            `json:"displayScene"` // fade-back 시 표시할 씬 (기본: "monitor")
 	FadeMs       int               `json:"fadeMs"`       // fade 트랜지션 길이 ms (기본: 800)
@@ -50,6 +51,7 @@ type Manager struct {
 	mu           sync.RWMutex
 	client       *goobs.Client
 	config       Config
+	configPath   string // obs.json 경로 (UpdateScenesMapping용)
 	enabled      bool
 	connected    bool
 	currentScene string
@@ -66,7 +68,7 @@ var (
 // Init — config 파일 로드 + 연결 시작
 func Init(configPath string) {
 	once.Do(func() {
-		instance = &Manager{stopCh: make(chan struct{})}
+		instance = &Manager{stopCh: make(chan struct{}), configPath: configPath}
 
 		data, err := os.ReadFile(configPath)
 		if err != nil {
@@ -164,6 +166,36 @@ func (m *Manager) SwitchScene(title string) {
 		m.currentScene = sceneName
 		m.mu.Unlock()
 		log.Printf("[obs] 씬 전환: %s → %s", title, sceneName)
+	}()
+}
+
+// SetSceneDirect — 씬 이름 그대로 전환 (config 매핑 없이 직접 지정)
+// cameraView 필드 등 per-item 오버라이드용
+func (m *Manager) SetSceneDirect(sceneName string) {
+	if m == nil || !m.enabled || sceneName == "" {
+		return
+	}
+
+	m.mu.RLock()
+	client := m.client
+	connected := m.connected
+	m.mu.RUnlock()
+
+	if !connected || client == nil {
+		return
+	}
+
+	go func() {
+		params := scenes.NewSetCurrentProgramSceneParams().WithSceneName(sceneName)
+		_, err := client.Scenes.SetCurrentProgramScene(params)
+		if err != nil {
+			log.Printf("[obs] SetSceneDirect 실패 (%s): %v", sceneName, err)
+			return
+		}
+		m.mu.Lock()
+		m.currentScene = sceneName
+		m.mu.Unlock()
+		log.Printf("[obs] SetSceneDirect → %s", sceneName)
 	}()
 }
 
@@ -568,7 +600,67 @@ func (m *Manager) GetConfig() Config {
 	if m == nil {
 		return Config{}
 	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return m.config
+}
+
+// UpdateScenesMapping — obs.json scenes 맵에서 단일 항목 추가/수정/삭제
+// scene == "" 이면 해당 title 항목 삭제 (매핑 없음)
+func (m *Manager) UpdateScenesMapping(title, scene string) error {
+	if m == nil {
+		return fmt.Errorf("OBS 연동 비활성")
+	}
+	m.mu.Lock()
+	if m.config.Scenes == nil {
+		m.config.Scenes = map[string]string{}
+	}
+	if scene == "" {
+		delete(m.config.Scenes, title)
+	} else {
+		m.config.Scenes[title] = scene
+	}
+	cfg := m.config
+	path := m.configPath
+	m.mu.Unlock()
+
+	if path == "" {
+		return nil // configPath 미설정 — 메모리만 업데이트
+	}
+	b, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, b, 0644)
+}
+
+// UpdatePresetMapping — obs.json presets 맵에서 단일 항목 추가/수정/삭제
+// preset <= 0 이면 해당 title 항목 삭제
+func (m *Manager) UpdatePresetMapping(title string, preset int) error {
+	if m == nil {
+		return fmt.Errorf("OBS 연동 비활성")
+	}
+	m.mu.Lock()
+	if m.config.Presets == nil {
+		m.config.Presets = map[string]int{}
+	}
+	if preset <= 0 {
+		delete(m.config.Presets, title)
+	} else {
+		m.config.Presets[title] = preset
+	}
+	cfg := m.config
+	path := m.configPath
+	m.mu.Unlock()
+
+	if path == "" {
+		return nil
+	}
+	b, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, b, 0644)
 }
 
 // CreateCameraSource — 카메라 소스 생성 (macOS: av_capture_input_v2, Windows: dshow_input)

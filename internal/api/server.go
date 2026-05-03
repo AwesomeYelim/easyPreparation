@@ -60,6 +60,7 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/display/append", middleware.CORS(http.HandlerFunc(handlers.DisplayAppendHandler)))
 	mux.Handle("/display/remove", middleware.CORS(http.HandlerFunc(handlers.DisplayRemoveHandler)))
 	mux.Handle("/display/reorder", middleware.CORS(http.HandlerFunc(handlers.DisplayReorderHandler)))
+	mux.Handle("/display/item-patch", middleware.CORS(http.HandlerFunc(handlers.DisplayItemPatchHandler)))
 	mux.Handle("/display/church-name", middleware.CORS(http.HandlerFunc(handlers.DisplayChurchNameHandler)))
 	mux.Handle("/display/navigate", middleware.CORS(http.HandlerFunc(handlers.DisplayNavigateHandler)))
 	mux.Handle("/display/push", middleware.CORS(http.HandlerFunc(handlers.DisplayPushHandler)))
@@ -85,14 +86,14 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/api/bulletin-theme", middleware.CORS(http.HandlerFunc(handlers.BulletinThemeHandler)))
 	mux.Handle("/api/church-info", middleware.CORS(http.HandlerFunc(handlers.ChurchInfoHandler)))
 
-	// 비디오 배경
-	mux.Handle("/api/video-bg/upload", middleware.CORS(http.HandlerFunc(handlers.VideoBgUploadHandler)))
+	// 비디오 배경 (업로드·삭제 = Pro, 목록·서빙 = 무료)
+	mux.Handle("/api/video-bg/upload", middleware.FeatureGate(license.FeatureOBSControl, handlers.VideoBgUploadHandler))
 	mux.Handle("/api/video-bg/list", middleware.CORS(http.HandlerFunc(handlers.VideoBgListHandler)))
-	mux.Handle("/api/video-bg/delete", middleware.CORS(http.HandlerFunc(handlers.VideoBgDeleteHandler)))
+	mux.Handle("/api/video-bg/delete", middleware.FeatureGate(license.FeatureOBSControl, handlers.VideoBgDeleteHandler))
 	mux.Handle("/display/video-bg/", middleware.CORS(http.HandlerFunc(handlers.VideoBgServeHandler)))
 
-	// 외부 PDF OBS 표시
-	mux.Handle("/api/pdf/upload", middleware.CORS(http.HandlerFunc(handlers.PDFUploadHandler)))
+	// 외부 PDF OBS 표시 (업로드 = Pro)
+	mux.Handle("/api/pdf/upload", middleware.FeatureGate(license.FeatureOBSControl, handlers.PDFUploadHandler))
 	mux.Handle("/api/pdf/slides", middleware.CORS(http.HandlerFunc(handlers.PDFSlidesHandler)))
 	mux.Handle("/api/pdf/navigate", middleware.CORS(http.HandlerFunc(handlers.PDFNavigateHandler)))
 	mux.Handle("/api/pdf/count", middleware.CORS(http.HandlerFunc(handlers.PDFCountHandler)))
@@ -146,6 +147,14 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 		}
 	})))
 
+	// PTZ 카메라 API
+	mux.Handle("/api/ptz/config", middleware.CORS(http.HandlerFunc(handlers.PTZConfigHandler)))
+	mux.Handle("/api/ptz/goto", middleware.CORS(http.HandlerFunc(handlers.PTZGotoHandler)))
+	mux.Handle("/api/ptz/stream", middleware.CORS(http.HandlerFunc(handlers.PTZStreamProxyHandler)))
+	mux.Handle("/api/ptz/source", middleware.CORS(http.HandlerFunc(handlers.PTZSourceToggleHandler)))
+	mux.Handle("/api/ptz/ping", middleware.CORS(http.HandlerFunc(handlers.PTZPingHandler)))
+	mux.Handle("/api/ptz/presets", middleware.CORS(http.HandlerFunc(handlers.PTZPresetsHandler)))
+
 	// 설정 + 이력 API
 	mux.Handle("/api/settings", middleware.CORS(http.HandlerFunc(handlers.SettingsHandler)))
 	mux.Handle("/api/settings/license", middleware.CORS(http.HandlerFunc(handlers.LicenseHandler)))
@@ -179,6 +188,7 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/api/obs/auto-configure", middleware.CORS(http.HandlerFunc(handlers.OBSAutoConfigureHandler)))
 
 	// OBS 소스 관리 API (Pro)
+	mux.Handle("/api/obs/scene-mapping", middleware.CORS(http.HandlerFunc(handlers.OBSSceneMappingHandler)))
 	mux.Handle("/api/obs/scenes", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSScenesHandler))
 	mux.Handle("/api/obs/sources", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSSourcesHandler))
 	mux.Handle("/api/obs/logo/upload", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSLogoUploadHandler))

@@ -15,7 +15,36 @@ import (
 	"easyPreparation_1.0/internal/youtube"
 )
 
+// loadSermonDataFromOrder — 현재 display 메모리(currentOrder)에서 말씀 제목과 성경봉독 추출
+// 성경봉독: title=="성경봉독" 우선, 없으면 b_edit 항목 fallback
+func loadSermonDataFromOrder() (sermonTitle, scripture string) {
+	orderMu.RLock()
+	order := deepCopyOrder(currentOrder)
+	orderMu.RUnlock()
+
+	var bEditFallback string
+	for _, item := range order {
+		title, _ := item["title"].(string)
+		obj, _ := item["obj"].(string)
+		info, _ := item["info"].(string)
+		if (title == "말씀" || title == "설교") && obj != "" && obj != "-" {
+			sermonTitle = obj
+		}
+		if title == "성경봉독" && obj != "" && obj != "-" {
+			scripture = obj
+		}
+		if strings.HasPrefix(info, "b_") && obj != "" && obj != "-" && bEditFallback == "" {
+			bEditFallback = obj
+		}
+	}
+	if scripture == "" {
+		scripture = bEditFallback
+	}
+	return
+}
+
 // loadSermonDataFromConfig — config/{worshipType}.json에서 말씀 제목과 성경봉독 참조 추출
+// 성경봉독: title=="성경봉독" 우선, 없으면 b_edit 항목 fallback
 func loadSermonDataFromConfig(configPath string) (sermonTitle, scripture string) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
@@ -25,6 +54,7 @@ func loadSermonDataFromConfig(configPath string) (sermonTitle, scripture string)
 	if err := json.Unmarshal(data, &items); err != nil {
 		return
 	}
+	var bEditFallback string
 	for _, item := range items {
 		title, _ := item["title"].(string)
 		obj, _ := item["obj"].(string)
@@ -32,9 +62,15 @@ func loadSermonDataFromConfig(configPath string) (sermonTitle, scripture string)
 		if (title == "말씀" || title == "설교") && obj != "" && obj != "-" {
 			sermonTitle = obj
 		}
-		if (title == "성경봉독" || strings.HasPrefix(info, "b_")) && obj != "" && obj != "-" && scripture == "" {
+		if title == "성경봉독" && obj != "" && obj != "-" {
 			scripture = obj
 		}
+		if strings.HasPrefix(info, "b_") && obj != "" && obj != "-" && bEditFallback == "" {
+			bEditFallback = obj
+		}
+	}
+	if scripture == "" {
+		scripture = bEditFallback
 	}
 	return
 }
@@ -127,18 +163,11 @@ func ThumbnailPreviewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	execPath := path.ExecutePath("easyPreparation")
-	imgPath := filepath.Join(execPath, "data", "templates", "thumbnail", "generated",
-		fmt.Sprintf("%s_%s.png", date.Format("2006-01-02"), worshipType))
-
-	if _, err := os.Stat(imgPath); os.IsNotExist(err) {
-		// 자동 생성
-		var genErr error
-		imgPath, genErr = generateThumbnail(worshipType, date)
-		if genErr != nil {
-			http.Error(w, genErr.Error(), http.StatusInternalServerError)
-			return
-		}
+	// 항상 재생성 — 예배 순서·로고·배경·폰트 변경 사항을 즉시 반영
+	imgPath, err := generateThumbnail(worshipType, date)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "image/png")
@@ -205,7 +234,7 @@ func generateThumbnail(worshipType string, date time.Time) (string, error) {
 		bgPath = filepath.Join(execPath, bgPath)
 	}
 
-	// dateLabel 빌드: "26.04.05 주일예배"
+	// dateLabel 빌드: "26.04.05 주일예배" — 기념 주일이면 해당 레이블로 오버라이드
 	worshipTypeLabels := map[string]string{
 		"main_worship":  "주일예배",
 		"after_worship": "오후예배",
@@ -216,11 +245,25 @@ func generateThumbnail(worshipType string, date time.Time) (string, error) {
 	if typeLabel == "" {
 		typeLabel = "예배"
 	}
+	dateStr := date.Format("2006-01-02")
+	for _, s := range cfg.Specials {
+		if s.Date == dateStr {
+			if s.TitleOverride != "" {
+				typeLabel = s.TitleOverride
+			} else if s.Label != "" {
+				typeLabel = s.Label
+			}
+			break
+		}
+	}
 	dateLabel := date.Format("06.01.02") + " " + typeLabel
 
-	// 예배 순서 config에서 말씀 제목 + 성경봉독 추출
-	configPath := filepath.Join(execPath, "config", worshipType+".json")
-	sermonTitle, scripture := loadSermonDataFromConfig(configPath)
+	// 말씀 제목 + 성경봉독: display 메모리(currentOrder) 우선, 없으면 config fallback
+	sermonTitle, scripture := loadSermonDataFromOrder()
+	if sermonTitle == "" && scripture == "" {
+		configPath := filepath.Join(execPath, "config", worshipType+".json")
+		sermonTitle, scripture = loadSermonDataFromConfig(configPath)
+	}
 
 	// 로고 설정 — 썸네일 전용 설정 우선, 없으면 Display 설정 fallback
 	displayCfg := loadDisplayConfig()

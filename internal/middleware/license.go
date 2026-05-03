@@ -6,10 +6,8 @@ import (
 	"net/http"
 )
 
-// devMode — dev 빌드 태그 시 SetDevMode(true)로 feature gate 우회
+// devMode — dev 빌드 태그(dev.go init())로 feature gate 우회
 var devMode bool
-
-func SetDevMode(v bool) { devMode = v }
 
 // RequireFeature — blocks requests if the feature is not available in the current plan.
 func RequireFeature(feature license.Feature) func(http.Handler) http.Handler {

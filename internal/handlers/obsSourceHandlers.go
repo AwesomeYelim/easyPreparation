@@ -178,6 +178,69 @@ func OBSScenesHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// OBSSceneMappingHandler — GET/POST /api/obs/scene-mapping
+// GET: obs.json scenes + presets 맵 반환
+// POST body: {"title":"찬송","scene":"camera"} — scene 매핑 업데이트
+// POST body: {"title":"찬송","preset":1}       — preset 매핑 업데이트 (preset<=0 이면 삭제)
+func OBSSceneMappingHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	m := obs.Get()
+	cfg := m.GetConfig()
+
+	switch r.Method {
+	case http.MethodGet:
+		presets := cfg.Presets
+		if presets == nil {
+			presets = map[string]int{}
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"mapping":      cfg.Scenes,
+			"presets":      presets,
+			"cameraScene":  cfg.CameraScene,
+			"displayScene": cfg.DisplayScene,
+		})
+
+	case http.MethodPost:
+		// 포인터로 "필드 존재 여부" 구분:
+		//   scene 업데이트: {"title":"찬송","scene":"camera"} or {"title":"찬송","scene":""}(삭제)
+		//   preset 업데이트: {"title":"찬송","preset":1} or {"title":"찬송","preset":0}(삭제)
+		var body struct {
+			Title  string  `json:"title"`
+			Scene  *string `json:"scene"`  // nil = 변경 없음
+			Preset *int    `json:"preset"` // nil = 변경 없음
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+		if body.Title == "" {
+			http.Error(w, "title required", http.StatusBadRequest)
+			return
+		}
+		if body.Scene != nil {
+			if err := m.UpdateScenesMapping(body.Title, *body.Scene); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+		if body.Preset != nil {
+			if err := m.UpdatePresetMapping(body.Title, *body.Preset); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+		json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+
+	default:
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	}
+}
+
 // OBSSourcesHandler — GET /api/obs/sources?scene=xxx
 func OBSSourcesHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {

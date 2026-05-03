@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { apiClient } from "@/lib/apiClient";
-import { OBSSourceItem, OBSDevice, OBSInitialSetupResult } from "@/types";
+import { OBSSourceItem, OBSDevice, OBSInitialSetupResult, PTZConfig } from "@/types";
 import PDFPanelInline from "./PDFPanelInline";
 
 interface OBSSourcePanelProps {
@@ -11,12 +11,13 @@ interface OBSSourcePanelProps {
   inline?: boolean;
 }
 
-type Tab = "setup" | "logo" | "camera" | "display" | "sources" | "pdf";
+type Tab = "setup" | "logo" | "camera" | "ptz" | "display" | "sources" | "pdf";
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "setup", label: "초기 설정", icon: "tune" },
   { key: "logo", label: "로고", icon: "image" },
   { key: "camera", label: "카메라", icon: "videocam" },
+  { key: "ptz", label: "PTZ", icon: "cameraswitch" },
   { key: "display", label: "Display", icon: "monitor" },
   { key: "sources", label: "전체 소스", icon: "layers" },
   { key: "pdf", label: "PDF", icon: "picture_as_pdf" },
@@ -60,6 +61,20 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
   // Display setup state
   const [displayURL, setDisplayURL] = useState("http://localhost:8080/display");
   const [displaySetupDone, setDisplaySetupDone] = useState(false);
+
+  // PTZ state
+  const [ptzConfig, setPtzConfig] = useState<PTZConfig>({
+    ip: "", port: 80, username: "admin", password: "admin",
+    profileToken: "Profile_1", streamPath: "/stream", presetCount: 5, enabled: false,
+  });
+  const [ptzSaving, setPtzSaving] = useState(false);
+  const [ptzTesting, setPtzTesting] = useState(false);
+  const [ptzPingStatus, setPtzPingStatus] = useState<"idle" | "checking" | "ok" | "error">("idle");
+  const [ptzLatencyMs, setPtzLatencyMs] = useState<number | null>(null);
+  const [ptzPingError, setPtzPingError] = useState<string>("");
+  const [ptzCameraPresets, setPtzCameraPresets] = useState<{ token: string; name: string }[]>([]);
+  const [ptzSelectedPreset, setPtzSelectedPreset] = useState("");
+  const ptzLoaded = useRef(false);
 
   // Connect form state
   const [obsIP, setObsIP] = useState("localhost");
@@ -128,12 +143,101 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
     setLoadingSources(false);
   }, [selectedScene]);
 
+  const fetchPTZConfig = useCallback(() => {
+    if (ptzLoaded.current) return;
+    apiClient.getPTZConfig().then((c) => {
+      setPtzConfig(c);
+      ptzLoaded.current = true;
+      // 설정 로드 완료 후 프리셋 자동 로드 (저장 없이)
+      if (c.ip) {
+        apiClient.ptzGetPresets()
+          .then((r) => { if (r.ok && r.presets) setPtzCameraPresets(r.presets); })
+          .catch(() => {});
+      }
+    }).catch(() => { ptzLoaded.current = true; });
+  }, []);
+
+  const handlePtzSave = async () => {
+    setPtzSaving(true);
+    try {
+      await apiClient.savePTZConfig(ptzConfig);
+      showToast("PTZ 설정이 저장되었습니다.", "info");
+    } catch {
+      showToast("PTZ 저장 실패");
+    } finally {
+      setPtzSaving(false);
+    }
+  };
+
+  const handlePtzPing = async () => {
+    if (!ptzConfig.ip) { showToast("IP 주소를 먼저 입력하세요"); return; }
+    setPtzPingStatus("checking");
+    setPtzPingError("");
+    try {
+      // 핑 전에 현재 UI 설정을 서버에 저장
+      await apiClient.savePTZConfig(ptzConfig);
+      const res = await apiClient.ptzPing();
+      if (res.ok) {
+        setPtzPingStatus("ok");
+        setPtzLatencyMs(res.latency_ms ?? null);
+        // 연결 성공 시 카메라 프리셋 자동 로드
+        apiClient.ptzGetPresets()
+          .then((r) => { if (r.ok && r.presets) setPtzCameraPresets(r.presets); })
+          .catch(() => {});
+      } else {
+        setPtzPingStatus("error");
+        setPtzPingError(res.error || "응답 없음");
+      }
+    } catch {
+      setPtzPingStatus("error");
+      setPtzPingError("네트워크 오류");
+    }
+  };
+
+  const handleLoadPtzPresets = async () => {
+    // 설정이 아직 로드되지 않았으면 조용히 스킵 (자동 호출 경로)
+    if (!ptzConfig.ip) return;
+    try {
+      // 저장 없이 바로 프리셋 로드 — 설정 변경은 "저장" 버튼으로만
+      const res = await apiClient.ptzGetPresets();
+      if (res.ok && res.presets && res.presets.length > 0) {
+        setPtzCameraPresets(res.presets);
+        showToast(`프리셋 ${res.presets.length}개 로드됨`, "info");
+      } else if (!res.ok) {
+        showToast(res.error || "카메라 연결 실패 — IP/포트/비밀번호 확인");
+      } else {
+        showToast("카메라에 저장된 프리셋이 없습니다", "info");
+      }
+    } catch {
+      showToast("프리셋 로드 실패 — 카메라에 연결할 수 없습니다");
+    }
+  };
+
+  const handlePtzTest = async (preset: number) => {
+    if (!ptzConfig.ip) { showToast("IP를 먼저 입력하세요"); return; }
+    setPtzTesting(true);
+    try {
+      await apiClient.ptzGoto(preset);
+      showToast(`프리셋 ${preset} 이동 명령 전송됨`, "info");
+    } catch {
+      showToast("PTZ 연결 실패");
+    } finally {
+      setPtzTesting(false);
+    }
+  };
+
   useEffect(() => {
     if (open) {
       fetchScenes();
       if (tab === "logo") fetchLogoHistory();
+      if (tab === "ptz") {
+        // fetchPTZConfig 내부에서 config 로드 완료 후 프리셋 자동 로드
+        fetchPTZConfig();
+        // 이미 로드된 경우에만 수동 갱신
+        if (ptzLoaded.current) handleLoadPtzPresets();
+      }
     }
-  }, [open, fetchScenes, fetchLogoHistory, tab]);
+  }, [open, fetchScenes, fetchLogoHistory, fetchPTZConfig, tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (open && selectedScene) fetchSources();
@@ -378,6 +482,7 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
               if (t.key === "camera" || t.key === "setup") fetchDevices();
               if (t.key === "sources" || t.key === "camera" || t.key === "display") fetchSources();
               if (t.key === "logo") fetchLogoHistory();
+              if (t.key === "ptz") { fetchPTZConfig(); if (ptzLoaded.current) handleLoadPtzPresets(); }
             }}
             className={`w-9 h-9 flex items-center justify-center bg-transparent border-none border-b-2 cursor-pointer transition-colors flex-shrink-0 ${
               tab === t.key
@@ -390,20 +495,22 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
         ))}
       </div>
 
-      {/* scene selector */}
-      <div className="px-5 pt-3">
-        <label className="text-[11px] text-[#888]">씬 선택</label>
-        <select
-          className={`${selectClass} mt-1`}
-          value={selectedScene}
-          onChange={(e) => setSelectedScene(e.target.value)}
-        >
-          <option value="">-- 씬 선택 --</option>
-          {scenes.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-      </div>
+      {/* scene selector — PTZ 탭에서는 불필요하여 숨김 */}
+      {tab !== "ptz" && (
+        <div className="px-5 pt-3">
+          <label className="text-[11px] text-[#888]">씬 선택</label>
+          <select
+            className={`${selectClass} mt-1`}
+            value={selectedScene}
+            onChange={(e) => setSelectedScene(e.target.value)}
+          >
+            <option value="">-- 씬 선택 --</option>
+            {scenes.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+      )}
     </>
   );
 
@@ -413,6 +520,172 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
       {tab === "pdf" ? (
         /* ===== PDF Tab — OBS 연결 무관, 항상 사용 가능 ===== */
         <PDFPanelInline connected={connected} />
+          ) : tab === "ptz" ? (
+            /* ===== PTZ 카메라 탭 ===== */
+            <div className="space-y-3">
+              <p className="text-[#aaa] text-xs leading-relaxed">
+                ONVIF PTZ 카메라 연결 설정. 예배 항목별로 프리셋(P1~P3)을 지정하면 순서 이동 시 자동으로 카메라 앵글이 전환됩니다.
+              </p>
+
+              {/* 연결 상태 표시 */}
+              <div className="flex items-center justify-between px-3 py-2 rounded-md bg-white/[0.04] border border-white/[0.08]">
+                <div className="flex items-center gap-2">
+                  {ptzPingStatus === "checking" ? (
+                    <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+                  ) : ptzPingStatus === "ok" ? (
+                    <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_5px_#4caf50]" />
+                  ) : ptzPingStatus === "error" ? (
+                    <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_5px_#f44336]" />
+                  ) : (
+                    <div className="w-2 h-2 rounded-full bg-white/20" />
+                  )}
+                  <span className="text-[11px]">
+                    {ptzPingStatus === "checking" ? (
+                      <span className="text-yellow-400">확인 중...</span>
+                    ) : ptzPingStatus === "ok" ? (
+                      <span className="text-green-400">연결됨{ptzLatencyMs !== null ? ` (${ptzLatencyMs}ms)` : ""}</span>
+                    ) : ptzPingStatus === "error" ? (
+                      <span className="text-red-400">{ptzPingError || "연결 실패"}</span>
+                    ) : (
+                      <span className="text-[#666]">미확인</span>
+                    )}
+                  </span>
+                </div>
+                <button
+                  onClick={handlePtzPing}
+                  disabled={ptzPingStatus === "checking" || !ptzConfig.ip}
+                  className="px-3 py-1 rounded text-[11px] font-semibold border border-white/20 bg-white/[0.06] text-[#aaa] cursor-pointer hover:bg-white/[0.12] hover:text-white transition-colors disabled:opacity-40 disabled:cursor-default"
+                >
+                  연결 확인
+                </button>
+              </div>
+
+              {/* 활성화 토글 */}
+              <div className="flex items-center justify-between py-1">
+                <span className="text-[11px] text-[#888]">PTZ 활성화</span>
+                <div
+                  className={`relative w-10 h-5 rounded-full cursor-pointer transition-colors ${ptzConfig.enabled ? "bg-[#4a9eff]" : "bg-white/20"}`}
+                  onClick={() => setPtzConfig((p) => ({ ...p, enabled: !p.enabled }))}
+                >
+                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${ptzConfig.enabled ? "translate-x-5" : "translate-x-0.5"}`} />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] text-[#888]">IP 주소</label>
+                <input className={`${selectClass} mt-1`} placeholder="192.168.1.100"
+                  value={ptzConfig.ip}
+                  onChange={(e) => setPtzConfig((p) => ({ ...p, ip: e.target.value }))} />
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="text-[11px] text-[#888]">포트</label>
+                  <input className={`${selectClass} mt-1`} type="number" placeholder="80"
+                    value={ptzConfig.port}
+                    onChange={(e) => setPtzConfig((p) => ({ ...p, port: Number(e.target.value) || 80 }))} />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[11px] text-[#888]">사용자명</label>
+                  <input className={`${selectClass} mt-1`} placeholder="admin"
+                    value={ptzConfig.username}
+                    onChange={(e) => setPtzConfig((p) => ({ ...p, username: e.target.value }))} />
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] text-[#888]">비밀번호</label>
+                <input className={`${selectClass} mt-1`} type="password" placeholder="admin"
+                  value={ptzConfig.password}
+                  onChange={(e) => setPtzConfig((p) => ({ ...p, password: e.target.value }))} />
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="text-[11px] text-[#888]">스트림 경로</label>
+                  <input className={`${selectClass} mt-1`} placeholder="/stream"
+                    value={ptzConfig.streamPath}
+                    onChange={(e) => setPtzConfig((p) => ({ ...p, streamPath: e.target.value }))} />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[11px] text-[#888]">프리셋 개수</label>
+                  <input className={`${selectClass} mt-1`} type="number" min={1} max={20} placeholder="5"
+                    value={ptzConfig.presetCount}
+                    onChange={(e) => setPtzConfig((p) => ({ ...p, presetCount: Number(e.target.value) || 5 }))} />
+                </div>
+              </div>
+
+              {/* 저장 버튼 */}
+              <button
+                className={`w-full py-2 rounded-md text-white text-xs font-semibold border-none cursor-pointer transition-opacity bg-[#204d87] hover:bg-[#2d5a8a] ${ptzSaving ? "opacity-60 cursor-default" : ""}`}
+                onClick={handlePtzSave}
+                disabled={ptzSaving}
+              >
+                {ptzSaving ? "저장 중..." : "설정 저장"}
+              </button>
+
+              {/* 프리셋 이름 & 이동 */}
+              <div className="pt-2 border-t border-white/10">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-[11px] text-[#888]">프리셋</div>
+                  <button
+                    onClick={handleLoadPtzPresets}
+                    disabled={!ptzConfig.ip}
+                    className="text-[11px] text-[#4a9eff] bg-transparent border-none cursor-pointer hover:text-[#7ab8ff] disabled:text-[#555] disabled:cursor-default transition-colors"
+                  >
+                    {ptzCameraPresets.length > 0 ? `${ptzCameraPresets.length}개 로드됨 ↺` : "불러오기"}
+                  </button>
+                </div>
+                {ptzCameraPresets.length > 0 ? (
+                  <div className="flex flex-col gap-1.5">
+                    {ptzCameraPresets.map((p) => {
+                      const customName = ptzConfig.presetNames?.[p.token] ?? "";
+                      return (
+                        <div key={p.token} className="flex items-center gap-2">
+                          <span className="text-[11px] text-[#888] font-mono w-6 flex-shrink-0">P{p.token}</span>
+                          <input
+                            className="flex-1 bg-white/[0.06] border border-white/10 rounded px-2 py-1 text-[11px] text-white placeholder-[#555] outline-none focus:border-[#4a9eff]/60 transition-colors"
+                            placeholder={`프리셋 ${p.token} 이름 (예: 강대상)`}
+                            value={customName}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setPtzConfig((prev) => ({
+                                ...prev,
+                                presetNames: { ...(prev.presetNames ?? {}), [p.token]: val },
+                              }));
+                            }}
+                          />
+                          <button
+                            onClick={() => handlePtzTest(parseInt(p.token))}
+                            disabled={ptzTesting || !ptzConfig.ip}
+                            className="px-2 py-1 rounded text-white text-[10px] font-semibold border border-white/20 bg-white/[0.06] cursor-pointer hover:bg-white/[0.12] transition-colors disabled:opacity-40 disabled:cursor-default flex-shrink-0"
+                          >
+                            이동
+                          </button>
+                        </div>
+                      );
+                    })}
+                    <p className="text-[#555] text-[10px] mt-0.5">이름 변경 후 위 "저장" 버튼을 눌러야 적용됩니다.</p>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    {[1, 2, 3].map((n) => (
+                      <button
+                        key={n}
+                        disabled={ptzTesting || !ptzConfig.ip}
+                        onClick={() => handlePtzTest(n)}
+                        className="flex-1 py-2 rounded-md text-white text-xs font-semibold border border-white/20 bg-white/[0.06] cursor-pointer hover:bg-white/[0.12] transition-colors disabled:opacity-40 disabled:cursor-default"
+                      >
+                        P{n}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {!ptzConfig.ip && (
+                  <p className="text-[#666] text-[10px] mt-1">IP 주소를 먼저 저장하세요.</p>
+                )}
+                {ptzConfig.ip && ptzCameraPresets.length === 0 && (
+                  <p className="text-[#666] text-[10px] mt-1">연결 확인 후 "불러오기"를 눌러 카메라 프리셋을 가져오세요.</p>
+                )}
+              </div>
+            </div>
           ) : tab === "setup" ? (
             <div>
               {/* OBS 연결 설정 */}
