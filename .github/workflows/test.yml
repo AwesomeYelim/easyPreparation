@@ -21,3 +21,6 @@ jobs:
 
       - name: go build check
         run: go build -tags dev -o /dev/null ./cmd/server/
+
+      - name: go smoke tests (with race detector)
+        run: go test -race -tags dev ./internal/handlers/ -run TestSmoke -v

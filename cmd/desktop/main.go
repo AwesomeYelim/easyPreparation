@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -23,6 +24,7 @@ import (
 	"easyPreparation_1.0/internal/obs"
 	"easyPreparation_1.0/internal/path"
 	"easyPreparation_1.0/internal/quote"
+	"easyPreparation_1.0/internal/selfupdate"
 	"easyPreparation_1.0/internal/types"
 	"easyPreparation_1.0/internal/version"
 	"easyPreparation_1.0/internal/youtube"
@@ -127,10 +129,46 @@ func (a *App) startup(ctx context.Context) {
 		}
 	}()
 
-	// 서버가 준비될 때까지 대기 후 윈도우 표시
+	// 서버가 준비될 때까지 대기 → 헬스체크 → 윈도우 표시
 	go func() {
 		waitForServer("http://localhost:8080")
-		log.Println("[desktop] 서버 준비 완료 — 윈도우 표시")
+		log.Println("[desktop] 서버 준비 완료")
+
+		// 헬스체크 실행
+		healthy := runHealthCheck()
+		if !healthy && selfupdate.GetUpdater().HasBackup() {
+			// 이전 버전 백업이 있고 헬스체크 실패 → 롤백 제안
+			wailsruntime.WindowShow(ctx)
+			result, _ := wailsruntime.MessageDialog(ctx, wailsruntime.MessageDialogOptions{
+				Type:          wailsruntime.QuestionDialog,
+				Title:         "문제 감지됨",
+				Message:       "앱 상태 검사에서 문제가 발견되었습니다.\n이전 버전으로 되돌리시겠습니까?\n\n(아니오를 선택하면 현재 버전으로 계속합니다)",
+				DefaultButton: "No",
+				Buttons:       []string{"Yes", "No"},
+			})
+			if result == "Yes" {
+				if err := selfupdate.GetUpdater().Rollback(); err != nil {
+					log.Printf("[desktop] 롤백 실패: %v", err)
+					wailsruntime.MessageDialog(ctx, wailsruntime.MessageDialogOptions{
+						Type:    wailsruntime.ErrorDialog,
+						Title:   "롤백 실패",
+						Message: "이전 버전으로 복구하지 못했습니다: " + err.Error(),
+					})
+				} else {
+					wailsruntime.MessageDialog(ctx, wailsruntime.MessageDialogOptions{
+						Type:    wailsruntime.InfoDialog,
+						Title:   "롤백 완료",
+						Message: "이전 버전으로 복구되었습니다. 앱을 다시 시작해주세요.",
+					})
+					wailsruntime.Quit(ctx)
+					return
+				}
+			}
+		} else {
+			// 헬스체크 통과 → 이전 백업 정리
+			selfupdate.GetUpdater().CleanupBackup()
+		}
+
 		wailsruntime.WindowShow(ctx)
 	}()
 }
@@ -219,6 +257,28 @@ func (a *App) processDataChan() {
 			go lyrics.CreateLyricsPDF(data.Payload)
 		}
 	}
+}
+
+// runHealthCheck — /api/health 호출하여 서버 상태 확인
+func runHealthCheck() bool {
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get("http://localhost:8080/api/health")
+	if err != nil {
+		log.Printf("[desktop] 헬스체크 요청 실패: %v", err)
+		return false
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Status string `json:"status"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Printf("[desktop] 헬스체크 응답 파싱 실패: %v", err)
+		return false
+	}
+
+	log.Printf("[desktop] 헬스체크 결과: %s", result.Status)
+	return result.Status != "unhealthy"
 }
 
 // waitForServer — HTTP 서버가 응답할 때까지 대기 (최대 5초)

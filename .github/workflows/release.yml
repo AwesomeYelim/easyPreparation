@@ -8,8 +8,22 @@ permissions:
   contents: write
 
 jobs:
+  # 0단계: 테스트 통과 필수 (릴리즈 게이트)
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+      - name: go vet
+        run: go vet -tags dev ./cmd/server/
+      - name: go smoke tests
+        run: go test -race -tags dev ./internal/handlers/ -run TestSmoke -v
+
   # 1단계: 프론트엔드 빌드 (1회)
   build-frontend:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

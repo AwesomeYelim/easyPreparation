@@ -1,116 +1,44 @@
-# CLAUDE.md — easyPreparation
+# easyPreparation
 
-Go 기반 예배 준비 자동화 서버. 찬양/주보 PDF, Cloudflare R2 에셋, OBS 방송 송출.
+Go(:8080) + Next.js(:3000) 예배 준비 자동화. 주보 PDF, OBS 송출, R2 에셋.
 
-## 구조
+## 금지 패턴 (훅이 자동 검출하지만 기억해둘 것)
 
-| 디렉토리 | 역할 | 자체 CLAUDE.md |
-|----------|------|:-:|
-| `cmd/server/` | Go 서버 진입점 (:8080) | O |
-| `cmd/desktop/` | Wails v2 Desktop 앱 | O |
-| `internal/api/` | HTTP 라우터 + SPA 핸들러 | O |
-| `internal/handlers/` | Display, WebSocket, 스케줄러, 모바일, 외부 PDF OBS 표시 | O |
-| `internal/obs/` | OBS WebSocket 매니저 | O |
-| `internal/license/` | 라이선스 + Feature Gating | O |
-| `internal/selfupdate/` | 자동 업데이트 | O |
-| `internal/bulletin/` | 주보 PDF 생성 | O |
-| `internal/lyrics/` | 찬양 PDF 생성 | O |
-| `internal/assets/` | R2 에셋 다운로더 | O |
-| `ui/` | Next.js 프론트엔드 | O |
-| `ui/bulletin/` | 주보 편집 React 서브앱 (별도 빌드) | - |
-| `ui/lyrics/` | 가사 React 서브앱 (별도 빌드) | - |
-| `landing/` | 홍보 랜딩 페이지 | O |
-| `workers/license-api/` | CF Workers 라이선스 서버 | O |
-| `tools/` | Go 유틸 스크립트 (찬송 크롤러, DB 마이그레이션) | O |
-| `.github/workflows/` | CI/CD | O |
+- `useState(recoilValue)` → `useRecoilState(atom)` 직접 사용. 탭 전환 시 데이터 유실.
+- Go API는 `${BASE_URL}/api/...`, Next.js API는 `/api/...`. 헷갈리면 404.
+- PDF 텍스트 → `presentation.NFC()` 래퍼 필수. 안 쓰면 한글 깨짐.
+- `log.Fatalf` 금지 → `return fmt.Errorf`. 서버 크래시됨.
+- WS 쓰기 → mutex 필수. race condition.
 
-## 설정 파일 (gitignore)
+## 수정 후 반드시
 
-- `config/db.json` — DB DSN
-- `config/main_worship.json` — 주예배 순서 데이터
-- `config/obs.json` — OBS 씬 매핑 (없으면 비활성)
-- `config/license.json` — 라이선스 서버 설정 (없으면 오프라인)
+1. `git diff` 재확인
+2. 변경한 함수의 호출처 1개 이상 Grep
+3. UI 수정 → 브라우저에서 확인
+4. Go 수정 → `go vet` + `make dev`
 
-## 브랜치 전략 (trunk-based)
+## 라우팅
 
-```
-master          ← 항상 배포 가능 상태 유지. 직접 push 금지.
-feature/xxx     ← 기능 개발 브랜치 → PR → master
-hotfix/xxx      ← 긴급 수정 브랜치 → PR → master
-```
+- `${BASE_URL}` = Go 서버 `http://localhost:8080`
+- 상대경로 `/api/...` = Next.js :3000
+- `apiClient.ts`에 모든 Go API 함수 정의됨
 
-- 릴리즈: `master`에서 `git tag v*` → CI 자동 빌드
-- PR 없이 `master` 직접 커밋 금지 (hotfix 제외)
-- feature 브랜치명: `feature/기능명` (예: `feature/windows-png-fix`)
-- 커밋 메시지: `feat:` / `fix:` / `docs:` / `chore:` 접두사
+## 상태
+
+- 예배 순서: `config/{type}.json` (Go API 경유)
+- 편집 상태: Recoil atom (`recoilState.ts`)
+- Display: `data/display_config.json`, `data/display_state.json`
+- info 필드: `c_edit`(찬송) `b_edit`(성경) `edit`(기도자) `r_edit`(인도자만) `"-"`(고정)
 
 ## 실행
 
 ```bash
-make dev          # Go(:8080) + Next.js(:3000)
-make build        # 프로덕션 서버 빌드
-make build-desktop # Wails Desktop 앱
+make dev            # Go + Next.js 동시
+make build          # 프로덕션
+make build-desktop  # Wails Desktop
 ```
 
-## 핵심 규칙
+## 에이전트: `.claude/agents/protocol.md`
 
-- PDF 텍스트 → NFC 정규화 래퍼 필수 (`internal/presentation/`)
-- Ghostscript: macOS `/opt/homebrew/bin/gs` 직접 지정, Windows `gswin64c`/`gswin32c`/`gs` 순서 탐색
-- 예배 순서 편집 → Recoil atom 직접 저장 (`useState` 복사 금지)
-- `info` 필드: 찬송 `c_edit`, 성경 `b_edit`, 기도자 `edit`/`r_edit`, 고정 `"-"`
-
-## 모델 전략 (Advisor Pattern)
-
-기본 모델: **Sonnet** (매 턴 코드 실행/수정)
-어드바이저: **Opus** (복잡한 판단 시 자동 호출)
-
-| 구분 | 모델 | 호출 조건 |
-|------|------|-----------|
-| 실행 | Sonnet | 단일 파일 수정, 빌드/테스트, grep, git, 간단한 기능 추가 |
-| 어드바이저 | Opus | 아키텍처 설계, 복잡한 버그 분석, 대규모 변경 계획, 트레이드오프 분석 |
-
-설정: `.claude/settings.json` → `"model": "sonnet"`, `.claude/agents/advisor.md` → `model: opus`
-
-## ⚠️ 워크플로우 규칙 (MANDATORY — 모든 작업에 적용)
-
-> **이 섹션의 규칙은 선택이 아닌 필수다. 매 작업 시작 전에 이 규칙을 확인하고, 기준표대로 기계적으로 실행하라.**
-
-### Step 1: 영향 범위 분석 (작업 시작 전 반드시 수행)
-
-코드 수정 전에 **먼저** Grep/Glob으로 영향받는 파일 수를 확인한다. 감으로 판단하지 않는다.
-
-### Step 2: 실행 경로 결정 (기계적 — 예외 금지)
-
-| 조건 | 경로 | 실행 방식 |
-|------|------|-----------|
-| 파일 1개, 단순 변경 | **Direct** | 직접 수정 |
-| 파일 2~3개 | **TaskSplit** | TaskCreate로 태스크 나눈 뒤 순차 수행 |
-| 파일 4개+ 또는 Go+UI 동시 | **FullOrchestration** | `.claude/agents/protocol.md` 8-agent 풀 실행 |
-| 사용자가 계획표/목록 전달 | **FullOrchestration** | 무조건 풀 실행 |
-| 단독 에이전트 트리거 (아래) | **SingleAgent** | 해당 에이전트만 호출 |
-
-**절대 금지**: "간단해 보이니까 그냥 한다" — 파일 수로 기계적 결정. 애매하면 상위 경로 선택.
-
-### Step 3: 완료 체크리스트 (작업 끝에 반드시 — 스킵 금지)
-
-```
-□ 빌드: Go 수정 시 `go vet ./cmd/server/ ./cmd/desktop/` → make dev 재시작
-□ 문서: API 변경 → 패키지 CLAUDE.md | 새 파일 → 루트 CLAUDE.md | 패턴 → MEMORY.md
-□ 리포트: 변경 파일 목록 + 문서 업데이트 여부 + 주의사항을 사용자에게 보고
-```
-
-### 에이전트 단독 호출 트리거
-
-| 사용자 발화 | 에이전트 |
-|------------|---------|
-| "코드 리뷰", "누락 확인" | 리뷰어 |
-| "서버 상태", "포트 정리" | 감시자 |
-| "문서 업데이트", "가이드" | 문서 에이전트 |
-| "릴리즈", "태그", "배포" | 배포자 |
-| "빌드 확인", "타입 체크" | 코드 검증자 |
-
-## 에이전트 시스템
-
-8-agent 오케스트레이션 + advisor. 상세: `.claude/agents/protocol.md`
-
-감시자 → 시행자 → 수행자(병렬) → 리뷰어 → 검증자(병렬) → 문서에이전트
+대규모 변경(4개+ 파일) 또는 사용자가 계획표 전달 시 사용.
+"코드 리뷰" → 리뷰어 / "포트 정리" → 감시자 / "배포" → 배포자

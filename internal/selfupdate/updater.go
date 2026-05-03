@@ -409,8 +409,46 @@ func (u *Updater) Apply() error {
 	return nil
 }
 
+// HasBackup — 이전 버전 백업(.bak)이 존재하는지 확인합니다.
+func (u *Updater) HasBackup() bool {
+	execPath, err := os.Executable()
+	if err != nil {
+		return false
+	}
+	_, err = os.Stat(execPath + ".bak")
+	return err == nil
+}
+
+// Rollback — 이전 버전 백업(.bak)으로 복구합니다.
+// 성공하면 앱 재시작이 필요합니다.
+func (u *Updater) Rollback() error {
+	execPath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("실행 경로 확인 실패: %w", err)
+	}
+	bakPath := execPath + ".bak"
+	if _, err := os.Stat(bakPath); err != nil {
+		return fmt.Errorf("백업 파일 없음: %w", err)
+	}
+
+	// 현재 바이너리를 .broken으로 이동 후 .bak을 원래 위치로
+	brokenPath := execPath + ".broken"
+	if err := os.Rename(execPath, brokenPath); err != nil {
+		return fmt.Errorf("현재 바이너리 이동 실패: %w", err)
+	}
+	if err := os.Rename(bakPath, execPath); err != nil {
+		// 롤백 실패 시 .broken 복구
+		os.Rename(brokenPath, execPath)
+		return fmt.Errorf("백업 복구 실패: %w", err)
+	}
+	os.Remove(brokenPath)
+
+	log.Printf("[updater] 이전 버전으로 롤백 완료 — 재시작 필요")
+	return nil
+}
+
 // CleanupBackup — 이전 업데이트로 남은 .bak 파일을 정리합니다.
-// 서버 시작 시 호출합니다.
+// 헬스체크 통과 후 호출합니다.
 func (u *Updater) CleanupBackup() {
 	execPath, err := os.Executable()
 	if err != nil {

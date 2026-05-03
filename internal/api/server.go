@@ -202,6 +202,9 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/api/obs/setup-display", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSSetupDisplayHandler))
 	mux.Handle("/api/obs/setup-initial", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSSetupInitialHandler))
 
+	// 헬스체크 API
+	mux.Handle("/api/health", middleware.CORS(http.HandlerFunc(handlers.HealthCheck)))
+
 	// 버전 + 업데이트 체크 API
 	mux.Handle("/api/version", middleware.CORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

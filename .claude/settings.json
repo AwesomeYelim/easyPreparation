@@ -63,6 +63,16 @@
         "hooks": [
           {
             "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && git diff --name-only 2>/dev/null | head -5 | while read f; do [ -n \"$f\" ] && [ -f \"$f\" ] && bash tools/hooks/post-edit-check.sh \"$f\"; done || true",
+            "statusMessage": "Anti-pattern check"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
             "command": "cd \"$CLAUDE_PROJECT_DIR\" && CHANGED=$(git diff --name-only 2>/dev/null | grep '\\.go$' | head -1) && [ -n \"$CHANGED\" ] && export PATH=\"/usr/local/go/bin:$PATH\" && go vet ./cmd/... ./internal/... 2>&1 | head -12 || true"
           }
         ]

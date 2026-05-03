@@ -158,8 +158,9 @@ func Initialize(cfg Config) *App {
 	selfupdate.GetUpdater().SetBroadcast(handlers.BroadcastMessage)
 	// 다운로드 디렉토리 설정
 	selfupdate.GetUpdater().SetDownloadDir(filepath.Join(execPath, "data", "update"))
-	// 이전 업데이트로 남은 .bak 파일 정리
-	selfupdate.GetUpdater().CleanupBackup()
+	// .bak 정리는 헬스체크 통과 후 수행 (롤백 기회 보존)
+	// → Desktop: startup()에서 헬스체크 후 CleanupBackup 호출
+	// → Server: cmd/server/main.go에서 헬스체크 후 CleanupBackup 호출
 
 	// 프론트엔드 정적 파일 서빙 설정
 	api.FrontendFS = cfg.FrontendFS
