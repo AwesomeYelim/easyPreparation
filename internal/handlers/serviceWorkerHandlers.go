@@ -16,7 +16,7 @@ func HandleDisplaySW(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 
 	fmt.Fprint(w, `/* easyPreparation Display Service Worker v1 */
-const CACHE = 'ep-display-v1';
+const CACHE = 'ep-display-v2';
 
 /* 설치 시 Display 페이지 사전 캐시 */
 self.addEventListener('install', function(e) {

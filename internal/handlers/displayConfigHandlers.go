@@ -55,7 +55,7 @@ func defaultDisplayConfig() DisplayConfig {
 		OverlayPosition:  "flex-end",
 		OverlayFontScale: 1.0,
 		LogoPosition:     "bottom-right",
-		LogoSizePercent:  18,
+		LogoSizePercent:  10,
 	}
 }
 

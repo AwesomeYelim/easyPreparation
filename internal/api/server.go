@@ -38,7 +38,6 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/download", middleware.CORS(http.HandlerFunc(handlers.DownloadPDFHandler)))
 	mux.Handle("/api/save-to-downloads", middleware.CORS(http.HandlerFunc(handlers.SaveToDownloadsHandler)))
 	mux.Handle("/api/open-display", middleware.CORS(http.HandlerFunc(handlers.OpenDisplayInBrowserHandler)))
-	mux.Handle("/api/open-print", middleware.CORS(http.HandlerFunc(handlers.OpenPrintInBrowserHandler)))
 	mux.Handle("/api/open-mobile", middleware.CORS(http.HandlerFunc(handlers.OpenMobileInBrowserHandler)))
 	mux.Handle("/searchLyrics", handlers.SearchLyrics())
 	mux.Handle("/submitLyrics", handlers.SubmitLyricsHandler(dataChan))
@@ -72,8 +71,6 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/display/stage", middleware.CORS(http.HandlerFunc(handlers.DisplayStageHandler)))
 	mux.Handle("/display/preview", middleware.CORS(http.HandlerFunc(handlers.DisplayPreviewHandler)))
 	mux.Handle("/display/sw.js", http.HandlerFunc(handlers.HandleDisplaySW)) // Service Worker (캐시 — CORS 불필요)
-	mux.Handle("/display/print", middleware.CORS(http.HandlerFunc(handlers.HandleDisplayPrint)))
-	mux.Handle("/api/display/print-info", middleware.CORS(http.HandlerFunc(handlers.HandleDisplayPrintJSON)))
 
 	// 주보 시안 출력 (React+Babel 렌더링 → go-rod PDF)
 	mux.Handle("/display/bulletin-print", middleware.CORS(http.HandlerFunc(handlers.BulletinPrintHandler)))
@@ -205,6 +202,11 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	// 헬스체크 API
 	mux.Handle("/api/health", middleware.CORS(http.HandlerFunc(handlers.HealthCheck)))
 
+	// cloudflared 터널 API
+	mux.Handle("/api/tunnel/status", middleware.CORS(http.HandlerFunc(handlers.HandleTunnelStatus)))
+	mux.Handle("/api/tunnel/start", middleware.CORS(http.HandlerFunc(handlers.HandleTunnelStart)))
+	mux.Handle("/api/tunnel/stop", middleware.CORS(http.HandlerFunc(handlers.HandleTunnelStop)))
+
 	// 버전 + 업데이트 체크 API
 	mux.Handle("/api/version", middleware.CORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -334,6 +336,9 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	srv = &http.Server{Handler: mux}
 
 	fmt.Println("Server running on http://localhost:8080")
+
+	// cloudflared 터널 자동 시작
+	go handlers.StartTunnel("8080")
 
 	// 준비 완료 신호 전송
 	if len(readyCh) > 0 && readyCh[0] != nil {

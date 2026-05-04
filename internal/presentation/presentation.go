@@ -428,8 +428,8 @@ func (pdf *PDF) MarkName() {
 	// 종횡비 계산 (gofpdf Width()/Height()는 해상도 독립적 픽셀값)
 	aspect := imgInfo.Width() / imgInfo.Height()
 
-	hMargin := pageW * 0.02  // 2% 좌우 여백
-	vMargin := pageH * 0.015 // 1.5% 상하 여백
+	hMargin := pageW * 0.012 // 1.2% 좌우 여백
+	vMargin := pageH * 0.012 // 1.2% 상하 여백
 
 	logoW := pageW * (logoCfg.LogoSizePercent / 100.0)
 	logoH := logoW / aspect

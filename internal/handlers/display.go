@@ -225,6 +225,12 @@ const displayHTML = `<!DOCTYPE html>
     margin-bottom:3vh; text-align:left; width:100%;
     text-shadow:0 1px 4px rgba(0,0,0,0.5);
   }
+  .bible-title-ref {
+    font-size:5vh; font-weight:700; color:#fff;
+    text-shadow:0 2px 12px rgba(0,0,0,0.9), 0 0 30px rgba(0,0,0,0.6);
+    white-space:nowrap; text-align:center;
+    letter-spacing:0.08em;
+  }
   .bible-contents {
     font-size:5vh; line-height:1.9;
     text-align:left; color:#fff;
@@ -600,8 +606,11 @@ function showSlide(i, skipDir) {
   const itemTitle = item.title || '';
 
   // 성경 본문 → 텍스트 페이지 분할
+  // 성경봉독 타이틀 항목만: bgImage가 있으면 첫 페이지를 타이틀 슬라이드(__title__)로 예약
   if ((item.info || '').startsWith('b_') && item.contents) {
-    subPages = paginate(item.contents, 3);
+    var bibleContentPages = paginate(item.contents, 3);
+    var isBibleReading = (item.title || '') === '성경봉독';
+    subPages = (isBibleReading && item.bgImage) ? ['__title__'].concat(bibleContentPages) : bibleContentPages;
   }
   // 신앙고백 본문 → 페이지 분할
   else if (itemTitle === '신앙고백' && item.contents) {
@@ -748,10 +757,32 @@ function _doRenderItem(item, pageIdx) {
 
   // ── 1. 성경 본문 (b_edit + contents) ──
   if (info.startsWith('b_') && contents) {
-    const page = subPages[pageIdx] || contents;
-    slide.innerHTML = header +
-      '<div class="bible-ref">' + esc(obj) + '</div>' +
-      '<div class="bible-contents">' + esc(page) + '</div>' +
+    const page = subPages[pageIdx];
+
+    // 타이틀 슬라이드: bgImage 있고 첫 페이지(__title__)
+    // bgImage는 이미 위에서 CSS background로 설정됨 — 가운데에 성경 참조 텍스트만 표시
+    if (page === '__title__') {
+      slide.innerHTML =
+        '<div class="bible-title-ref">' + esc(obj && obj !== '-' ? obj : title) + '</div>' +
+        footer;
+      return;
+    }
+
+    // 성경봉독 본문 슬라이드: 기본 배경으로 리셋 (성경봉독.png 대신 전역 배경 사용)
+    if (title === '성경봉독') {
+      if (activeVideoBg) {
+        slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.35),rgba(0,0,0,0.35))";
+      } else if (!globalImageBgDisabled) {
+        slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.4)), url('/display/bg')";
+      } else {
+        slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.4))";
+      }
+    }
+    const bibleHeader =
+      '<div class="label">' + esc(lead) + '</div>' +
+      '<div class="order-title">' + esc(obj && obj !== '-' ? obj : title) + '</div>';
+    slide.innerHTML = bibleHeader +
+      '<div class="bible-contents">' + esc(page || contents) + '</div>' +
       footer;
     return;
   }

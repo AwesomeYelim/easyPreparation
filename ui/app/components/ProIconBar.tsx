@@ -13,7 +13,42 @@ const NAV_ITEMS = [
 function QRPopover({ onClose }: { onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
-  const mobileUrl = BASE.replace(/:\d+$/, ":8080") + "/mobile";
+  const localMobileUrl = BASE.replace(/:\d+$/, ":8080") + "/mobile";
+  const [tunnelUrl, setTunnelUrl] = useState<string | null>(null);
+  const [qrKey, setQrKey] = useState(0); // QR 이미지 강제 리로드용
+
+  // 서버에서 현재 터널 URL 초기 조회
+  useEffect(() => {
+    fetch(BASE.replace(/:\d+$/, ":8080") + "/api/tunnel/status")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.url) {
+          setTunnelUrl(d.url + "/mobile");
+          setQrKey((k) => k + 1);
+        }
+      })
+      .catch(() => {});
+  }, [BASE]);
+
+  // WS tunnel_url 메시지 수신
+  useEffect(() => {
+    const wsBase = BASE.replace(/^http/, "ws").replace(/:\d+$/, ":8080");
+    const ws = new WebSocket(wsBase + "/ws");
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === "tunnel_url" && msg.data?.url) {
+          setTunnelUrl(msg.data.url + "/mobile");
+          setQrKey((k) => k + 1);
+        }
+      } catch {}
+    };
+    return () => ws.close();
+  }, [BASE]);
+
+  const displayUrl = tunnelUrl ?? localMobileUrl;
+  // QR는 항상 Go 서버 직접 호출 (tunnel_url이 생기면 이미지도 새로 요청)
+  const qrSrc = BASE.replace(/:\d+$/, ":8080") + "/mobile/qr.png?_=" + qrKey;
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -27,17 +62,20 @@ function QRPopover({ onClose }: { onClose: () => void }) {
     <div
       ref={ref}
       className="absolute left-12 bottom-12 z-50 bg-pro-elevated border border-pro-border rounded-xl shadow-2xl p-3 flex flex-col gap-2"
-      style={{ width: 180 }}
+      style={{ width: 200 }}
     >
       <div className="text-[11px] font-semibold text-pro-text text-center">모바일 리모컨</div>
-      <img src="/mobile/qr.png" alt="QR" className="w-full rounded-lg border border-pro-border" />
-      <div className="text-[9px] text-pro-text-dim text-center break-all">{mobileUrl}</div>
+      {tunnelUrl && (
+        <div className="text-[9px] text-green-400 text-center font-medium">터널 연결됨 (외부 접속 가능)</div>
+      )}
+      <img key={qrKey} src={qrSrc} alt="QR" className="w-full rounded-lg border border-pro-border" />
+      <div className="text-[9px] text-pro-text-dim text-center break-all">{displayUrl}</div>
       <button
         onClick={async () => {
           try {
-            await fetch("/api/open-mobile");
+            await fetch(BASE.replace(/:\d+$/, ":8080") + "/api/open-mobile");
           } catch {
-            window.open(mobileUrl, "_blank", "noopener");
+            window.open(displayUrl, "_blank", "noopener");
           }
         }}
         className="text-[10px] text-center text-pro-accent hover:underline cursor-pointer bg-transparent border-none"

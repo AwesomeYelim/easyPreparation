@@ -287,16 +287,16 @@ export default function BiblePage() {
   const getVersionName = (id: number) => versions.find((v) => v.id === id)?.name || "";
 
   return (
-    <div className="flex flex-col w-full" style={{ height: "calc(100vh - 70px)" }}>
+    <div className="flex flex-col w-full overflow-hidden" style={{ height: "calc(100vh - 44px - 90px - 48px)" }}>
 
       {/* ── 상단 컨트롤 바 ── */}
-      <div className="flex-shrink-0 flex items-center justify-between gap-2 px-4 py-3 bg-pro-surface border-b border-pro-border">
+      <div className="flex-shrink-0 flex flex-wrap items-center gap-x-2 gap-y-1.5 px-4 py-2 bg-pro-surface border-b border-pro-border">
         {/* 좌측: 로고 + 버전 선택 */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
           <h1 className="text-xl font-black tracking-tight text-pro-text whitespace-nowrap">Scripture Bible</h1>
           {versions.length > 1 && (
             <select
-              className="px-3 py-2 text-sm font-semibold rounded-lg border border-pro-border bg-pro-elevated text-pro-text focus:outline-none focus:ring-2 focus:ring-electric-blue/40 cursor-pointer"
+              className="h-9 px-3 text-sm font-semibold rounded-lg border border-pro-border bg-pro-elevated text-pro-text focus:outline-none focus:ring-2 focus:ring-electric-blue/40 cursor-pointer"
               value={versionId}
               onChange={(e) => setVersionId(Number(e.target.value))}
             >
@@ -308,7 +308,7 @@ export default function BiblePage() {
 
           {versions.length > 1 && (
             <button
-              className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${
+              className={`h-9 px-3 text-xs font-bold rounded-lg border transition-all ${
                 compareMode
                   ? "bg-electric-blue text-white border-electric-blue"
                   : "bg-pro-elevated text-pro-text-muted border-pro-border hover:bg-pro-hover hover:text-electric-blue hover:border-electric-blue/40"
@@ -322,7 +322,7 @@ export default function BiblePage() {
 
           {compareMode && versions.length > 1 && (
             <select
-              className="px-3 py-2 text-sm font-semibold rounded-lg border border-pro-border bg-pro-elevated text-pro-text focus:outline-none focus:ring-2 focus:ring-electric-blue/40 cursor-pointer"
+              className="h-9 px-3 text-sm font-semibold rounded-lg border border-pro-border bg-pro-elevated text-pro-text focus:outline-none focus:ring-2 focus:ring-electric-blue/40 cursor-pointer"
               value={compareVersionId}
               onChange={(e) => setCompareVersionId(Number(e.target.value))}
             >
@@ -336,34 +336,30 @@ export default function BiblePage() {
         </div>
 
         {/* 우측: 선택 바 + 검색 */}
-        <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
+        <div className="flex items-center gap-2 ml-auto flex-shrink-0">
           {selectedVerses.size > 0 && selectedBook && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/10 border border-secondary/30 rounded-lg min-w-0">
-              <span className="text-sm font-semibold text-secondary max-w-[80px] truncate">
-                {selectionLabel()}
-              </span>
-              <button
-                className="px-4 py-2 text-xs font-bold bg-secondary text-white rounded-md hover:bg-secondary/90 active:scale-95 transition-all"
-                onClick={handleSendToDisplay}
-              >
-                Display 전송
-              </button>
-            </div>
+            <button
+              className="px-4 text-xs font-bold bg-secondary text-white rounded-lg hover:bg-secondary/90 active:scale-95 transition-all flex-shrink-0 flex flex-col items-center justify-center py-1 gap-0.5"
+              onClick={handleSendToDisplay}
+            >
+              <span className="text-[9px] font-semibold opacity-90 leading-none whitespace-nowrap">{selectionLabel()}</span>
+              <span className="leading-none">Display</span>
+            </button>
           )}
 
-          <div className="flex flex-shrink-0">
+          <div className="flex">
             <input
               type="text"
               placeholder="구절 검색..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyUp={(e) => e.key === "Enter" && handleSearch()}
-              className="w-32 flex-1 min-w-0 px-4 py-2 text-sm border border-r-0 border-pro-border rounded-l-lg bg-pro-elevated text-pro-text placeholder:text-pro-text-muted/60 focus:outline-none focus:border-electric-blue focus:ring-2 focus:ring-electric-blue/20 transition-all"
+              className="h-9 w-28 px-3 text-sm border border-r-0 border-pro-border rounded-l-lg bg-pro-elevated text-pro-text placeholder:text-pro-text-muted/60 focus:outline-none focus:border-electric-blue focus:ring-2 focus:ring-electric-blue/20 transition-all"
             />
             <button
               onClick={handleSearch}
               disabled={searching}
-              className="px-4 py-2 text-sm font-bold bg-electric-blue text-white rounded-r-lg hover:bg-secondary disabled:bg-pro-text-muted/40 disabled:cursor-not-allowed transition-all"
+              className="h-9 px-4 text-sm font-bold bg-electric-blue text-white rounded-r-lg hover:bg-secondary disabled:bg-pro-text-muted/40 disabled:cursor-not-allowed transition-all"
             >
               {searching ? "..." : "검색"}
             </button>

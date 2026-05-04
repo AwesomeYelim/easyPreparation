@@ -37,7 +37,7 @@ func getLocalIP() string {
 			if ip == nil {
 				continue
 			}
-			// 사설 IP 대역만 허용
+			// 사설 IP 대역만 허용 (192.x.x.x / 10.x.x.x / 172.16-31.x.x)
 			if ip[0] == 192 || ip[0] == 10 || (ip[0] == 172 && ip[1] >= 16 && ip[1] <= 31) {
 				return ip.String()
 			}
@@ -79,15 +79,24 @@ func MobileIconHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // MobileQRHandler — GET /mobile/qr.png
-// 현재 서버의 로컬 IP로 /mobile URL을 실제 QR 코드 PNG 이미지로 반환
+// 터널 URL이 있으면 그걸 사용, 없으면 로컬 IP로 /mobile URL QR 생성
 func MobileQRHandler(w http.ResponseWriter, r *http.Request) {
-	ip := getLocalIP()
-	// 요청의 Host 헤더에서 포트 추출 (기본값 8080)
-	port := "8080"
-	if _, p, err := net.SplitHostPort(r.Host); err == nil && p != "" {
-		port = p
+	var targetURL string
+
+	// 터널 URL 우선
+	if tunnelURL := GetTunnelURL(); tunnelURL != "" {
+		targetURL = tunnelURL + "/mobile"
+	} else {
+		ip := getLocalIP()
+		// 실제 TCP 리스너 포트 추출 (Host 헤더 대신 LocalAddr 사용 — Wails WebView는 Host가 다름)
+		port := "8080"
+		if localAddr, ok := r.Context().Value(http.LocalAddrContextKey).(net.Addr); ok {
+			if _, p, err := net.SplitHostPort(localAddr.String()); err == nil && p != "" {
+				port = p
+			}
+		}
+		targetURL = fmt.Sprintf("http://%s:%s/mobile", ip, port)
 	}
-	targetURL := fmt.Sprintf("http://%s:%s/mobile", ip, port)
 
 	png, err := qrcode.Encode(targetURL, qrcode.Medium, 256)
 	if err != nil {
