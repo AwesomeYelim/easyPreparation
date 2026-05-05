@@ -83,9 +83,10 @@ build:
 	@echo "Copying embedded data..."
 	@rm -rf cmd/server/data && mkdir -p cmd/server/data/defaults
 	@cp data/bible.db cmd/server/data/bible.db
-	@for f in bible_info main_worship after_worship wed_worship fri_worship; do \
+	@for f in main_worship after_worship wed_worship fri_worship; do \
 		[ -f config/$${f}.json ] && cp config/$${f}.json cmd/server/data/defaults/$${f}.json || true; \
 	done
+	@cp data/default_bg.png internal/lyrics/Frame.png
 	@echo "Building Go binary (with embedded frontend + data)..."
 	@go build -ldflags="$(LDFLAGS)" -o bin/server ./cmd/server/
 	@echo "Done. Run: bin/server"
@@ -95,9 +96,10 @@ build-go:
 	@rm -rf cmd/server/frontend && cp -r ui/out cmd/server/frontend
 	@rm -rf cmd/server/data && mkdir -p cmd/server/data/defaults
 	@cp data/bible.db cmd/server/data/bible.db
-	@for f in bible_info main_worship after_worship wed_worship fri_worship; do \
+	@for f in main_worship after_worship wed_worship fri_worship; do \
 		[ -f config/$${f}.json ] && cp config/$${f}.json cmd/server/data/defaults/$${f}.json || true; \
 	done
+	@cp data/default_bg.png internal/lyrics/Frame.png
 	go build -ldflags="$(LDFLAGS)" -o bin/server ./cmd/server/
 
 # ── Go 빌드 (개발 — embed 없이) ───────────────────────────────────────────────
@@ -121,12 +123,15 @@ build-frontend:
 	@cd ui && $(RUN_NPM) run build
 	@echo "Copying frontend to cmd/desktop/frontend/..."
 	@rm -rf cmd/desktop/frontend && cp -r ui/out cmd/desktop/frontend
-	@echo "Copying embedded data (bible.db + config defaults)..."
-	@rm -rf cmd/desktop/data && mkdir -p cmd/desktop/data/defaults
+	@echo "Copying embedded data (bible.db + config defaults + assets)..."
+	@rm -rf cmd/desktop/data && mkdir -p cmd/desktop/data/defaults/video-bg
 	@cp data/bible.db cmd/desktop/data/bible.db
-	@for f in bible_info main_worship after_worship wed_worship fri_worship; do \
+	@for f in main_worship after_worship wed_worship fri_worship; do \
 		[ -f config/$${f}.json ] && cp config/$${f}.json cmd/desktop/data/defaults/$${f}.json || true; \
 	done
+	@[ -f data/video-bg/lent.mp4 ] && cp data/video-bg/lent.mp4 cmd/desktop/data/defaults/video-bg/lent.mp4 || true
+	@echo "Syncing default_bg.png → lyrics embed..."
+	@cp data/default_bg.png internal/lyrics/Frame.png
 
 # ── Desktop 앱 빌드 (macOS) — wails.json이 cmd/desktop/에 있으므로 cd 필요 ──
 build-desktop: build-frontend

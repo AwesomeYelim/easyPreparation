@@ -217,7 +217,6 @@ func ExtractEmbeddedData(dataFS fs.FS, execPath string) {
 
 	// 기본 설정 파일 추출
 	defaults := []string{
-		"bible_info.json",
 		"main_worship.json",
 		"after_worship.json",
 		"wed_worship.json",
@@ -227,6 +226,11 @@ func ExtractEmbeddedData(dataFS fs.FS, execPath string) {
 		dst := filepath.Join(execPath, "config", name)
 		extractFile(dataFS, "defaults/"+name, dst)
 	}
+
+	// 기본 비디오 배경 추출
+	videoBgDir := filepath.Join(execPath, "data", "video-bg")
+	os.MkdirAll(videoBgDir, 0755)
+	extractFile(dataFS, "defaults/video-bg/lent.mp4", filepath.Join(videoBgDir, "lent.mp4"))
 }
 
 // extractFile — srcFS에서 srcPath를 읽어 dstPath에 저장합니다.

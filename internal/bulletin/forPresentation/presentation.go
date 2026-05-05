@@ -44,10 +44,13 @@ func (pi PdfInfo) Create() {
 	}
 	loadPathInfo(outputDir)
 
-	// templates에 없는 키는 data/defaults/bulletin/presentation/ 에서 보충 (복사 안 함)
-	// → display.go는 data/templates/display/만 스캔하므로 defaults 복사 시 display bgImage에 영향을 줌
-	defaultsDir := filepath.Join(pi.ExecPath, "data", "defaults", "bulletin", "presentation")
-	loadPathInfo(defaultsDir)
+	// 커스텀 배경 없는 항목은 Frame.png를 기본 배경으로 사용
+	framePath := filepath.Join(pi.ExecPath, "data", "default_bg.png")
+	if _, err := os.Stat(framePath); err == nil {
+		// loadPathInfo 이후 pathInfo에 없는 키는 나중에 PDF 생성 시 배경 없이 처리됨
+		// Frame.png를 "__default__" 키로 등록하고 아래에서 fallback으로 사용
+		pathInfo["__default__"] = framePath
+	}
 
 	instanceSize := gofpdf.SizeType{
 		Wd: config.Classification.Bulletin.Presentation.Width,
@@ -75,6 +78,10 @@ func (pi PdfInfo) Create() {
 
 		hasBackground := false
 		if _, ok := pathInfo[con.Title]; ok {
+			hasBackground = true
+		} else if _, ok := pathInfo["__default__"]; ok {
+			// 커스텀 배경 없으면 Frame.png 기본 배경 사용
+			pathInfo[con.Title] = pathInfo["__default__"]
 			hasBackground = true
 		}
 		hasContent := strings.Contains(con.Info, "edit") || strings.Contains(con.Info, "notice")

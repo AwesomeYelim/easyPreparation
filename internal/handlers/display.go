@@ -251,7 +251,7 @@ const displayHTML = `<!DOCTYPE html>
 
   /* 이미지 슬라이드 (찬송/교독 스캔) */
   .slide-image {
-    max-width:90vw; max-height:85vh;
+    width:90vw; height:85vh;
     object-fit:contain;
   }
 
@@ -445,7 +445,7 @@ async function initDisplayConfig() {
       const cfg = await cfgRes.json();
       applyFont(cfg.font);
       globalImageBgDisabled = !!cfg.globalImageBgDisabled;
-      applyVideoBg(cfg.globalVideoBg || ''); // 비디오 없어도 body 배경 적용
+      applyVideoBg(cfg.globalVideoBg || 'lent.mp4'); // 설정 없으면 기본 영상
       if (cfg.logoPosition) logoPosition = cfg.logoPosition;
       if (cfg.logoSizePercent) logoSizePercent = cfg.logoSizePercent;
       // sessionStorage 복원 슬라이드가 있으면 새 config로 다시 렌더
@@ -540,7 +540,7 @@ function connect() {
     if (msg.type === 'display_config') {
       applyFont(msg.font);
       globalImageBgDisabled = !!msg.globalImageBgDisabled;
-      applyVideoBg(msg.globalVideoBg || ''); // body 배경도 함께 업데이트
+      applyVideoBg(msg.globalVideoBg || 'lent.mp4'); // body 배경도 함께 업데이트
       if (msg.logoPosition) logoPosition = msg.logoPosition;
       if (msg.logoSizePercent) logoSizePercent = msg.logoSizePercent;
       if (slides.length > 0) { renderItem(slides[idx], subPageIdx); }
@@ -1653,10 +1653,10 @@ func DisplayAssetsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // DisplayBgHandler — GET /display/bg
-// 공통 배경 이미지 서빙 (미업로드 시 204 반환)
+// 기본 배경 이미지 서빙 (data/default_bg.png, 없으면 204)
 func DisplayBgHandler(w http.ResponseWriter, r *http.Request) {
 	execPath := path.ExecutePath("easyPreparation")
-	imgPath := filepath.Join(execPath, "data", "templates", "lyrics", "Frame 2.png")
+	imgPath := filepath.Join(execPath, "data", "default_bg.png")
 	if _, err := os.Stat(imgPath); os.IsNotExist(err) {
 		w.WriteHeader(http.StatusNoContent)
 		return
@@ -2418,15 +2418,24 @@ func preprocessItem(item map[string]interface{}) map[string]interface{} {
 	}
 
 	// 항목별 배경 이미지 — data/templates/display/{title}.png/.jpg 자동 매핑
+	// 매칭 이미지 없으면 기본 Frame.png 사용
 	{
 		execPath := path.ExecutePath("easyPreparation")
 		displayDir := filepath.Join(execPath, "data", "templates", "display")
+		found := false
 		for _, ext := range []string{".png", ".jpg", ".jpeg"} {
 			bgPath := filepath.Join(displayDir, title+ext)
 			if info, err := os.Stat(bgPath); err == nil {
 				modTime := strconv.FormatInt(info.ModTime().Unix(), 10)
 				item["bgImage"] = "/display/assets/" + url.PathEscape(title+ext) + "?v=" + modTime
+				found = true
 				break
+			}
+		}
+		if !found {
+			framePath := filepath.Join(execPath, "data", "default_bg.png")
+			if _, err := os.Stat(framePath); err == nil {
+				item["bgImage"] = "/display/bg"
 			}
 		}
 	}

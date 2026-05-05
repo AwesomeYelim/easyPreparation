@@ -80,24 +80,13 @@ func TemplateListHandler(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 
-	case "display-default":
-		fixedName := "Frame 2.png"
-		fPath := filepath.Join(dir, fixedName)
-		if info, err := os.Stat(fPath); err == nil {
+	case "display-default", "lyrics":
+		execPath := path.ExecutePath("easyPreparation")
+		bgPath := filepath.Join(execPath, "data", "default_bg.png")
+		if info, err := os.Stat(bgPath); err == nil {
 			files = append(files, FileInfo{
-				Name: fixedName,
-				URL:  "/api/templates/display-default/" + fixedName,
-				Size: info.Size(),
-			})
-		}
-
-	case "lyrics":
-		fixedName := "Frame 1.png"
-		fPath := filepath.Join(dir, fixedName)
-		if info, err := os.Stat(fPath); err == nil {
-			files = append(files, FileInfo{
-				Name: fixedName,
-				URL:  "/api/templates/lyrics/" + fixedName,
+				Name: "default_bg.png",
+				URL:  "/display/bg",
 				Size: info.Size(),
 			})
 		}
@@ -158,13 +147,11 @@ func TemplateUploadHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			saveName = filepath.Base(name) + ext
 		}
-	case "display-default":
-		saveName = "Frame 2.png"
-		// display-default는 항상 PNG로 저장 (확장자 강제)
+	case "display-default", "lyrics":
+		saveName = "default_bg.png"
 		ext = ".png"
-	case "lyrics":
-		saveName = "Frame 1.png"
-		ext = ".png"
+		// 기본 배경은 data/default_bg.png에 저장
+		dir = filepath.Join(path.ExecutePath("easyPreparation"), "data")
 	}
 
 	// 경로 순회 방지

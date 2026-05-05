@@ -563,30 +563,53 @@ func (m *Manager) CreateImageSource(sceneName, name, filePath string, enabled bo
 	return resp.SceneItemId, nil
 }
 
-// CreateBrowserSource — browser_source 생성 (OBS 브라우저 소스, 1920×1080 기본)
-func (m *Manager) CreateBrowserSource(sceneName, name, url string, width, height int) (int, error) {
+// GetCanvasSize — OBS 캔버스(Base) 해상도를 반환합니다. 실패 시 1920×1080 기본값.
+func (m *Manager) GetCanvasSize() (int, int) {
+	client, err := m.getClient()
+	if err != nil {
+		return 1920, 1080
+	}
+	resp, err := client.Config.GetVideoSettings()
+	if err != nil {
+		log.Printf("[obs] 캔버스 해상도 조회 실패 (기본값 사용): %v", err)
+		return 1920, 1080
+	}
+	w, h := int(resp.BaseWidth), int(resp.BaseHeight)
+	if w <= 0 || h <= 0 {
+		return 1920, 1080
+	}
+	log.Printf("[obs] 캔버스 해상도: %dx%d", w, h)
+	return w, h
+}
+
+// CreateBrowserSource — browser_source 생성 (width/height ≤ 0이면 캔버스 해상도 사용)
+func (m *Manager) CreateBrowserSource(sceneName, name, url string, width, height int, opts ...map[string]any) (int, error) {
 	client, err := m.getClient()
 	if err != nil {
 		return 0, err
 	}
-	if width <= 0 {
-		width = 1920
+	if width <= 0 || height <= 0 {
+		width, height = m.GetCanvasSize()
 	}
-	if height <= 0 {
-		height = 1080
+	settings := map[string]any{
+		"url":           url,
+		"width":         width,
+		"height":        height,
+		"fps":           30,
+		"reroute_audio": false,
+	}
+	// 추가 옵션 머지 (css 등)
+	if len(opts) > 0 && opts[0] != nil {
+		for k, v := range opts[0] {
+			settings[k] = v
+		}
 	}
 	params := inputs.NewCreateInputParams().
 		WithInputKind("browser_source").
 		WithInputName(name).
 		WithSceneName(sceneName).
 		WithSceneItemEnabled(true).
-		WithInputSettings(map[string]any{
-			"url":           url,
-			"width":         width,
-			"height":        height,
-			"fps":           30,
-			"reroute_audio": false,
-		})
+		WithInputSettings(settings)
 	resp, err := client.Inputs.CreateInput(params)
 	if err != nil {
 		return 0, fmt.Errorf("브라우저 소스 생성 실패: %w", err)
@@ -866,7 +889,7 @@ func (m *Manager) CreateMonitorCaptureSource(sceneName, name string, monitorInde
 // 3) camera 씬에 EP_Overlay 브라우저 소스 추가
 // 4) camera 씬에 EP_Logo 이미지 소스 추가 (logoPath가 있고 파일이 존재할 때)
 // 5) monitor 씬에 모니터 캡처 소스 추가 (주 모니터)
-// 6) monitor 씬에 EP_Display 브라우저 소스 추가 (1920×1080)
+// 6) monitor 씬에 EP_Display 브라우저 소스 추가 (캔버스 해상도 자동 감지)
 func (m *Manager) SetupInitial(cameraDeviceID string, logoPath ...string) (*InitialSetupResult, error) {
 	result := &InitialSetupResult{
 		Success:        false,
@@ -963,7 +986,7 @@ func (m *Manager) SetupInitial(cameraDeviceID string, logoPath ...string) (*Init
 	if displaySourceNames["EP_Display"] {
 		result.Warnings = append(result.Warnings, "EP_Display 소스가 이미 존재합니다. 건너뜁니다.")
 	} else {
-		_, dispErr := m.CreateBrowserSource(displayScene, "EP_Display", "http://localhost:8080/display", 1920, 1080)
+		_, dispErr := m.CreateBrowserSource(displayScene, "EP_Display", "http://localhost:8080/display", 0, 0)
 		if dispErr != nil {
 			result.Warnings = append(result.Warnings, "EP_Display 소스 추가 실패: "+dispErr.Error())
 		} else {
@@ -975,7 +998,9 @@ func (m *Manager) SetupInitial(cameraDeviceID string, logoPath ...string) (*Init
 	if cameraSourceNames["EP_Overlay"] {
 		result.Warnings = append(result.Warnings, "EP_Overlay 소스가 이미 존재합니다. 건너뜁니다.")
 	} else {
-		_, overlayErr := m.CreateBrowserSource(cameraScene, "EP_Overlay", "http://localhost:8080/display/overlay", 1920, 1080)
+		_, overlayErr := m.CreateBrowserSource(cameraScene, "EP_Overlay", "http://localhost:8080/display/overlay", 0, 0, map[string]any{
+			"css": "body { background: transparent !important; }",
+		})
 		if overlayErr != nil {
 			result.Warnings = append(result.Warnings, "EP_Overlay 소스 추가 실패: "+overlayErr.Error())
 		} else {
@@ -993,11 +1018,12 @@ func (m *Manager) SetupInitial(cameraDeviceID string, logoPath ...string) (*Init
 				if logoErr != nil {
 					result.Warnings = append(result.Warnings, "로고 소스 추가 실패: "+logoErr.Error())
 				} else {
-					// 우상단 기본 위치 (scale 0.15, margin 30)
+					// 우상단 기본 위치 (scale 0.15, margin 30) — 캔버스 해상도 기반
+					canvasW, _ := m.GetCanvasSize()
 					scale := 0.15
 					logoSize := 200.0 * scale
 					margin := 30.0
-					x := 1920 - logoSize - margin
+					x := float64(canvasW) - logoSize - margin
 					y := margin
 					_ = m.SetItemTransform(cameraScene, sceneItemID, x, y, scale, scale)
 					result.SourcesCreated = append(result.SourcesCreated, cameraScene+"/EP_Logo")
