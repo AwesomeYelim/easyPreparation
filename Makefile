@@ -46,7 +46,12 @@ endif
 # Unix    → lsof -ti:<port> | xargs kill -9
 ifdef IS_WINDOWS
 define kill_ports
-@-powershell -NoProfile -Command "foreach ($$p in ('$(1)' -split '\s+')) { Get-NetTCPConnection -LocalPort $$p -State Listen -EA SilentlyContinue | ForEach-Object { Stop-Process -Id $$_.OwningProcess -Force -EA SilentlyContinue } }" 2>/dev/null; exit 0
+@for p in $(1); do \
+  pid=$$(cmd //c "netstat -ano 2>nul" 2>/dev/null | awk "/LISTENING/ && /:$${p} /{print \$$5}" | tr -d '\r' | head -1); \
+  if [ -n "$$pid" ] && [ "$$pid" != "0" ]; then \
+    taskkill //F //PID $$pid 2>/dev/null || true; \
+  fi; \
+done; true
 endef
 else
 define kill_ports

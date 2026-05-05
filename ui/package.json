@@ -7,10 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "screenshot": "node ../tools/ui-screenshot.js",
+    "screenshot": "node ../tools/ui-tests/ui-screenshot.js",
     "test:e2e": "playwright test",
-    "test:ui": "node ../tools/ui-test.js",
-    "ui:check": "node ../tools/ui-check.js"
+    "test:ui": "node ../tools/ui-tests/ui-test.js",
+    "ui:check": "node ../tools/ui-tests/ui-check.js"
   },
   "dependencies": {
     "classnames": "^2.5.1",

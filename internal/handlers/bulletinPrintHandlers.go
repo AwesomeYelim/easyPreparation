@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"easyPreparation_1.0/internal/bulletin/templates"
 	"easyPreparation_1.0/internal/path"
 	"encoding/json"
@@ -17,9 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/launcher"
-	"github.com/go-rod/rod/lib/proto"
+	"os/exec"
 )
 
 // ──────────────────── 데이터 타입 ────────────────────
@@ -277,7 +276,7 @@ func BulletinDataHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(bd)
 }
 
-// ──────────────────── go-rod PDF 생성 ────────────────────
+// ──────────────────── Chrome PDF 생성 ────────────────────
 
 // BulletinPreviewHandler — GET /api/bulletin-preview?type=X&template=N
 // Desktop 모드: OS 시스템 브라우저로 미리보기 열기 (Wails WebView window.open 차단 우회)
@@ -380,51 +379,62 @@ func BulletinPdfHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(pdfBytes)
 }
 
-// generateBulletinPDF — 헤드리스 Chromium으로 주보 PDF 생성 (auto-download)
-func generateBulletinPDF(worshipType, templateNum string) ([]byte, error) {
-	l := launcher.New().Headless(true)
-	controlURL, err := l.Launch()
-	if err != nil {
-		return nil, fmt.Errorf("Chromium 실행 실패: %w", err)
+// findChromeBin — 시스템에 설치된 Chrome/Chromium 경로 반환 (없으면 "")
+func findChromeBin() string {
+	candidates := []string{
+		// Windows
+		`C:\Program Files\Google\Chrome\Application\chrome.exe`,
+		`C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`,
+		filepath.Join(os.Getenv("LOCALAPPDATA"), `Google\Chrome\Application\chrome.exe`),
+		// macOS
+		`/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`,
+		`/Applications/Chromium.app/Contents/MacOS/Chromium`,
+		// Linux
+		`/usr/bin/google-chrome`,
+		`/usr/bin/google-chrome-stable`,
+		`/usr/bin/chromium-browser`,
+		`/usr/bin/chromium`,
 	}
-	defer l.Cleanup()
+	for _, p := range candidates {
+		if p == "" {
+			continue
+		}
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	return ""
+}
 
-	browser := rod.New().ControlURL(controlURL)
-	if err := browser.Connect(); err != nil {
-		return nil, fmt.Errorf("브라우저 연결 실패: %w", err)
+// generateBulletinPDF — Chrome --print-to-pdf 로 주보 PDF 생성
+func generateBulletinPDF(worshipType, templateNum string) ([]byte, error) {
+	chromeBin := findChromeBin()
+	if chromeBin == "" {
+		return nil, fmt.Errorf("Chrome 또는 Chromium이 설치되어 있지 않습니다. Chrome을 설치한 후 다시 시도하세요.")
 	}
-	defer browser.MustClose()
 
 	targetURL := fmt.Sprintf("http://localhost:8080/display/bulletin-print?type=%s&template=%s",
 		worshipType, templateNum)
+	outFile := filepath.Join(os.TempDir(), fmt.Sprintf("bulletin_%d.pdf", time.Now().UnixNano()))
+	defer os.Remove(outFile)
 
-	page, err := browser.Page(proto.TargetCreateTarget{URL: targetURL})
-	if err != nil {
-		return nil, fmt.Errorf("페이지 생성 실패: %w", err)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, chromeBin,
+		"--headless",
+		"--disable-gpu",
+		"--no-sandbox",
+		"--disable-dev-shm-usage",
+		"--run-all-compositor-stages-before-draw",
+		"--print-to-pdf-no-header",
+		"--print-to-pdf="+outFile,
+		targetURL,
+	)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("PDF 생성 실패: %w\n%s", err, string(out))
 	}
-
-	// body[data-ready] 대기 (최대 3분: CDN 로드 + React 렌더링 + 폰트 포함)
-	if _, err := page.Timeout(3 * time.Minute).Element("body[data-ready]"); err != nil {
-		return nil, fmt.Errorf("렌더링 대기 시간 초과: %w", err)
-	}
-
-	// 폰트 렌더링 안정화
-	time.Sleep(800 * time.Millisecond)
-
-	zero := 0.0
-	pdfReader, err := page.PDF(&proto.PagePrintToPDF{
-		PrintBackground:   true,
-		PreferCSSPageSize: true,
-		MarginTop:         &zero,
-		MarginBottom:      &zero,
-		MarginLeft:        &zero,
-		MarginRight:       &zero,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("PDF 변환 실패: %w", err)
-	}
-
-	return io.ReadAll(pdfReader)
+	return os.ReadFile(outFile)
 }
 
 // ──────────────────── 주보 표지 이미지 API ────────────────────

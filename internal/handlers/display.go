@@ -1653,10 +1653,14 @@ func DisplayAssetsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // DisplayBgHandler — GET /display/bg
-// 공통 배경 이미지 서빙
+// 공통 배경 이미지 서빙 (미업로드 시 204 반환)
 func DisplayBgHandler(w http.ResponseWriter, r *http.Request) {
 	execPath := path.ExecutePath("easyPreparation")
 	imgPath := filepath.Join(execPath, "data", "templates", "lyrics", "Frame 2.png")
+	if _, err := os.Stat(imgPath); os.IsNotExist(err) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	http.ServeFile(w, r, imgPath)
 }
 

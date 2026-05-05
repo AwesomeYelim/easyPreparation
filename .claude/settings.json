@@ -53,6 +53,21 @@
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/tools/setup.sh\" 2>&1 | tail -8"
+          },
+          {
+            "type": "command",
+            "command": "mkdir -p \"$CLAUDE_PROJECT_DIR/.claude/state\" && : > \"$CLAUDE_PROJECT_DIR/.claude/state/edited-files.log\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/tools/hooks/scope-guard.sh\""
           }
         ]
       }
@@ -82,8 +97,16 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.tool_input.file_path // empty' | grep -q 'ui/' && cd \"$CLAUDE_PROJECT_DIR/ui\" && node ../tools/ui-screenshot.js > /dev/null 2>&1 || true",
-            "async": true
+            "command": "bash \"$CLAUDE_PROJECT_DIR/tools/hooks/visual-regression.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/tools/hooks/ts-check.sh\""
           }
         ]
       }
@@ -94,7 +117,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$CLAUDE_PROJECT_DIR\" && echo '=== 세션 종료 — 변경 파일 ===' && git status --short 2>/dev/null | head -25"
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && echo '=== 세션 종료 — 변경 파일 ===' && git status --short 2>/dev/null | head -25 && bash tools/hooks/diff-self-review.sh"
           }
         ]
       }

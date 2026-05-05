@@ -16,7 +16,7 @@ function Header() {
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <a href="/" className="flex items-center gap-2.5 text-xl font-bold text-navy">
-          <img src="/ep-logo-192.png" alt="EP" width={28} height={28} />
+          <img src="/ep-logo.svg" alt="EP" width={28} height={28} />
           easyPreparation
         </a>
         <nav className="flex items-center gap-6 text-sm font-medium text-gray-600">

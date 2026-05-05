@@ -7,7 +7,7 @@ const { chromium } = require('@playwright/test');
 const path = require('path');
 const fs = require('fs');
 
-const OUT_DIR = path.join(__dirname, '../.claude/screenshots');
+const OUT_DIR = process.env.SCREENSHOT_DIR || path.join(__dirname, '../../.claude/screenshots/current');
 
 const VIEWS = [
   { url: 'http://localhost:3000',               name: 'main',          w: 1280, h: 800  },
