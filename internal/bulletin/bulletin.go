@@ -3,7 +3,6 @@ package bulletin
 import (
 	"easyPreparation_1.0/internal/bulletin/define"
 	"easyPreparation_1.0/internal/bulletin/forPresentation"
-	"easyPreparation_1.0/internal/bulletin/forPrint"
 	"easyPreparation_1.0/internal/date"
 	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/handlers"
@@ -75,25 +74,10 @@ func CreateBulletin(data map[string]interface{}) {
 		PdfInfo: PdfInfo,
 	}
 
-	printData := forPrint.PdfInfo{
-		PdfInfo: PdfInfo,
-	}
+	handlers.BroadcastProgress("Presentation PDF", 1, "예배 프레젠테이션 PDF 생성 중...")
+	presentationData.Create()
 
-	pdfType, _ := data["pdfType"].(string)
-	if pdfType == "" {
-		pdfType = "both"
-	}
-
-	if pdfType == "print" || pdfType == "both" {
-		handlers.BroadcastProgress("Print PDF", 1, "A4 인쇄용 PDF 생성 중...")
-		printData.Create()
-	}
-	if pdfType == "presentation" || pdfType == "both" {
-		handlers.BroadcastProgress("Presentation PDF", 1, "예배 프레젠테이션 PDF 생성 중...")
-		presentationData.Create()
-	}
-
-	handlers.BroadcastProcessDone(target, outputFilename, pdfType)
+	handlers.BroadcastProcessDone(target, outputFilename, "presentation")
 	handlers.BroadcastProgress("Finish Data Process", 1, "Finish Data Process !!")
 
 	// 생성 이력 기록

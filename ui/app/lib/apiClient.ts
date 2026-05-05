@@ -38,15 +38,6 @@ export async function openDisplayWindow(force = false) {
   displayWindow = window.open(`${BASE_URL}/display`, "display_window");
 }
 
-export async function openPrintWindow(autoprint = true) {
-  const q = autoprint ? "?autoprint=1" : "";
-  // Desktop 모드: 서버에 요청해서 시스템 브라우저로 열기 (Wails WebView window.open 차단 우회)
-  const res = await fetch(`${BASE_URL}/api/open-print${q}`).catch(() => null);
-  if (res?.ok) return;
-  // 웹 브라우저 모드: 새 탭
-  window.open(`${BASE_URL}/display/print${q}`, "_blank");
-}
-
 export const apiClient = {
   // 예배 순서 API (Go 서버 마스터)
   getWorshipOrder: (type: string) =>
@@ -60,7 +51,7 @@ export const apiClient = {
       body: JSON.stringify({ type, items }),
     }),
 
-  submitBulletin: (payload: { mark: string; targetInfo: WorshipOrderItem[]; target: string; email?: string; pdfType?: "print" | "presentation" | "both" }) =>
+  submitBulletin: (payload: { mark: string; targetInfo: WorshipOrderItem[]; target: string; email?: string }) =>
     fetch(`${BASE_URL}/submit`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -147,25 +138,22 @@ export const apiClient = {
       body: JSON.stringify({ from, to }),
     }),
 
-  downloadFile: async (fileName: string, pdfType?: string): Promise<void> => {
-    const typeParam = pdfType ? `&type=${encodeURIComponent(pdfType)}` : "";
-    const isSingle = pdfType === "print" || pdfType === "presentation";
-    const downloadName = isSingle ? `${pdfType}_${fileName}.pdf` : `${fileName}.zip`;
+  downloadFile: async (fileName: string): Promise<void> => {
     // Desktop 모드: 서버가 ~/Downloads에 직접 저장 + 폴더 열기
-    const saveRes = await fetch(`${BASE_URL}/api/save-to-downloads?target=${encodeURIComponent(fileName)}${typeParam}`);
+    const saveRes = await fetch(`${BASE_URL}/api/save-to-downloads?target=${encodeURIComponent(fileName)}`);
     if (saveRes.ok) return;
     if (saveRes.status !== 403) {
       throw new Error("다운로드 중 오류가 발생했습니다.");
     }
-    // 웹 브라우저 모드: fetch+blob
-    const url = `${BASE_URL}/download?target=${encodeURIComponent(fileName)}${typeParam}`;
+    // 웹 브라우저 모드: PDF 직접 다운로드
+    const url = `${BASE_URL}/download?target=${encodeURIComponent(fileName)}`;
     const r = await fetch(url);
     if (!r.ok) throw new Error(`다운로드 실패 (${r.status})`);
     const blob = await r.blob();
     const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = blobUrl;
-    a.download = downloadName;
+    a.download = `${fileName}.pdf`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

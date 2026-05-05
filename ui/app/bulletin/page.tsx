@@ -39,7 +39,7 @@ export default function Bulletin() {
   const setDisplayPanelOpen = useSetRecoilState(displayPanelOpenState);
 
   const [loading, setLoading] = useState(false);
-  const [currentPdfType, setCurrentPdfType] = useState<string>("both");
+  const [currentPdfType, setCurrentPdfType] = useState<string>("presentation");
   const [wsMessage, setWsMessage] = useState("");
   const [wsLogs, setWsLogs] = useState<string[]>([]);
   const [displayLoading, setDisplayLoading] = useState(false);
@@ -99,7 +99,7 @@ export default function Bulletin() {
         processingRef.current = false;
         msgQueueRef.current = [];
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-        downloadZip(message.fileName, message.pdfType as string);
+        downloadZip(message.fileName);
         setWsMessage("Success !!");
         setWsLogs([]);
         setLoading(false);
@@ -109,9 +109,9 @@ export default function Bulletin() {
     });
   }, [subscribe]);
 
-  const downloadZip = async (fileName: string, pdfType?: string) => {
+  const downloadZip = async (fileName: string) => {
     try {
-      await apiClient.downloadFile(fileName, pdfType);
+      await apiClient.downloadFile(fileName);
       toast.success("다운로드 폴더에 저장되었습니다.");
     } catch (e) {
       const msg = e instanceof Error && e.message.includes("주보를 생성")
@@ -175,10 +175,10 @@ export default function Bulletin() {
       });
   };
 
-  const sendDataToGoServer = async (pdfType: "print" | "presentation" | "both" = "both") => {
+  const sendDataToGoServer = async () => {
     try {
       setLoading(true);
-      setCurrentPdfType(pdfType);
+      setCurrentPdfType("presentation");
       processingRef.current = true;
       setWsMessage("");
       setWsLogs([]);
@@ -193,7 +193,6 @@ export default function Bulletin() {
         targetInfo: processedInfo,
         target: selectedWorshipType,
         email: userInfo.email,
-        pdfType,
       });
 
       if (!response.ok) throw new Error("서버 응답 실패");
@@ -237,7 +236,7 @@ export default function Bulletin() {
           {/* PDF + 프로젝터 버튼 — 모바일에서 한 줄 공유 */}
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
-              onClick={() => sendDataToGoServer("both")}
+              onClick={() => sendDataToGoServer()}
               disabled={loading}
               title="주보 PDF와 예배 PDF를 함께 생성하여 다운로드합니다"
               className="flex items-center gap-2 bg-pro-surface text-pro-text px-3 sm:px-4 h-9 rounded-lg font-bold text-sm border border-pro-border hover:bg-pro-hover transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-default"

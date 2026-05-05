@@ -16,7 +16,7 @@
 | `templateHandlers.go` | 예배 템플릿 관리 API |
 | `pdfHandlers.go` | 외부 PDF 업로드·Ghostscript 변환·슬라이드 제어·OBS Browser Source HTML |
 | `logoHandlers.go` | 교회 로고 업로드·서빙·삭제 (`data/logo.*`) — PNG/JPG/SVG 지원 |
-| `download.go` | PDF 다운로드·Desktop 저장·시스템 브라우저 열기 핸들러 (`open-display`, `open-mobile`, `open-print`) |
+| `download.go` | PDF 다운로드·Desktop 저장·시스템 브라우저 열기 핸들러 (`open-display`, `open-mobile`) |
 
 ## 로고 (`logoHandlers.go`)
 
@@ -36,7 +36,6 @@
 |--------|-----------|------|
 | `OpenDisplayInBrowserHandler` | `GET /api/open-display` | Display 페이지를 시스템 브라우저로 열기 |
 | `OpenMobileInBrowserHandler` | `GET /api/open-mobile` | 모바일 리모컨을 시스템 브라우저로 열기 |
-| `OpenPrintInBrowserHandler` | `GET /api/open-print` | 인쇄 페이지를 시스템 브라우저로 열기 |
 
 - `desktopDownloadDir == ""` 이면 403 (서버 모드에서 호출 불가)
 - Wails WebView에서 `<a target="_blank">` 가 동작하지 않으므로 fetch로 이 API 호출

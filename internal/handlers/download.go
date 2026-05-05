@@ -1,19 +1,15 @@
 package handlers
 
 import (
-	"bytes"
 	"encoding/json"
 	"easyPreparation_1.0/internal/path"
-	"easyPreparation_1.0/internal/utils"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 )
 
 // desktopDownloadDir — Desktop 모드에서 파일을 저장할 디렉터리 (비어있으면 비활성)
@@ -24,53 +20,18 @@ func SetDesktopMode(downloadDir string) {
 	desktopDownloadDir = downloadDir
 }
 
-// buildBulletinZip — target에 해당하는 PDF 파일들을 ZIP으로 묶어 반환합니다.
-func buildBulletinZip(execPath, target, pdfType string) ([]byte, error) {
-	exeTarget := fmt.Sprintf("%s.pdf", target)
-
-	var filePaths []string
-	var fileNames []string
-
-	includePresentation := pdfType == "" || pdfType == "presentation" || pdfType == "both"
-	includePrint := pdfType == "" || pdfType == "print" || pdfType == "both"
-
-	if includePresentation {
-		presPath := filepath.Join(execPath, "output", "bulletin", "presentation", exeTarget)
-		if _, err := os.Stat(presPath); err == nil {
-			filePaths = append(filePaths, presPath)
-			fileNames = append(fileNames, "presentation_"+exeTarget)
-		}
+// findPresentationPDF — target에 해당하는 프레젠테이션 PDF 경로를 반환합니다.
+func findPresentationPDF(execPath, target string) (string, error) {
+	pdfPath := filepath.Join(execPath, "output", "bulletin", "presentation", fmt.Sprintf("%s.pdf", target))
+	if _, err := os.Stat(pdfPath); err != nil {
+		return "", fmt.Errorf("PDF 파일이 없습니다: %s", target)
 	}
-
-	if includePrint {
-		printPath := filepath.Join(execPath, "output", "bulletin", "print", exeTarget)
-		if _, err := os.Stat(printPath); err == nil {
-			filePaths = append(filePaths, printPath)
-			fileNames = append(fileNames, "print_"+exeTarget)
-		}
-	}
-
-	if includePresentation && strings.HasPrefix(target, "sun_") {
-		datePart := strings.TrimPrefix(target, "sun_")
-		for _, pfx := range []string{"after", "wed"} {
-			extraName := fmt.Sprintf("%s_%s.pdf", pfx, datePart)
-			extraPath := filepath.Join(execPath, "output", "bulletin", "presentation", extraName)
-			if _, err := os.Stat(extraPath); err == nil {
-				filePaths = append(filePaths, extraPath)
-				fileNames = append(fileNames, pfx+"_presentation_"+extraName)
-			}
-		}
-	}
-
-	if len(filePaths) == 0 {
-		return nil, fmt.Errorf("생성된 PDF 파일이 없습니다")
-	}
-	return utils.CreateZipBufferFromFiles(filePaths, fileNames)
+	return pdfPath, nil
 }
 
+// DownloadPDFHandler — PDF 직접 서빙 (ZIP 아님)
 func DownloadPDFHandler(w http.ResponseWriter, r *http.Request) {
 	target := r.URL.Query().Get("target")
-	pdfType := r.URL.Query().Get("type")
 	execPath := path.ExecutePath("easyPreparation")
 
 	if target == "" {
@@ -78,43 +39,18 @@ func DownloadPDFHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 단일 타입 요청: ZIP 없이 PDF 직접 서빙
-	if pdfType == "print" || pdfType == "presentation" {
-		var subDir string
-		if pdfType == "print" {
-			subDir = "print"
-		} else {
-			subDir = "presentation"
-		}
-		pdfPath := filepath.Join(execPath, "output", "bulletin", subDir, fmt.Sprintf("%s.pdf", target))
-		if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
-			http.Error(w, "PDF 파일이 없습니다", http.StatusNotFound)
-			return
-		}
-		w.Header().Set("Content-Type", "application/pdf")
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s_%s.pdf\"", pdfType, target))
-		http.ServeFile(w, r, pdfPath)
-		return
-	}
-
-	// both 또는 기본: ZIP으로 묶어서 서빙
-	zipBytes, err := buildBulletinZip(execPath, target, pdfType)
+	pdfPath, err := findPresentationPDF(execPath, target)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/zip")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.zip", target))
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(zipBytes)))
-
-	if _, err = io.Copy(w, bytes.NewReader(zipBytes)); err != nil {
-		log.Printf("[download] Failed to write response: %v", err)
-	}
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s.pdf\"", target))
+	http.ServeFile(w, r, pdfPath)
 }
 
-// SaveToDownloadsHandler — Desktop 모드 전용: PDF ZIP을 ~/Downloads에 저장 후 폴더 열기
-// GET /api/save-to-downloads?target=202604_3
+// SaveToDownloadsHandler — Desktop 모드 전용: PDF를 ~/Downloads에 저장 후 폴더 열기
 func SaveToDownloadsHandler(w http.ResponseWriter, r *http.Request) {
 	if desktopDownloadDir == "" {
 		http.Error(w, "not desktop mode", http.StatusForbidden)
@@ -126,24 +62,29 @@ func SaveToDownloadsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pdfType := r.URL.Query().Get("type")
 	execPath := path.ExecutePath("easyPreparation")
-	zipBytes, err := buildBulletinZip(execPath, target, pdfType)
+	pdfPath, err := findPresentationPDF(execPath, target)
 	if err != nil {
-		log.Printf("[download] SaveToDownloads 빌드 실패: %v", err)
+		log.Printf("[download] SaveToDownloads PDF 없음: %v", err)
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
-	savePath := filepath.Join(desktopDownloadDir, target+".zip")
-	if err := os.WriteFile(savePath, zipBytes, 0644); err != nil {
+	// PDF 파일 복사
+	data, err := os.ReadFile(pdfPath)
+	if err != nil {
+		http.Error(w, "파일 읽기 실패: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	savePath := filepath.Join(desktopDownloadDir, target+".pdf")
+	if err := os.WriteFile(savePath, data, 0644); err != nil {
 		log.Printf("[download] SaveToDownloads 저장 실패: %v", err)
 		http.Error(w, "저장 실패: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Printf("[download] SaveToDownloads 저장 완료: %s (%d bytes)", savePath, len(zipBytes))
+	log.Printf("[download] SaveToDownloads 저장 완료: %s (%d bytes)", savePath, len(data))
 
-	// 폴더 열기 (OS별)
 	openFolder(filepath.Dir(savePath))
 
 	w.Header().Set("Content-Type", "application/json")
@@ -175,23 +116,11 @@ func openInBrowser(w http.ResponseWriter, targetURL string) {
 }
 
 // OpenDisplayInBrowserHandler — Desktop 모드: 시스템 브라우저에서 display 페이지 열기
-// GET /api/open-display
 func OpenDisplayInBrowserHandler(w http.ResponseWriter, r *http.Request) {
 	openInBrowser(w, "http://localhost:8080/display")
 }
 
-// OpenPrintInBrowserHandler — Desktop 모드: 시스템 브라우저에서 인쇄 페이지 열기
-// GET /api/open-print?autoprint=1
-func OpenPrintInBrowserHandler(w http.ResponseWriter, r *http.Request) {
-	url := "http://localhost:8080/display/print"
-	if r.URL.Query().Get("autoprint") == "1" {
-		url += "?autoprint=1"
-	}
-	openInBrowser(w, url)
-}
-
 // OpenMobileInBrowserHandler — Desktop 모드: 시스템 브라우저에서 모바일 리모컨 열기
-// GET /api/open-mobile
 func OpenMobileInBrowserHandler(w http.ResponseWriter, r *http.Request) {
 	openInBrowser(w, "http://localhost:8080/mobile")
 }

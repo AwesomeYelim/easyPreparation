@@ -25,7 +25,6 @@
 | `/display/overlay` | `DisplayOverlayHandler` | 방송 자막 오버레이 HTML |
 | `/display/stage` | `DisplayStageHandler` | 무대 모니터 HTML |
 | `/display/preview` | `DisplayPreviewHandler` | 씬 패널 미리보기 HTML (WS 없음, index 쿼리) |
-| `/display/print` | `HandleDisplayPrint` | 인쇄용 슬라이드 HTML |
 | `/display/video-bg/` | `VideoBgServeHandler` | 비디오 배경 파일 서빙 |
 | `/api/display-config` | `HandleDisplayConfigGet/Set` | Display 설정 GET/PUT |
 | `/api/video-bg/upload` | `VideoBgUploadHandler` | 비디오 파일 업로드 |
