@@ -27,3 +27,50 @@ jobs:
 
       - name: go smoke tests (with race detector)
         run: go test -race -tags dev ./internal/handlers/ -run TestSmoke -v
+
+  integration:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: 서버 빌드
+        run: go build -tags dev -o server_test${{ matrix.os == 'windows-latest' && '.exe' || '' }} ./cmd/server/
+
+      - name: 서버 실행 (백그라운드)
+        shell: bash
+        run: |
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            ./server_test.exe &
+          else
+            ./server_test &
+          fi
+          echo "SERVER_PID=$!" >> $GITHUB_ENV
+
+      - name: 헬스체크 대기
+        shell: bash
+        run: |
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:8080/api/health && exit 0
+            sleep 2
+          done
+          echo "서버 시작 타임아웃"
+          exit 1
+
+      - name: API 통합 테스트
+        run: go test -tags dev ./internal/handlers/ -run TestIntegration -v
+
+      - name: 서버 종료
+        if: always()
+        shell: bash
+        run: |
+          if [[ -n "${SERVER_PID}" ]]; then
+            kill "${SERVER_PID}" 2>/dev/null || true
+          fi

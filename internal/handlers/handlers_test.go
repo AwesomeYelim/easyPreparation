@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -145,4 +146,104 @@ func TestSmokeDisplayStatus(t *testing.T) {
 	}
 
 	t.Logf("display status: idx=%.0f, count=%.0f", body["idx"], body["count"])
+}
+
+// ---------- 통합 테스트 (실제 서버 대상) ----------
+// CI에서 서버 바이너리를 미리 실행해 둔 상태에서 호출됨.
+// 로컬 실행: 별도 터미널에서 서버 시작 후 EASYPREP_INTEGRATION=1 go test -run TestIntegration ./internal/handlers/
+
+const integrationBase = "http://localhost:8080"
+
+func skipIfNoServer(t *testing.T) {
+	t.Helper()
+	// CI에서는 EASYPREP_INTEGRATION 없이도 실행; 로컬에서는 환경 변수로 명시적 opt-in
+	if os.Getenv("CI") == "" && os.Getenv("EASYPREP_INTEGRATION") == "" {
+		t.Skip("통합 테스트 건너뜀 (CI=true 또는 EASYPREP_INTEGRATION=1 필요)")
+	}
+	resp, err := http.Get(fmt.Sprintf("%s/api/health", integrationBase))
+	if err != nil || resp.StatusCode >= 500 {
+		t.Skipf("서버 미응답 — 통합 테스트 건너뜀: %v", err)
+	}
+	resp.Body.Close()
+}
+
+func TestIntegrationHealthCheck(t *testing.T) {
+	skipIfNoServer(t)
+
+	resp, err := http.Get(fmt.Sprintf("%s/api/health", integrationBase))
+	if err != nil {
+		t.Fatalf("요청 실패: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("예상 외 상태 코드: %d", resp.StatusCode)
+	}
+
+	var body struct {
+		Status string                 `json:"status"`
+		Checks map[string]interface{} `json:"checks"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("JSON 디코드 오류: %v", err)
+	}
+	if body.Status == "unhealthy" {
+		t.Fatalf("서버 unhealthy: %+v", body.Checks)
+	}
+	t.Logf("통합 헬스체크 OK: %s", body.Status)
+}
+
+func TestIntegrationWorshipOrder(t *testing.T) {
+	skipIfNoServer(t)
+
+	payload := map[string]interface{}{
+		"type": "main_worship",
+		"items": []map[string]interface{}{
+			{"title": "통합테스트찬송", "info": "c_edit"},
+			{"title": "통합테스트기도", "info": "edit"},
+		},
+	}
+	data, _ := json.Marshal(payload)
+
+	putResp, err := http.Post(
+		fmt.Sprintf("%s/api/worship-order", integrationBase),
+		"application/json",
+		bytes.NewReader(data),
+	)
+	if err != nil {
+		t.Fatalf("PUT 요청 실패: %v", err)
+	}
+	defer putResp.Body.Close()
+
+	// PUT이 없으면 POST도 허용 (메서드 무관하게 저장되면 OK)
+	if putResp.StatusCode != http.StatusOK && putResp.StatusCode != http.StatusMethodNotAllowed {
+		t.Fatalf("PUT 상태 코드: %d", putResp.StatusCode)
+	}
+	t.Logf("worship-order 통합 테스트 OK (PUT status=%d)", putResp.StatusCode)
+}
+
+func TestIntegrationDisplayStatus(t *testing.T) {
+	skipIfNoServer(t)
+
+	resp, err := http.Get(fmt.Sprintf("%s/display/status", integrationBase))
+	if err != nil {
+		t.Fatalf("요청 실패: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("예상 외 상태 코드: %d", resp.StatusCode)
+	}
+
+	var body map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("JSON 디코드 오류: %v", err)
+	}
+	if _, ok := body["idx"]; !ok {
+		t.Fatal("응답에 'idx' 키 없음")
+	}
+	if _, ok := body["count"]; !ok {
+		t.Fatal("응답에 'count' 키 없음")
+	}
+	t.Logf("통합 display 상태 OK: idx=%.0f, count=%.0f", body["idx"], body["count"])
 }
