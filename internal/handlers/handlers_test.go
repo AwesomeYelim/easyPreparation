@@ -161,10 +161,14 @@ func skipIfNoServer(t *testing.T) {
 		t.Skip("통합 테스트 건너뜀 (CI=true 또는 EASYPREP_INTEGRATION=1 필요)")
 	}
 	resp, err := http.Get(fmt.Sprintf("%s/api/health", integrationBase))
-	if err != nil || resp.StatusCode >= 500 {
+	if err != nil {
 		t.Skipf("서버 미응답 — 통합 테스트 건너뜀: %v", err)
 	}
 	resp.Body.Close()
+	// 200(healthy/degraded) 또는 503(unhealthy — config 없음)도 서버가 살아있음을 의미
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusServiceUnavailable {
+		t.Skipf("서버 이상 상태 — 통합 테스트 건너뜀: HTTP %d", resp.StatusCode)
+	}
 }
 
 func TestIntegrationHealthCheck(t *testing.T) {
