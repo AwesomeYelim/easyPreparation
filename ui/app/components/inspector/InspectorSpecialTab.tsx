@@ -276,25 +276,22 @@ function ThumbnailCanvasPreview({
       </div>
 
       {/* 로고 */}
-      {logoUrl && (
-        <div
-          className="absolute pointer-events-none"
-          style={{
-            ...(logoPosition?.startsWith("top") ? { top: "2%" } : { bottom: "2%" }),
-            ...(logoPosition?.endsWith("right") ? { right: "2%" } : { left: "2%" }),
-          }}
-        >
+      {logoUrl && (() => {
+        const isTop = logoPosition?.startsWith("top");
+        const isRight = logoPosition?.endsWith("right");
+        return (
           <img
             src={logoUrl}
             alt="logo"
-            className="object-contain opacity-90"
-            style={{
-              height: `${Math.max(5, (logoSizePercent || 12) * 0.5)}cqh`,
-              maxWidth: `${(logoSizePercent || 12) * 2.5}cqw`,
-            }}
+            className={`absolute pointer-events-none object-contain opacity-90 ${
+              isTop ? "top-[3%]" : "bottom-[3%]"
+            } ${
+              isRight ? "right-[3%]" : "left-[3%]"
+            }`}
+            style={{ width: `${logoSizePercent || 12}%` }}
           />
-        </div>
-      )}
+        );
+      })()}
 
       {/* 편집 힌트 */}
       {!editingArea && (
@@ -668,8 +665,8 @@ export default function InspectorSpecialTab() {
         onAreaClick={setActiveArea}
         onTextEdit={(area, text) => setTextOverrides((prev) => ({ ...prev, [area]: text }))}
         logoUrl={`${BASE_URL}/api/logo`}
-        logoPosition={thumbConfig.logoPosition || "bottom-right"}
-        logoSizePercent={thumbConfig.logoSizePercent || 12}
+        logoPosition={thumbLogoPos}
+        logoSizePercent={thumbConfig.logoSizePercent ?? 12}
       />
 
       {/* 선택된 영역 설정 패널 */}
@@ -714,70 +711,11 @@ export default function InspectorSpecialTab() {
 
       <div className="h-px bg-white/10" />
 
-      {/* ── 텍스트 스타일 (3영역 전체 — 클릭 안 했을 때 표시) ── */}
+      {/* 텍스트 스타일 — 선택 안 했을 때 안내만 */}
       {!activeArea && (
-        <>
-          <div className="text-[10px] font-semibold text-[#ccc]">텍스트 스타일</div>
-          {(["header", "main", "footer"] as const).map((key) => {
-            const labels = { header: "헤더", main: "제목", footer: "푸터" };
-            const sizeRanges = {
-              header: { min: 20, max: 80 },
-              main: { min: 40, max: 200 },
-              footer: { min: 20, max: 80 },
-            };
-            const fontOptions = [
-              { value: "NanumBrush", label: "나눔손글씨 붓" },
-              { value: "NanumGothic", label: "나눔고딕" },
-              { value: "NanumGothicBold", label: "나눔고딕 Bold" },
-              { value: "JacquesFrancois", label: "Jacques Francois" },
-            ];
-            const { min: minSize, max: maxSize } = sizeRanges[key];
-            return (
-              <div
-                key={key}
-                className="flex flex-col gap-1 px-2 py-1.5 bg-white/5 rounded border border-white/10 cursor-pointer hover:border-white/20 transition-colors"
-                onClick={() => setActiveArea(key)}
-              >
-                <div className="text-[10px] font-medium text-[#aaa]">{labels[key]}</div>
-                <div className="flex items-center gap-1.5">
-                  <select
-                    value={ts[key]?.fontName || "NanumBrush"}
-                    onChange={(e) => { e.stopPropagation(); updateStyle(key, "fontName", e.target.value); }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex-1 px-1.5 py-0.5 border border-white/20 rounded text-[10px] bg-white/10 text-white outline-none"
-                  >
-                    {fontOptions.map((f) => (
-                      <option key={f.value} value={f.value} className="bg-[#2c2c2c]">{f.label}</option>
-                    ))}
-                  </select>
-                  <input
-                    type="color"
-                    value={ts[key]?.color || "#ffffff"}
-                    onChange={(e) => updateStyle(key, "color", e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-6 h-6 p-0 border border-white/20 rounded cursor-pointer bg-transparent"
-                    title="텍스트 색상"
-                  />
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[9px] text-[#888] w-8 text-right">
-                    {Math.round(ts[key]?.size || DEFAULT_TEXT_STYLES[key].size!)}px
-                  </span>
-                  <input
-                    type="range"
-                    min={minSize}
-                    max={maxSize}
-                    step={1}
-                    value={ts[key]?.size || DEFAULT_TEXT_STYLES[key].size}
-                    onChange={(e) => updateStyle(key, "size", Number(e.target.value))}
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex-1 accent-[#4a9eff]"
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </>
+        <div className="text-[10px] text-[#666] text-center py-2">
+          캔버스에서 텍스트를 클릭하여 스타일 편집
+        </div>
       )}
 
       {/* 썸네일 로고 */}
