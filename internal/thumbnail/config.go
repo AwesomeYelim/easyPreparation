@@ -3,13 +3,106 @@ package thumbnail
 import (
 	"encoding/json"
 	"fmt"
+	"image/color"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"easyPreparation_1.0/internal/path"
 )
+
+// TextStyle — 개별 텍스트 영역 스타일
+type TextStyle struct {
+	FontName string  `json:"fontName,omitempty"`
+	Size     float64 `json:"size,omitempty"`
+	Color    string  `json:"color,omitempty"`
+}
+
+// TextStyles — 3영역 텍스트 스타일
+type TextStyles struct {
+	Header TextStyle `json:"header"`
+	Main   TextStyle `json:"main"`
+	Footer TextStyle `json:"footer"`
+}
+
+// DefaultTextStyles — 기본 텍스트 스타일
+func DefaultTextStyles() *TextStyles {
+	return &TextStyles{
+		Header: TextStyle{FontName: "NanumBrush", Size: 50, Color: "#ffffff"},
+		Main:   TextStyle{FontName: "NanumBrush", Size: 100, Color: "#ffffff"},
+		Footer: TextStyle{FontName: "NanumBrush", Size: 45, Color: "#ffffff"},
+	}
+}
+
+// EffectiveTextStyles — TextStyles가 nil이면 기본값, 기존 FontName 있으면 3영역에 적용, 개별 필드 비어있으면 기본값 보충
+func (c *ThumbnailConfig) EffectiveTextStyles() *TextStyles {
+	defaults := DefaultTextStyles()
+
+	// 기존 FontName이 있으면 3영역에 모두 적용
+	if c.FontName != "" {
+		defaults.Header.FontName = c.FontName
+		defaults.Main.FontName = c.FontName
+		defaults.Footer.FontName = c.FontName
+	}
+
+	if c.TextStyles == nil {
+		return defaults
+	}
+
+	ts := *c.TextStyles
+
+	// Header 보충
+	if ts.Header.FontName == "" {
+		ts.Header.FontName = defaults.Header.FontName
+	}
+	if ts.Header.Size == 0 {
+		ts.Header.Size = defaults.Header.Size
+	}
+	if ts.Header.Color == "" {
+		ts.Header.Color = defaults.Header.Color
+	}
+
+	// Main 보충
+	if ts.Main.FontName == "" {
+		ts.Main.FontName = defaults.Main.FontName
+	}
+	if ts.Main.Size == 0 {
+		ts.Main.Size = defaults.Main.Size
+	}
+	if ts.Main.Color == "" {
+		ts.Main.Color = defaults.Main.Color
+	}
+
+	// Footer 보충
+	if ts.Footer.FontName == "" {
+		ts.Footer.FontName = defaults.Footer.FontName
+	}
+	if ts.Footer.Size == 0 {
+		ts.Footer.Size = defaults.Footer.Size
+	}
+	if ts.Footer.Color == "" {
+		ts.Footer.Color = defaults.Footer.Color
+	}
+
+	return &ts
+}
+
+// ParseHexColor — "#ffffff" → color.RGBA, 실패 시 white fallback
+func ParseHexColor(hex string) color.Color {
+	hex = strings.TrimPrefix(hex, "#")
+	if len(hex) != 6 {
+		return color.White
+	}
+	r, err1 := strconv.ParseUint(hex[0:2], 16, 8)
+	g, err2 := strconv.ParseUint(hex[2:4], 16, 8)
+	b, err3 := strconv.ParseUint(hex[4:6], 16, 8)
+	if err1 != nil || err2 != nil || err3 != nil {
+		return color.White
+	}
+	return color.RGBA{R: uint8(r), G: uint8(g), B: uint8(b), A: 255}
+}
 
 // ThumbnailConfig — 썸네일 전체 설정
 type ThumbnailConfig struct {
@@ -18,6 +111,7 @@ type ThumbnailConfig struct {
 	FontName        string                  `json:"fontName,omitempty"`
 	LogoPosition    string                  `json:"logoPosition,omitempty"`    // "bottom-right" | "bottom-left" | "top-right" | "top-left"
 	LogoSizePercent float64                 `json:"logoSizePercent,omitempty"` // 5~30 (캔버스 폭 %), 0=없음
+	TextStyles      *TextStyles             `json:"textStyles,omitempty"`
 }
 
 // DefaultTheme — 예배 유형별 기본 테마

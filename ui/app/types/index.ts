@@ -113,12 +113,25 @@ export type SpecialDate = {
   titleOverride: string;
 };
 
+export type TextStyle = {
+  fontName?: string;
+  size?: number;
+  color?: string;
+};
+
+export type TextStyles = {
+  header: TextStyle;
+  main: TextStyle;
+  footer: TextStyle;
+};
+
 export type ThumbnailConfig = {
   defaults: Record<string, DefaultTheme>;
   specials: SpecialDate[];
   fontName?: string;
   logoPosition?: string;     // "bottom-right" | "bottom-left" | "top-right" | "top-left"
   logoSizePercent?: number;  // 0~30 (0=없음)
+  textStyles?: TextStyles;
 };
 
 export type YouTubeStatus = {

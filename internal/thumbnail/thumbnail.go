@@ -36,7 +36,8 @@ type GenerateConfig struct {
 	LogoPosition    string  // "top-left" | "top-right" | "bottom-left" | "bottom-right"
 	LogoSizePercent float64 // 5~30 (캔버스 폭 %)
 
-	FontName string // 폰트명 (빈 값 → NanumBrush 기본)
+	FontName   string      // 폰트명 (빈 값 → NanumBrush 기본) — legacy
+	TextStyles *TextStyles  // 영역별 텍스트 스타일 (nil이면 기본값)
 
 	OutputPath string // 출력 경로
 	Width      int    // 1280 (YouTube 표준)
@@ -82,55 +83,84 @@ func Generate(cfg GenerateConfig) (string, error) {
 	overlay := image.NewUniform(color.RGBA{0, 0, 0, 76})
 	draw.Draw(canvas, canvas.Bounds(), overlay, image.Point{}, draw.Over)
 
-	// 5. 폰트 로드
-	f, err := loadFontByName(cfg.FontName)
+	// 5. TextStyles 결정
+	ts := cfg.TextStyles
+	if ts == nil {
+		ts = DefaultTextStyles()
+	}
+
+	// 폰트 캐시 — 동일 폰트명은 한 번만 로드
+	fontCache := map[string]*truetype.Font{}
+	loadFont := func(name string) (*truetype.Font, error) {
+		if f, ok := fontCache[name]; ok {
+			return f, nil
+		}
+		f, err := loadFontByName(name)
+		if err != nil {
+			return nil, err
+		}
+		fontCache[name] = f
+		return f, nil
+	}
+
+	headerFont, err := loadFont(ts.Header.FontName)
+	if err != nil {
+		return "", err
+	}
+	mainFont, err := loadFont(ts.Main.FontName)
+	if err != nil {
+		return "", err
+	}
+	footerFont, err := loadFont(ts.Footer.FontName)
 	if err != nil {
 		return "", err
 	}
 
-	white := color.Color(color.White)
+	headerColor := ParseHexColor(ts.Header.Color)
+	mainColor := ParseHexColor(ts.Main.Color)
+	footerColor := ParseHexColor(ts.Footer.Color)
 	shadowColor := color.Color(color.RGBA{0, 0, 0, 180})
 
 	// 6. 텍스트 렌더링 — 항상 주일예배 스타일 사용
 	if effectiveDateLabel != "" {
-		// 상단 소 (50px), Y = Height * 0.12
+		// 상단 소, Y = Height * 0.12
 		dateY := int(float64(cfg.Height) * 0.12)
-		drawTextCenteredReturnPos(canvas, f, effectiveDateLabel, 50.0, cfg.Width, dateY+1, shadowColor)
-		drawTextCenteredReturnPos(canvas, f, effectiveDateLabel, 50.0, cfg.Width, dateY, white)
+		drawTextCenteredReturnPos(canvas, headerFont, effectiveDateLabel, ts.Header.Size, cfg.Width, dateY+1, shadowColor)
+		drawTextCenteredReturnPos(canvas, headerFont, effectiveDateLabel, ts.Header.Size, cfg.Width, dateY, headerColor)
 
 		// 구분선
-		face50 := truetype.NewFace(f, &truetype.Options{Size: 50.0, DPI: 72})
-		tw := measureString(face50, effectiveDateLabel)
-		face50.Close()
+		faceHeader := truetype.NewFace(headerFont, &truetype.Options{Size: ts.Header.Size, DPI: 72})
+		tw := measureString(faceHeader, effectiveDateLabel)
+		faceHeader.Close()
 		cx := cfg.Width / 2
 		textLeft := cx - tw/2
 		textRight := cx + tw/2
 		gap := 20
 		lineY := dateY - 25
 		if textLeft-gap > 40 {
-			drawHLine(canvas, 40, textLeft-gap, lineY, white)
-			drawHLine(canvas, 40, textLeft-gap, lineY+1, white)
+			drawHLine(canvas, 40, textLeft-gap, lineY, headerColor)
+			drawHLine(canvas, 40, textLeft-gap, lineY+1, headerColor)
 		}
 		if textRight+gap < cfg.Width-40 {
-			drawHLine(canvas, textRight+gap, cfg.Width-40, lineY, white)
-			drawHLine(canvas, textRight+gap, cfg.Width-40, lineY+1, white)
+			drawHLine(canvas, textRight+gap, cfg.Width-40, lineY, headerColor)
+			drawHLine(canvas, textRight+gap, cfg.Width-40, lineY+1, headerColor)
 		}
 	}
 
 	if effectiveSermonTitle != "" {
-		// 중앙 대 (100px), Y = Height/2 + 20
+		// 중앙 대, Y = Height/2 + 20
 		sermonY := cfg.Height/2 + 20
-		drawTextCenteredWithShadow(canvas, f, effectiveSermonTitle, 100.0, cfg.Width, sermonY, white, shadowColor)
+		drawTextCenteredWithShadow(canvas, mainFont, effectiveSermonTitle, ts.Main.Size, cfg.Width, sermonY, mainColor, shadowColor)
 	} else if effectiveDateLabel != "" {
 		// 말씀 제목이 없을 때: 날짜/예배명을 중앙에 크게
 		titleY := cfg.Height/2 + 20
-		drawTextCenteredWithShadow(canvas, f, effectiveDateLabel, 100.0, cfg.Width, titleY, white, shadowColor)
+		drawTextCenteredWithShadow(canvas, mainFont, effectiveDateLabel, ts.Main.Size, cfg.Width, titleY, mainColor, shadowColor)
 	}
 
 	if effectiveScripture != "" {
-		// 하단 소 (45px), Y = Height * 0.88
+		// 하단 소, Y = Height * 0.88
 		scriptureY := int(float64(cfg.Height) * 0.88)
-		drawTextCentered(canvas, f, effectiveScripture, 45.0, cfg.Width, scriptureY, color.White, 0)
+		drawTextCentered(canvas, footerFont, effectiveScripture, ts.Footer.Size, cfg.Width, scriptureY, footerColor, 0)
 	}
 
 	// 7. 로고 오버레이

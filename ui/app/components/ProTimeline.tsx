@@ -75,7 +75,6 @@ export default function ProTimeline() {
   const [editingTotal, setEditingTotal] = useState(false);
   const [totalEditValue, setTotalEditValue] = useState("");
 
-  const autoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
   // items/itemTimers는 ref로 최신값만 참조 — 변경 시 카운트다운 재시작 방지
@@ -85,11 +84,15 @@ export default function ProTimeline() {
   itemTimersRef.current = itemTimers;
   const { subscribe } = useWS();
 
-  // ── WS: 현재 위치 추적 ──
+  // ── WS: 현재 위치 + 서버 타이머 상태 추적 ──
   useEffect(() => {
     return subscribe((msg: any) => {
       if (msg.type === "position" && typeof msg.idx === "number") {
         setCurrentIdx(msg.idx);
+      }
+      if (msg.type === "timer_state") {
+        setAutoEnabled(!!msg.enabled);
+        setAutoCountdown(msg.countdown ?? 0);
       }
     });
   }, [subscribe]);
@@ -113,47 +116,6 @@ export default function ProTimeline() {
     (key: string) => itemTimers[key] || DEFAULT_SECS,
     [itemTimers]
   );
-
-  // ── 자동 진행 ──
-  // deps: autoEnabled, currentIdx 만 — items/itemTimers 변경은 ref로 처리해
-  // WS "order" 메시지나 타이머 편집이 카운트다운을 재시작하지 않도록 한다
-  useEffect(() => {
-    if (autoIntervalRef.current) { clearInterval(autoIntervalRef.current); autoIntervalRef.current = null; }
-    if (!autoEnabled) { setAutoCountdown(0); return; }
-
-    const curItems = itemsRef.current;
-    if (curItems.length === 0) { setAutoCountdown(0); return; }
-
-    // 마지막 씬에서 AUTO를 켜면 → 첫 씬으로 이동 후 effect 재실행
-    if (currentIdx >= curItems.length - 1) {
-      apiClient.jumpDisplay(0);
-      setCurrentIdx(0);
-      return;
-    }
-
-    const item = curItems[currentIdx];
-    if (!item) { setAutoCountdown(0); return; }
-    const secs = (itemTimersRef.current[item.key] ?? DEFAULT_SECS);
-    if (secs <= 0) { setAutoCountdown(0); return; }
-
-    console.info(`[AUTO] idx=${currentIdx}/${curItems.length-1} key=${item.key} secs=${secs}`);
-
-    let remaining = secs;
-    setAutoCountdown(remaining);
-
-    autoIntervalRef.current = setInterval(() => {
-      remaining -= 1;
-      setAutoCountdown(remaining);
-      if (remaining <= 0) {
-        if (autoIntervalRef.current) { clearInterval(autoIntervalRef.current); autoIntervalRef.current = null; }
-        apiClient.navigateDisplay("next");
-        const len = itemsRef.current.length;
-        setCurrentIdx((ci) => Math.min(ci + 1, len - 1));
-      }
-    }, 1000);
-
-    return () => { if (autoIntervalRef.current) { clearInterval(autoIntervalRef.current); autoIntervalRef.current = null; } };
-  }, [autoEnabled, currentIdx]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalSecs = items.reduce((sum, item) => sum + getEffectiveSecs(item.key), 0);
   // serviceStart가 없을 때 Date.now() 사용 금지 → 하이드레이션 불일치 방지
@@ -323,7 +285,7 @@ export default function ProTimeline() {
                 ? "bg-pro-accent/20 text-pro-accent"
                 : "text-[#555] hover:text-[#888] hover:bg-white/5"
             }`}
-            onClick={() => setAutoEnabled((v) => !v)}
+            onClick={() => { apiClient.timerControl("toggle"); setAutoEnabled((v) => !v); }}
             title="자동 진행 ON/OFF"
           >
             AUTO
@@ -335,7 +297,15 @@ export default function ProTimeline() {
                 ? "bg-red-600/20 text-red-400 hover:bg-red-600/30"
                 : "text-[#555] hover:text-[#888] hover:bg-white/5"
             }`}
-            onClick={() => setServiceStart(serviceStart !== null ? null : Date.now())}
+            onClick={() => {
+              if (serviceStart !== null) {
+                setServiceStart(null);
+                apiClient.timerControl("disable");
+              } else {
+                setServiceStart(Date.now());
+                apiClient.timerControl("enable");
+              }
+            }}
             title={serviceStart !== null ? "서비스 타이머 리셋" : "서비스 시작 (경과 시간 측정 시작)"}
           >
             {serviceStart !== null ? "■" : "▶"}

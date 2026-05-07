@@ -39,13 +39,15 @@ func (r *Release) FindAsset() *ReleaseAsset {
 	var candidates []string
 	if goos == "windows" {
 		candidates = []string{
-			fmt.Sprintf("easyPreparation_desktop_%s_%s.exe", goos, goarch),  // desktop raw exe (우선)
-			fmt.Sprintf("easyPreparation_server_%s_%s.exe", goos, goarch),   // server fallback
-			fmt.Sprintf("easyPreparation_%s_%s.exe", goos, goarch),          // legacy
+			fmt.Sprintf("easyPreparation_desktop_%s_%s_setup.exe", goos, goarch), // NSIS installer (우선)
+			fmt.Sprintf("easyPreparation_desktop_%s_%s.exe", goos, goarch),       // desktop raw exe
+			fmt.Sprintf("easyPreparation_server_%s_%s.exe", goos, goarch),        // server fallback
+			fmt.Sprintf("easyPreparation_%s_%s.exe", goos, goarch),               // legacy
 		}
 	} else {
 		candidates = []string{
 			fmt.Sprintf("easyPreparation_server_%s_%s", goos, goarch),
+			fmt.Sprintf("easyPreparation_desktop_%s_%s.dmg", goos, goarch), // macOS DMG
 			fmt.Sprintf("easyPreparation_desktop_%s_%s.zip", goos, goarch),
 			fmt.Sprintf("easyPreparation_desktop_%s_%s", goos, goarch),
 			fmt.Sprintf("easyPreparation_%s_%s", goos, goarch), // legacy

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { apiClient } from "@/lib/apiClient";
-import { ThumbnailConfig } from "@/types";
+import { ThumbnailConfig, TextStyles, TextStyle } from "@/types";
 import { useAutoSave } from "./useAutoSave";
 import DarkImageDropZone from "./DarkImageDropZone";
 
@@ -285,20 +285,79 @@ export default function InspectorSpecialTab() {
 
   return (
     <div className="flex flex-col gap-3">
-      {/* 폰트 선택 */}
-      <div className="text-[10px] font-semibold text-[#ccc]">썸네일 폰트</div>
-      <select
-        value={(thumbConfig as any).fontName || "NanumBrush"}
-        onChange={(e) =>
-          setThumbConfig((prev) => (prev ? { ...(prev as any), fontName: e.target.value } : prev))
-        }
-        className="w-full px-2 py-1 border border-white/20 rounded-md text-[10px] bg-white/10 text-white outline-none"
-      >
-        <option value="NanumBrush">나눔손글씨 붓 (기본)</option>
-        <option value="NanumGothic">나눔고딕</option>
-        <option value="NanumGothicBold">나눔고딕 Bold</option>
-        <option value="JacquesFrancois">Jacques François</option>
-      </select>
+      {/* 텍스트 스타일 (3영역) */}
+      <div className="text-[10px] font-semibold text-[#ccc]">텍스트 스타일</div>
+      {(() => {
+        const defaultStyles: TextStyles = {
+          header: { fontName: "NanumBrush", size: 50, color: "#ffffff" },
+          main: { fontName: "NanumBrush", size: 100, color: "#ffffff" },
+          footer: { fontName: "NanumBrush", size: 45, color: "#ffffff" },
+        };
+        const ts: TextStyles = thumbConfig.textStyles ?? defaultStyles;
+        const updateStyle = (area: keyof TextStyles, field: keyof TextStyle, value: string | number) => {
+          setThumbConfig((prev) => {
+            if (!prev) return prev;
+            const current = prev.textStyles ?? defaultStyles;
+            return {
+              ...prev,
+              textStyles: {
+                ...current,
+                [area]: { ...current[area], [field]: value },
+              },
+            };
+          });
+        };
+        const fontOptions = [
+          { value: "NanumBrush", label: "나눔손글씨 붓" },
+          { value: "NanumGothic", label: "나눔고딕" },
+          { value: "NanumGothicBold", label: "나눔고딕 Bold" },
+          { value: "JacquesFrancois", label: "Jacques François" },
+        ];
+        const areas: { key: keyof TextStyles; label: string; minSize: number; maxSize: number }[] = [
+          { key: "header", label: "헤더", minSize: 20, maxSize: 80 },
+          { key: "main", label: "제목", minSize: 40, maxSize: 200 },
+          { key: "footer", label: "푸터", minSize: 20, maxSize: 80 },
+        ];
+        return (
+          <div className="flex flex-col gap-2">
+            {areas.map(({ key, label, minSize, maxSize }) => (
+              <div key={key} className="flex flex-col gap-1 px-2 py-1.5 bg-white/5 rounded border border-white/10">
+                <div className="text-[10px] font-medium text-[#aaa]">{label}</div>
+                <div className="flex items-center gap-1.5">
+                  <select
+                    value={ts[key]?.fontName || "NanumBrush"}
+                    onChange={(e) => updateStyle(key, "fontName", e.target.value)}
+                    className="flex-1 px-1.5 py-0.5 border border-white/20 rounded text-[10px] bg-white/10 text-white outline-none"
+                  >
+                    {fontOptions.map((f) => (
+                      <option key={f.value} value={f.value} className="bg-[#2c2c2c]">{f.label}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="color"
+                    value={ts[key]?.color || "#ffffff"}
+                    onChange={(e) => updateStyle(key, "color", e.target.value)}
+                    className="w-6 h-6 p-0 border border-white/20 rounded cursor-pointer bg-transparent"
+                    title="텍스트 색상"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] text-[#888] w-8 text-right">{Math.round(ts[key]?.size || defaultStyles[key].size!)}px</span>
+                  <input
+                    type="range"
+                    min={minSize}
+                    max={maxSize}
+                    step={1}
+                    value={ts[key]?.size || defaultStyles[key].size}
+                    onChange={(e) => updateStyle(key, "size", Number(e.target.value))}
+                    className="flex-1 accent-[#4a9eff]"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* 썸네일 로고 */}
       <div className="mt-3">

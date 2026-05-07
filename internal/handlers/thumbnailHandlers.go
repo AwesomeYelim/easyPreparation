@@ -286,6 +286,7 @@ func generateThumbnail(worshipType string, date time.Time) (string, error) {
 		LogoPosition:    logoPosition,
 		LogoSizePercent: logoSizePercent,
 		FontName:        cfg.FontName,
+		TextStyles:      cfg.EffectiveTextStyles(),
 		OutputPath:      outPath,
 		Width:           1280,
 		Height:          720,
