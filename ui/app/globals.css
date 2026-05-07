@@ -5,6 +5,36 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Thumbnail Preview Fonts ── */
+@font-face {
+  font-family: 'NanumBrush';
+  src: url('/font/NanumBrush.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'NanumGothic';
+  src: url('/font/NanumGothic-regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'NanumGothicBold';
+  src: url('/font/NanumGothic-800.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JacquesFrancois';
+  src: url('/font/JacquesFrancois-regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ── Material Symbols ── */
 .material-symbols-outlined {
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;

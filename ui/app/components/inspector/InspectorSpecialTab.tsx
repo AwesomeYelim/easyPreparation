@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useRecoilValue } from "recoil";
 import { apiClient } from "@/lib/apiClient";
-import { ThumbnailConfig, TextStyles, TextStyle } from "@/types";
+import { ThumbnailConfig, TextStyles, TextStyle, WorshipOrderItem } from "@/types";
+import { worshipOrderState, WorshipType } from "@/recoilState";
 import { useAutoSave } from "./useAutoSave";
 import DarkImageDropZone from "./DarkImageDropZone";
 
@@ -16,6 +18,22 @@ const WORSHIP_LABELS: Record<string, string> = {
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   (typeof window !== "undefined" ? window.location.origin : "http://localhost:8080");
+
+/** Go 폰트명 -> CSS font-family */
+const FONT_CSS_MAP: Record<string, { family: string; weight?: number }> = {
+  NanumBrush: { family: "'NanumBrush', cursive" },
+  NanumGothic: { family: "'NanumGothic', sans-serif" },
+  NanumGothicBold: { family: "'NanumGothicBold', sans-serif", weight: 800 },
+  JacquesFrancois: { family: "'JacquesFrancois', serif" },
+};
+
+const DEFAULT_TEXT_STYLES: TextStyles = {
+  header: { fontName: "NanumBrush", size: 50, color: "#ffffff" },
+  main: { fontName: "NanumBrush", size: 100, color: "#ffffff" },
+  footer: { fontName: "NanumBrush", size: 45, color: "#ffffff" },
+};
+
+type ActiveArea = "header" | "main" | "footer";
 
 /* ── 생성된 썸네일 섹션 ── */
 function GeneratedThumbnailSection({
@@ -72,7 +90,6 @@ function GeneratedThumbnailSection({
           key={item.filename}
           className="flex items-center gap-2 px-2 py-1.5 bg-white/5 rounded border border-white/10 hover:border-white/20 transition-colors"
         >
-          {/* 썸네일 미리보기 이미지 */}
           <a href={item.url} target="_blank" rel="noreferrer" className="flex-shrink-0" title="원본 보기">
             <img
               src={item.url}
@@ -105,9 +122,177 @@ function GeneratedThumbnailSection({
   );
 }
 
+/* ── 캔버스 프리뷰 컴포넌트 ── */
+function ThumbnailCanvasPreview({
+  bgUrl,
+  dateLabel,
+  sermonTitle,
+  scripture,
+  textStyles,
+  activeArea,
+  onAreaClick,
+}: {
+  bgUrl: string;
+  dateLabel: string;
+  sermonTitle: string;
+  scripture: string;
+  textStyles: TextStyles;
+  activeArea: ActiveArea | null;
+  onAreaClick: (area: ActiveArea) => void;
+}) {
+  const canvasRef = useRef<HTMLDivElement>(null);
+
+  /** px -> container query 비율로 변환 (1280px 기준) */
+  const pxToScale = (px: number) => `${(px / 1280) * 100}cqw`;
+
+  const cssForArea = (area: keyof TextStyles) => {
+    const style = textStyles[area] ?? DEFAULT_TEXT_STYLES[area];
+    const fontMap = FONT_CSS_MAP[style.fontName || "NanumBrush"] ?? FONT_CSS_MAP.NanumBrush;
+    return {
+      fontFamily: fontMap.family,
+      fontWeight: fontMap.weight ?? "normal",
+      fontSize: pxToScale(style.size || DEFAULT_TEXT_STYLES[area].size!),
+      color: style.color || "#ffffff",
+      textShadow: "1px 1px 3px rgba(0,0,0,0.7), 0 0 8px rgba(0,0,0,0.4)",
+    } as React.CSSProperties;
+  };
+
+  const borderClass = (area: ActiveArea) =>
+    activeArea === area
+      ? "outline outline-2 outline-[#4a9eff] outline-offset-2 rounded"
+      : "hover:outline hover:outline-1 hover:outline-white/30 hover:outline-offset-2 hover:rounded";
+
+  // 메인 영역에 표시할 텍스트: sermonTitle 있으면 sermonTitle, 없으면 dateLabel
+  const mainText = sermonTitle || dateLabel;
+
+  return (
+    <div
+      ref={canvasRef}
+      className="relative w-full aspect-video bg-cover bg-center rounded-lg overflow-hidden border border-white/20"
+      style={{
+        backgroundImage: `url(${bgUrl})`,
+        containerType: "inline-size",
+      }}
+    >
+      {/* 어두운 오버레이 */}
+      <div className="absolute inset-0 bg-black/30 pointer-events-none" />
+
+      {/* 헤더 텍스트 (상단 12%) */}
+      {dateLabel && (
+        <div className="absolute top-0 w-full flex flex-col items-center" style={{ top: "12%" }}>
+          {/* 구분선 + 텍스트 */}
+          <div
+            className={`relative cursor-pointer px-2 py-0.5 transition-all ${borderClass("header")}`}
+            onClick={() => onAreaClick("header")}
+          >
+            <div className="flex items-center gap-[1cqw] w-full justify-center">
+              <div className="flex-1 h-[0.15cqw] bg-current opacity-60 min-w-[2cqw]" style={{ color: textStyles.header?.color || "#ffffff" }} />
+              <span style={cssForArea("header")} className="whitespace-nowrap relative z-10">
+                {dateLabel}
+              </span>
+              <div className="flex-1 h-[0.15cqw] bg-current opacity-60 min-w-[2cqw]" style={{ color: textStyles.header?.color || "#ffffff" }} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 메인 텍스트 (중앙) */}
+      {mainText && (
+        <div
+          className={`absolute left-0 right-0 flex items-center justify-center cursor-pointer px-4 transition-all ${borderClass("main")}`}
+          style={{ top: "50%", transform: "translateY(-50%)" }}
+          onClick={() => onAreaClick("main")}
+        >
+          <span style={cssForArea("main")} className="text-center relative z-10">
+            {mainText}
+          </span>
+        </div>
+      )}
+
+      {/* 푸터 텍스트 (하단 88%) */}
+      {scripture && (
+        <div
+          className={`absolute left-0 right-0 flex items-center justify-center cursor-pointer px-4 transition-all ${borderClass("footer")}`}
+          style={{ bottom: "12%" }}
+          onClick={() => onAreaClick("footer")}
+        >
+          <span style={cssForArea("footer")} className="text-center relative z-10">
+            {scripture}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── 영역별 설정 패널 ── */
+function AreaStyleEditor({
+  area,
+  label,
+  textStyles,
+  onUpdateStyle,
+}: {
+  area: keyof TextStyles;
+  label: string;
+  textStyles: TextStyles;
+  onUpdateStyle: (area: keyof TextStyles, field: keyof TextStyle, value: string | number) => void;
+}) {
+  const sizeRange = {
+    header: { min: 20, max: 80 },
+    main: { min: 40, max: 200 },
+    footer: { min: 20, max: 80 },
+  }[area];
+
+  const fontOptions = [
+    { value: "NanumBrush", label: "나눔손글씨 붓" },
+    { value: "NanumGothic", label: "나눔고딕" },
+    { value: "NanumGothicBold", label: "나눔고딕 Bold" },
+    { value: "JacquesFrancois", label: "Jacques Francois" },
+  ];
+
+  const ts = textStyles[area] ?? DEFAULT_TEXT_STYLES[area];
+
+  return (
+    <div className="flex flex-col gap-1.5 px-2 py-2 bg-[rgba(74,158,255,0.08)] rounded-lg border border-[#4a9eff]/30">
+      <div className="text-[10px] font-semibold text-[#4a9eff]">{label} 스타일</div>
+      <div className="flex items-center gap-1.5">
+        <select
+          value={ts.fontName || "NanumBrush"}
+          onChange={(e) => onUpdateStyle(area, "fontName", e.target.value)}
+          className="flex-1 px-1.5 py-0.5 border border-white/20 rounded text-[10px] bg-white/10 text-white outline-none"
+        >
+          {fontOptions.map((f) => (
+            <option key={f.value} value={f.value} className="bg-[#2c2c2c]">{f.label}</option>
+          ))}
+        </select>
+        <input
+          type="color"
+          value={ts.color || "#ffffff"}
+          onChange={(e) => onUpdateStyle(area, "color", e.target.value)}
+          className="w-6 h-6 p-0 border border-white/20 rounded cursor-pointer bg-transparent"
+          title="텍스트 색상"
+        />
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className="text-[9px] text-[#888] w-8 text-right">{Math.round(ts.size || DEFAULT_TEXT_STYLES[area].size!)}px</span>
+        <input
+          type="range"
+          min={sizeRange.min}
+          max={sizeRange.max}
+          step={1}
+          value={ts.size || DEFAULT_TEXT_STYLES[area].size}
+          onChange={(e) => onUpdateStyle(area, "size", Number(e.target.value))}
+          className="flex-1 accent-[#4a9eff]"
+        />
+      </div>
+    </div>
+  );
+}
+
 /* ── 특별일 설정 섹션 ── */
 export default function InspectorSpecialTab() {
   const [thumbConfig, setThumbConfig] = useState<ThumbnailConfig | null>(null);
+  const worshipOrder = useRecoilValue(worshipOrderState);
 
   // 썸네일 로고 설정 (thumbConfig에서 직접 읽음)
   const thumbLogoPos = thumbConfig?.logoPosition ?? "bottom-right";
@@ -130,9 +315,9 @@ export default function InspectorSpecialTab() {
   const [previewSelectVal, setPreviewSelectVal] = useState("main_worship");
   const [previewType, setPreviewType] = useState("main_worship");
   const [previewDate, setPreviewDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [previewKey, setPreviewKey] = useState(0);
   const [generating, setGenerating] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [activeArea, setActiveArea] = useState<ActiveArea | null>(null);
+  const [bgVersions, setBgVersions] = useState<Record<string, number>>({});
 
   const handleSelectChange = (val: string) => {
     setPreviewSelectVal(val);
@@ -144,26 +329,61 @@ export default function InspectorSpecialTab() {
     }
   };
 
-  // select/date 변경 시 자동 생성 (debounce 400ms)
-  useEffect(() => {
-    if (!previewDate) return;
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      setGenerating(true);
-      try {
-        await apiClient.generateThumbnail(previewType, previewDate);
-        setPreviewKey((k) => k + 1);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setGenerating(false);
+  // 예배 순서에서 말씀 제목 + 성경봉독 추출 (Go 로직 재현)
+  const { sermonTitle, scripture } = useMemo(() => {
+    const items: WorshipOrderItem[] = worshipOrder[previewType as WorshipType] ?? [];
+    let sermon = "";
+    let scrip = "";
+    let bEditFallback = "";
+    for (const item of items) {
+      if ((item.title === "말씀" || item.title === "설교") && item.obj && item.obj !== "-") {
+        sermon = item.obj;
       }
-    }, 400);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [previewType, previewDate]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [bgVersions, setBgVersions] = useState<Record<string, number>>({});
+      if (item.title === "성경봉독" && item.obj && item.obj !== "-") {
+        scrip = item.obj;
+      }
+      if (item.info?.startsWith("b_") && item.obj && item.obj !== "-" && !bEditFallback) {
+        bEditFallback = item.obj;
+      }
+    }
+    if (!scrip) scrip = bEditFallback;
+    return { sermonTitle: sermon, scripture: scrip };
+  }, [worshipOrder, previewType]);
+
+  // dateLabel 빌드 (Go 로직 재현): "26.04.05 주일예배"
+  const dateLabel = useMemo(() => {
+    if (!previewDate) return "";
+    const d = new Date(previewDate + "T00:00:00");
+    const yy = String(d.getFullYear()).slice(2);
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+
+    let typeLabel = WORSHIP_LABELS[previewType] || "예배";
+    // 기념 주일 오버라이드
+    const special = thumbConfig?.specials.find((s) => s.date === previewDate);
+    if (special) {
+      if (special.titleOverride) typeLabel = special.titleOverride;
+      else if (special.label) typeLabel = special.label;
+    }
+    return `${yy}.${mm}.${dd} ${typeLabel}`;
+  }, [previewDate, previewType, thumbConfig?.specials]);
+
+  // 배경 이미지 URL
+  const bgUrl = useMemo(() => {
+    // 기념 주일 커스텀 배경 확인
+    const special = thumbConfig?.specials.find((s) => s.date === previewDate);
+    if (special?.background) {
+      return apiClient.getThumbnailImageUrl(special.background);
+    }
+    // 예배 타입별 기본 배경
+    const defaultTheme = thumbConfig?.defaults[previewType];
+    if (defaultTheme?.background) {
+      return apiClient.getThumbnailImageUrl(defaultTheme.background) +
+        `&v=${bgVersions[previewType] || 0}`;
+    }
+    // fallback
+    return `${BASE_URL}/display/bg`;
+  }, [thumbConfig, previewType, previewDate, bgVersions]);
 
   const previewSpecial = thumbConfig?.specials.find((s) => s.date === previewDate);
 
@@ -276,57 +496,166 @@ export default function InspectorSpecialTab() {
     );
   };
 
+  // 텍스트 스타일 업데이트
+  const updateStyle = useCallback(
+    (area: keyof TextStyles, field: keyof TextStyle, value: string | number) => {
+      setThumbConfig((prev) => {
+        if (!prev) return prev;
+        const current = prev.textStyles ?? DEFAULT_TEXT_STYLES;
+        return {
+          ...prev,
+          textStyles: {
+            ...current,
+            [area]: { ...current[area], [field]: value },
+          },
+        };
+      });
+    },
+    []
+  );
+
+  // PNG 생성 (서버 호출)
+  const handleGeneratePNG = async () => {
+    if (!previewDate) return;
+    setGenerating(true);
+    try {
+      await apiClient.generateThumbnail(previewType, previewDate);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   if (!thumbConfig) {
     return <div className="text-[#888] text-center py-5 text-xs">로딩 중...</div>;
   }
+
+  const ts: TextStyles = thumbConfig.textStyles ?? DEFAULT_TEXT_STYLES;
 
   const inputClass =
     "px-2 py-1 border border-white/20 rounded-md text-[10px] bg-white/10 text-white outline-none placeholder:text-[#666]";
 
   return (
     <div className="flex flex-col gap-3">
-      {/* 텍스트 스타일 (3영역) */}
-      <div className="text-[10px] font-semibold text-[#ccc]">텍스트 스타일</div>
-      {(() => {
-        const defaultStyles: TextStyles = {
-          header: { fontName: "NanumBrush", size: 50, color: "#ffffff" },
-          main: { fontName: "NanumBrush", size: 100, color: "#ffffff" },
-          footer: { fontName: "NanumBrush", size: 45, color: "#ffffff" },
-        };
-        const ts: TextStyles = thumbConfig.textStyles ?? defaultStyles;
-        const updateStyle = (area: keyof TextStyles, field: keyof TextStyle, value: string | number) => {
-          setThumbConfig((prev) => {
-            if (!prev) return prev;
-            const current = prev.textStyles ?? defaultStyles;
-            return {
-              ...prev,
-              textStyles: {
-                ...current,
-                [area]: { ...current[area], [field]: value },
-              },
+      {/* ── 예배 타입 + 날짜 선택 ── */}
+      <div className="flex gap-1.5 items-center">
+        <select
+          value={previewSelectVal}
+          onChange={(e) => handleSelectChange(e.target.value)}
+          className="flex-1 h-7 px-2 border border-white/20 rounded-md text-[10px] bg-white/10 text-white outline-none"
+        >
+          {Object.entries(WORSHIP_LABELS).map(([k, v]) => (
+            <option key={k} value={k} className="bg-[#2c2c2c]">{v}</option>
+          ))}
+          {thumbConfig.specials.length > 0 && (
+            <optgroup label="── 기념 주일 ──" className="bg-[#2c2c2c]">
+              {thumbConfig.specials.map((s) => (
+                <option key={s.date} value={`special:${s.date}`} className="bg-[#2c2c2c]">
+                  {s.label} ({s.date.slice(2).replace(/-/g, ".")})
+                </option>
+              ))}
+            </optgroup>
+          )}
+        </select>
+        <input
+          type="date"
+          value={previewDate}
+          onChange={(e) => setPreviewDate(e.target.value)}
+          className="h-7 px-2 border border-white/20 rounded-md text-[10px] bg-white/10 text-white outline-none"
+        />
+      </div>
+
+      {previewSpecial && (
+        <div className="text-[10px] text-[#60a5fa] bg-[#1e3a5f] px-2 py-1.5 rounded-md font-medium">
+          기념주일 적용: {previewSpecial.label}
+          {previewSpecial.background ? " (커스텀 배경)" : " (기본 배경)"}
+        </div>
+      )}
+
+      {/* ── 캔버스 프리뷰 (최상단) ── */}
+      <ThumbnailCanvasPreview
+        bgUrl={bgUrl}
+        dateLabel={dateLabel}
+        sermonTitle={sermonTitle}
+        scripture={scripture}
+        textStyles={ts}
+        activeArea={activeArea}
+        onAreaClick={setActiveArea}
+      />
+
+      {/* 선택된 영역 설정 패널 */}
+      {activeArea && (
+        <AreaStyleEditor
+          area={activeArea}
+          label={{ header: "헤더", main: "제목", footer: "푸터" }[activeArea]}
+          textStyles={ts}
+          onUpdateStyle={updateStyle}
+        />
+      )}
+
+      {/* PNG 생성 버튼 */}
+      <div className="flex gap-1.5 items-center">
+        <button
+          onClick={handleGeneratePNG}
+          disabled={generating || !previewDate}
+          className={`flex-1 h-7 text-[10px] font-semibold rounded-md border-none cursor-pointer transition-all ${
+            generating
+              ? "bg-white/10 text-[#666]"
+              : "bg-[#4a9eff] text-white hover:bg-[#3b8fe8]"
+          }`}
+        >
+          {generating ? (
+            <span className="flex items-center justify-center gap-1.5">
+              <span className="w-3 h-3 border border-white/20 border-t-white rounded-full animate-spin" />
+              생성 중...
+            </span>
+          ) : (
+            "PNG 생성"
+          )}
+        </button>
+        {activeArea && (
+          <button
+            onClick={() => setActiveArea(null)}
+            className="h-7 px-3 text-[10px] text-[#888] bg-white/5 border border-white/10 rounded-md cursor-pointer hover:text-white hover:border-white/20 transition-all"
+          >
+            선택 해제
+          </button>
+        )}
+      </div>
+
+      <div className="h-px bg-white/10" />
+
+      {/* ── 텍스트 스타일 (3영역 전체 — 클릭 안 했을 때 표시) ── */}
+      {!activeArea && (
+        <>
+          <div className="text-[10px] font-semibold text-[#ccc]">텍스트 스타일</div>
+          {(["header", "main", "footer"] as const).map((key) => {
+            const labels = { header: "헤더", main: "제목", footer: "푸터" };
+            const sizeRanges = {
+              header: { min: 20, max: 80 },
+              main: { min: 40, max: 200 },
+              footer: { min: 20, max: 80 },
             };
-          });
-        };
-        const fontOptions = [
-          { value: "NanumBrush", label: "나눔손글씨 붓" },
-          { value: "NanumGothic", label: "나눔고딕" },
-          { value: "NanumGothicBold", label: "나눔고딕 Bold" },
-          { value: "JacquesFrancois", label: "Jacques François" },
-        ];
-        const areas: { key: keyof TextStyles; label: string; minSize: number; maxSize: number }[] = [
-          { key: "header", label: "헤더", minSize: 20, maxSize: 80 },
-          { key: "main", label: "제목", minSize: 40, maxSize: 200 },
-          { key: "footer", label: "푸터", minSize: 20, maxSize: 80 },
-        ];
-        return (
-          <div className="flex flex-col gap-2">
-            {areas.map(({ key, label, minSize, maxSize }) => (
-              <div key={key} className="flex flex-col gap-1 px-2 py-1.5 bg-white/5 rounded border border-white/10">
-                <div className="text-[10px] font-medium text-[#aaa]">{label}</div>
+            const fontOptions = [
+              { value: "NanumBrush", label: "나눔손글씨 붓" },
+              { value: "NanumGothic", label: "나눔고딕" },
+              { value: "NanumGothicBold", label: "나눔고딕 Bold" },
+              { value: "JacquesFrancois", label: "Jacques Francois" },
+            ];
+            const { min: minSize, max: maxSize } = sizeRanges[key];
+            return (
+              <div
+                key={key}
+                className="flex flex-col gap-1 px-2 py-1.5 bg-white/5 rounded border border-white/10 cursor-pointer hover:border-white/20 transition-colors"
+                onClick={() => setActiveArea(key)}
+              >
+                <div className="text-[10px] font-medium text-[#aaa]">{labels[key]}</div>
                 <div className="flex items-center gap-1.5">
                   <select
                     value={ts[key]?.fontName || "NanumBrush"}
-                    onChange={(e) => updateStyle(key, "fontName", e.target.value)}
+                    onChange={(e) => { e.stopPropagation(); updateStyle(key, "fontName", e.target.value); }}
+                    onClick={(e) => e.stopPropagation()}
                     className="flex-1 px-1.5 py-0.5 border border-white/20 rounded text-[10px] bg-white/10 text-white outline-none"
                   >
                     {fontOptions.map((f) => (
@@ -337,39 +666,43 @@ export default function InspectorSpecialTab() {
                     type="color"
                     value={ts[key]?.color || "#ffffff"}
                     onChange={(e) => updateStyle(key, "color", e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
                     className="w-6 h-6 p-0 border border-white/20 rounded cursor-pointer bg-transparent"
                     title="텍스트 색상"
                   />
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[9px] text-[#888] w-8 text-right">{Math.round(ts[key]?.size || defaultStyles[key].size!)}px</span>
+                  <span className="text-[9px] text-[#888] w-8 text-right">
+                    {Math.round(ts[key]?.size || DEFAULT_TEXT_STYLES[key].size!)}px
+                  </span>
                   <input
                     type="range"
                     min={minSize}
                     max={maxSize}
                     step={1}
-                    value={ts[key]?.size || defaultStyles[key].size}
+                    value={ts[key]?.size || DEFAULT_TEXT_STYLES[key].size}
                     onChange={(e) => updateStyle(key, "size", Number(e.target.value))}
+                    onClick={(e) => e.stopPropagation()}
                     className="flex-1 accent-[#4a9eff]"
                   />
                 </div>
               </div>
-            ))}
-          </div>
-        );
-      })()}
+            );
+          })}
+        </>
+      )}
 
       {/* 썸네일 로고 */}
-      <div className="mt-3">
+      <div className="mt-1">
         <div className="text-[10px] font-semibold text-pro-text mb-1">썸네일 로고</div>
         <div className="flex items-center gap-2 mb-1">
           <span className="text-[10px] text-pro-text-dim w-10">위치</span>
           <div className="grid grid-cols-2 gap-1 flex-1">
             {[
-              { key: "top-left", label: "↖ 좌상" },
-              { key: "top-right", label: "↗ 우상" },
-              { key: "bottom-left", label: "↙ 좌하" },
-              { key: "bottom-right", label: "↘ 우하" },
+              { key: "top-left", label: "좌상" },
+              { key: "top-right", label: "우상" },
+              { key: "bottom-left", label: "좌하" },
+              { key: "bottom-right", label: "우하" },
             ].map((p) => (
               <button
                 key={p.key}
@@ -408,6 +741,8 @@ export default function InspectorSpecialTab() {
           />
         </div>
       </div>
+
+      <div className="h-px bg-white/10" />
 
       {/* 기본 배경 이미지 */}
       <div className="text-[10px] font-semibold text-[#ccc]">기본 배경 이미지</div>
@@ -553,62 +888,11 @@ export default function InspectorSpecialTab() {
         </div>
       </div>
 
-      <div className="h-px bg-white/10" />
-
-      {/* 썸네일 미리보기 */}
-      <div className="text-[10px] font-semibold text-[#ccc]">썸네일 미리보기</div>
-      <div className="flex gap-1.5 items-center">
-        <select
-          value={previewSelectVal}
-          onChange={(e) => handleSelectChange(e.target.value)}
-          className="flex-1 h-7 px-2 border border-white/20 rounded-md text-[10px] bg-white/10 text-white outline-none"
-        >
-          {Object.entries(WORSHIP_LABELS).map(([k, v]) => (
-            <option key={k} value={k} className="bg-[#2c2c2c]">{v}</option>
-          ))}
-          {thumbConfig.specials.length > 0 && (
-            <optgroup label="── 기념 주일 ──" className="bg-[#2c2c2c]">
-              {thumbConfig.specials.map((s) => (
-                <option key={s.date} value={`special:${s.date}`} className="bg-[#2c2c2c]">
-                  {s.label} ({s.date.slice(2).replace(/-/g, ".")})
-                </option>
-              ))}
-            </optgroup>
-          )}
-        </select>
-        <input
-          type="date"
-          value={previewDate}
-          onChange={(e) => setPreviewDate(e.target.value)}
-          className="h-7 px-2 border border-white/20 rounded-md text-[10px] bg-white/10 text-white outline-none"
-        />
-      </div>
-      {previewSpecial && (
-        <div className="text-[10px] text-[#60a5fa] bg-[#1e3a5f] px-2 py-1.5 rounded-md font-medium">
-          기념주일 적용: {previewSpecial.label}
-          {previewSpecial.background ? " (커스텀 배경)" : " (기본 배경)"}
-        </div>
-      )}
-      <div className="relative w-full">
-        {previewKey > 0 && (
-          <img
-            key={previewKey}
-            src={apiClient.getThumbnailPreviewUrl(previewType, previewDate)}
-            alt="썸네일 미리보기"
-            className="w-full rounded-lg border border-white/20"
-          />
-        )}
-        {generating && (
-          <div className={`${previewKey > 0 ? "absolute inset-0" : "w-full aspect-video"} flex items-center justify-center rounded-lg bg-black/50`}>
-            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-          </div>
-        )}
-      </div>
-
       <GeneratedThumbnailSection
         onReuse={(type, date) => {
           setPreviewType(type);
           setPreviewDate(date);
+          setPreviewSelectVal(type);
         }}
       />
     </div>
