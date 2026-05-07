@@ -235,19 +235,18 @@ function ThumbnailCanvasPreview({
       <div className="absolute inset-0 bg-black/30 pointer-events-none" />
 
       {/* 헤더 (상단 12%) — 구분선 + 텍스트 */}
-      <div className="absolute top-0 w-full flex flex-col items-center" style={{ top: "12%" }}>
-        <div
-          className={`relative cursor-pointer px-2 py-0.5 transition-all ${borderClass("header")}`}
-          onClick={() => onAreaClick("header")}
-          onDoubleClick={() => handleDoubleClick("header")}
-        >
-          <div className="flex items-center gap-[1.5cqw] justify-center" style={{ width: "85%", margin: "0 auto" }}>
-            <div className="flex-1 h-[2px] opacity-50" style={{ background: textStyles.header?.color || "#ffffff" }} />
-            <span ref={headerRef} {...editableProps("header")} className="whitespace-nowrap relative z-10 px-[1cqw]">
-              {dateLabel || "헤더 텍스트"}
-            </span>
-            <div className="flex-1 h-[2px] opacity-50" style={{ background: textStyles.header?.color || "#ffffff" }} />
-          </div>
+      <div
+        className={`absolute left-0 right-0 cursor-pointer transition-all ${borderClass("header")}`}
+        style={{ top: "12%" }}
+        onClick={() => onAreaClick("header")}
+        onDoubleClick={() => handleDoubleClick("header")}
+      >
+        <div className="flex items-center gap-[1.5cqw] px-[5%]">
+          <div className="flex-1 h-[1px] opacity-40" style={{ background: textStyles.header?.color || "#ffffff" }} />
+          <span ref={headerRef} {...editableProps("header")} className="whitespace-nowrap relative z-10 px-[1.5cqw]">
+            {dateLabel || "헤더 텍스트"}
+          </span>
+          <div className="flex-1 h-[1px] opacity-40" style={{ background: textStyles.header?.color || "#ffffff" }} />
         </div>
       </div>
 
@@ -395,12 +394,20 @@ export default function InspectorSpecialTab() {
   const [previewDate, setPreviewDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [generating, setGenerating] = useState(false);
   const [activeArea, setActiveArea] = useState<ActiveArea | null>(null);
-  const [textOverrides, setTextOverrides] = useState<Record<string, string>>({});
+  const [textOverridesByType, setTextOverridesByType] = useState<Record<string, Record<string, string>>>({});
+  const textOverrides = textOverridesByType[previewType] || {};
+  const setTextOverrides = (updater: (prev: Record<string, string>) => Record<string, string>) => {
+    setTextOverridesByType((prev) => ({
+      ...prev,
+      [previewType]: updater(prev[previewType] || {}),
+    }));
+  };
   const [genCounter, setGenCounter] = useState(0);
   const [bgVersions, setBgVersions] = useState<Record<string, number>>({});
 
   const handleSelectChange = (val: string) => {
     setPreviewSelectVal(val);
+    setActiveArea(null);
     if (val.startsWith("special:")) {
       setPreviewDate(val.slice(8));
       setPreviewType("main_worship");
