@@ -233,12 +233,12 @@ function ThumbnailCanvasPreview({
           onClick={() => onAreaClick("header")}
           onDoubleClick={() => handleDoubleClick("header")}
         >
-          <div className="flex items-center gap-[1cqw] w-full justify-center">
-            <div className="flex-1 h-[0.15cqw] bg-current opacity-60 min-w-[2cqw]" style={{ color: textStyles.header?.color || "#ffffff" }} />
-            <span ref={headerRef} {...editableProps("header")} className="whitespace-nowrap relative z-10">
+          <div className="flex items-center gap-[1.5cqw] justify-center" style={{ width: "85%", margin: "0 auto" }}>
+            <div className="flex-1 h-[2px] opacity-50" style={{ background: textStyles.header?.color || "#ffffff" }} />
+            <span ref={headerRef} {...editableProps("header")} className="whitespace-nowrap relative z-10 px-[1cqw]">
               {dateLabel || "헤더 텍스트"}
             </span>
-            <div className="flex-1 h-[0.15cqw] bg-current opacity-60 min-w-[2cqw]" style={{ color: textStyles.header?.color || "#ffffff" }} />
+            <div className="flex-1 h-[2px] opacity-50" style={{ background: textStyles.header?.color || "#ffffff" }} />
           </div>
         </div>
       </div>

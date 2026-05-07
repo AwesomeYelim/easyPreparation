@@ -45,6 +45,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko" suppressHydrationWarning translate="no">
+      <head>
+        <link rel="preload" href="/font/NanumBrush.ttf" as="font" type="font/truetype" crossOrigin="anonymous" />
+        <link rel="preload" href="/font/NanumGothic-regular.ttf" as="font" type="font/truetype" crossOrigin="anonymous" />
+        <link rel="preload" href="/font/NanumGothic-800.ttf" as="font" type="font/truetype" crossOrigin="anonymous" />
+        <link rel="preload" href="/font/JacquesFrancois-regular.ttf" as="font" type="font/truetype" crossOrigin="anonymous" />
+      </head>
       <body suppressHydrationWarning>
         <ClientOnly>
           <ToastProvider />
