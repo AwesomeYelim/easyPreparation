@@ -131,6 +131,7 @@ function ThumbnailCanvasPreview({
   textStyles,
   activeArea,
   onAreaClick,
+  onTextEdit,
 }: {
   bgUrl: string;
   dateLabel: string;
@@ -139,10 +140,14 @@ function ThumbnailCanvasPreview({
   textStyles: TextStyles;
   activeArea: ActiveArea | null;
   onAreaClick: (area: ActiveArea) => void;
+  onTextEdit: (area: ActiveArea, text: string) => void;
 }) {
-  const canvasRef = useRef<HTMLDivElement>(null);
+  const [editingArea, setEditingArea] = useState<ActiveArea | null>(null);
+  const headerRef = useRef<HTMLSpanElement>(null);
+  const mainRef = useRef<HTMLSpanElement>(null);
+  const footerRef = useRef<HTMLSpanElement>(null);
+  const areaRefs = { header: headerRef, main: mainRef, footer: footerRef };
 
-  /** px -> container query 비율로 변환 (1280px 기준) */
   const pxToScale = (px: number) => `${(px / 1280) * 100}cqw`;
 
   const cssForArea = (area: keyof TextStyles) => {
@@ -162,63 +167,110 @@ function ThumbnailCanvasPreview({
       ? "outline outline-2 outline-[#4a9eff] outline-offset-2 rounded"
       : "hover:outline hover:outline-1 hover:outline-white/30 hover:outline-offset-2 hover:rounded";
 
-  // 메인 영역에 표시할 텍스트: sermonTitle 있으면 sermonTitle, 없으면 dateLabel
   const mainText = sermonTitle || dateLabel;
+
+  const handleDoubleClick = (area: ActiveArea) => {
+    setEditingArea(area);
+    onAreaClick(area);
+    requestAnimationFrame(() => {
+      const el = areaRefs[area].current;
+      if (el) {
+        el.focus();
+        // 전체 텍스트 선택
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      }
+    });
+  };
+
+  const handleBlur = (area: ActiveArea, e: React.FocusEvent<HTMLSpanElement>) => {
+    const text = e.currentTarget.textContent || "";
+    onTextEdit(area, text);
+    setEditingArea(null);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLSpanElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      (e.target as HTMLElement).blur();
+    }
+  };
+
+  const editableProps = (area: ActiveArea) =>
+    editingArea === area
+      ? {
+          contentEditable: true as const,
+          suppressContentEditableWarning: true as const,
+          onBlur: (e: React.FocusEvent<HTMLSpanElement>) => handleBlur(area, e),
+          onKeyDown: handleKeyDown,
+          style: {
+            ...cssForArea(area),
+            outline: "none",
+            cursor: "text",
+            minWidth: "3cqw",
+            borderBottom: "1px dashed rgba(74,158,255,0.6)",
+          },
+        }
+      : { style: cssForArea(area) };
 
   return (
     <div
-      ref={canvasRef}
       className="relative w-full aspect-video bg-cover bg-center rounded-lg overflow-hidden border border-white/20"
       style={{
         backgroundImage: `url(${bgUrl})`,
         containerType: "inline-size",
       }}
     >
-      {/* 어두운 오버레이 */}
       <div className="absolute inset-0 bg-black/30 pointer-events-none" />
 
-      {/* 헤더 텍스트 (상단 12%) */}
-      {dateLabel && (
-        <div className="absolute top-0 w-full flex flex-col items-center" style={{ top: "12%" }}>
-          {/* 구분선 + 텍스트 */}
-          <div
-            className={`relative cursor-pointer px-2 py-0.5 transition-all ${borderClass("header")}`}
-            onClick={() => onAreaClick("header")}
-          >
-            <div className="flex items-center gap-[1cqw] w-full justify-center">
-              <div className="flex-1 h-[0.15cqw] bg-current opacity-60 min-w-[2cqw]" style={{ color: textStyles.header?.color || "#ffffff" }} />
-              <span style={cssForArea("header")} className="whitespace-nowrap relative z-10">
-                {dateLabel}
-              </span>
-              <div className="flex-1 h-[0.15cqw] bg-current opacity-60 min-w-[2cqw]" style={{ color: textStyles.header?.color || "#ffffff" }} />
-            </div>
+      {/* 헤더 (상단 12%) — 구분선 + 텍스트 */}
+      <div className="absolute top-0 w-full flex flex-col items-center" style={{ top: "12%" }}>
+        <div
+          className={`relative cursor-pointer px-2 py-0.5 transition-all ${borderClass("header")}`}
+          onClick={() => onAreaClick("header")}
+          onDoubleClick={() => handleDoubleClick("header")}
+        >
+          <div className="flex items-center gap-[1cqw] w-full justify-center">
+            <div className="flex-1 h-[0.15cqw] bg-current opacity-60 min-w-[2cqw]" style={{ color: textStyles.header?.color || "#ffffff" }} />
+            <span ref={headerRef} {...editableProps("header")} className="whitespace-nowrap relative z-10">
+              {dateLabel || "헤더 텍스트"}
+            </span>
+            <div className="flex-1 h-[0.15cqw] bg-current opacity-60 min-w-[2cqw]" style={{ color: textStyles.header?.color || "#ffffff" }} />
           </div>
         </div>
-      )}
+      </div>
 
-      {/* 메인 텍스트 (중앙) */}
-      {mainText && (
-        <div
-          className={`absolute left-0 right-0 flex items-center justify-center cursor-pointer px-4 transition-all ${borderClass("main")}`}
-          style={{ top: "50%", transform: "translateY(-50%)" }}
-          onClick={() => onAreaClick("main")}
-        >
-          <span style={cssForArea("main")} className="text-center relative z-10">
-            {mainText}
-          </span>
-        </div>
-      )}
+      {/* 메인 (중앙) */}
+      <div
+        className={`absolute left-0 right-0 flex items-center justify-center cursor-pointer px-4 transition-all ${borderClass("main")}`}
+        style={{ top: "50%", transform: "translateY(-50%)" }}
+        onClick={() => onAreaClick("main")}
+        onDoubleClick={() => handleDoubleClick("main")}
+      >
+        <span ref={mainRef} {...editableProps("main")} className="text-center relative z-10">
+          {mainText || "제목 텍스트"}
+        </span>
+      </div>
 
-      {/* 푸터 텍스트 (하단 88%) */}
-      {scripture && (
-        <div
-          className={`absolute left-0 right-0 flex items-center justify-center cursor-pointer px-4 transition-all ${borderClass("footer")}`}
-          style={{ bottom: "12%" }}
-          onClick={() => onAreaClick("footer")}
-        >
-          <span style={cssForArea("footer")} className="text-center relative z-10">
-            {scripture}
-          </span>
+      {/* 푸터 (하단 12%) */}
+      <div
+        className={`absolute left-0 right-0 flex items-center justify-center cursor-pointer px-4 transition-all ${borderClass("footer")}`}
+        style={{ bottom: "12%" }}
+        onClick={() => onAreaClick("footer")}
+        onDoubleClick={() => handleDoubleClick("footer")}
+      >
+        <span ref={footerRef} {...editableProps("footer")} className="text-center relative z-10">
+          {scripture || "푸터 텍스트"}
+        </span>
+      </div>
+
+      {/* 편집 힌트 */}
+      {!editingArea && (
+        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[0.7cqw] text-white/40 pointer-events-none">
+          클릭: 스타일 편집 · 더블클릭: 텍스트 편집
         </div>
       )}
     </div>
@@ -317,6 +369,7 @@ export default function InspectorSpecialTab() {
   const [previewDate, setPreviewDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [generating, setGenerating] = useState(false);
   const [activeArea, setActiveArea] = useState<ActiveArea | null>(null);
+  const [textOverrides, setTextOverrides] = useState<Record<string, string>>({});
   const [bgVersions, setBgVersions] = useState<Record<string, number>>({});
 
   const handleSelectChange = (val: string) => {
@@ -576,12 +629,13 @@ export default function InspectorSpecialTab() {
       {/* ── 캔버스 프리뷰 (최상단) ── */}
       <ThumbnailCanvasPreview
         bgUrl={bgUrl}
-        dateLabel={dateLabel}
-        sermonTitle={sermonTitle}
-        scripture={scripture}
+        dateLabel={textOverrides.header ?? dateLabel}
+        sermonTitle={textOverrides.main ?? sermonTitle}
+        scripture={textOverrides.footer ?? scripture}
         textStyles={ts}
         activeArea={activeArea}
         onAreaClick={setActiveArea}
+        onTextEdit={(area, text) => setTextOverrides((prev) => ({ ...prev, [area]: text }))}
       />
 
       {/* 선택된 영역 설정 패널 */}
