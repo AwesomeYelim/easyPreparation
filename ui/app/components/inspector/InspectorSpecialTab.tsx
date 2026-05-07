@@ -38,8 +38,10 @@ type ActiveArea = "header" | "main" | "footer";
 /* ── 생성된 썸네일 섹션 ── */
 function GeneratedThumbnailSection({
   onReuse,
+  refreshKey,
 }: {
   onReuse?: (worshipType: string, date: string) => void;
+  refreshKey?: number;
 }) {
   const [list, setList] = useState<
     Array<{
@@ -63,7 +65,7 @@ function GeneratedThumbnailSection({
 
   useEffect(() => {
     refresh();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDelete = async (filename: string) => {
     await fetch(
@@ -132,6 +134,9 @@ function ThumbnailCanvasPreview({
   activeArea,
   onAreaClick,
   onTextEdit,
+  logoUrl,
+  logoPosition,
+  logoSizePercent,
 }: {
   bgUrl: string;
   dateLabel: string;
@@ -141,6 +146,9 @@ function ThumbnailCanvasPreview({
   activeArea: ActiveArea | null;
   onAreaClick: (area: ActiveArea) => void;
   onTextEdit: (area: ActiveArea, text: string) => void;
+  logoUrl?: string;
+  logoPosition?: string;
+  logoSizePercent?: number;
 }) {
   const [editingArea, setEditingArea] = useState<ActiveArea | null>(null);
   const headerRef = useRef<HTMLSpanElement>(null);
@@ -267,6 +275,27 @@ function ThumbnailCanvasPreview({
         </span>
       </div>
 
+      {/* 로고 */}
+      {logoUrl && (
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            ...(logoPosition?.startsWith("top") ? { top: "2%" } : { bottom: "2%" }),
+            ...(logoPosition?.endsWith("right") ? { right: "2%" } : { left: "2%" }),
+          }}
+        >
+          <img
+            src={logoUrl}
+            alt="logo"
+            className="object-contain opacity-90"
+            style={{
+              height: `${Math.max(5, (logoSizePercent || 12) * 0.5)}cqh`,
+              maxWidth: `${(logoSizePercent || 12) * 2.5}cqw`,
+            }}
+          />
+        </div>
+      )}
+
       {/* 편집 힌트 */}
       {!editingArea && (
         <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[0.7cqw] text-white/40 pointer-events-none">
@@ -370,6 +399,7 @@ export default function InspectorSpecialTab() {
   const [generating, setGenerating] = useState(false);
   const [activeArea, setActiveArea] = useState<ActiveArea | null>(null);
   const [textOverrides, setTextOverrides] = useState<Record<string, string>>({});
+  const [genCounter, setGenCounter] = useState(0);
   const [bgVersions, setBgVersions] = useState<Record<string, number>>({});
 
   const handleSelectChange = (val: string) => {
@@ -573,6 +603,7 @@ export default function InspectorSpecialTab() {
     setGenerating(true);
     try {
       await apiClient.generateThumbnail(previewType, previewDate);
+      setGenCounter((c) => c + 1);
     } catch (e) {
       console.error(e);
     } finally {
@@ -636,6 +667,9 @@ export default function InspectorSpecialTab() {
         activeArea={activeArea}
         onAreaClick={setActiveArea}
         onTextEdit={(area, text) => setTextOverrides((prev) => ({ ...prev, [area]: text }))}
+        logoUrl={`${BASE_URL}/api/logo`}
+        logoPosition={thumbConfig.logoPosition || "bottom-right"}
+        logoSizePercent={thumbConfig.logoSizePercent || 12}
       />
 
       {/* 선택된 영역 설정 패널 */}
@@ -665,7 +699,7 @@ export default function InspectorSpecialTab() {
               생성 중...
             </span>
           ) : (
-            "PNG 생성"
+            "썸네일 생성"
           )}
         </button>
         {activeArea && (
@@ -943,6 +977,7 @@ export default function InspectorSpecialTab() {
       </div>
 
       <GeneratedThumbnailSection
+        refreshKey={genCounter}
         onReuse={(type, date) => {
           setPreviewType(type);
           setPreviewDate(date);
