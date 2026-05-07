@@ -665,13 +665,13 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
                     <p className="text-[#555] text-[10px] mt-0.5">이름 변경 후 위 "저장" 버튼을 눌러야 적용됩니다.</p>
                   </div>
                 ) : (
-                  <div className="flex gap-2">
-                    {[1, 2, 3].map((n) => (
+                  <div className="flex gap-2 flex-wrap">
+                    {Array.from({ length: ptzConfig.presetCount || 5 }, (_, i) => i + 1).map((n) => (
                       <button
                         key={n}
                         disabled={ptzTesting || !ptzConfig.ip}
                         onClick={() => handlePtzTest(n)}
-                        className="flex-1 py-2 rounded-md text-white text-xs font-semibold border border-white/20 bg-white/[0.06] cursor-pointer hover:bg-white/[0.12] transition-colors disabled:opacity-40 disabled:cursor-default"
+                        className="flex-1 min-w-[40px] py-2 rounded-md text-white text-xs font-semibold border border-white/20 bg-white/[0.06] cursor-pointer hover:bg-white/[0.12] transition-colors disabled:opacity-40 disabled:cursor-default"
                       >
                         P{n}
                       </button>
@@ -851,32 +851,54 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
           ) : tab === "logo" ? (
             /* ===== Logo Tab ===== */
             <div>
-              {/* Upload zone */}
-              <div
-                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={(e) => { e.preventDefault(); setDragOver(false); handleLogoUpload(e.dataTransfer.files); }}
-                onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer mb-4 transition-colors ${
-                  dragOver
-                    ? "border-[#4a9eff] bg-[rgba(74,158,255,0.1)]"
-                    : "border-white/20 bg-transparent hover:border-white/40"
-                }`}
-              >
-                <div className="text-[#aaa] text-xs">
-                  {logoUploaded
-                    ? "로고 업로드 완료 (클릭하여 교체)"
-                    : "로고 이미지를 드래그하거나 클릭하여 업로드"}
+              {/* Logo preview + upload toggle */}
+              {logoUploaded ? (
+                <div className="flex items-center gap-3 mb-4 p-2.5 bg-white/[0.04] rounded-lg border border-white/10">
+                  <img
+                    src={`/api/logo?t=${Date.now()}`}
+                    alt="로고"
+                    className="w-10 h-10 object-contain rounded border border-white/15 bg-white/[0.06] flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] text-[#ccc]">로고 설정됨</div>
+                  </div>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-[11px] text-[#4a9eff] hover:text-white transition-colors flex-shrink-0"
+                  >
+                    변경
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    className="hidden"
+                    onChange={(e) => handleLogoUpload(e.target.files)}
+                  />
                 </div>
-                <div className="text-[#666] text-[11px] mt-1">PNG, JPG (최대 10MB)</div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg"
-                  className="hidden"
-                  onChange={(e) => handleLogoUpload(e.target.files)}
-                />
-              </div>
+              ) : (
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(e) => { e.preventDefault(); setDragOver(false); handleLogoUpload(e.dataTransfer.files); }}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer mb-4 transition-colors ${
+                    dragOver
+                      ? "border-[#4a9eff] bg-[rgba(74,158,255,0.1)]"
+                      : "border-white/20 bg-transparent hover:border-white/40"
+                  }`}
+                >
+                  <div className="text-[#aaa] text-xs">로고 이미지를 드래그하거나 클릭하여 업로드</div>
+                  <div className="text-[#666] text-[11px] mt-1">PNG, JPG (최대 10MB)</div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    className="hidden"
+                    onChange={(e) => handleLogoUpload(e.target.files)}
+                  />
+                </div>
+              )}
 
               {/* Position presets */}
               <div className="mb-4">
@@ -975,25 +997,53 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
                 </div>
               )}
 
-              <div className="flex gap-2">
-                <button onClick={handleLogoApply} disabled={busy} className={btnPrimaryClass}>
-                  {busy ? "적용 중..." : "OBS에 적용"}
-                </button>
-                {logoApplied && logoItemId && (
-                  <button
-                    onClick={async () => {
-                      const item = sources.find((s) => s.sourceName === "EP_Logo");
-                      if (item) {
-                        await apiClient.toggleOBSSource(selectedScene, item.sceneItemId, !item.enabled);
-                        fetchSources();
-                      }
-                    }}
-                    className="px-5 py-2 bg-white/10 border-none rounded-md text-white text-xs font-semibold cursor-pointer hover:bg-white/20 transition-colors"
+              {(() => {
+                const logoSource = sources.find((s) => s.sourceName === "EP_Logo");
+                const isActive = logoApplied && logoSource?.enabled;
+                return (
+                  <div
+                    className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                      isActive
+                        ? "bg-[rgba(74,158,255,0.08)] border-[#4a9eff]/30"
+                        : "bg-white/[0.03] border-white/10"
+                    }`}
                   >
-                    {sources.find((s) => s.sourceName === "EP_Logo")?.enabled ? "숨기기" : "표시"}
-                  </button>
-                )}
-              </div>
+                    <span className="text-xs text-[#aaa]">OBS 로고</span>
+                    <button
+                      disabled={busy}
+                      onClick={async () => {
+                        if (!selectedScene) { showToast("씬을 선택하세요"); return; }
+                        setBusy(true);
+                        try {
+                          if (isActive && logoSource) {
+                            await apiClient.toggleOBSSource(selectedScene, logoSource.sceneItemId, false);
+                            showToast("로고 해제됨", "info");
+                          } else if (logoApplied && logoSource && !logoSource.enabled) {
+                            await apiClient.toggleOBSSource(selectedScene, logoSource.sceneItemId, true);
+                            showToast("로고 표시됨", "info");
+                          } else {
+                            const res = await apiClient.applyOBSLogo(selectedScene, logoPosition, logoScale);
+                            if (res.ok) {
+                              setLogoApplied(true);
+                              setLogoItemId(res.sceneItemId ?? null);
+                              showToast("로고 적용 완료", "info");
+                            }
+                          }
+                          fetchSources();
+                        } catch { showToast("로고 적용 실패"); }
+                        setBusy(false);
+                      }}
+                      className={`relative w-11 h-6 rounded-full transition-all ${
+                        isActive ? "bg-[#4a9eff]" : "bg-white/20"
+                      }`}
+                    >
+                      <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${
+                        isActive ? "left-[22px]" : "left-0.5"
+                      }`} />
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           ) : tab === "display" ? (
             /* ===== Display Tab ===== */

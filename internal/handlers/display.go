@@ -606,11 +606,11 @@ function showSlide(i, skipDir) {
   const itemTitle = item.title || '';
 
   // 성경 본문 → 텍스트 페이지 분할
-  // 성경봉독 타이틀 항목만: bgImage가 있으면 첫 페이지를 타이틀 슬라이드(__title__)로 예약
+  // 성경봉독: 항상 첫 페이지를 타이틀 슬라이드(__title__)로 예약
   if ((item.info || '').startsWith('b_') && item.contents) {
     var bibleContentPages = paginate(item.contents, 3);
     var isBibleReading = (item.title || '') === '성경봉독';
-    subPages = (isBibleReading && item.bgImage) ? ['__title__'].concat(bibleContentPages) : bibleContentPages;
+    subPages = isBibleReading ? ['__title__'].concat(bibleContentPages) : bibleContentPages;
   }
   // 신앙고백 본문 → 페이지 분할
   else if (itemTitle === '신앙고백' && item.contents) {
@@ -701,6 +701,13 @@ function renderItem(item, pageIdx) {
   slideEl.classList.remove('visible');
   setTimeout(function() {
     _doRenderItem(item, pageIdx);
+    // 로고 — 모든 렌더링 경로 후 slide에 직접 추가 (footer 영향 없음)
+    if (logoUrl) {
+      var _lv = logoPosition.startsWith('top') ? 'top:1.5vh' : 'bottom:1.5vh';
+      var _lh = logoPosition.endsWith('right') ? 'right:2vw' : 'left:2vw';
+      document.getElementById('slide').insertAdjacentHTML('beforeend',
+        '<div style="position:absolute;' + _lv + ';' + _lh + ';z-index:10;pointer-events:none"><img src="' + logoUrl + '" alt="logo" style="height:' + Math.max(3, Math.round(logoSizePercent * 0.5)) + 'vh;max-width:' + Math.round(logoSizePercent * 2.5) + 'vw;width:auto;object-fit:contain;opacity:0.88;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.55))"></div>');
+    }
     reportPosition();
     requestAnimationFrame(function() {
       requestAnimationFrame(function() {
@@ -735,22 +742,11 @@ function _doRenderItem(item, pageIdx) {
 
   const posText = slides.length ? (idx + 1) + ' / ' + slides.length : '';
   const pageText = subPages.length > 1 ? (subPageIdx + 1) + ' / ' + subPages.length : '';
-  const churchBox = logoUrl ? (function() {
-    const vPos = logoPosition.startsWith('top') ? 'top:1.5vh' : 'bottom:1.5vh';
-    const hPos = logoPosition.endsWith('right') ? 'right:2vw' : 'left:2vw';
-    return '<div style="position:absolute;' + vPos + ';' + hPos + ';"><img src="' + logoUrl + '" alt="logo" style="height:' + Math.max(3, Math.round(logoSizePercent * 0.5)) + 'vh;max-width:' + Math.round(logoSizePercent * 2.5) + 'vw;width:auto;object-fit:contain;opacity:0.88;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.55))"></div>';
-  })() : '';
-  // 로고와 텍스트 겹침 방지 — 로고 크기만큼 여백 확보
-  const _logoAtBottom = logoUrl && logoPosition.startsWith('bottom');
-  const _pageIndStyle = (_logoAtBottom && logoPosition.endsWith('right'))
-    ? ' style="right:' + (Math.round(logoSizePercent * 2.5) + 3) + 'vw"' : '';
-  const _slidePosStyle = (_logoAtBottom && logoPosition.endsWith('left'))
-    ? ' style="left:' + (Math.round(logoSizePercent * 2.5) + 3) + 'vw"' : '';
   const footer =
     '<div class="divider"></div>' +
-    '<div class="slide-pos"' + _slidePosStyle + '>' + posText + '</div>' +
-    (pageText ? '<div class="page-indicator"' + _pageIndStyle + '>' + pageText + '</div>' : '') +
-    churchBox;
+    '<div class="slide-pos">' + posText + '</div>' +
+    (pageText ? '<div class="page-indicator">' + pageText + '</div>' : '');
+
   const header =
     '<div class="label">' + esc(lead) + '</div>' +
     '<div class="order-title">' + esc(title) + '</div>';
@@ -762,7 +758,7 @@ function _doRenderItem(item, pageIdx) {
     // 타이틀 슬라이드: bgImage 있고 첫 페이지(__title__)
     // bgImage는 이미 위에서 CSS background로 설정됨 — 가운데에 성경 참조 텍스트만 표시
     if (page === '__title__') {
-      slide.innerHTML =
+      slide.innerHTML = header +
         '<div class="bible-title-ref">' + esc(obj && obj !== '-' ? obj : title) + '</div>' +
         footer;
       return;
@@ -1202,23 +1198,23 @@ const displayOverlayHTML = `<!DOCTYPE html>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23020617'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='central' text-anchor='middle' fill='white' font-family='Arial' font-weight='900' font-size='20' font-style='italic'%3Eep%3C/text%3E%3C/svg%3E" type="image/svg+xml">
 <style>
   :root {
-    --overlay-font-size: 42px;
+    --overlay-font-size: 2.19vw;
     --overlay-line-height: 1.7;
     --overlay-font-weight: 600;
     --overlay-color: #fff;
     --overlay-text-shadow: 0 2px 12px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.7);
     --overlay-position: flex-end;
-    --overlay-padding: 40px 60px;
+    --overlay-padding: 2.08vw 3.13vw;
     --overlay-bg: rgba(0,0,0,0.75);
-    --overlay-bg-radius: 16px;
-    --overlay-bg-padding: 28px 40px;
-    --title-font-size: 48px;
+    --overlay-bg-radius: 0.83vw;
+    --overlay-bg-padding: 1.46vw 2.08vw;
+    --title-font-size: 2.5vw;
     --title-font-weight: 700;
-    --sub-font-size: 32px;
+    --sub-font-size: 1.67vw;
     --sub-color: rgba(255,255,255,0.8);
-    --ref-font-size: 24px;
+    --ref-font-size: 1.25vw;
     --ref-color: rgba(255,255,255,0.7);
-    --bible-font-size: 34px;
+    --bible-font-size: 1.77vw;
     --bible-line-height: 1.8;
     --transition-speed: 0.4s;
   }
@@ -1251,7 +1247,7 @@ const displayOverlayHTML = `<!DOCTYPE html>
     padding:var(--overlay-bg-padding);
     display:flex; flex-direction:column;
     align-items:flex-start;
-    width:1500px;
+    width:90%;
   }
   .overlay-box.center { align-items:center; }
 
@@ -1593,11 +1589,11 @@ async function applyOverlayConfig(cfg) {
     if (cfg.overlayPosition)
       root.style.setProperty('--overlay-position', cfg.overlayPosition);
     if (cfg.overlayFontScale && cfg.overlayFontScale !== 1) {
-      const base = Math.round(42 * cfg.overlayFontScale);
-      root.style.setProperty('--overlay-font-size', base + 'px');
-      root.style.setProperty('--title-font-size', Math.round(48 * cfg.overlayFontScale) + 'px');
-      root.style.setProperty('--sub-font-size', Math.round(32 * cfg.overlayFontScale) + 'px');
-      root.style.setProperty('--bible-font-size', Math.round(34 * cfg.overlayFontScale) + 'px');
+      var s = cfg.overlayFontScale;
+      root.style.setProperty('--overlay-font-size', (2.19 * s).toFixed(2) + 'vw');
+      root.style.setProperty('--title-font-size', (2.5 * s).toFixed(2) + 'vw');
+      root.style.setProperty('--sub-font-size', (1.67 * s).toFixed(2) + 'vw');
+      root.style.setProperty('--bible-font-size', (1.77 * s).toFixed(2) + 'vw');
     }
     /* 폰트도 적용 */
     const FONT_STACK = {
@@ -2418,24 +2414,16 @@ func preprocessItem(item map[string]interface{}) map[string]interface{} {
 	}
 
 	// 항목별 배경 이미지 — data/templates/display/{title}.png/.jpg 자동 매핑
-	// 매칭 이미지 없으면 기본 Frame.png 사용
+	// 매칭 이미지 없으면 배경 없음 (비디오 배경 또는 검정 배경)
 	{
 		execPath := path.ExecutePath("easyPreparation")
 		displayDir := filepath.Join(execPath, "data", "templates", "display")
-		found := false
 		for _, ext := range []string{".png", ".jpg", ".jpeg"} {
 			bgPath := filepath.Join(displayDir, title+ext)
 			if info, err := os.Stat(bgPath); err == nil {
 				modTime := strconv.FormatInt(info.ModTime().Unix(), 10)
 				item["bgImage"] = "/display/assets/" + url.PathEscape(title+ext) + "?v=" + modTime
-				found = true
 				break
-			}
-		}
-		if !found {
-			framePath := filepath.Join(execPath, "data", "default_bg.png")
-			if _, err := os.Stat(framePath); err == nil {
-				item["bgImage"] = "/display/bg"
 			}
 		}
 	}

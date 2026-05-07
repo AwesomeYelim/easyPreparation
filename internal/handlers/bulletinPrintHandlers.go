@@ -427,6 +427,7 @@ func generateBulletinPDF(worshipType, templateNum string) ([]byte, error) {
 		"--no-sandbox",
 		"--disable-dev-shm-usage",
 		"--run-all-compositor-stages-before-draw",
+		"--virtual-time-budget=15000",
 		"--print-to-pdf-no-header",
 		"--print-to-pdf="+outFile,
 		targetURL,
