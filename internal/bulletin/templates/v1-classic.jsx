@@ -85,7 +85,7 @@ function V1Cover({ data }) {
           </div>
         </div>
 
-        <div style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: 18, color: v1Styles.ink, fontStyle: "italic", maxWidth: 380, lineHeight: 1.5 }}>
+        <div style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: 18, color: v1Styles.ink, fontStyle: "italic", maxWidth: 380, lineHeight: 1.5, wordBreak: "keep-all" }}>
           “{data.verseQuote.text}”
           <div style={{ fontSize: 12, marginTop: 8, opacity: 0.6, fontStyle: "normal", letterSpacing: "0.1em" }}>
             — {data.verseQuote.ref}
@@ -119,7 +119,7 @@ function V1Back({ data }) {
             <div style={{ fontSize: 13, color: v1Styles.wine, marginBottom: 4, letterSpacing: "0.05em" }}>
               {String(i + 1).padStart(2, "0")} · {a.title}
             </div>
-            <div style={{ color: v1Styles.ink, opacity: 0.85 }}>{a.body}</div>
+            <div style={{ color: v1Styles.ink, opacity: 0.85, wordBreak: "keep-all" }}>{a.body}</div>
           </div>
         ))}
       </div>
@@ -243,7 +243,7 @@ function V1Inside({ data }) {
           }}>
             Verbum Dei
           </div>
-          <div style={{ fontSize: 21, lineHeight: 1.55, color: v1Styles.ink, letterSpacing: "0.03em" }}>
+          <div style={{ fontSize: 21, lineHeight: 1.55, color: v1Styles.ink, letterSpacing: "0.03em", wordBreak: "keep-all" }}>
             『{data.verseQuote.text}』
           </div>
           <div style={{ fontSize: 11, marginTop: 12, color: v1Styles.wine, letterSpacing: "0.2em", textAlign: "right" }}>

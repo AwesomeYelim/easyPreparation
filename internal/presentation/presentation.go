@@ -356,7 +356,7 @@ func (pdf *PDF) ForEdit(con types.WorshipInfo, config extract.Config) {
 		pdf.setOutDirFiles("responsive_reading", con.Obj)
 	case "교회소식":
 		fontInfo.FontSize = fontInfo.FontSize * 0.8
-		pdf.DrawChurchNews(fontInfo, con, hLColor, pdf.Config.Padding, pdf.Config.Padding*2.5)
+		pdf.DrawChurchNews(fontInfo, con, hLColor, pdf.Config.Padding, pdf.Config.Padding*1.5)
 	case "참회의 기도":
 		pdf.SetText(fontInfo, true, hLColor)
 		pdf.SetXY(pdf.Config.Padding, pdf.Config.Padding*2)
@@ -428,10 +428,11 @@ func (pdf *PDF) MarkName() {
 	// 종횡비 계산 (gofpdf Width()/Height()는 해상도 독립적 픽셀값)
 	aspect := imgInfo.Width() / imgInfo.Height()
 
-	hMargin := pageW * 0.012 // 1.2% 좌우 여백
-	vMargin := pageH * 0.012 // 1.2% 상하 여백
+	hMargin := pageW * 0.015 // 1.5% 좌우 여백
+	vMargin := pageH * 0.015 // 1.5% 상하 여백
 
-	logoW := pageW * (logoCfg.LogoSizePercent / 100.0)
+	// PDF에서는 Display 대비 작게 (40% 크기)
+	logoW := pageW * (logoCfg.LogoSizePercent * 0.4 / 100.0)
 	logoH := logoW / aspect
 
 	var x, y float64

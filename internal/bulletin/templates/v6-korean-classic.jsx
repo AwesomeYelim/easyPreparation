@@ -72,7 +72,7 @@ function V6Cover({ data }) {
           </div>
         </div>
 
-        <div style={{ maxWidth: 400, lineHeight: 1.6, color: v6Styles.navy }}>
+        <div style={{ maxWidth: 400, lineHeight: 1.6, color: v6Styles.navy, wordBreak: "keep-all" }}>
           <div style={{ fontSize: 19, fontStyle: "italic" }}>
             “{data.verseQuote.text}”
           </div>
@@ -111,7 +111,7 @@ function V6Back({ data }) {
               </span>
               {a.title}
             </div>
-            <div style={{ color: v6Styles.navy, opacity: 0.82 }}>{a.body}</div>
+            <div style={{ color: v6Styles.navy, opacity: 0.82, wordBreak: "keep-all" }}>{a.body}</div>
           </div>
         ))}
       </div>
@@ -195,7 +195,7 @@ function V6Inside({ data }) {
           background: "rgba(26,35,54,0.04)",
           position: "relative",
         }}>
-          <div style={{ fontSize: 22, lineHeight: 1.65, color: v6Styles.navy, letterSpacing: "0.03em" }}>
+          <div style={{ fontSize: 22, lineHeight: 1.65, color: v6Styles.navy, letterSpacing: "0.03em", wordBreak: "keep-all" }}>
             “{data.verseQuote.text}”
           </div>
           <div style={{ fontFamily: v6Styles.sans, fontSize: 11, marginTop: 16, color: v6Styles.navyLt, letterSpacing: "0.2em", textAlign: "right" }}>

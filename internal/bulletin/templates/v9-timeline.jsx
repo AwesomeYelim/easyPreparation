@@ -232,7 +232,7 @@ function V9Cover({ data }) {
           fontFamily: "'Nanum Myeongjo', 'Noto Serif KR', serif",
           fontSize: 14.5, lineHeight: 1.7,
           textAlign: "center",
-          letterSpacing: "0.02em",
+          letterSpacing: "0.02em", wordBreak: "keep-all",
         }}>
           「{data.verseQuote.text}」
           <div style={{ fontSize: 10.5, color: v9Styles.inkLt, letterSpacing: "0.15em", marginTop: 6 }}>
@@ -285,11 +285,11 @@ function V9Back({ data }) {
       <div style={{ height: 2, background: v9Styles.ink, marginBottom: 14 }} />
 
       {/* 손글씨 풍 본문 */}
-      <div style={{ fontFamily: "'Nanum Myeongjo', 'Noto Serif KR', serif" }}>
+      <div style={{ fontFamily: "'Nanum Myeongjo', 'Noto Serif KR', serif", fontSize: data.announcements.length > 10 ? "82%" : data.announcements.length > 7 ? "90%" : "100%" }}>
         {data.announcements.map((a, i) => (
           <div key={i} style={{
-            marginBottom: 14,
-            paddingBottom: 10,
+            marginBottom: data.announcements.length > 10 ? 5 : data.announcements.length > 7 ? 8 : 14,
+            paddingBottom: data.announcements.length > 10 ? 4 : data.announcements.length > 7 ? 6 : 10,
             borderBottom: `1px dashed rgba(26,26,23,0.3)`,
           }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
@@ -302,11 +302,11 @@ function V9Back({ data }) {
               }}>
                 {String(i + 1).padStart(2, "0")}
               </span>
-              <span style={{ fontSize: 16, fontWeight: 700 }}>{a.title}</span>
+              <span style={{ fontSize: 16, fontWeight: 700, wordBreak: "keep-all" }}>{a.title}</span>
             </div>
             <div style={{
               fontSize: 13, lineHeight: 1.65, marginTop: 6,
-              color: v9Styles.ink, paddingLeft: 4,
+              color: v9Styles.ink, paddingLeft: 4, wordBreak: "keep-all",
             }}>
               {a.body}
             </div>
@@ -462,7 +462,7 @@ function V9Inside({ data }) {
         <div style={{
           fontFamily: "'Nanum Myeongjo', 'Noto Serif KR', serif",
           fontSize: 22, lineHeight: 1.75, fontWeight: 500,
-          padding: "12px 0", marginBottom: 8,
+          padding: "12px 0", marginBottom: 8, wordBreak: "keep-all",
         }}>
           「{data.verseQuote.text}」
         </div>

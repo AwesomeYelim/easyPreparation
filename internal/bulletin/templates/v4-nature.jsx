@@ -75,7 +75,7 @@ function V4Cover({ data }) {
         </div>
       </div>
 
-      <div style={{ maxWidth: 380, fontFamily: v4Styles.serif, fontSize: 16, lineHeight: 1.6, color: v4Styles.ink, fontStyle: "italic" }}>
+      <div style={{ maxWidth: 380, fontFamily: v4Styles.serif, fontSize: 16, lineHeight: 1.6, color: v4Styles.ink, fontStyle: "italic", wordBreak: "keep-all" }}>
         “{data.verseQuote.text}”
         <div style={{ fontSize: 11, marginTop: 10, color: v4Styles.olive, fontStyle: "normal", letterSpacing: "0.2em" }}>
           {data.verseQuote.ref}
@@ -106,13 +106,13 @@ function V4Back({ data }) {
         </div>
       </div>
 
-      <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 14, fontSize: 11.5, lineHeight: 1.6 }}>
+      <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: data.announcements.length > 10 ? 6 : 14, fontSize: data.announcements.length > 10 ? 9.5 : data.announcements.length > 7 ? 10.5 : 11.5, lineHeight: data.announcements.length > 10 ? 1.4 : 1.6 }}>
         {data.announcements.map((a, i) => (
           <div key={i} style={{
             display: "grid",
             gridTemplateColumns: "auto 1fr",
-            gap: 16,
-            paddingBottom: 12,
+            gap: data.announcements.length > 10 ? 10 : 16,
+            paddingBottom: data.announcements.length > 10 ? 6 : 12,
             borderBottom: i === data.announcements.length - 1 ? "none" : `0.5px dashed ${v4Styles.rule}`,
           }}>
             <div style={{
@@ -123,15 +123,14 @@ function V4Back({ data }) {
             }}>
               {a.title}
             </div>
-            <div style={{ color: v4Styles.ink, opacity: 0.85, paddingTop: 6 }}>{a.body}</div>
+            <div style={{ color: v4Styles.ink, opacity: 0.85, paddingTop: 6, wordBreak: "keep-all" }}>{a.body}</div>
           </div>
         ))}
       </div>
 
       <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
         <div style={{ fontFamily: v4Styles.serif, fontStyle: "italic", fontSize: 22, color: v4Styles.olive }}>
-          심으신 자리에서
-          <div style={{ fontSize: 14, color: v4Styles.oliveDk, fontStyle: "normal", marginTop: 2 }}>꽃피우는 신앙</div>
+          {data.tagline || "심으신 자리에서 꽃피우는 신앙"}
         </div>
         <div style={{ fontSize: 10, color: v4Styles.oliveDk, textAlign: "right", letterSpacing: "0.15em", opacity: 0.75 }}>
           {data.website || ""}<br/>{data.blogInfo || ""}
@@ -192,7 +191,7 @@ function V4Inside({ data }) {
             <V4LeafPlaceholder size={150} label="" />
           </div>
           <div style={{ fontSize: 9, letterSpacing: "0.4em", opacity: 0.85 }}>오늘의 말씀</div>
-          <div style={{ fontFamily: v4Styles.serif, fontSize: 24, lineHeight: 1.55, marginTop: 12, position: "relative", zIndex: 1 }}>
+          <div style={{ fontFamily: v4Styles.serif, fontSize: 24, lineHeight: 1.55, marginTop: 12, position: "relative", zIndex: 1, wordBreak: "keep-all" }}>
             “{data.verseQuote.text}”
           </div>
           <div style={{ fontSize: 11, letterSpacing: "0.25em", marginTop: 14, opacity: 0.9 }}>

@@ -89,7 +89,7 @@ function V2Cover({ data }) {
           {data.churchName}
         </div>
 
-        <div style={{ marginTop: 24, fontSize: 14, fontFamily: v2Styles.serif, color: v2Styles.ink, lineHeight: 1.55, maxWidth: 360 }}>
+        <div style={{ marginTop: 24, fontSize: 14, fontFamily: v2Styles.serif, color: v2Styles.ink, lineHeight: 1.55, maxWidth: 360, wordBreak: "keep-all" }}>
           “{data.verseQuote.text}”
           <div style={{ fontSize: 10.5, marginTop: 6, opacity: 0.55, fontFamily: '"Inter", sans-serif', letterSpacing: "0.15em" }}>
             {data.verseQuote.ref.toUpperCase()}
@@ -129,7 +129,7 @@ function V2Back({ data }) {
                 {a.title}
               </span>
             </div>
-            <div style={{ marginTop: 6, color: v2Styles.ink, opacity: 0.75 }}>{a.body}</div>
+            <div style={{ marginTop: 6, color: v2Styles.ink, opacity: 0.75, wordBreak: "keep-all" }}>{a.body}</div>
           </div>
         ))}
       </div>
@@ -224,7 +224,7 @@ function V2Inside({ data }) {
           <div style={{ fontFamily: v2Styles.serif, fontSize: 60, lineHeight: 0.9, color: v2Styles.navy, opacity: 0.15 }}>
             “
           </div>
-          <div style={{ fontFamily: v2Styles.serif, fontSize: 26, lineHeight: 1.55, color: v2Styles.navy, marginTop: -14, letterSpacing: "0.01em" }}>
+          <div style={{ fontFamily: v2Styles.serif, fontSize: 26, lineHeight: 1.55, color: v2Styles.navy, marginTop: -14, letterSpacing: "0.01em", wordBreak: "keep-all" }}>
             {data.verseQuote.text}
           </div>
           <div style={{ marginTop: 18, fontSize: 11, letterSpacing: "0.3em", color: v2Styles.navy, opacity: 0.6 }}>

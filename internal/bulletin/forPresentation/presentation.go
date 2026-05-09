@@ -44,13 +44,7 @@ func (pi PdfInfo) Create() {
 	}
 	loadPathInfo(outputDir)
 
-	// 커스텀 배경 없는 항목은 Frame.png를 기본 배경으로 사용
-	framePath := filepath.Join(pi.ExecPath, "data", "default_bg.png")
-	if _, err := os.Stat(framePath); err == nil {
-		// loadPathInfo 이후 pathInfo에 없는 키는 나중에 PDF 생성 시 배경 없이 처리됨
-		// Frame.png를 "__default__" 키로 등록하고 아래에서 fallback으로 사용
-		pathInfo["__default__"] = framePath
-	}
+	// 배경 이미지가 없는 항목은 배경 없이 처리 (default_bg.png fallback 제거)
 
 	instanceSize := gofpdf.SizeType{
 		Wd: config.Classification.Bulletin.Presentation.Width,
@@ -79,10 +73,13 @@ func (pi PdfInfo) Create() {
 		hasBackground := false
 		if _, ok := pathInfo[con.Title]; ok {
 			hasBackground = true
-		} else if _, ok := pathInfo["__default__"]; ok {
-			// 커스텀 배경 없으면 Frame.png 기본 배경 사용
-			pathInfo[con.Title] = pathInfo["__default__"]
-			hasBackground = true
+		} else if con.Info != "-" {
+			// 편집 가능 항목(info != "-")은 매칭 이미지 없으면 default_bg 사용
+			framePath := filepath.Join(pi.ExecPath, "data", "default_bg.png")
+			if _, err := os.Stat(framePath); err == nil {
+				pathInfo[con.Title] = framePath
+				hasBackground = true
+			}
 		}
 		hasContent := strings.Contains(con.Info, "edit") || strings.Contains(con.Info, "notice")
 

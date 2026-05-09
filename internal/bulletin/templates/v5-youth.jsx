@@ -52,13 +52,14 @@ function V5Cover({ data }) {
             {`SUNDAY / ${String(parseDate(data.date).day).padStart(2,'0')}.${String(parseDate(data.date).month).padStart(2,'0')}.${parseDate(data.date).year}`}
           </div>
           <div style={{
-            fontSize: 130, lineHeight: 0.9, fontWeight: 900,
+            fontSize: 130,
+            lineHeight: 1.2, fontWeight: 900,
             color: v5Styles.ink, letterSpacing: "-0.05em",
             marginTop: 18, fontFamily: v5Styles.serif,
+            wordBreak: "keep-all",
+            overflowWrap: "break-word",
           }}>
-            아들이<br/>
-            <span style={{ color: v5Styles.point, fontStyle: "italic" }}>자유케</span><br/>
-            하면.
+            {data.sermonTitle || "예배"}
           </div>
         </div>
 
@@ -105,13 +106,13 @@ function V5Back({ data }) {
         <span style={{ color: v5Styles.point }}>● UPDATED</span>
       </div>
 
-      <div style={{ padding: "24px 36px", flex: 1, display: "flex", flexDirection: "column", gap: 0, overflow: "hidden", minHeight: 0 }}>
+      <div style={{ padding: "24px 36px", flex: 1, display: "flex", flexDirection: "column", gap: 0, overflow: "hidden", minHeight: 0, fontSize: data.announcements.length > 10 ? "80%" : data.announcements.length > 7 ? "90%" : "100%" }}>
         {data.announcements.map((a, i) => (
           <div key={i} style={{
             display: "grid",
             gridTemplateColumns: "60px 1fr",
-            gap: 18,
-            padding: "12px 0",
+            gap: data.announcements.length > 10 ? 10 : 18,
+            padding: data.announcements.length > 10 ? "6px 0" : data.announcements.length > 7 ? "8px 0" : "12px 0",
             borderBottom: i === data.announcements.length - 1 ? "none" : `1px solid ${v5Styles.ink}`,
           }}>
             <div style={{
@@ -122,10 +123,10 @@ function V5Back({ data }) {
               {String(i + 1).padStart(2, "0")}
             </div>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: v5Styles.ink, letterSpacing: "0.01em" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: v5Styles.ink, letterSpacing: "0.01em", wordBreak: "keep-all" }}>
                 {a.title}
               </div>
-              <div style={{ fontSize: 11, color: v5Styles.ink, opacity: 0.78, lineHeight: 1.55, marginTop: 3 }}>
+              <div style={{ fontSize: 11, color: v5Styles.ink, opacity: 0.78, lineHeight: 1.55, marginTop: 3, wordBreak: "keep-all" }}>
                 {a.body}
               </div>
             </div>
@@ -217,7 +218,7 @@ function V5Inside({ data }) {
           </div>
           <div style={{
             fontFamily: v5Styles.serif, fontSize: 30, lineHeight: 1.45, fontWeight: 600,
-            marginTop: 16, letterSpacing: "0.01em",
+            marginTop: 16, letterSpacing: "0.01em", wordBreak: "keep-all",
           }}>
             “{data.verseQuote.text}”
           </div>

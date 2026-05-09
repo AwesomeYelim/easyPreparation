@@ -114,7 +114,7 @@ function V3Cover({ data }) {
         <div style={{ fontFamily: v3Styles.serif, fontSize: 56, lineHeight: 1.05, color: v3Styles.ink, marginTop: 14, letterSpacing: "-0.01em" }}>
           {data.churchName}
         </div>
-        <div style={{ marginTop: 18, fontFamily: v3Styles.serif, fontStyle: "italic", fontSize: 18, color: v3Styles.ink, maxWidth: 420, lineHeight: 1.55 }}>
+        <div style={{ marginTop: 18, fontFamily: v3Styles.serif, fontStyle: "italic", fontSize: 18, color: v3Styles.ink, maxWidth: 420, lineHeight: 1.55, wordBreak: "keep-all" }}>
           “{data.verseQuote.text}”
           <span style={{ fontStyle: "normal", fontSize: 11, marginLeft: 10, color: v3Styles.accent, letterSpacing: "0.15em" }}>
             {data.verseQuote.ref}
@@ -139,13 +139,13 @@ function V3Back({ data }) {
         <div style={{ fontSize: 9, letterSpacing: "0.3em", opacity: 0.7 }}>교회 소식</div>
       </div>
 
-      <div style={{ padding: "24px 44px", flex: 1, display: "flex", flexDirection: "column", gap: 0 }}>
+      <div style={{ padding: "24px 44px", flex: 1, display: "flex", flexDirection: "column", gap: 0, fontSize: data.announcements.length > 10 ? "85%" : data.announcements.length > 7 ? "92%" : "100%" }}>
         {data.announcements.map((a, i) => (
           <div key={i} style={{
             display: "grid",
             gridTemplateColumns: "44px 1fr",
-            gap: 14,
-            padding: "10px 0",
+            gap: data.announcements.length > 10 ? 8 : 14,
+            padding: data.announcements.length > 10 ? "6px 0" : "10px 0",
             borderBottom: i === data.announcements.length - 1 ? "none" : `0.5px solid ${v3Styles.rule}`,
           }}>
             <div style={{
@@ -156,10 +156,10 @@ function V3Back({ data }) {
               {String(i + 1).padStart(2, "0")}
             </div>
             <div>
-              <div style={{ fontSize: 13, color: v3Styles.ink, fontWeight: 600, letterSpacing: "0.02em" }}>
+              <div style={{ fontSize: 13, color: v3Styles.ink, fontWeight: 600, letterSpacing: "0.02em", wordBreak: "keep-all" }}>
                 {a.title}
               </div>
-              <div style={{ fontSize: 11, color: v3Styles.ink, opacity: 0.78, lineHeight: 1.55, marginTop: 2 }}>
+              <div style={{ fontSize: 11, color: v3Styles.ink, opacity: 0.78, lineHeight: 1.55, marginTop: 2, wordBreak: "keep-all" }}>
                 {a.body}
               </div>
             </div>
@@ -239,7 +239,7 @@ function V3Inside({ data }) {
         {/* 풀블리드 말씀 박스 */}
         <div style={{ background: v3Styles.navy, color: v3Styles.cream, padding: "36px 44px", position: "relative" }}>
           <div style={{ fontSize: 9, letterSpacing: "0.4em", opacity: 0.7 }}>오늘의 말씀</div>
-          <div style={{ fontFamily: v3Styles.serif, fontSize: 28, lineHeight: 1.5, marginTop: 14, letterSpacing: "0.01em" }}>
+          <div style={{ fontFamily: v3Styles.serif, fontSize: 28, lineHeight: 1.5, marginTop: 14, letterSpacing: "0.01em", wordBreak: "keep-all" }}>
             “{data.verseQuote.text}”
           </div>
           <div style={{ fontSize: 11, letterSpacing: "0.3em", marginTop: 16, opacity: 0.85 }}>

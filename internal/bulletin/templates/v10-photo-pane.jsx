@@ -146,13 +146,13 @@ function V10Back({ data }) {
       </div>
 
       {/* 소식 — 단순한 세로 리스트 (그리드 대칭 없음) */}
-      <div style={{ marginTop: 16, fontFamily: v10Styles.sans, flex: 1, overflow: "hidden", minHeight: 0 }}>
+      <div style={{ marginTop: 16, fontFamily: v10Styles.sans, flex: 1, overflow: "hidden", minHeight: 0, fontSize: data.announcements.length > 10 ? "82%" : data.announcements.length > 7 ? "90%" : "100%" }}>
         {data.announcements.map((a, i) => (
           <div key={i} style={{
             display: "grid",
             gridTemplateColumns: "44px 1fr",
-            gap: 16,
-            padding: "14px 0",
+            gap: data.announcements.length > 10 ? 8 : data.announcements.length > 7 ? 12 : 16,
+            padding: data.announcements.length > 10 ? "6px 0" : data.announcements.length > 7 ? "10px 0" : "14px 0",
             borderBottom: i === data.announcements.length - 1 ? "none" : `1px solid ${v10Styles.rule}`,
             alignItems: "baseline",
           }}>
@@ -165,10 +165,10 @@ function V10Back({ data }) {
               {String(i + 1).padStart(2, "0")}
             </span>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 3 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 3, wordBreak: "keep-all" }}>
                 {a.title}
               </div>
-              <div style={{ fontSize: 12, lineHeight: 1.65, color: v10Styles.inkLt }}>
+              <div style={{ fontSize: 12, lineHeight: 1.65, color: v10Styles.inkLt, wordBreak: "keep-all" }}>
                 {a.body}
               </div>
             </div>
@@ -220,7 +220,7 @@ function V10Inside({ data }) {
           <div style={{
             fontFamily: v10Styles.serif, fontWeight: 400,
             fontSize: 36, lineHeight: 1.55, letterSpacing: "0.02em",
-            color: v10Styles.blue,
+            color: v10Styles.blue, wordBreak: "keep-all",
           }}>
             {data.verseQuote.text}
           </div>
