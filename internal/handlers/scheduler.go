@@ -51,10 +51,10 @@ func schedulePath() string {
 func defaultSchedule() ScheduleConfig {
 	return ScheduleConfig{
 		Entries: []ScheduleEntry{
-			{WorshipType: "main_worship", Label: "주일예배", Weekday: 0, Hour: 11, Minute: 0, Enabled: true},
-			{WorshipType: "after_worship", Label: "오후예배", Weekday: 0, Hour: 14, Minute: 0, Enabled: true},
-			{WorshipType: "wed_worship", Label: "수요예배", Weekday: 3, Hour: 19, Minute: 30, Enabled: true},
-			{WorshipType: "fri_worship", Label: "금요예배", Weekday: 5, Hour: 20, Minute: 30, Enabled: true},
+			{WorshipType: "main_worship", Label: "주일예배", Weekday: 0, Hour: 11, Minute: 0, Enabled: false},
+			{WorshipType: "after_worship", Label: "오후예배", Weekday: 0, Hour: 14, Minute: 0, Enabled: false},
+			{WorshipType: "wed_worship", Label: "수요예배", Weekday: 3, Hour: 19, Minute: 30, Enabled: false},
+			{WorshipType: "fri_worship", Label: "금요예배", Weekday: 5, Hour: 20, Minute: 30, Enabled: false},
 		},
 		AutoStream:       true,
 		CountdownMinutes: 5,
@@ -170,8 +170,15 @@ func checkSchedule(now time.Time) {
 func executeSchedule(entry ScheduleEntry, autoStream bool) {
 	log.Printf("[scheduler] 예배 시작: %s (%s)", entry.Label, entry.WorshipType)
 
-	// config/{worshipType}.json 로드
+	// 스케줄러가 순서를 교체하기 전에 현재 상태를 별도 백업
 	execPath := path.ExecutePath("easyPreparation")
+	backupPath := filepath.Join(execPath, "data", "display_state_before_schedule.json")
+	if src, err := os.ReadFile(displayStatePath()); err == nil {
+		os.WriteFile(backupPath, src, 0644)
+		log.Printf("[scheduler] 기존 display_state 백업: %s", backupPath)
+	}
+
+	// config/{worshipType}.json 로드
 	configFile := filepath.Join(execPath, "config", entry.WorshipType+".json")
 	data, err := os.ReadFile(configFile)
 	if err != nil {

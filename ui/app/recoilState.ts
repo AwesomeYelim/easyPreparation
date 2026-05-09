@@ -156,3 +156,8 @@ export const bulletinPreviewState = atom<{ template: number | null; worshipType:
   key: "bulletinPreviewState",
   default: { template: null, worshipType: "main_worship" },
 });
+
+export const scheduleActiveState = atom<boolean>({
+  key: "scheduleActiveState",
+  default: false,
+});

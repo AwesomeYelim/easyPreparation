@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSetRecoilState } from "recoil";
+import { scheduleActiveState } from "@/recoilState";
 import { apiClient } from "@/lib/apiClient";
 import { ScheduleConfig, ScheduleEntry } from "@/types";
 import FeatureGate from "@/components/FeatureGate";
@@ -10,9 +12,13 @@ const WEEKDAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
 
 export default function InspectorScheduleTab() {
   const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(null);
+  const setScheduleActive = useSetRecoilState(scheduleActiveState);
 
   useEffect(() => {
-    apiClient.getSchedule().then(setScheduleConfig).catch(console.error);
+    apiClient.getSchedule().then((conf) => {
+      setScheduleConfig(conf);
+      setScheduleActive((conf.entries || []).some((e: ScheduleEntry) => e.enabled));
+    }).catch(console.error);
   }, []);
 
   useAutoSave(
@@ -25,10 +31,12 @@ export default function InspectorScheduleTab() {
   }
 
   const updateEntry = (idx: number, patch: Partial<ScheduleEntry>) => {
-    setScheduleConfig({
+    const updated = {
       ...scheduleConfig,
       entries: scheduleConfig.entries.map((e, i) => (i === idx ? { ...e, ...patch } : e)),
-    });
+    };
+    setScheduleConfig(updated);
+    setScheduleActive(updated.entries.some((e) => e.enabled));
   };
 
   return (
@@ -36,17 +44,21 @@ export default function InspectorScheduleTab() {
       <div className="flex flex-col gap-3">
         {scheduleConfig.entries.map((entry, i) => (
           <div key={entry.worshipType} className="flex items-center gap-2">
-            <label className="flex items-center gap-1.5 flex-1 cursor-pointer">
-              <input
-                type="checkbox"
-                className="w-3.5 h-3.5 accent-[#4a9eff]"
-                checked={entry.enabled}
-                onChange={(e) => updateEntry(i, { enabled: e.target.checked })}
-              />
-              <span className="text-[11px] font-medium text-pro-text">{entry.label}</span>
-            </label>
+            <button
+              className={`relative w-9 h-5 rounded-full transition-all flex-shrink-0 ${
+                entry.enabled ? "bg-[#4a9eff]" : "bg-white/20"
+              }`}
+              onClick={() => updateEntry(i, { enabled: !entry.enabled })}
+            >
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${
+                entry.enabled ? "left-[18px]" : "left-0.5"
+              }`} />
+            </button>
+            <span className={`text-[11px] font-medium flex-1 ${entry.enabled ? "text-pro-text" : "text-pro-text-dim"}`}>
+              {entry.label}
+            </span>
             <span className="text-[10px] text-pro-text-dim min-w-[32px] text-center">
-              {WEEKDAY_NAMES[entry.weekday]}요일
+              {WEEKDAY_NAMES[entry.weekday]}
             </span>
             <input
               type="time"
@@ -84,16 +96,16 @@ export default function InspectorScheduleTab() {
         <div className="flex justify-between items-center">
           <span className="text-[11px] font-medium text-pro-text">OBS 자동 스트리밍</span>
           <button
-            className={`px-3.5 py-1 rounded-md text-[10px] font-semibold cursor-pointer border-none transition-colors ${
-              scheduleConfig.autoStream
-                ? "bg-[#4a9eff] text-white"
-                : "bg-pro-hover text-pro-text-dim"
+            className={`relative w-11 h-6 rounded-full transition-all ${
+              scheduleConfig.autoStream ? "bg-[#4a9eff]" : "bg-white/20"
             }`}
             onClick={() =>
               setScheduleConfig({ ...scheduleConfig, autoStream: !scheduleConfig.autoStream })
             }
           >
-            {scheduleConfig.autoStream ? "ON" : "OFF"}
+            <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${
+              scheduleConfig.autoStream ? "left-[22px]" : "left-0.5"
+            }`} />
           </button>
         </div>
 

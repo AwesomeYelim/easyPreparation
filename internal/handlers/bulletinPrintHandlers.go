@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	_ "embed"
 	"easyPreparation_1.0/internal/bulletin/templates"
 	"easyPreparation_1.0/internal/path"
 	"encoding/json"
@@ -20,6 +21,9 @@ import (
 
 	"os/exec"
 )
+
+//go:embed html/bulletin-print.html
+var bulletinPrintHTMLTmpl string
 
 // ──────────────────── 데이터 타입 ────────────────────
 
@@ -148,88 +152,8 @@ func BulletinPrintHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, html)
 }
 
-// bulletinPrintHTMLTmpl — Sprintf 인수: jsxFile, worshipType, tplNum(x4)
-const bulletinPrintHTMLTmpl = `<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<title>주보 출력</title>
-<link rel="icon" href="data:image/svg+xml,%%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%%3E%%3Crect width='40' height='40' rx='10' fill='%%23020617'/%%3E%%3Ctext x='50%%25' y='54%%25' dominant-baseline='central' text-anchor='middle' fill='white' font-family='Arial' font-weight='900' font-size='20' font-style='italic'%%3Eep%%3C/text%%3E%%3C/svg%%3E" type="image/svg+xml">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&family=Nanum+Myeongjo:wght@400;700;800&family=Inter:wght@300;400;500;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-@page{size:1200px 848px;margin:0}
-.spread{width:1200px;height:848px;overflow:hidden;page-break-after:always}
-body{width:1200px;margin:0 auto;background:#1a1a1a;font-family:sans-serif}
-@media print{body{background:#fff}}
-</style>
-</head>
-<body>
-<div id="outside" class="spread"></div>
-<div id="inside" class="spread"></div>
-<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
-<script>
-(async function() {
-  // 1) 데이터 먼저 로드 — accentColor를 JSX 평가 전에 설정해야 함
-  var data = await fetch('/api/bulletin-data?type=%s').then(function(r){return r.json();});
-  if (data.accentColor) {
-    window.__BULLETIN_ACCENT__ = data.accentColor;
-  }
-  // 2) JSX 로드 + Babel 트랜스파일
-  var jsxText = await fetch('/display/bulletin-template/%s').then(function(r){return r.text();});
-  var code = Babel.transform(jsxText, {presets:['react']}).code;
-  await new Promise(function(resolve, reject) {
-    var blob = new Blob([code], {type:'application/javascript'});
-    var blobUrl = URL.createObjectURL(blob);
-    var s = document.createElement('script');
-    s.src = blobUrl;
-    s.onload = function(){ URL.revokeObjectURL(blobUrl); resolve(); };
-    s.onerror = function(){ reject(new Error('JSX 실행 실패')); };
-    document.head.appendChild(s);
-  });
-  var Outside = window['V%sOutside'];
-  var Inside  = window['V%sInside'];
-  if (!Outside || !Inside) {
-    throw new Error('컴포넌트를 찾을 수 없습니다: V%sOutside / V%sInside');
-  }
-  ReactDOM.createRoot(document.getElementById('outside')).render(
-    React.createElement(Outside, {data: data})
-  );
-  ReactDOM.createRoot(document.getElementById('inside')).render(
-    React.createElement(Inside, {data: data})
-  );
-  await document.fonts.ready;
-  await new Promise(function(r){ setTimeout(r, 600); });
-
-  // 캔버스 오버플로우 자동 스케일: scrollHeight로 실제 콘텐츠 높이를 안전하게 측정
-  ['outside','inside'].forEach(function(id) {
-    var wrap = document.getElementById(id);
-    var cvs = wrap && wrap.firstElementChild;
-    if (!cvs) return;
-    var h = cvs.scrollHeight; // overflow:hidden 상태에서도 실제 콘텐츠 높이 반환
-    if (h <= 852) return;     // 캔버스 안에 들어옴 — 변경 없음
-    // 내용이 848px를 넘침 — scale 적용
-    var scale = 848 / h;
-    cvs.style.overflow = 'visible';
-    cvs.style.height = h + 'px';
-    cvs.style.transform = 'scale(' + scale + ')';
-    cvs.style.transformOrigin = 'top left';
-    wrap.style.height = '848px';
-    wrap.style.overflow = 'hidden';
-    wrap.style.background = window.getComputedStyle(cvs).backgroundColor || '#f5efe4';
-  });
-
-  document.body.setAttribute('data-ready','true');
-})().catch(function(err) {
-  document.body.setAttribute('data-ready','error');
-  document.getElementById('outside').innerHTML =
-    '<pre style="color:red;padding:20px;background:#fff">오류: ' + err.message + '</pre>';
-});
-</script>
-</body>
-</html>`
+// bulletinPrintHTMLTmpl is loaded via //go:embed at the top of this file
+// Sprintf 인수: worshipType, jsxFile, tplNum(x4)
 
 // ──────────────────── JSX 파일 서빙 ────────────────────
 

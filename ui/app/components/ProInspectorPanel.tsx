@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import {
   inspectorOpenState,
   bulletinPreviewState,
   inspectorTabState,
+  scheduleActiveState,
   InspectorCategory,
 } from "@/recoilState";
 import FeatureGate from "./FeatureGate";
@@ -36,6 +37,7 @@ export default function ProInspectorPanel() {
   const [tab, setTab] = useRecoilState(inspectorTabState);
   const [bulletinPreview, setBulletinPreview] = useRecoilState(bulletinPreviewState);
   const [toastMsg, setToastMsg] = useState<{ msg: string; type: "error" | "info" } | null>(null);
+  const scheduleActive = useRecoilValue(scheduleActiveState);
 
   // 주보 미리보기 설정 시 자동으로 preview 탭으로 전환
   useEffect(() => {
@@ -80,6 +82,9 @@ export default function ProInspectorPanel() {
             }`}
           >
             {t.label}
+            {t.key === "schedule" && scheduleActive && (
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 ml-1 align-middle" />
+            )}
           </button>
         ))}
       </div>

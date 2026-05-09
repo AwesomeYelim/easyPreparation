@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, useLayoutEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil"; // eslint-disable-line @typescript-eslint/no-unused-vars
-import { displayItemsState, sequencePanelOpenState, itemTimersState, displayPositionState, inspectorTabState, displaySubPageState } from "@/recoilState";
+import { displayItemsState, sequencePanelOpenState, itemTimersState, displayPositionState, inspectorTabState, displaySubPageState, scheduleActiveState } from "@/recoilState";
 import { apiClient, openDisplayWindow } from "@/lib/apiClient";
 import { WorshipOrderItem, OBSStatus, StreamStatus } from "@/types";
 import { useWS } from "@/components/WebSocketProvider";
@@ -38,6 +38,7 @@ export default function ProSequencePanel() {
   const [obsDisplayScene, setObsDisplayScene] = useState("monitor");
   // 카메라에 저장된 프리셋 목록
   const [cameraPresets, setCameraPresets] = useState<{ token: string; name: string }[]>([]);
+  const scheduleActive = useRecoilValue(scheduleActiveState);
 
   // Per-item timer state: Recoil (shared with ProTimeline)
   const itemTimers = useRecoilValue(itemTimersState);

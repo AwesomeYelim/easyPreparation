@@ -70,12 +70,16 @@ export default function Bulletin() {
     flushQueue();
   };
 
-  // 예배 순서 API에서 로드 (아직 로드 안 된 타입만 — 이미 있으면 편집 내용 유지)
+  // 예배 순서 API에서 로드 — 항상 서버 데이터와 동기화
+  // 서버에 더 많은 항목이 있으면 서버 데이터로 갱신 (localStorage 잔해 방지)
   useEffect(() => {
-    if (worshipOrder[selectedWorshipType]?.length > 0) return;
     apiClient.getWorshipOrder(selectedWorshipType).then((data) => {
       if (Array.isArray(data) && data.length > 0) {
-        setWorshipOrder((prev) => ({ ...prev, [selectedWorshipType]: data }));
+        const current = worshipOrder[selectedWorshipType] || [];
+        // 서버 데이터가 로컬보다 많으면 서버 우선 (편집 중 손실 방지보다 데이터 정합성 우선)
+        if (data.length > current.length || current.length === 0) {
+          setWorshipOrder((prev) => ({ ...prev, [selectedWorshipType]: data }));
+        }
       }
     }).catch((err) => console.error("예배 순서 로드 실패:", err));
   }, [selectedWorshipType]);
@@ -127,6 +131,10 @@ export default function Bulletin() {
       toast.error("예배 순서가 비어 있습니다. 먼저 순서를 불러오세요.");
       setDisplayPanelOpen(true);
       return;
+    }
+    if (processedInfo.length <= 3) {
+      const ok = window.confirm(`예배 순서가 ${processedInfo.length}개뿐입니다. 정말 전송하시겠습니까?`);
+      if (!ok) return;
     }
     setDisplayPanelOpen(true);
     openDisplayWindow();

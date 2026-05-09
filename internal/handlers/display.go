@@ -7,6 +7,7 @@ import (
 	"easyPreparation_1.0/internal/ptz"
 	"easyPreparation_1.0/internal/quote"
 	"easyPreparation_1.0/internal/safefile"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -39,7 +40,11 @@ func displayStatePath() string {
 	return filepath.Join(execPath, "data", "display_state.json")
 }
 
+// lastFullOrderCount — 마지막으로 저장된 "정상" 순서의 항목 수 (급격한 감소 감지용)
+var lastFullOrderCount int
+
 // saveDisplayState — 현재 order+idx를 파일에 저장 (orderMu 잠긴 상태에서 호출하지 말 것)
+// 기존 순서보다 항목이 급격히 줄어들면 별도 full_backup을 유지하여 복원 가능
 func saveDisplayState() {
 	orderMu.RLock()
 	snapshot := deepCopyOrder(currentOrder)
@@ -50,6 +55,27 @@ func saveDisplayState() {
 	if snapshot == nil {
 		snapshot = []map[string]interface{}{}
 	}
+
+	newCount := len(snapshot)
+
+	// 항목이 급격히 줄어들면 (5개 이상 → 3개 이하) 기존 상태를 full_backup으로 보존
+	if lastFullOrderCount >= 5 && newCount < lastFullOrderCount/2 {
+		execPath := path.ExecutePath("easyPreparation")
+		backupPath := filepath.Join(execPath, "data", "display_state_full.json")
+		// 현재 파일을 full_backup으로 복사 (이미 있으면 덮어쓰지 않음)
+		if _, err := os.Stat(backupPath); os.IsNotExist(err) {
+			if src, readErr := os.ReadFile(displayStatePath()); readErr == nil {
+				os.WriteFile(backupPath, src, 0644)
+				log.Printf("[display] 순서 급감 감지 (%d→%d) — full_backup 보존", lastFullOrderCount, newCount)
+			}
+		}
+	}
+
+	// 정상 크기면 카운트 갱신
+	if newCount >= 5 {
+		lastFullOrderCount = newCount
+	}
+
 	state := map[string]interface{}{
 		"items":      snapshot,
 		"idx":        idx,
@@ -88,11 +114,12 @@ func getOrderSnapshotLocked() ([]map[string]interface{}, int, string) {
 	return deepCopyOrder(currentOrder), currentIdx, displayChurchName
 }
 
-// LoadDisplayState — 서버 시작 시 파일에서 복원 (깨지면 .backup에서 자동 복구)
+// LoadDisplayState — 서버 시작 시 파일에서 복원
+// 항목이 비정상적으로 적으면 (3개 이하) full_backup에서 복원 시도
 func LoadDisplayState() {
 	data, err := safefile.ReadJSONWithRecovery(displayStatePath())
 	if err != nil {
-		return // 파일 없으면 무시
+		return
 	}
 	var state struct {
 		Items      []map[string]interface{} `json:"items"`
@@ -103,9 +130,32 @@ func LoadDisplayState() {
 		log.Printf("[display] 상태 복원 실패: %v", err)
 		return
 	}
+
+	// 항목이 비정상적으로 적으면 full_backup에서 복원 시도
+	if len(state.Items) <= 3 {
+		execPath := path.ExecutePath("easyPreparation")
+		backupPath := filepath.Join(execPath, "data", "display_state_full.json")
+		if backupData, readErr := os.ReadFile(backupPath); readErr == nil {
+			var backupState struct {
+				Items      []map[string]interface{} `json:"items"`
+				Idx        int                      `json:"idx"`
+				ChurchName string                   `json:"churchName"`
+			}
+			if json.Unmarshal(backupData, &backupState) == nil && len(backupState.Items) > len(state.Items) {
+				log.Printf("[display] 항목 부족 (%d개) — full_backup에서 복원 (%d개)", len(state.Items), len(backupState.Items))
+				state = backupState
+				// 복원된 상태를 메인 파일에도 저장
+				safefile.WriteJSON(displayStatePath(), map[string]interface{}{
+					"items": backupState.Items, "idx": backupState.Idx, "churchName": backupState.ChurchName,
+				})
+			}
+		}
+	}
+
 	if len(state.Items) == 0 {
 		return
 	}
+	lastFullOrderCount = len(state.Items)
 	// lyricsMap/sections 재생성 — 알고리즘 변경 시 캐시된 값이 남아있지 않도록
 	processed := make([]map[string]interface{}, 0, len(state.Items))
 	for _, item := range state.Items {
@@ -151,783 +201,8 @@ const apostlesCreed = `나는 전능하신 아버지 하나님, 천지의 창조
 거룩한 공교회와 성도의 교제와 죄를 용서 받는 것과
 몸의 부활과 영생을 믿습니다. 아멘.`
 
-const displayHTML = `<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<title>Display</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23020617'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='central' text-anchor='middle' fill='white' font-family='Arial' font-weight='900' font-size='20' font-style='italic'%3Eep%3C/text%3E%3C/svg%3E" type="image/svg+xml">
-<style>
-  @font-face {
-    font-family:'JacquesFrancois';
-    src:url('/display/font/JacquesFrancois-regular.ttf') format('truetype');
-    font-weight:400; font-style:normal;
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  html, body {
-    width:100%; height:100%;
-    background:#000;
-    color:#fff;
-    font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif;
-    overflow:hidden;
-    user-select:none;
-  }
-
-  #slide {
-    width:100%; height:100vh;
-    display:flex; flex-direction:column;
-    justify-content:center; align-items:center;
-    padding:7.4vh 6.25vw;
-    position:relative;
-    z-index:1;
-    background-size:cover;
-    background-position:center;
-    background-repeat:no-repeat;
-    opacity:0;
-    transition:opacity 0.12s ease;
-  }
-  #slide.visible { opacity:1; }
-
-  /* 좌상단 인도자 */
-  .label {
-    position:absolute; top:4.4vh; left:4.2vw;
-    font-size:2.6vh; color:rgba(255,255,255,0.5);
-    letter-spacing:0.05em;
-  }
-  /* 우상단 순서 제목 */
-  .order-title {
-    position:absolute; top:4.4vh; right:4.2vw;
-    font-size:2.6vh; color:rgba(255,255,255,0.5);
-  }
-  /* 페이지 표시 */
-  .page-indicator {
-    position:absolute; bottom:3vh; right:4.2vw;
-    font-size:2vh; color:rgba(255,255,255,0.35);
-  }
-
-  /* 기본 제목 */
-  .title {
-    font-size:5.9vh; font-weight:700;
-    text-align:center; margin-bottom:3.3vh;
-    line-height:1.3; letter-spacing:-0.01em;
-    text-shadow:0 2px 8px rgba(0,0,0,0.6);
-  }
-  .obj {
-    font-size:4.4vh; font-weight:400;
-    color:rgba(255,255,255,0.85);
-    text-align:center; line-height:1.5;
-    text-shadow:0 2px 6px rgba(0,0,0,0.5);
-  }
-
-  /* 성경 본문 */
-  .bible-ref {
-    font-size:3.5vh; color:rgba(255,255,255,0.65);
-    margin-bottom:3vh; text-align:left; width:100%;
-    text-shadow:0 1px 4px rgba(0,0,0,0.5);
-  }
-  .bible-title-ref {
-    font-size:5vh; font-weight:700; color:#fff;
-    text-shadow:0 2px 12px rgba(0,0,0,0.9), 0 0 30px rgba(0,0,0,0.6);
-    white-space:nowrap; text-align:center;
-    letter-spacing:0.08em;
-  }
-  .bible-contents {
-    font-size:5vh; line-height:1.9;
-    text-align:left; color:#fff;
-    white-space:pre-wrap; width:100%;
-    text-shadow:0 1px 6px rgba(0,0,0,0.6);
-  }
-
-  /* 찬송/교독 큰 텍스트 */
-  .hymn-number {
-    font-size:10vh; font-weight:700;
-    text-align:center; line-height:1.2;
-    text-shadow:0 3px 12px rgba(0,0,0,0.7);
-  }
-  .hymn-sub {
-    font-size:3.2vh; color:rgba(255,255,255,0.6);
-    margin-top:2vh; text-align:center;
-  }
-
-  /* 이미지 슬라이드 (찬송/교독 스캔) */
-  .slide-image {
-    width:90vw; height:85vh;
-    object-fit:contain;
-  }
-
-  /* 기도자 이름 대형 */
-  .prayer-name {
-    font-size:8vh; font-weight:700;
-    text-align:center; line-height:1.3;
-    text-shadow:0 3px 12px rgba(0,0,0,0.7);
-  }
-
-  /* 가사 슬라이드 (큰 텍스트 중앙) */
-  .lyrics-text {
-    font-size:7vh; line-height:1.8;
-    text-align:center; color:#fff;
-    white-space:pre-wrap; width:100%;
-    font-weight:500;
-    text-shadow:0 2px 10px rgba(0,0,0,0.7);
-  }
-
-  /* 신앙고백 (사도신경) 중앙정렬 */
-  .creed-text {
-    font-size:3.3vh; line-height:1.9;
-    text-align:center; color:rgba(255,255,255,0.9);
-    white-space:pre-wrap; width:100%;
-    text-shadow:0 1px 6px rgba(0,0,0,0.5);
-  }
-
-  /* 참회의 기도 좌정렬 */
-  .confession-text {
-    font-size:3.6vh; line-height:2;
-    text-align:left; color:rgba(255,255,255,0.9);
-    white-space:pre-wrap; width:100%;
-    text-shadow:0 1px 6px rgba(0,0,0,0.5);
-  }
-
-  /* 말씀 (설교) */
-  .sermon-title {
-    font-size:7vh; font-weight:700;
-    text-align:center; line-height:1.3;
-    margin-bottom:3vh;
-    text-shadow:0 3px 12px rgba(0,0,0,0.7);
-  }
-  .sermon-pastor {
-    font-size:4vh; color:rgba(255,255,255,0.7);
-    text-align:center;
-    text-shadow:0 2px 6px rgba(0,0,0,0.5);
-  }
-
-  /* 공지 (교회소식) */
-  .notice-title {
-    font-size:4.8vh; font-weight:700;
-    margin-bottom:2.6vh; color:#fff;
-    text-shadow:0 2px 8px rgba(0,0,0,0.6);
-  }
-  .notice-contents {
-    font-size:2.8vh; color:rgba(255,255,255,0.85);
-    text-align:left; line-height:1.8;
-    white-space:pre-wrap; width:100%;
-    text-shadow:0 1px 4px rgba(0,0,0,0.5);
-  }
-
-  /* 하단 구분선 */
-  .divider {
-    position:absolute; bottom:5.6vh; left:4.2vw; right:4.2vw;
-    height:1px; background:rgba(255,255,255,0.15);
-  }
-
-  /* 슬라이드 인덱스 바 (좌하단) */
-  .slide-pos {
-    position:absolute; bottom:3vh; left:4.2vw;
-    font-size:2vh; color:rgba(255,255,255,0.35);
-  }
-
-  /* 로고 (우하단) */
-  .church-logo-box {
-    position:absolute; right:2vw; bottom:1.5vh;
-    display:flex; align-items:flex-end;
-  }
-  .church-logo-box img {
-    max-height:7vh; max-width:18vw;
-    object-fit:contain; opacity:0.88;
-    filter:drop-shadow(0 2px 6px rgba(0,0,0,0.55));
-  }
-
-  /* 카운트다운 오버레이 */
-  #countdown-overlay {
-    position:fixed; top:0; left:0; width:100%; height:100%;
-    background:rgba(0,0,0,0.85);
-    display:none; flex-direction:column;
-    justify-content:center; align-items:center;
-    z-index:9999;
-  }
-  #countdown-overlay.visible { display:flex; }
-  #countdown-label {
-    font-size:6vh; font-weight:600;
-    color:rgba(255,255,255,0.8);
-    margin-bottom:3vh;
-  }
-  #countdown-time {
-    font-size:15vh; font-weight:700;
-    font-family:'SF Mono','Consolas','Courier New',monospace;
-    color:#fff; letter-spacing:0.1em;
-  }
-
-</style>
-</head>
-<body>
-<!-- 비디오 배경 (전역 설정 또는 항목별 설정으로 활성화) -->
-<video id="bg-video" autoplay loop muted playsinline
-  style="position:fixed;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:0;display:none">
-  <source id="bg-video-src" src="" type="video/mp4">
-</video>
-<div id="slide"></div>
-<div id="countdown-overlay">
-  <div id="countdown-label"></div>
-  <div id="countdown-time"></div>
-</div>
-<!-- 서버 연결 끊김 표시 (예배 담당자용) -->
-<div id="offline-badge" style="display:none;position:fixed;bottom:14px;left:14px;z-index:10000;background:rgba(0,0,0,0.35);color:rgba(255,255,255,0.45);padding:3px 7px;border-radius:3px;font-size:9px;font-family:monospace;letter-spacing:0.03em;">● offline</div>
-
-<script>
-/* ── Service Worker 등록 (오프라인 캐시) ── */
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/display/sw.js', {scope: '/display'})
-    .catch(function(e){ console.warn('[SW] 등록 실패:', e); });
-}
-
-const slide = document.getElementById('slide');
-let ws, reconnectTimer;
-let reconnectDelay = 2000;
-const MAX_RECONNECT_DELAY = 30000;
-let slides = [];
-let idx = 0;
-let subPages = [];   // 성경 본문 or 이미지 페이지
-let subPageIdx = 0;
-let churchName = '';
-let logoUrl = ''; // 로고 URL (없으면 '')
-let logoPosition = 'bottom-right'; // top-left | top-right | bottom-left | bottom-right
-let logoSizePercent = 18; // vw%
-
-/* ── sessionStorage: 마지막 슬라이드 즉시 복원 ── */
-(function restoreLastSlide(){
-  try {
-    var saved = sessionStorage.getItem('ep_display_state');
-    if (saved) {
-      var st = JSON.parse(saved);
-      if (st.html) { document.getElementById('slide').innerHTML = st.html; }
-    }
-  } catch(e) {}
-})();
-
-function saveDisplayState() {
-  try {
-    sessionStorage.setItem('ep_display_state', JSON.stringify({
-      html: document.getElementById('slide').innerHTML,
-      idx: idx,
-      sub: subPageIdx
-    }));
-  } catch(e) {}
-}
-
-function showOfflineBadge(show) {
-  var b = document.getElementById('offline-badge');
-  if (b) b.style.display = show ? 'block' : 'none';
-}
-
-/* 재연결 후 서버에서 현재 상태 복원 */
-async function restoreStateFromServer() {
-  try {
-    var res = await fetch('/display/status');
-    if (!res.ok) return;
-    var state = await res.json();
-    if (state.items && state.items.length > 0) {
-      loadOrder(state.items, state.idx);
-    }
-  } catch(e) { console.warn('[Display] 상태 복원 실패:', e); }
-}
-
-/* ───── 초기화: 로고 + 폰트 설정 로드 ───── */
-async function initDisplayConfig() {
-  // 로고 체크
-  try {
-    const logoRes = await fetch('/api/logo', { method: 'HEAD' });
-    if (logoRes.ok) logoUrl = '/api/logo';
-  } catch (e) {}
-
-  // 폰트 + 비디오 배경 + 로고 위치 설정 로드
-  try {
-    const cfgRes = await fetch('/api/display-config');
-    if (cfgRes.ok) {
-      const cfg = await cfgRes.json();
-      applyFont(cfg.font);
-      globalImageBgDisabled = !!cfg.globalImageBgDisabled;
-      applyVideoBg(cfg.globalVideoBg || 'lent.mp4'); // 설정 없으면 기본 영상
-      if (cfg.logoPosition) logoPosition = cfg.logoPosition;
-      if (cfg.logoSizePercent) logoSizePercent = cfg.logoSizePercent;
-      // sessionStorage 복원 슬라이드가 있으면 새 config로 다시 렌더
-      if (slides.length > 0) { renderItem(slides[idx], subPageIdx); }
-    }
-  } catch (e) {}
-}
-
-/* 비디오 배경 적용 */
-var activeVideoBg = '';
-var globalImageBgDisabled = false;
-function applyVideoBg(filename) {
-  activeVideoBg = filename || '';
-  const vid = document.getElementById('bg-video');
-  const src = document.getElementById('bg-video-src');
-  if (!vid || !src) return;
-  if (!filename) {
-    vid.style.display = 'none';
-    if (!globalImageBgDisabled) {
-      document.body.style.backgroundImage = "url('/display/bg')";
-      document.body.style.backgroundSize = 'cover';
-      document.body.style.backgroundPosition = 'center';
-    } else {
-      document.body.style.backgroundImage = 'none';
-      document.body.style.background = '#000';
-    }
-    return;
-  }
-  src.src = '/display/video-bg/' + filename;
-  vid.load();
-  vid.style.display = 'block';
-  document.body.style.backgroundImage = 'none';
-  document.body.style.background = 'transparent';
-}
-
-const FONT_STACK = {
-  'default':        "'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif",
-  'noto-sans-kr':   "'Noto Sans KR',sans-serif",
-  'gowun-dodum':    "'Gowun Dodum',sans-serif",
-  'nanum-myeongjo': "'Nanum Myeongjo',serif",
-  'black-han-sans': "'Black Han Sans',sans-serif",
-};
-const GOOGLE_FONTS = {
-  'noto-sans-kr':   'https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap',
-  'gowun-dodum':    'https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap',
-  'nanum-myeongjo': 'https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700&display=swap',
-  'black-han-sans': 'https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap',
-};
-
-function applyFont(fontKey) {
-  const stack = FONT_STACK[fontKey] || FONT_STACK['default'];
-  document.body.style.fontFamily = stack;
-  if (GOOGLE_FONTS[fontKey]) {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet'; link.href = GOOGLE_FONTS[fontKey];
-    document.head.appendChild(link);
-  }
-}
-
-/* ───── WebSocket ───── */
-function connect() {
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  ws = new WebSocket(proto + '://' + location.host + '/ws');
-  ws.onopen = () => {
-    console.log('[Display] WS 연결됨');
-    reconnectDelay = 2000;
-    showOfflineBadge(false);
-    restoreStateFromServer();
-  };
-  ws.onerror = (e) => { console.error('[Display] WS 오류', e); };
-  ws.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
-    console.log('[Display] WS msg:', msg.type, msg.items ? msg.items.length + ' items' : '');
-    if (msg.type === 'order') { if (msg.churchName) churchName = msg.churchName; loadOrder(msg.items, msg.idx); }
-    if (msg.type === 'navigate') {
-      if (msg.direction === 'jump' && typeof msg.idx === 'number') {
-        showSlide(msg.idx);
-        if (typeof msg.subPageIdx === 'number' && msg.subPageIdx > 0) {
-          subPageIdx = msg.subPageIdx;
-          renderItem(slides[idx], subPageIdx);
-          reportPosition();
-        }
-      } else if (msg.direction === 'jump_sub' && typeof msg.subPageIdx === 'number') {
-        subPageIdx = msg.subPageIdx;
-        renderItem(slides[idx], subPageIdx);
-        reportPosition();
-      } else {
-        navigate(msg.direction);
-      }
-    }
-    if (msg.type === 'display') renderSingle(msg);
-    if (msg.type === 'display_config') {
-      applyFont(msg.font);
-      globalImageBgDisabled = !!msg.globalImageBgDisabled;
-      applyVideoBg(msg.globalVideoBg || 'lent.mp4'); // body 배경도 함께 업데이트
-      if (msg.logoPosition) logoPosition = msg.logoPosition;
-      if (msg.logoSizePercent) logoSizePercent = msg.logoSizePercent;
-      if (slides.length > 0) { renderItem(slides[idx], subPageIdx); }
-    }
-    if (msg.type === 'schedule_countdown') {
-      var overlay = document.getElementById('countdown-overlay');
-      document.getElementById('countdown-label').textContent = msg.label;
-      document.getElementById('countdown-time').textContent =
-        String(msg.minutes).padStart(2,'0') + ':' + String(msg.seconds).padStart(2,'0');
-      overlay.classList.add('visible');
-    }
-    if (msg.type === 'schedule_started') {
-      document.getElementById('countdown-overlay').classList.remove('visible');
-    }
-  };
-  ws.onclose = () => {
-    showOfflineBadge(true);
-    clearTimeout(reconnectTimer);
-    reconnectTimer = setTimeout(function() {
-      reconnectDelay = Math.min(Math.floor(reconnectDelay * 1.5), MAX_RECONNECT_DELAY);
-      connect();
-    }, reconnectDelay);
-  };
-}
-
-/* ───── 순서 로드 ───── */
-function loadOrder(items, startIdx) {
-  var prevLen = slides.length;
-  slides = items || [];
-  var start = (typeof startIdx === 'number') ? startIdx : 0;
-  // append: 이전에 슬라이드가 있고 startIdx가 현재 idx와 같으면 이동하지 않음
-  if (prevLen > 0 && start === idx && slides.length > prevLen) {
-    return;
-  }
-  idx = 0;
-  lastReportedIdx = -1;
-  showSlide(start);
-}
-
-/* ───── 슬라이드 표시 ───── */
-let lastReportedIdx = -1;
-function showSlide(i, skipDir) {
-  if (!slides.length) return;
-  i = Math.max(0, Math.min(i, slides.length - 1));
-  // pdf_only 항목 자동 스킵 (방향 유지)
-  if ((slides[i].info || '') === 'pdf_only') {
-    const d = (typeof skipDir === 'number') ? skipDir : 1;
-    const next = i + d;
-    if (next >= 0 && next < slides.length) showSlide(next, d);
-    return;
-  }
-  idx = i;
-  subPageIdx = 0;
-  // 항목 변경 시 서버에 위치 보고
-  if (idx !== lastReportedIdx) {
-    lastReportedIdx = idx;
-    reportPosition();
-  }
-  const item = slides[idx];
-
-  subPages = [];
-
-  const itemTitle = item.title || '';
-
-  // 성경 본문 → 텍스트 페이지 분할
-  // 성경봉독: 항상 첫 페이지를 타이틀 슬라이드(__title__)로 예약
-  if ((item.info || '').startsWith('b_') && item.contents) {
-    var bibleContentPages = paginate(item.contents, 3);
-    var isBibleReading = (item.title || '') === '성경봉독';
-    subPages = isBibleReading ? ['__title__'].concat(bibleContentPages) : bibleContentPages;
-  }
-  // 신앙고백 본문 → 페이지 분할
-  else if (itemTitle === '신앙고백' && item.contents) {
-    subPages = paginate(item.contents, 10);
-  }
-  // 가사 슬라이드 (텍스트 페이지)
-  else if ((item.info || '') === 'lyrics_display' && item.pages && item.pages.length > 0) {
-    subPages = item.pages;
-  }
-  // 성시교독 → 이미지만 (표지 없음)
-  else if (itemTitle === '성시교독' && item.images && item.images.length > 0) {
-    subPages = item.images;
-  }
-  // 찬송/헌금봉헌: lyricsMap[i]가 3줄 이상이면 2줄씩 분할 (같은 이미지, 누락 없음)
-  else if (item.images && item.images.length > 0) {
-    subPages = ['__cover__'].concat(expandHymnSubPages(item));
-  }
-
-  renderItem(item, 0);
-}
-
-/* ───── 찬송 서브페이지 확장 (2줄씩, 동일 이미지 유지) ───── */
-function expandHymnSubPages(item) {
-  var images = item.images || [];
-  var lm = item.lyricsMap || [];
-  var pages = [];
-  for (var i = 0; i < images.length; i++) {
-    var entry = (i < lm.length) ? lm[i] : '';
-    var lines = entry.split('\n').filter(function(l){ return l.trim(); });
-    if (lines.length <= 2) {
-      pages.push({img: i, lyric: entry});
-    } else {
-      var chunks = [];
-      for (var j = 0; j < lines.length; j += 2) {
-        chunks.push(lines.slice(j, j + 2).join('\n'));
-      }
-      // 마지막 청크가 1줄(고아)이면 이전 청크에 병합 (아멘 등 짧은 trailing 줄 처리)
-      if (chunks.length >= 2 && chunks[chunks.length - 1].indexOf('\n') === -1) {
-        chunks[chunks.length - 2] += '\n' + chunks[chunks.length - 1];
-        chunks.pop();
-      }
-      for (var k = 0; k < chunks.length; k++) {
-        pages.push({img: i, lyric: chunks[k]});
-      }
-    }
-  }
-  return pages;
-}
-
-/* ───── 키보드 / 네비게이션 ───── */
-function reportPosition() {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({type:'position', idx:idx, subPageIdx:subPageIdx, subPageTotal:subPages.length}));
-  }
-}
-
-function navigate(dir) {
-  if (dir === 'next') {
-    if (subPages.length > 1 && subPageIdx < subPages.length - 1) {
-      subPageIdx++;
-      renderItem(slides[idx], subPageIdx);
-      reportPosition();
-    } else {
-      showSlide(idx + 1, 1);
-    }
-  } else if (dir === 'prev') {
-    if (subPages.length > 1 && subPageIdx > 0) {
-      subPageIdx--;
-      renderItem(slides[idx], subPageIdx);
-      reportPosition();
-    } else {
-      showSlide(idx - 1, -1);
-    }
-  }
-}
-
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ')
-    navigate('next');
-  else if (e.key === 'ArrowLeft' || e.key === 'PageUp')
-    navigate('prev');
-});
-
-/* ───── 렌더링 (title 기반 분기) ───── */
-function renderItem(item, pageIdx) {
-  // OBS 깜빡임 방지: opacity=0 → DOM 교체 → reportPosition → fade-in
-  var slideEl = document.getElementById('slide');
-  slideEl.classList.remove('visible');
-  setTimeout(function() {
-    _doRenderItem(item, pageIdx);
-    // 로고 — 모든 렌더링 경로 후 slide에 직접 추가 (footer 영향 없음)
-    if (logoUrl) {
-      var _lv = logoPosition.startsWith('top') ? 'top:1.5vh' : 'bottom:1.5vh';
-      var _lh = logoPosition.endsWith('right') ? 'right:2vw' : 'left:2vw';
-      document.getElementById('slide').insertAdjacentHTML('beforeend',
-        '<div style="position:absolute;' + _lv + ';' + _lh + ';z-index:10;pointer-events:none"><img src="' + logoUrl + '" alt="logo" style="height:' + Math.max(3, Math.round(logoSizePercent * 0.5)) + 'vh;max-width:' + Math.round(logoSizePercent * 2.5) + 'vw;width:auto;object-fit:contain;opacity:0.88;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.55))"></div>');
-    }
-    reportPosition();
-    requestAnimationFrame(function() {
-      requestAnimationFrame(function() {
-        slideEl.classList.add('visible');
-      });
-    });
-  }, 120);
-}
-
-function _doRenderItem(item, pageIdx) {
-  console.log('[Display] renderItem idx=' + idx + ' pageIdx=' + pageIdx + ' info=' + (item.info||''));
-  const info     = item.info     || '';
-  const title    = item.title    || '';
-  const obj      = item.obj      || '';
-  const lead     = item.lead     || '';
-  const contents = item.contents || '';
-  const images   = item.images   || [];
-  const bgImage  = item.bgImage  || '';
-
-  // 항목별 배경 이미지 (있으면 사용, 없으면 기본)
-  // 비디오 배경 활성 시 정적 이미지 제거 — 비디오가 투명하게 보이도록
-  if (bgImage) {
-    slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.35),rgba(0,0,0,0.35)), url('" + bgImage + "')";
-  } else if (activeVideoBg) {
-    slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.35),rgba(0,0,0,0.35))";
-  } else if (!globalImageBgDisabled) {
-    slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.4)), url('/display/bg')";
-  } else {
-    slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.4))";
-  }
-  // fade-in은 renderItem 래퍼의 rAF에서 수행 — 여기서 visible 직접 설정 안 함
-
-  const posText = slides.length ? (idx + 1) + ' / ' + slides.length : '';
-  const pageText = subPages.length > 1 ? (subPageIdx + 1) + ' / ' + subPages.length : '';
-  const footer =
-    '<div class="divider"></div>' +
-    '<div class="slide-pos">' + posText + '</div>' +
-    (pageText ? '<div class="page-indicator">' + pageText + '</div>' : '');
-
-  const header =
-    '<div class="label">' + esc(lead) + '</div>' +
-    '<div class="order-title">' + esc(title) + '</div>';
-
-  // ── 1. 성경 본문 (b_edit + contents) ──
-  if (info.startsWith('b_') && contents) {
-    const page = subPages[pageIdx];
-
-    // 타이틀 슬라이드: bgImage 있고 첫 페이지(__title__)
-    // bgImage는 이미 위에서 CSS background로 설정됨 — 가운데에 성경 참조 텍스트만 표시
-    if (page === '__title__') {
-      slide.innerHTML = header +
-        '<div class="bible-title-ref">' + esc(obj && obj !== '-' ? obj : title) + '</div>' +
-        footer;
-      return;
-    }
-
-    // 성경봉독 본문 슬라이드: 기본 배경으로 리셋 (성경봉독.png 대신 전역 배경 사용)
-    if (title === '성경봉독') {
-      if (activeVideoBg) {
-        slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.35),rgba(0,0,0,0.35))";
-      } else if (!globalImageBgDisabled) {
-        slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.4)), url('/display/bg')";
-      } else {
-        slide.style.backgroundImage = "linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.4))";
-      }
-    }
-    const bibleHeader =
-      '<div class="label">' + esc(lead) + '</div>' +
-      '<div class="order-title">' + esc(obj && obj !== '-' ? obj : title) + '</div>';
-    slide.innerHTML = bibleHeader +
-      '<div class="bible-contents">' + esc(page || contents) + '</div>' +
-      footer;
-    return;
-  }
-
-  // ── 1b. 가사 슬라이드 (lyrics_display) ──
-  if (info === 'lyrics_display' && subPages.length > 0) {
-    var lyricsPage = subPages[pageIdx] || '';
-    console.log('[Display] lyrics render pageIdx=' + pageIdx + '/' + subPages.length + ' text=' + lyricsPage.substring(0, 30));
-    slide.innerHTML = header +
-      '<div class="lyrics-text">' + esc(lyricsPage) + '</div>' +
-      footer;
-    return;
-  }
-
-  // ── 2. 찬송 / 헌금봉헌 ──
-  if (title === '찬송' || title === '헌금봉헌') {
-    if (images.length > 0 && pageIdx > 0) {
-      slide.style.backgroundImage = 'none';
-      var sp2 = subPages[pageIdx];
-      var imgIdx2 = (sp2 && typeof sp2 === 'object') ? sp2.img : pageIdx - 1;
-      imgIdx2 = Math.min(imgIdx2, images.length - 1);
-      slide.innerHTML =
-        '<img class="slide-image" src="' + images[imgIdx2] + '">' +
-        footer;
-      return;
-    }
-    slide.innerHTML = header +
-      '<div class="hymn-number">' + esc(obj) + '</div>' +
-      (lead ? '<div class="hymn-sub">' + esc(lead) + '</div>' : '') +
-      footer;
-    return;
-  }
-
-  // ── 3. 성시교독 (이미지만 — 표지 없이 바로 이미지) ──
-  if (title === '성시교독') {
-    if (images.length > 0) {
-      slide.style.backgroundImage = 'none';
-      slide.innerHTML =
-        '<img class="slide-image" src="' + images[Math.min(pageIdx, images.length - 1)] + '">' +
-        footer;
-      return;
-    }
-    slide.innerHTML = header +
-      '<div class="hymn-number">' + esc(obj) + '</div>' +
-      (lead ? '<div class="hymn-sub">' + esc(lead) + '</div>' : '') +
-      footer;
-    return;
-  }
-
-  // ── 4. 대표기도 ──
-  if (title === '대표기도') {
-    slide.innerHTML = header +
-      '<div class="title">' + esc(title) + '</div>' +
-      '<div class="prayer-name">' + esc(lead) + '</div>' +
-      footer;
-    return;
-  }
-
-  // ── 5. 신앙고백 (사도신경 등) ──
-  if (title === '신앙고백' && contents) {
-    const page = subPages.length > 0 ? (subPages[pageIdx] || contents) : contents;
-    slide.innerHTML = header +
-      '<div class="title">' + esc(obj) + '</div>' +
-      '<div class="creed-text">' + esc(page) + '</div>' +
-      footer;
-    return;
-  }
-
-  // ── 5b. 주기도문 ──
-  if (title === '주기도문' && contents) {
-    const page = subPages.length > 0 ? (subPages[pageIdx] || contents) : contents;
-    slide.innerHTML = header +
-      '<div class="title">' + esc(title) + '</div>' +
-      '<div class="creed-text">' + esc(page) + '</div>' +
-      footer;
-    return;
-  }
-
-  // ── 6. 참회의 기도 (좌정렬 멀티라인, bgImage 있으면 제목 생략) ──
-  if (title === '참회의 기도') {
-    slide.innerHTML = header +
-      (bgImage ? '' : '<div class="title">' + esc(title) + '</div>') +
-      '<div class="confession-text">' + esc(obj !== '-' ? obj : '') + '</div>' +
-      footer;
-    return;
-  }
-
-  // ── 6. 말씀 (설교 제목 + 목사) ──
-  if (title === '말씀') {
-    slide.innerHTML = header +
-      '<div class="sermon-title">' + esc(obj !== '-' ? obj : '') + '</div>' +
-      (lead ? '<div class="sermon-pastor">' + esc(lead) + '</div>' : '') +
-      footer;
-    return;
-  }
-
-  // ── 7. 교회소식 (계층 텍스트) ──
-  if (info === 'notice' || title === '교회소식') {
-    slide.innerHTML = header +
-      '<div class="notice-title">' + esc(title) + '</div>' +
-      '<div class="notice-contents">' + esc(contents || obj) + '</div>' +
-      footer;
-    return;
-  }
-
-  // ── 8. 기본 (전주, 예배의 부름, 축도 등 — bgImage 항목) ──
-  // 배경 이미지 위에 인도자/순서 레이블 + 위치 표시 오버레이 유지
-  // (이미지만 단독으로 뜨면 이전 항목과 단절되어 붕뜨는 느낌이 생김)
-  if (bgImage) {
-    slide.style.backgroundImage = "url('" + bgImage + "')";
-    slide.innerHTML = header + footer;
-    return;
-  }
-  var mainText = (obj && obj !== '-') ? obj : '';
-  slide.innerHTML = header +
-    '<div class="title">' + esc(title) + '</div>' +
-    (mainText ? '<div class="obj">' + esc(mainText) + '</div>' : '') +
-    (lead && !mainText ? '<div class="prayer-name">' + esc(lead) + '</div>' : '') +
-    footer;
-  saveDisplayState();
-}
-
-/* 단독 push 호환 */
-function renderSingle(data) {
-  slides = [data];
-  idx = 0;
-  showSlide(0);
-}
-
-/* ───── 유틸 ───── */
-function paginate(text, linesPerPage) {
-  const lines = text.split('\n').filter(l => l.trim() !== '');
-  const pages = [];
-  for (let i = 0; i < lines.length; i += linesPerPage) {
-    pages.push(lines.slice(i, i + linesPerPage).join('\n'));
-  }
-  return pages.length ? pages : [text];
-}
-
-function esc(s) {
-  return String(s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/\n/g,'<br>');
-}
-
-initDisplayConfig().finally(() => connect());
-</script>
-</body>
-</html>`
+//go:embed html/display.html
+var displayHTML string
 
 // UpdateDisplayIdx — display HTML이 WS로 보고한 현재 위치 업데이트
 func UpdateDisplayIdx(newIdx int) {
@@ -1190,439 +465,8 @@ func OnPositionUpdate(newIdx, newSubPage int) {
 
 // ── /display/overlay — OBS 방송용 텍스트 오버레이 ──
 
-const displayOverlayHTML = `<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<title>Display Overlay</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23020617'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='central' text-anchor='middle' fill='white' font-family='Arial' font-weight='900' font-size='20' font-style='italic'%3Eep%3C/text%3E%3C/svg%3E" type="image/svg+xml">
-<style>
-  :root {
-    --overlay-font-size: 2.19vw;
-    --overlay-line-height: 1.7;
-    --overlay-font-weight: 600;
-    --overlay-color: #fff;
-    --overlay-text-shadow: 0 2px 12px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.7);
-    --overlay-position: flex-end;
-    --overlay-padding: 2.08vw 3.13vw;
-    --overlay-bg: rgba(0,0,0,0.75);
-    --overlay-bg-radius: 0.83vw;
-    --overlay-bg-padding: 1.46vw 2.08vw;
-    --title-font-size: 2.5vw;
-    --title-font-weight: 700;
-    --sub-font-size: 1.67vw;
-    --sub-color: rgba(255,255,255,0.8);
-    --ref-font-size: 1.25vw;
-    --ref-color: rgba(255,255,255,0.7);
-    --bible-font-size: 1.77vw;
-    --bible-line-height: 1.8;
-    --transition-speed: 0.4s;
-  }
-
-  * { margin:0; padding:0; box-sizing:border-box; }
-  html, body {
-    width:100%; height:100%;
-    background:transparent;
-    color:var(--overlay-color);
-    font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif;
-    overflow:hidden;
-    user-select:none;
-  }
-
-  #slide {
-    width:100%; height:100vh;
-    display:flex; flex-direction:column;
-    justify-content:var(--overlay-position);
-    align-items:center;
-    padding:var(--overlay-padding);
-    position:relative;
-    opacity:0;
-    transition:opacity var(--transition-speed) ease;
-  }
-  #slide.visible { opacity:1; }
-
-  .overlay-box {
-    background:var(--overlay-bg);
-    border-radius:var(--overlay-bg-radius);
-    padding:var(--overlay-bg-padding);
-    display:flex; flex-direction:column;
-    align-items:flex-start;
-    width:90%;
-  }
-  .overlay-box.center { align-items:center; }
-
-  .lyrics-overlay {
-    font-size:var(--overlay-font-size);
-    line-height:var(--overlay-line-height);
-    text-align:center;
-    width:100%;
-    color:var(--overlay-color);
-    white-space:pre-wrap;
-    font-weight:var(--overlay-font-weight);
-    text-shadow:var(--overlay-text-shadow);
-  }
-
-  .bible-overlay-ref {
-    font-size:var(--ref-font-size);
-    color:var(--ref-color);
-    margin-bottom:2vh; text-align:left;
-    text-shadow:var(--overlay-text-shadow);
-  }
-  .bible-overlay-text {
-    font-size:var(--bible-font-size);
-    line-height:var(--bible-line-height);
-    text-align:left;
-    color:var(--overlay-color);
-    white-space:pre-wrap;
-    text-shadow:var(--overlay-text-shadow);
-  }
-
-  .title-overlay {
-    font-size:var(--title-font-size);
-    font-weight:var(--title-font-weight);
-    text-align:left;
-    text-shadow:var(--overlay-text-shadow);
-  }
-  .sub-overlay {
-    font-size:var(--sub-font-size);
-    color:var(--sub-color);
-    margin-top:1.5vh; text-align:left;
-    text-shadow:var(--overlay-text-shadow);
-  }
-
-  /* 카운트다운 오버레이 */
-  #countdown-overlay {
-    position:fixed; top:0; left:0; width:100%; height:100%;
-    background:rgba(0,0,0,0.85);
-    display:none; flex-direction:column;
-    justify-content:center; align-items:center;
-    z-index:9999;
-  }
-  #countdown-overlay.visible { display:flex; }
-  #countdown-label {
-    font-size:6vh; font-weight:600;
-    color:rgba(255,255,255,0.8);
-    margin-bottom:3vh;
-  }
-  #countdown-time {
-    font-size:15vh; font-weight:700;
-    font-family:'SF Mono','Consolas','Courier New',monospace;
-    color:#fff; letter-spacing:0.1em;
-  }
-</style>
-</head>
-<body>
-<div id="slide"></div>
-<div id="countdown-overlay">
-  <div id="countdown-label"></div>
-  <div id="countdown-time"></div>
-</div>
-
-<script>
-const slide = document.getElementById('slide');
-let ws, reconnectTimer;
-let reconnectDelay = 2000;
-const MAX_RECONNECT_DELAY = 30000;
-let slides = [];
-let idx = 0;
-let subPages = [];
-let subPageIdx = 0;
-
-async function restoreStateFromServer() {
-  try {
-    var res = await fetch('/display/status');
-    if (!res.ok) return;
-    var state = await res.json();
-    if (state.items && state.items.length > 0) {
-      loadOrder(state.items, state.idx);
-    }
-  } catch(e) {}
-}
-
-function connect() {
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  ws = new WebSocket(proto + '://' + location.host + '/ws');
-  ws.onopen = () => {
-    console.log('[Lyrics] WS 연결됨');
-    reconnectDelay = 2000;
-    restoreStateFromServer();
-  };
-  ws.onerror = (e) => { console.error('[Lyrics] WS 오류', e); };
-  ws.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
-    if (msg.type === 'order') loadOrder(msg.items, msg.idx);
-    if (msg.type === 'navigate') {
-      if (msg.direction === 'jump' && typeof msg.idx === 'number') {
-        showSlide(msg.idx);
-        if (typeof msg.subPageIdx === 'number' && msg.subPageIdx > 0) {
-          subPageIdx = msg.subPageIdx;
-          renderLyricsItem(slides[idx], subPageIdx);
-        }
-      } else if (msg.direction === 'jump_sub' && typeof msg.subPageIdx === 'number') {
-        subPageIdx = msg.subPageIdx;
-        renderLyricsItem(slides[idx], subPageIdx);
-      } else {
-        navigate(msg.direction);
-      }
-    }
-    if (msg.type === 'schedule_countdown') {
-      var overlay = document.getElementById('countdown-overlay');
-      document.getElementById('countdown-label').textContent = msg.label;
-      document.getElementById('countdown-time').textContent =
-        String(msg.minutes).padStart(2,'0') + ':' + String(msg.seconds).padStart(2,'0');
-      overlay.classList.add('visible');
-    }
-    if (msg.type === 'schedule_started') {
-      document.getElementById('countdown-overlay').classList.remove('visible');
-    }
-    if (msg.type === 'display_config') applyOverlayConfig(msg);
-  };
-  ws.onclose = () => {
-    clearTimeout(reconnectTimer);
-    reconnectTimer = setTimeout(function() {
-      reconnectDelay = Math.min(Math.floor(reconnectDelay * 1.5), MAX_RECONNECT_DELAY);
-      connect();
-    }, reconnectDelay);
-  };
-}
-
-function loadOrder(items, startIdx) {
-  var prevLen = slides.length;
-  slides = items || [];
-  var start = (typeof startIdx === 'number') ? startIdx : 0;
-  if (prevLen > 0 && start === idx && slides.length > prevLen) return;
-  idx = 0;
-  showSlide(start);
-}
-
-function showSlide(i) {
-  if (!slides.length) return;
-  i = Math.max(0, Math.min(i, slides.length - 1));
-  idx = i;
-  subPageIdx = 0;
-  const item = slides[idx];
-  subPages = [];
-
-  const itemTitle = item.title || '';
-
-  if ((item.info || '').startsWith('b_') && item.contents) {
-    subPages = paginate(item.contents, 3);
-  } else if (itemTitle === '신앙고백' && item.contents) {
-    subPages = paginate(item.contents, 10);
-  } else if ((item.info || '') === 'lyrics_display' && item.pages && item.pages.length > 0) {
-    subPages = item.pages;
-  } else if (itemTitle === '성시교독' && item.images && item.images.length > 0) {
-    subPages = item.images;
-  } else if (item.images && item.images.length > 0) {
-    subPages = ['__cover__'].concat(expandHymnSubPages(item));
-  }
-
-  renderLyricsItem(item, 0);
-}
-
-function expandHymnSubPages(item) {
-  var images = item.images || [];
-  var lm = item.lyricsMap || [];
-  var pages = [];
-  for (var i = 0; i < images.length; i++) {
-    var entry = (i < lm.length) ? lm[i] : '';
-    var lines = entry.split('\n').filter(function(l){ return l.trim(); });
-    if (lines.length <= 2) {
-      pages.push({img: i, lyric: entry});
-    } else {
-      var chunks = [];
-      for (var j = 0; j < lines.length; j += 2) {
-        chunks.push(lines.slice(j, j + 2).join('\n'));
-      }
-      if (chunks.length >= 2 && chunks[chunks.length - 1].indexOf('\n') === -1) {
-        chunks[chunks.length - 2] += '\n' + chunks[chunks.length - 1];
-        chunks.pop();
-      }
-      for (var k = 0; k < chunks.length; k++) {
-        pages.push({img: i, lyric: chunks[k]});
-      }
-    }
-  }
-  return pages;
-}
-
-function navigate(dir) {
-  if (dir === 'next') {
-    if (subPages.length > 1 && subPageIdx < subPages.length - 1) {
-      subPageIdx++;
-      renderLyricsItem(slides[idx], subPageIdx);
-    } else {
-      showSlide(idx + 1);
-    }
-  } else if (dir === 'prev') {
-    if (subPages.length > 1 && subPageIdx > 0) {
-      subPageIdx--;
-      renderLyricsItem(slides[idx], subPageIdx);
-    } else {
-      showSlide(idx - 1);
-    }
-  }
-}
-
-function renderLyricsItem(item, pageIdx) {
-  const info     = item.info     || '';
-  const title    = item.title    || '';
-  const obj      = item.obj      || '';
-  const contents = item.contents || '';
-  const lead     = item.lead     || '';
-  const bibleRef = item.bibleRef || '';
-  const lyricsMap = item.lyricsMap || [];
-
-  slide.className = 'visible';
-
-  // 0. 말씀
-  if (title === '말씀') {
-    var sermonTitle = (obj && obj !== '-') ? obj : '';
-    slide.innerHTML = '<div class="overlay-box center">' +
-      '<div class="title-overlay" style="text-align:center;width:100%">' + esc(sermonTitle || title) + '</div>' +
-      (lead ? '<div class="sub-overlay" style="text-align:center;width:100%">' + esc(lead) + '</div>' : '') +
-      (bibleRef ? '<div class="sub-overlay" style="text-align:center;width:100%;margin-top:1vh;font-size:2.8vh;color:rgba(255,255,255,0.6);">' + esc(bibleRef) + '</div>' : '') +
-      '</div>';
-    return;
-  }
-
-  // 0b. 대표기도
-  if (title === '대표기도') {
-    slide.innerHTML = '<div class="overlay-box center">' +
-      '<div class="title-overlay" style="text-align:center;width:100%">' + esc(title) + '</div>' +
-      (lead ? '<div class="sub-overlay" style="text-align:center;width:100%;font-size:var(--title-font-size);font-weight:700;margin-top:2vh;">' + esc(lead) + '</div>' : '') +
-      '</div>';
-    return;
-  }
-
-  // 1a. 성시교독 — 오버레이 표시 없음 (이미지만 프로젝터에 표시)
-  if (title === '성시교독') {
-    slide.innerHTML = '';
-    return;
-  }
-
-  // 1b. 찬양 — 할렐루야 성가대 표시
-  if (title === '찬양') {
-    var songTitle = (obj && obj !== '-') ? obj : '';
-    slide.innerHTML = '<div class="overlay-box center">' +
-      '<div class="title-overlay" style="text-align:center;width:100%">할렐루야 성가대</div>' +
-      (songTitle ? '<div class="sub-overlay" style="text-align:center;width:100%;font-size:var(--sub-font-size);margin-top:2vh;">' + esc(songTitle) + '</div>' : '') +
-      '</div>';
-    return;
-  }
-
-  // 1. 찬송/헌금봉헌
-  if (title === '찬송' || title === '헌금봉헌') {
-    if (pageIdx === 0) {
-      slide.innerHTML = '<div class="overlay-box center"><div class="title-overlay" style="text-align:center;width:100%">' + esc(obj) + '</div></div>';
-      return;
-    }
-    var sp = subPages[pageIdx];
-    var lyric = (sp && typeof sp === 'object') ? sp.lyric : (pageIdx - 1 < lyricsMap.length ? lyricsMap[pageIdx - 1] : '');
-    slide.innerHTML = '<div class="overlay-box center"><div class="lyrics-overlay">' + esc(lyric) + '</div></div>';
-    return;
-  }
-
-  // 2. 가사 슬라이드 (lyrics_display)
-  if (info === 'lyrics_display' && subPages.length > 0) {
-    var lyricsPage = subPages[pageIdx] || '';
-    slide.innerHTML = '<div class="overlay-box center"><div class="lyrics-overlay">' + esc(lyricsPage) + '</div></div>';
-    return;
-  }
-
-  // 3. 성경 본문
-  if (info.startsWith('b_') && contents) {
-    var page = subPages[pageIdx] || contents;
-    slide.innerHTML = '<div class="overlay-box">' +
-      '<div class="bible-overlay-ref">' + esc(obj) + '</div>' +
-      '<div class="bible-overlay-text">' + esc(page) + '</div>' +
-      '</div>';
-    return;
-  }
-
-  // 4. 신앙고백/주기도문
-  if ((title === '신앙고백' || title === '주기도문') && contents) {
-    var creedPage = subPages.length > 0 ? (subPages[pageIdx] || contents) : contents;
-    slide.innerHTML = '<div class="overlay-box center">' +
-      '<div class="title-overlay" style="text-align:center;width:100%">' + esc(title) + '</div>' +
-      '<div class="sub-overlay" style="white-space:pre-wrap;margin-top:3vh;text-align:center;width:100%">' + esc(creedPage) + '</div>' +
-      '</div>';
-    return;
-  }
-
-  // 5. 기타
-  var subText = (obj && obj !== '-') ? obj : '';
-  slide.innerHTML = '<div class="overlay-box center">' +
-    '<div class="title-overlay" style="text-align:center;width:100%">' + esc(title) + '</div>' +
-    (subText ? '<div class="sub-overlay" style="text-align:center;width:100%">' + esc(subText) + '</div>' : '') +
-    '</div>';
-}
-
-function paginate(text, linesPerPage) {
-  const lines = text.split('\n').filter(l => l.trim() !== '');
-  const pages = [];
-  for (let i = 0; i < lines.length; i += linesPerPage) {
-    pages.push(lines.slice(i, i + linesPerPage).join('\n'));
-  }
-  return pages.length ? pages : [text];
-}
-
-function esc(s) {
-  return String(s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/\n/g,'<br>');
-}
-
-/* ── 오버레이 설정 로드 (cfg 직접 전달 또는 API 조회) ── */
-async function applyOverlayConfig(cfg) {
-  try {
-    if (!cfg) {
-      const res = await fetch('/api/display-config');
-      if (!res.ok) return;
-      cfg = await res.json();
-    }
-    const root = document.documentElement;
-    if (cfg.overlayBgOpacity != null)
-      root.style.setProperty('--overlay-bg', 'rgba(0,0,0,' + cfg.overlayBgOpacity + ')');
-    if (cfg.overlayTextColor)
-      root.style.setProperty('--overlay-color', cfg.overlayTextColor);
-    if (cfg.overlayPosition)
-      root.style.setProperty('--overlay-position', cfg.overlayPosition);
-    if (cfg.overlayFontScale && cfg.overlayFontScale !== 1) {
-      var s = cfg.overlayFontScale;
-      root.style.setProperty('--overlay-font-size', (2.19 * s).toFixed(2) + 'vw');
-      root.style.setProperty('--title-font-size', (2.5 * s).toFixed(2) + 'vw');
-      root.style.setProperty('--sub-font-size', (1.67 * s).toFixed(2) + 'vw');
-      root.style.setProperty('--bible-font-size', (1.77 * s).toFixed(2) + 'vw');
-    }
-    /* 폰트도 적용 */
-    const FONT_STACK = {
-      'noto-sans-kr':   "'Noto Sans KR',sans-serif",
-      'gowun-dodum':    "'Gowun Dodum',sans-serif",
-      'nanum-myeongjo': "'Nanum Myeongjo',serif",
-      'black-han-sans': "'Black Han Sans',sans-serif",
-    };
-    const GOOGLE_FONTS = {
-      'noto-sans-kr':   'https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap',
-      'gowun-dodum':    'https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap',
-      'nanum-myeongjo': 'https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700&display=swap',
-      'black-han-sans': 'https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap',
-    };
-    if (cfg.font && FONT_STACK[cfg.font]) {
-      document.body.style.fontFamily = FONT_STACK[cfg.font];
-      if (GOOGLE_FONTS[cfg.font]) {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet'; link.href = GOOGLE_FONTS[cfg.font];
-        document.head.appendChild(link);
-      }
-    }
-  } catch(e) {}
-}
-
-applyOverlayConfig().finally(() => connect());
-</script>
-</body>
-</html>`
+//go:embed html/display-overlay.html
+var displayOverlayHTML string
 
 // DisplayOverlayHandler — GET /display/overlay
 func DisplayOverlayHandler(w http.ResponseWriter, r *http.Request) {
@@ -2370,15 +1214,27 @@ func DisplayStatusHandler(w http.ResponseWriter, r *http.Request) {
 	tEnabled := timerEnabled
 	timerMu.Unlock()
 
+	// 스케줄러 활성 여부
+	scheduleMu.RLock()
+	schedActive := false
+	for _, e := range scheduleConf.Entries {
+		if e.Enabled {
+			schedActive = true
+			break
+		}
+	}
+	scheduleMu.RUnlock()
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"idx":          idx,
-		"count":        count,
-		"title":        title,
-		"items":        items,
-		"obs":          obsStatus,
-		"stream":       streamStatus,
-		"timerEnabled": tEnabled,
+		"idx":            idx,
+		"count":          count,
+		"title":          title,
+		"items":          items,
+		"obs":            obsStatus,
+		"stream":         streamStatus,
+		"timerEnabled":   tEnabled,
+		"scheduleActive": schedActive,
 	})
 }
 
