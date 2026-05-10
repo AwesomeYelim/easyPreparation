@@ -81,7 +81,7 @@ func (pi PdfInfo) Create() {
 				hasBackground = true
 			}
 		}
-		hasContent := strings.Contains(con.Info, "edit") || strings.Contains(con.Info, "notice")
+		hasContent := strings.Contains(con.Info, "edit") || strings.Contains(con.Info, "notice") || con.Contents != ""
 
 		// 배경도 없고 내용도 없는 항목은 슬라이드 생략 (흰화면 방지)
 		if !hasBackground && !hasContent {
