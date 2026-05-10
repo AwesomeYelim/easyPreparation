@@ -139,6 +139,12 @@ jobs:
       - name: Select Xcode (macOS)
         if: runner.os == 'macOS'
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+      - name: Free disk space (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          sudo rm -rf /usr/local/share/powershell /usr/local/lib/node_modules /usr/local/share/chromium
+          sudo rm -rf ~/Library/Caches/Homebrew
+          df -h /
       - name: Build desktop app (macOS arm64)
         if: matrix.os == 'macos-latest'
         env:
