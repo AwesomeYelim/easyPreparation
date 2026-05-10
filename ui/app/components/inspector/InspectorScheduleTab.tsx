@@ -26,7 +26,7 @@ export default function InspectorScheduleTab() {
     (c) => apiClient.saveSchedule(c).catch(console.error)
   );
 
-  if (!scheduleConfig) {
+  if (!scheduleConfig || !scheduleConfig.entries) {
     return <div className="text-[#888] text-center py-5 text-xs">로딩 중...</div>;
   }
 
