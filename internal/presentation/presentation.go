@@ -364,8 +364,8 @@ func (pdf *PDF) ForEdit(con types.WorshipInfo, config extract.Config) {
 	case "신앙고백":
 		fontInfo.FontSize = fontInfo.FontSize * 0.75
 		pdf.SetText(fontInfo, true, hLColor)
-		pdf.SetXY(pdf.Config.Padding, pdf.Config.Padding*2.5)
-		pdf.MultiCell(pdf.Config.InnerRectangle.Width, pdf.Config.FontSize/1.7, con.Contents, "", "L", false)
+		pdf.SetXY(pdf.Config.Padding, pdf.Config.Padding*1.5)
+		pdf.MultiCell(pdf.Config.InnerRectangle.Width, pdf.Config.FontSize/1.7, con.Contents, "", "C", false)
 	default:
 		if con.Obj == "-" {
 			pdf.WriteText(con.Lead, "center")
