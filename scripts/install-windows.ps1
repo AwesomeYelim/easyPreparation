@@ -13,6 +13,7 @@ $TempSetup   = Join-Path $env:TEMP $SetupName
 $regPath    = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$AppName"
 $regPathM   = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$AppName"
 $knownPaths = @(
+    "$env:LOCALAPPDATA\$AppName\$AppName.exe",
     "$env:LOCALAPPDATA\Programs\$AppName\$AppName.exe",
     "$env:ProgramFiles\$AppName\$AppName.exe",
     "${env:ProgramFiles(x86)}\$AppName\$AppName.exe"
@@ -37,17 +38,8 @@ $existingExe = Find-InstalledExe
 
 if ($existingExe) {
     Write-Host ""
-    Write-Host "  Existing installation detected:" -ForegroundColor Yellow
-    Write-Host "  $existingExe" -ForegroundColor Gray
-    Write-Host ""
-    Write-Host "  [1] Upgrade / Reinstall (recommended)" -ForegroundColor Cyan
-    Write-Host "  [2] Cancel" -ForegroundColor Gray
-    Write-Host ""
-    $choice = Read-Host "  Choose (1/2)"
-    if ($choice -eq "2") {
-        Write-Host "  Installation cancelled." -ForegroundColor Gray
-        exit 0
-    }
+    Write-Host "  Existing installation detected: $existingExe" -ForegroundColor Yellow
+    Write-Host "  Upgrading..." -ForegroundColor Cyan
 }
 
 # --- 2. Download installer ---
@@ -87,13 +79,17 @@ Write-Host "  Installation complete!" -ForegroundColor Green
 if ($exePath) {
     Write-Host "  Installed at: $exePath" -ForegroundColor Gray
     Write-Host ""
-    $launch = Read-Host "  Launch easyPreparation now? (Y/n)"
-    if ($launch -ne "n" -and $launch -ne "N") {
+    Write-Host "  Launching $AppName..." -ForegroundColor Cyan
+    try {
         Start-Process -FilePath $exePath
         Write-Host "  Launched!" -ForegroundColor Green
+    } catch {
+        Write-Host "  Auto-launch failed: $_" -ForegroundColor Yellow
+        Write-Host "  Please run manually: $exePath" -ForegroundColor Gray
     }
 } else {
-    Write-Host "  easyPreparation is installed. Find it in the Start Menu." -ForegroundColor Gray
+    Write-Host "  Could not find installed exe." -ForegroundColor Yellow
+    Write-Host "  Please launch from Start Menu or find easyPreparation.exe manually." -ForegroundColor Gray
 }
 
 Write-Host ""
