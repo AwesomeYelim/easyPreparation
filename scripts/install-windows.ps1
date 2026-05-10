@@ -9,12 +9,21 @@ $SetupName   = "${AppName}_desktop_windows_amd64_setup.exe"
 $DownloadUrl = "https://github.com/AwesomeYelim/easyPreparation/releases/latest/download/$SetupName"
 $TempSetup   = Join-Path $env:TEMP $SetupName
 
-# NSIS 기본 설치 경로 (Wails nsisType: "multiple")
-$PrimaryPath = "$env:LOCALAPPDATA\Programs\$AppName\$AppName.exe"
+# NSIS 설치 경로 후보 (wails.json companyName: "AwesomeYelim")
+$CompanyName = "AwesomeYelim"
 
 function Find-InstalledExe {
-    # 1) NSIS 기본 경로 우선
-    if (Test-Path $PrimaryPath) { return $PrimaryPath }
+    # 1) Known paths (우선순위순)
+    $paths = @(
+        "$env:ProgramFiles\$CompanyName\$AppName\$AppName.exe",
+        "${env:ProgramFiles(x86)}\$CompanyName\$AppName\$AppName.exe",
+        "$env:LOCALAPPDATA\Programs\$AppName\$AppName.exe",
+        "$env:ProgramFiles\$AppName\$AppName.exe",
+        "$env:LOCALAPPDATA\$AppName\$AppName.exe"
+    )
+    foreach ($p in $paths) {
+        if (Test-Path $p) { return $p }
+    }
     # 2) Registry
     $regPaths = @(
         "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$AppName",
@@ -29,14 +38,10 @@ function Find-InstalledExe {
             }
         }
     }
-    # 3) Other paths
-    $paths = @(
-        "$env:ProgramFiles\$AppName\$AppName.exe",
-        "${env:ProgramFiles(x86)}\$AppName\$AppName.exe",
-        "$env:LOCALAPPDATA\$AppName\$AppName.exe"
-    )
-    foreach ($p in $paths) {
-        if (Test-Path $p) { return $p }
+    # 3) Broad search
+    foreach ($root in @("$env:ProgramFiles", "$env:LOCALAPPDATA")) {
+        $found = Get-ChildItem -Path $root -Filter "$AppName.exe" -Recurse -Depth 3 -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($found) { return $found.FullName }
     }
     return $null
 }
