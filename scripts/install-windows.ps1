@@ -10,8 +10,6 @@ $DownloadUrl = "https://github.com/AwesomeYelim/easyPreparation/releases/latest/
 $TempSetup   = Join-Path $env:TEMP $SetupName
 
 # --- 1. Check for existing installation ---
-$regPath    = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$AppName"
-$regPathM   = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$AppName"
 $knownPaths = @(
     "$env:LOCALAPPDATA\$AppName\$AppName.exe",
     "$env:LOCALAPPDATA\Programs\$AppName\$AppName.exe",
@@ -20,8 +18,11 @@ $knownPaths = @(
 )
 
 function Find-InstalledExe {
-    # Try registry first
-    foreach ($rp in @($regPath, $regPathM)) {
+    $regPaths = @(
+        "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$AppName",
+        "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$AppName"
+    )
+    foreach ($rp in $regPaths) {
         if (Test-Path $rp) {
             $dir = (Get-ItemProperty -Path $rp -ErrorAction SilentlyContinue).InstallLocation
             if ($dir) {
@@ -30,66 +31,56 @@ function Find-InstalledExe {
             }
         }
     }
-    # Fallback to known paths
     return ($knownPaths | Where-Object { Test-Path $_ } | Select-Object -First 1)
 }
 
-$existingExe = Find-InstalledExe
-
-if ($existingExe) {
-    Write-Host ""
-    Write-Host "  Existing installation detected: $existingExe" -ForegroundColor Yellow
-    Write-Host "  Upgrading..." -ForegroundColor Cyan
+# --- 2. Kill running instance ---
+$running = Get-Process -Name $AppName -ErrorAction SilentlyContinue
+if ($running) {
+    Write-Host "  Running instance detected, stopping..." -ForegroundColor Yellow
+    $running | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
 }
 
-# --- 2. Download installer ---
-Write-Host ""
-Write-Host "  Downloading $AppName installer..." -ForegroundColor Cyan
+$existingExe = Find-InstalledExe
+if ($existingExe) {
+    Write-Host "  Existing installation: $existingExe" -ForegroundColor Yellow
+    Write-Host "  Upgrading..." -ForegroundColor Cyan
+} else {
+    Write-Host "  Fresh install" -ForegroundColor Cyan
+}
 
+# --- 3. Download ---
+Write-Host "  Downloading $AppName..." -ForegroundColor Cyan
 try {
     Invoke-WebRequest -Uri $DownloadUrl -OutFile $TempSetup -UseBasicParsing
 } catch {
-    Write-Host "  ERROR: Download failed — $_" -ForegroundColor Red
+    Write-Host "  ERROR: Download failed - $_" -ForegroundColor Red
     exit 1
 }
-
 Unblock-File -Path $TempSetup -ErrorAction SilentlyContinue
 
-# --- 3. Run NSIS installer (shows GUI) ---
-Write-Host "  Starting installer GUI..." -ForegroundColor Cyan
-Write-Host "  (Follow the on-screen instructions to complete setup)" -ForegroundColor Gray
-Write-Host ""
-
-$proc = Start-Process -FilePath $TempSetup -Wait -PassThru
-
+# --- 4. Silent install ---
+Write-Host "  Installing..." -ForegroundColor Cyan
+$proc = Start-Process -FilePath $TempSetup -ArgumentList "/S" -Wait -PassThru
 Remove-Item -Path $TempSetup -Force -ErrorAction SilentlyContinue
 
 if ($proc.ExitCode -ne 0) {
-    Write-Host ""
-    Write-Host "  Installation was cancelled or failed (exit code: $($proc.ExitCode))." -ForegroundColor Yellow
+    Write-Host "  Installation failed (exit code: $($proc.ExitCode))." -ForegroundColor Red
     exit 1
 }
 
-# --- 4. Launch option ---
+# --- 5. Launch ---
+Start-Sleep -Seconds 1
 $exePath = Find-InstalledExe
 
-Write-Host ""
-Write-Host "  Installation complete!" -ForegroundColor Green
-
 if ($exePath) {
-    Write-Host "  Installed at: $exePath" -ForegroundColor Gray
     Write-Host ""
-    Write-Host "  Launching $AppName..." -ForegroundColor Cyan
-    try {
-        Start-Process -FilePath $exePath
-        Write-Host "  Launched!" -ForegroundColor Green
-    } catch {
-        Write-Host "  Auto-launch failed: $_" -ForegroundColor Yellow
-        Write-Host "  Please run manually: $exePath" -ForegroundColor Gray
-    }
+    Write-Host "  Installed: $exePath" -ForegroundColor Green
+    Start-Process -FilePath $exePath
+    Write-Host "  Launched!" -ForegroundColor Green
 } else {
-    Write-Host "  Could not find installed exe." -ForegroundColor Yellow
-    Write-Host "  Please launch from Start Menu or find easyPreparation.exe manually." -ForegroundColor Gray
+    Write-Host "  Install completed but exe not found." -ForegroundColor Yellow
+    Write-Host "  Check Start Menu for $AppName" -ForegroundColor Gray
 }
-
 Write-Host ""
