@@ -9,8 +9,13 @@ $SetupName   = "${AppName}_desktop_windows_amd64_setup.exe"
 $DownloadUrl = "https://github.com/AwesomeYelim/easyPreparation/releases/latest/download/$SetupName"
 $TempSetup   = Join-Path $env:TEMP $SetupName
 
+# NSIS 기본 설치 경로 (Wails nsisType: "multiple")
+$PrimaryPath = "$env:LOCALAPPDATA\Programs\$AppName\$AppName.exe"
+
 function Find-InstalledExe {
-    # 1) Registry
+    # 1) NSIS 기본 경로 우선
+    if (Test-Path $PrimaryPath) { return $PrimaryPath }
+    # 2) Registry
     $regPaths = @(
         "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$AppName",
         "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$AppName"
@@ -24,32 +29,34 @@ function Find-InstalledExe {
             }
         }
     }
-    # 2) Known paths
+    # 3) Other paths
     $paths = @(
-        "$env:LOCALAPPDATA\Programs\$AppName\$AppName.exe",
-        "$env:LOCALAPPDATA\$AppName\$AppName.exe",
         "$env:ProgramFiles\$AppName\$AppName.exe",
-        "${env:ProgramFiles(x86)}\$AppName\$AppName.exe"
+        "${env:ProgramFiles(x86)}\$AppName\$AppName.exe",
+        "$env:LOCALAPPDATA\$AppName\$AppName.exe"
     )
     foreach ($p in $paths) {
         if (Test-Path $p) { return $p }
     }
-    # 3) Broad search
-    $found = Get-ChildItem -Path $env:LOCALAPPDATA -Filter "$AppName.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($found) { return $found.FullName }
     return $null
 }
 
 # --- 1. Kill running instance ---
 $running = Get-Process -Name $AppName -ErrorAction SilentlyContinue
 if ($running) {
-    Write-Host "  Running instance detected, stopping..." -ForegroundColor Yellow
+    Write-Host "  Stopping running instance..." -ForegroundColor Yellow
     $running | Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 2
 }
 
-# --- 2. Download ---
-Write-Host ""
+# --- 2. Clean up old installation (Programs\ 아닌 곳) ---
+$oldPath = "$env:LOCALAPPDATA\$AppName"
+if (Test-Path "$oldPath\$AppName.exe") {
+    Write-Host "  Removing old installation: $oldPath" -ForegroundColor Yellow
+    Remove-Item -Path $oldPath -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+# --- 3. Download ---
 Write-Host "  Downloading $AppName..." -ForegroundColor Cyan
 try {
     Invoke-WebRequest -Uri $DownloadUrl -OutFile $TempSetup -UseBasicParsing
@@ -58,10 +65,9 @@ try {
     exit 1
 }
 Unblock-File -Path $TempSetup -ErrorAction SilentlyContinue
-Write-Host "  Download complete." -ForegroundColor Green
 
-# --- 3. Silent install ---
-Write-Host "  Installing (silent)..." -ForegroundColor Cyan
+# --- 4. Silent install ---
+Write-Host "  Installing..." -ForegroundColor Cyan
 $proc = Start-Process -FilePath $TempSetup -ArgumentList "/S" -Wait -PassThru
 Remove-Item -Path $TempSetup -Force -ErrorAction SilentlyContinue
 
@@ -70,7 +76,7 @@ if ($proc.ExitCode -ne 0) {
     exit 1
 }
 
-# --- 4. Find and launch ---
+# --- 5. Find and launch ---
 Start-Sleep -Seconds 2
 $exePath = Find-InstalledExe
 
