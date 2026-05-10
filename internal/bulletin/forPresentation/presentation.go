@@ -73,8 +73,8 @@ func (pi PdfInfo) Create() {
 		hasBackground := false
 		if _, ok := pathInfo[con.Title]; ok {
 			hasBackground = true
-		} else if con.Info != "-" {
-			// 편집 가능 항목(info != "-")은 매칭 이미지 없으면 default_bg 사용
+		} else if con.Info != "-" || con.Contents != "" {
+			// 편집 가능 항목 또는 표시할 텍스트가 있는 항목은 default_bg 사용
 			framePath := filepath.Join(pi.ExecPath, "data", "default_bg.png")
 			if _, err := os.Stat(framePath); err == nil {
 				pathInfo[con.Title] = framePath
