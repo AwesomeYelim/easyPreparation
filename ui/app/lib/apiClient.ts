@@ -236,11 +236,23 @@ export const apiClient = {
       body: JSON.stringify(config),
     }).then((r) => r.json()),
 
-  generateThumbnail: (worshipType: string, date?: string, upload?: boolean) =>
+  generateThumbnail: (
+    worshipType: string,
+    date?: string,
+    upload?: boolean,
+    overrides?: { header?: string; main?: string; footer?: string }
+  ) =>
     fetch(`${BASE_URL}/api/thumbnail/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ worshipType, date, upload }),
+      body: JSON.stringify({
+        worshipType,
+        date,
+        upload,
+        headerText: overrides?.header ?? "",
+        mainText: overrides?.main ?? "",
+        footerText: overrides?.footer ?? "",
+      }),
     }).then((r) => r.json()),
 
   getThumbnailPreviewUrl: (worshipType: string, date?: string) =>
@@ -474,6 +486,17 @@ export const apiClient = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ip, port, password }),
     }).then((r) => r.json()) as Promise<{ ok: boolean; connected: boolean; host: string }>,
+
+  obsSetStreamSettings: (server: string, key: string) =>
+    fetch(`${BASE_URL}/api/obs/stream-settings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ server, key }),
+    }).then((r) => r.json()) as Promise<{ ok: boolean; error?: string }>,
+
+  obsSyncStreamKey: () =>
+    fetch(`${BASE_URL}/api/obs/sync-stream-key`, { method: "POST" })
+      .then((r) => r.json()) as Promise<{ ok: boolean; error?: string }>,
 
   getOBSLogoHistory: async (): Promise<{ paths: string[] }> => {
     const res = await fetch(`${BASE_URL}/api/obs/logo/history`);

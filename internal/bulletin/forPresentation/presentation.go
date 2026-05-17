@@ -9,6 +9,7 @@ import (
 	"easyPreparation_1.0/internal/utils"
 	"encoding/json"
 	"fmt"
+	"log"
 	"github.com/jung-kurt/gofpdf/v2"
 	"os"
 	"path/filepath"
@@ -73,8 +74,8 @@ func (pi PdfInfo) Create() {
 		hasBackground := false
 		if _, ok := pathInfo[con.Title]; ok {
 			hasBackground = true
-		} else if con.Info != "-" || con.Contents != "" {
-			// 편집 가능 항목 또는 표시할 텍스트가 있는 항목은 default_bg 사용
+		} else {
+			// 매칭 이미지 없으면 default_bg.png fallback
 			framePath := filepath.Join(pi.ExecPath, "data", "default_bg.png")
 			if _, err := os.Stat(framePath); err == nil {
 				pathInfo[con.Title] = framePath
@@ -113,9 +114,23 @@ func (pi PdfInfo) Create() {
 	}
 
 	outputBtPath := filepath.Join(pi.ExecPath, config.OutputPath.Bulletin, "presentation")
-	_ = utils.CheckDirIs(outputBtPath)
+	if mkErr := utils.CheckDirIs(outputBtPath); mkErr != nil {
+		log.Printf("[forPresentation] 출력 디렉터리 생성 실패: %v", mkErr)
+	}
 	bulletinPath := filepath.Join(outputBtPath, pi.OutputFilename)
-	if err = objPdf.OutputFileAndClose(bulletinPath); err != nil {
-		fmt.Printf("[forPresentation] PDF 저장 실패: %v\n", err)
+	if fpdfErr := objPdf.Error(); fpdfErr != nil {
+		log.Printf("[forPresentation] PDF 내부 오류 (저장 전): %v", fpdfErr)
+	}
+	// 임시 파일에 먼저 쓴 뒤 rename — 뷰어가 기존 파일을 열고 있어도 덮어쓸 수 있도록
+	tmpPath := bulletinPath + ".tmp"
+	if err = objPdf.OutputFileAndClose(tmpPath); err != nil {
+		log.Printf("[forPresentation] PDF 저장 실패 (경로=%s): %v", bulletinPath, err)
+	} else {
+		_ = os.Remove(bulletinPath)
+		if err = os.Rename(tmpPath, bulletinPath); err != nil {
+			log.Printf("[forPresentation] PDF rename 실패: %v", err)
+		} else {
+			log.Printf("[forPresentation] PDF 저장 완료: %s", bulletinPath)
+		}
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"easyPreparation_1.0/internal/quote"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 )
 
@@ -76,6 +77,13 @@ func CreateBulletin(data map[string]interface{}) {
 
 	handlers.BroadcastProgress("Presentation PDF", 1, "예배 프레젠테이션 PDF 생성 중...")
 	presentationData.Create()
+
+	// PDF 파일 생성 결과 확인
+	pdfCheckPath := filepath.Join(execPath, "output", "bulletin", "presentation", outputFilenameExe)
+	if _, statErr := os.Stat(pdfCheckPath); statErr != nil {
+		handlers.BroadcastProgress("PDF 생성 실패", -1, fmt.Sprintf("PDF 파일을 생성하지 못했습니다. 로그를 확인하세요."))
+		return
+	}
 
 	handlers.BroadcastProcessDone(target, outputFilename, "presentation")
 	handlers.BroadcastProgress("Finish Data Process", 1, "Finish Data Process !!")

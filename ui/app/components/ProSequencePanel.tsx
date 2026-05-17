@@ -47,6 +47,8 @@ export default function ProSequencePanel() {
   const listRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef(items);
   itemsRef.current = items;
+  const idxRef = useRef(idx);
+  idxRef.current = idx;
   const dragRef = useRef<{ from: number; wasDragging: boolean } | null>(null);
   const schedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reorderLockRef = useRef(false);
@@ -123,7 +125,7 @@ export default function ProSequencePanel() {
           if (data.obs) setObsStatus(data.obs);
           if (data.stream) setStreamStatus(data.stream);
           if (typeof data.timerEnabled === "boolean") setTimerEnabled(data.timerEnabled);
-          if (Array.isArray(data.items) && data.items.length > 0 && itemsRef.current.length === 0) {
+          if (Array.isArray(data.items) && data.items.length > 0 && !reorderSuppressRef.current) {
             setItems(ensureUniqueKeys(data.items as WorshipOrderItem[]));
             if (typeof data.idx === "number") setIdx(data.idx);
           }
@@ -292,13 +294,19 @@ export default function ProSequencePanel() {
     let blocked = false;
     let debounceTimer: ReturnType<typeof setTimeout>;
     const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName;
+      const target = e.target as HTMLElement;
+      const tag = target?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (target?.isContentEditable) return;
       if (blocked) return;
-      if (e.key === "ArrowRight" || e.key === "ArrowLeft" || e.key === " " || e.key === "Spacebar") {
-        if (e.key === " " || e.key === "Spacebar") e.preventDefault();
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft" || e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === " " || e.key === "Spacebar") {
+        e.preventDefault();
         blocked = true;
-        handleNav(e.key === "ArrowLeft" ? "prev" : "next");
+        const isPrev = e.key === "ArrowLeft" || e.key === "ArrowUp";
+        const newIdx = isPrev
+          ? Math.max(0, idxRef.current - 1)
+          : Math.min(itemsRef.current.length - 1, idxRef.current + 1);
+        handleJump(newIdx);
         debounceTimer = setTimeout(() => { blocked = false; }, 300);
       }
     };
@@ -307,7 +315,7 @@ export default function ProSequencePanel() {
       window.removeEventListener("keydown", handler);
       clearTimeout(debounceTimer);
     };
-  }, [handleNav]);
+  }, [handleJump]);
 
   if (!seqOpen) return null;
 

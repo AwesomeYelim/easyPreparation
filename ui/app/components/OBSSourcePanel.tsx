@@ -86,6 +86,12 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
   const [busy, setBusy] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
   const [setupResult, setSetupResult] = useState<OBSInitialSetupResult | null>(null);
+
+  // Stream key state
+  const [streamServer, setStreamServer] = useState("rtmp://a.rtmp.youtube.com/live2");
+  const [streamKey, setStreamKey] = useState("");
+  const [streamKeySaving, setStreamKeySaving] = useState(false);
+  const [streamKeyDone, setStreamKeyDone] = useState(false);
   const [setupDone, setSetupDone] = useState(false);
 
   const showToast = (msg: string, type: "error" | "info" = "error") => {
@@ -841,6 +847,82 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
                   )}
                 </div>
               )}
+
+              {/* ── 스트림 키 설정 ── */}
+              <div className="mt-5 pt-5 border-t border-white/10">
+                <div className="text-[11px] text-[#888] mb-3 font-semibold uppercase tracking-wide">YouTube 스트림 키</div>
+                <div className="space-y-2">
+                  {/* YouTube 연동된 경우: 자동 가져오기 버튼 */}
+                  <button
+                    onClick={async () => {
+                      setStreamKeySaving(true);
+                      try {
+                        const res = await apiClient.obsSyncStreamKey();
+                        if (res.ok) {
+                          setStreamKeyDone(true);
+                          showToast("YouTube 스트림 키 → OBS 자동 적용 완료", "info");
+                        } else {
+                          showToast(res.error || "동기화 실패 — 수동으로 입력하세요");
+                        }
+                      } catch {
+                        showToast("동기화 실패");
+                      }
+                      setStreamKeySaving(false);
+                    }}
+                    disabled={streamKeySaving}
+                    className="w-full py-2 rounded text-xs font-semibold border border-[#2d5a8a]/50 bg-[#0d2137] text-[#7eb8f7] hover:bg-[#102a47] transition-colors disabled:opacity-40 disabled:cursor-default"
+                  >
+                    {streamKeySaving ? "적용 중..." : "⟳  YouTube에서 자동으로 가져오기"}
+                  </button>
+                  <div className="text-[10px] text-[#555] text-center">또는 직접 입력</div>
+                  <div>
+                    <label className="text-[11px] text-[#888]">RTMP 서버</label>
+                    <input
+                      className="w-full mt-1 px-2 py-1.5 bg-[#1a1a1a] border border-white/15 rounded text-xs text-white outline-none focus:border-[#4a9eff]"
+                      value={streamServer}
+                      onChange={(e) => { setStreamServer(e.target.value); setStreamKeyDone(false); }}
+                      placeholder="rtmp://a.rtmp.youtube.com/live2"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-[#888]">스트림 키</label>
+                    <input
+                      type="password"
+                      className="w-full mt-1 px-2 py-1.5 bg-[#1a1a1a] border border-white/15 rounded text-xs text-white outline-none focus:border-[#4a9eff]"
+                      value={streamKey}
+                      onChange={(e) => { setStreamKey(e.target.value); setStreamKeyDone(false); }}
+                      placeholder="YouTube Studio → 스트림 키"
+                    />
+                  </div>
+                  <button
+                    disabled={streamKeySaving || !streamKey}
+                    onClick={async () => {
+                      setStreamKeySaving(true);
+                      try {
+                        const res = await apiClient.obsSetStreamSettings(streamServer, streamKey);
+                        if (res.ok) {
+                          setStreamKeyDone(true);
+                          showToast("스트림 키 저장 완료 — 이제 방송 시작이 바로 됩니다", "info");
+                        } else {
+                          showToast(res.error || "저장 실패");
+                        }
+                      } catch {
+                        showToast("저장 실패");
+                      }
+                      setStreamKeySaving(false);
+                    }}
+                    className={`w-full py-2 rounded text-xs font-semibold border-none transition-colors ${
+                      streamKeyDone
+                        ? "bg-[#2e7d32] text-white cursor-default"
+                        : streamKeySaving || !streamKey
+                        ? "bg-[#204d87]/50 text-white/50 cursor-default"
+                        : "bg-[#204d87] text-white cursor-pointer hover:bg-[#2d5a8a]"
+                    }`}
+                  >
+                    {streamKeySaving ? "저장 중..." : streamKeyDone ? "저장 완료 ✓" : "OBS에 스트림 키 적용"}
+                  </button>
+                </div>
+              </div>
             </div>
           ) : !connected ? (
             <div className="text-[#888] text-center py-10">

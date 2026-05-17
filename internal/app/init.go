@@ -153,6 +153,9 @@ func Initialize(cfg Config) *App {
 	handlers.InitScheduler()
 	app.shutdownFns = append(app.shutdownFns, handlers.StopScheduler)
 
+	// OBS 연결 시 YouTube 스트림 키 자동 동기화 훅 등록
+	handlers.InitOBSStreamKeySync()
+
 	// 업데이트 관련 초기화
 	// WS 브로드캐스트 콜백 주입 (순환 참조 방지용 콜백 패턴)
 	selfupdate.GetUpdater().SetBroadcast(handlers.BroadcastMessage)
@@ -211,6 +214,9 @@ func ExtractEmbeddedData(dataFS fs.FS, execPath string) {
 	bibleDst := filepath.Join(execPath, "data", "bible.db")
 	extractFile(dataFS, "bible.db", bibleDst)
 
+	// default_bg.png 추출 (슬라이드 fallback 배경)
+	extractFile(dataFS, "default_bg.png", filepath.Join(execPath, "data", "default_bg.png"))
+
 	// schema.sql 추출 (앱 DB 자동 초기화용)
 	schemaDst := filepath.Join(execPath, "data", "schema.sql")
 	extractFile(dataFS, "schema.sql", schemaDst)
@@ -231,6 +237,18 @@ func ExtractEmbeddedData(dataFS fs.FS, execPath string) {
 	videoBgDir := filepath.Join(execPath, "data", "video-bg")
 	os.MkdirAll(videoBgDir, 0755)
 	extractFile(dataFS, "defaults/video-bg/lent.mp4", filepath.Join(videoBgDir, "lent.mp4"))
+
+	// 썸네일 폰트 추출 (thumbnail.go가 execPath/public/font/ 에서 읽음)
+	fontDir := filepath.Join(execPath, "public", "font")
+	os.MkdirAll(fontDir, 0755)
+	for _, fontFile := range []string{
+		"JacquesFrancois-regular.ttf",
+		"NanumBrush.ttf",
+		"NanumGothic-regular.ttf",
+		"NanumGothic-800.ttf",
+	} {
+		extractFile(dataFS, "public/font/"+fontFile, filepath.Join(fontDir, fontFile))
+	}
 }
 
 // extractFile — srcFS에서 srcPath를 읽어 dstPath에 저장합니다.

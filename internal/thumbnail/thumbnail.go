@@ -243,9 +243,9 @@ func drawTextCenteredWithShadow(canvas *image.RGBA, f *truetype.Font, text strin
 // loadFontByName — 이름으로 폰트 파일 로드 (빈 값 또는 "NanumBrush" → NanumBrush.ttf)
 func loadFontByName(name string) (*truetype.Font, error) {
 	fontFileMap := map[string]string{
-		"":               "NanumBrush.ttf",
-		"NanumBrush":     "NanumBrush.ttf",
-		"NanumGothic":    "NanumGothic-regular.ttf",
+		"":                "NanumBrush.ttf",
+		"NanumBrush":      "NanumBrush.ttf",
+		"NanumGothic":     "NanumGothic-regular.ttf",
 		"NanumGothicBold": "NanumGothic-800.ttf",
 		"JacquesFrancois": "JacquesFrancois-regular.ttf",
 	}
@@ -253,11 +253,25 @@ func loadFontByName(name string) (*truetype.Font, error) {
 	if !ok {
 		fileName = "NanumBrush.ttf"
 	}
+
+	// 1순위: execPath/public/font/ (프로덕션 — ExtractEmbeddedData가 복사한 파일)
 	execPath := path.ExecutePath("easyPreparation")
-	fontPath := filepath.Join(execPath, "public", "font", fileName)
-	fontData, err := os.ReadFile(fontPath)
-	if err != nil {
-		return nil, fmt.Errorf("폰트 로드 실패 (%s): %w", fileName, err)
+	candidates := []string{
+		filepath.Join(execPath, "public", "font", fileName),
+		// 2순위: CWD 기준 ./public/font/ (개발 모드 — make dev 실행 시 CWD = 소스 루트)
+		filepath.Join(".", "public", "font", fileName),
+	}
+
+	var fontData []byte
+	var lastErr error
+	for _, fontPath := range candidates {
+		fontData, lastErr = os.ReadFile(fontPath)
+		if lastErr == nil {
+			break
+		}
+	}
+	if lastErr != nil {
+		return nil, fmt.Errorf("폰트 로드 실패 (%s): %w", fileName, lastErr)
 	}
 	f, err := truetype.Parse(fontData)
 	if err != nil {

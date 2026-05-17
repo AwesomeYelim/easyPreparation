@@ -1,6 +1,7 @@
 package font
 
 import (
+	"easyPreparation_1.0/internal/path"
 	"easyPreparation_1.0/internal/utils"
 	"encoding/json"
 	"fmt"
@@ -34,7 +35,8 @@ func GetFont(name, weight string, isB bool) (fontPath string, err error) {
 	saveName := strings.Replace(name, " ", "", 1)
 	saveName = fmt.Sprintf("%s-%s.ttf", saveName, weight)
 
-	savePath := filepath.Join("./public", "font", saveName)
+	execPath := path.ExecutePath("easyPreparation")
+	savePath := filepath.Join(execPath, "public", "font", saveName)
 
 	if _, err = os.Stat(savePath); !os.IsNotExist(err) {
 		return savePath, nil

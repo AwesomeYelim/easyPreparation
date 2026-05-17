@@ -601,12 +601,16 @@ export default function InspectorSpecialTab() {
     []
   );
 
-  // PNG 생성 (서버 호출)
+  // PNG 생성 (서버 호출) — 캔버스 미리보기에서 편집한 텍스트 오버라이드 전달
   const handleGeneratePNG = async () => {
     if (!previewDate) return;
     setGenerating(true);
     try {
-      await apiClient.generateThumbnail(previewType, previewDate);
+      const overrides = textOverridesByType[previewType];
+      await apiClient.generateThumbnail(previewType, previewDate, false, overrides
+        ? { header: overrides.header, main: overrides.main, footer: overrides.footer }
+        : undefined
+      );
       setGenCounter((c) => c + 1);
     } catch (e) {
       console.error(e);

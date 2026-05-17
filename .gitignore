@@ -81,6 +81,7 @@ cmd/server/data/*
 cmd/desktop/frontend/
 cmd/desktop/data/*
 !cmd/desktop/data/bible.db
+!cmd/desktop/data/default_bg.png
 !cmd/desktop/data/defaults/
 !cmd/desktop/data/defaults/*
 cmd/desktop/build/bin/

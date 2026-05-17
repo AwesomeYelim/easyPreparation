@@ -95,6 +95,9 @@ func (a *App) startup(ctx context.Context) {
 	// 스케줄러 초기화
 	handlers.InitScheduler()
 
+	// OBS 연결 시 YouTube 스트림 키 자동 동기화 훅 등록
+	handlers.InitOBSStreamKeySync()
+
 	// 프론트엔드 정적 파일 서빙 설정 (embed_prod.go / embed_dev.go 분기)
 	api.FrontendFS = getFrontendFS()
 	if api.FrontendFS != nil {

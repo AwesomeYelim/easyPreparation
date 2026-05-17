@@ -91,6 +91,10 @@ func ThumbnailGenerateHandler(w http.ResponseWriter, r *http.Request) {
 		WorshipType string `json:"worshipType"`
 		Date        string `json:"date"`
 		Upload      bool   `json:"upload"`
+		// 텍스트 오버라이드 (미리보기에서 편집한 값)
+		HeaderText string `json:"headerText"`
+		MainText   string `json:"mainText"`
+		FooterText string `json:"footerText"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
@@ -104,7 +108,7 @@ func ThumbnailGenerateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	outPath, err := generateThumbnail(body.WorshipType, date)
+	outPath, err := generateThumbnailWithOverrides(body.WorshipType, date, body.HeaderText, body.MainText, body.FooterText)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": err.Error()})
@@ -212,6 +216,14 @@ func ThumbnailConfigHandler(w http.ResponseWriter, r *http.Request) {
 
 // generateThumbnail — 내부 공통 생성 함수
 func generateThumbnail(worshipType string, date time.Time) (string, error) {
+	return generateThumbnailWithOverrides(worshipType, date, "", "", "")
+}
+
+// generateThumbnailWithOverrides — 텍스트 오버라이드 지원 생성 함수
+// headerText: 날짜+예배명 (비어있으면 자동 계산)
+// mainText: 말씀 제목 (비어있으면 config에서 로드)
+// footerText: 성경봉독 참조 (비어있으면 config에서 로드)
+func generateThumbnailWithOverrides(worshipType string, date time.Time, headerText, mainText, footerText string) (string, error) {
 	// worshipType 경로 순회 방지
 	worshipType = filepath.Base(worshipType)
 	if strings.Contains(worshipType, "..") || worshipType == "." || worshipType == "" {
@@ -235,34 +247,45 @@ func generateThumbnail(worshipType string, date time.Time) (string, error) {
 	}
 
 	// dateLabel 빌드: "26.04.05 주일예배" — 기념 주일이면 해당 레이블로 오버라이드
-	worshipTypeLabels := map[string]string{
-		"main_worship":  "주일예배",
-		"after_worship": "오후예배",
-		"wed_worship":   "수요예배",
-		"fri_worship":   "금요예배",
-	}
-	typeLabel := worshipTypeLabels[worshipType]
-	if typeLabel == "" {
-		typeLabel = "예배"
-	}
-	dateStr := date.Format("2006-01-02")
-	for _, s := range cfg.Specials {
-		if s.Date == dateStr {
-			if s.TitleOverride != "" {
-				typeLabel = s.TitleOverride
-			} else if s.Label != "" {
-				typeLabel = s.Label
-			}
-			break
+	var dateLabel string
+	if headerText != "" {
+		dateLabel = headerText
+	} else {
+		worshipTypeLabels := map[string]string{
+			"main_worship":  "주일예배",
+			"after_worship": "오후예배",
+			"wed_worship":   "수요예배",
+			"fri_worship":   "금요예배",
 		}
+		typeLabel := worshipTypeLabels[worshipType]
+		if typeLabel == "" {
+			typeLabel = "예배"
+		}
+		dateStr := date.Format("2006-01-02")
+		for _, s := range cfg.Specials {
+			if s.Date == dateStr {
+				if s.TitleOverride != "" {
+					typeLabel = s.TitleOverride
+				} else if s.Label != "" {
+					typeLabel = s.Label
+				}
+				break
+			}
+		}
+		dateLabel = date.Format("06.01.02") + " " + typeLabel
 	}
-	dateLabel := date.Format("06.01.02") + " " + typeLabel
 
-	// 말씀 제목 + 성경봉독: display 메모리(currentOrder) 우선, 없으면 config fallback
-	sermonTitle, scripture := loadSermonDataFromOrder()
-	if sermonTitle == "" && scripture == "" {
-		configPath := filepath.Join(execPath, "config", worshipType+".json")
-		sermonTitle, scripture = loadSermonDataFromConfig(configPath)
+	// 말씀 제목 + 성경봉독: 오버라이드 우선 → display 메모리 → config fallback
+	var sermonTitle, scripture string
+	if mainText != "" || footerText != "" {
+		sermonTitle = mainText
+		scripture = footerText
+	} else {
+		sermonTitle, scripture = loadSermonDataFromOrder()
+		if sermonTitle == "" && scripture == "" {
+			configPath := filepath.Join(execPath, "config", worshipType+".json")
+			sermonTitle, scripture = loadSermonDataFromConfig(configPath)
+		}
 	}
 
 	// 로고 설정 — 썸네일 전용 설정 우선, 없으면 Display 설정 fallback

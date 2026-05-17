@@ -182,6 +182,8 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	// OBS 연결 설정 + 상태 (Feature gate 없음)
 	mux.Handle("/api/obs/connect", middleware.CORS(http.HandlerFunc(handlers.OBSConnectHandler)))
 	mux.Handle("/api/obs/status", middleware.CORS(http.HandlerFunc(handlers.OBSStatusHandler)))
+	mux.Handle("/api/obs/stream-settings", middleware.CORS(http.HandlerFunc(handlers.OBSStreamSettingsHandler)))
+	mux.Handle("/api/obs/sync-stream-key", middleware.CORS(http.HandlerFunc(handlers.OBSSyncStreamKeyHandler)))
 	mux.Handle("/api/obs/auto-configure", middleware.CORS(http.HandlerFunc(handlers.OBSAutoConfigureHandler)))
 
 	// OBS 소스 관리 API (Pro)

@@ -62,7 +62,14 @@ func WriteJSON(filePath string, data interface{}) error {
 
 	// 6. 임시 파일 → 원본 (원자적 rename)
 	if err := os.Rename(tmpPath, filePath); err != nil {
-		return fmt.Errorf("파일 교체 실패: %w", err)
+		// Windows: 대상 파일이 열려있으면 rename 실패 → WriteFile로 직접 덮어쓰기 (원본 삭제 없이)
+		if data, readErr := os.ReadFile(tmpPath); readErr == nil {
+			if writeErr := os.WriteFile(filePath, data, 0644); writeErr != nil {
+				return fmt.Errorf("파일 교체 실패: %w", err)
+			}
+		} else {
+			return fmt.Errorf("파일 교체 실패: %w", err)
+		}
 	}
 
 	return nil

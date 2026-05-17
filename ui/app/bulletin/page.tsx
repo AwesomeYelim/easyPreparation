@@ -47,7 +47,7 @@ export default function Bulletin() {
   const msgQueueRef = useRef<string[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastMsgRef = useRef("");
-  const processingRef = useRef(false); // "done" 중복 처리 방지 (StrictMode 이중 WS 연결)
+  const processingRef = useRef(false);
 
   const flushQueue = () => {
     if (timerRef.current) return;
@@ -71,15 +71,11 @@ export default function Bulletin() {
   };
 
   // 예배 순서 API에서 로드 — 항상 서버 데이터와 동기화
-  // 서버에 더 많은 항목이 있으면 서버 데이터로 갱신 (localStorage 잔해 방지)
+  // 예배 타입 변경 또는 마운트 시 항상 서버에서 로드 (서버가 source of truth)
   useEffect(() => {
     apiClient.getWorshipOrder(selectedWorshipType).then((data) => {
       if (Array.isArray(data) && data.length > 0) {
-        const current = worshipOrder[selectedWorshipType] || [];
-        // 서버 데이터가 로컬보다 많으면 서버 우선 (편집 중 손실 방지보다 데이터 정합성 우선)
-        if (data.length > current.length || current.length === 0) {
-          setWorshipOrder((prev) => ({ ...prev, [selectedWorshipType]: data }));
-        }
+        setWorshipOrder((prev) => ({ ...prev, [selectedWorshipType]: data }));
       }
     }).catch((err) => console.error("예배 순서 로드 실패:", err));
   }, [selectedWorshipType]);
@@ -99,11 +95,10 @@ export default function Bulletin() {
       }
 
       if (message.type === "done") {
-        if (!processingRef.current) return; // 이미 처리했으면 중복 무시
         processingRef.current = false;
         msgQueueRef.current = [];
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-        downloadZip(message.fileName);
+        if (message.fileName) downloadZip(message.fileName);
         setWsMessage("Success !!");
         setWsLogs([]);
         setLoading(false);
@@ -141,6 +136,7 @@ export default function Bulletin() {
     try {
       setDisplayLoading(true);
       setDisplayProgress("예배 순서 전송 중...");
+      await apiClient.saveWorshipOrder(selectedWorshipType, processedInfo);
       const res = await apiClient.startDisplay(processedInfo, userInfo.english_name, userInfo.email);
       if (!res.ok) throw new Error("Display 전송 실패");
     } catch (error) {

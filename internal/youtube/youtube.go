@@ -31,6 +31,9 @@ type Manager struct {
 
 var instance *Manager
 
+// activeTransitions — broadcastID별 TransitionToLive 중복 실행 방지
+var activeTransitions sync.Map
+
 // Init — 서버 시작 시 호출. OAuth 설정 로드 + 토큰 있으면 서비스 초기화
 func Init(oauthConfigPath, tokenPath string) {
 	m := &Manager{tokenPath: tokenPath}
@@ -245,6 +248,30 @@ func UpdateBroadcastTitle(title string) error {
 	return nil
 }
 
+// UpdateBroadcastTitleByID — 특정 broadcast_id의 방송 제목 변경
+func UpdateBroadcastTitleByID(broadcastID, title string) error {
+	m := Get()
+	m.mu.Lock()
+	svc := m.service
+	enabled := m.enabled
+	m.mu.Unlock()
+	if !enabled || svc == nil {
+		return fmt.Errorf("YouTube 미연결")
+	}
+	resp, err := svc.LiveBroadcasts.List([]string{"id", "snippet"}).Id(broadcastID).Do()
+	if err != nil || len(resp.Items) == 0 {
+		return fmt.Errorf("방송 조회 실패: %v", err)
+	}
+	bc := resp.Items[0]
+	bc.Snippet.Title = title
+	_, err = svc.LiveBroadcasts.Update([]string{"snippet"}, bc).Do()
+	if err != nil {
+		return fmt.Errorf("방송 제목 변경 실패: %w", err)
+	}
+	log.Printf("[youtube] 방송 제목 변경: %s → %s", broadcastID, title)
+	return nil
+}
+
 // CreateBroadcastAndBind — YouTube 라이브 방송 생성 + 스트림 바인딩 + 스트림 키 반환
 // 완전 자동화: 방송 생성 → 스트림 연결 → OBS에서 송출하면 라이브
 func CreateBroadcastAndBind(title string) (server string, key string, broadcastID string, err error) {
@@ -283,7 +310,24 @@ func CreateBroadcastAndBind(title string) (server string, key string, broadcastI
 		log.Printf("[youtube] 새 스트림 생성: %s", stream.Id)
 	}
 
-	// 2. 기존 upcoming 방송이 있으면 재사용
+	// 2. 고착 방송 정리 (ready/testStarting/testing 상태) — 누적되면 새 전환 요청 거부됨
+	for _, stuckStatus := range []string{"testStarting", "testing", "ready"} {
+		stuckResp, err := svc.LiveBroadcasts.List([]string{"id", "status"}).
+			BroadcastStatus(stuckStatus).BroadcastType("all").Do()
+		if err != nil {
+			continue
+		}
+		for _, bc := range stuckResp.Items {
+			if _, err := svc.LiveBroadcasts.Transition("complete", bc.Id, []string{"id"}).Do(); err != nil {
+				svc.LiveBroadcasts.Delete(bc.Id).Do()
+				log.Printf("[youtube] 고착 방송 삭제: %s (%s)", bc.Id, stuckStatus)
+			} else {
+				log.Printf("[youtube] 고착 방송 종료: %s (%s→complete)", bc.Id, stuckStatus)
+			}
+		}
+	}
+
+	// 3. 기존 upcoming 방송이 있으면 재사용
 	bcResp, err := svc.LiveBroadcasts.List([]string{"id", "snippet", "status", "contentDetails"}).
 		BroadcastStatus("upcoming").BroadcastType("all").Do()
 	if err == nil && len(bcResp.Items) > 0 {
@@ -301,7 +345,7 @@ func CreateBroadcastAndBind(title string) (server string, key string, broadcastI
 		return info.IngestionAddress, info.StreamName, bc.Id, nil
 	}
 
-	// 3. 새 방송 생성
+	// 4. 새 방송 생성
 	now := time.Now().Add(1 * time.Minute) // 1분 뒤 시작
 	broadcast, err := svc.LiveBroadcasts.Insert([]string{"snippet", "status", "contentDetails"}, &yt.LiveBroadcast{
 		Snippet: &yt.LiveBroadcastSnippet{
@@ -322,7 +366,7 @@ func CreateBroadcastAndBind(title string) (server string, key string, broadcastI
 	}
 	log.Printf("[youtube] 방송 생성: %s (%s)", broadcast.Id, title)
 
-	// 4. 스트림을 방송에 바인딩
+	// 5. 스트림을 방송에 바인딩
 	_, err = svc.LiveBroadcasts.Bind(broadcast.Id, []string{"id", "contentDetails"}).StreamId(stream.Id).Do()
 	if err != nil {
 		return "", "", "", fmt.Errorf("스트림 바인딩 실패: %w", err)
@@ -334,8 +378,15 @@ func CreateBroadcastAndBind(title string) (server string, key string, broadcastI
 }
 
 // TransitionToLive — 방송을 live로 전환 (OBS 스트리밍 시작 후 호출)
-// enableAutoStart=true 이면 ready→testing은 YouTube가 자동 처리, testing→live만 수동 전환
+// 같은 broadcastID에 대해 동시에 하나만 실행됨.
 func TransitionToLive(broadcastID string) error {
+	// 중복 실행 방지: 동일 broadcastID가 이미 전환 중이면 스킵
+	if _, loaded := activeTransitions.LoadOrStore(broadcastID, true); loaded {
+		log.Printf("[youtube] TransitionToLive 이미 실행 중: %s — 스킵", broadcastID)
+		return nil
+	}
+	defer activeTransitions.Delete(broadcastID)
+
 	m := Get()
 	m.mu.Lock()
 	svc := m.service
@@ -346,8 +397,9 @@ func TransitionToLive(broadcastID string) error {
 		return fmt.Errorf("YouTube 미연결")
 	}
 
-	// 최대 90초 대기 (45회 × 2초)
-	for i := 0; i < 45; i++ {
+	// 최대 180초 대기 (90회 × 2초)
+	invalidTransitionCount := 0
+	for i := 0; i < 90; i++ {
 		time.Sleep(2 * time.Second)
 		resp, err := svc.LiveBroadcasts.List([]string{"id", "status"}).Id(broadcastID).Do()
 		if err != nil {
@@ -367,11 +419,21 @@ func TransitionToLive(broadcastID string) error {
 		case "complete":
 			return fmt.Errorf("방송이 이미 종료됨")
 		case "ready", "testStarting":
-			// enableAutoStart=true → YouTube가 스트림 수신 확인 후 자동으로 testing으로 전환
-			// 여기서는 그냥 대기
+			// autoStart=true여도 YouTube 감지가 느릴 수 있음
+			// 30초 후, 그리고 이전 시도 실패 후 10초 간격으로 testing 전환 시도
+			if i >= 15 && i%5 == 0 {
+				if _, err := svc.LiveBroadcasts.Transition("testing", broadcastID, []string{"id", "status"}).Do(); err != nil {
+					invalidTransitionCount++
+					if invalidTransitionCount <= 3 {
+						log.Printf("[youtube] ready→testing 전환 대기 중 (스트림 미감지): %v", err)
+					}
+				} else {
+					log.Printf("[youtube] ready→testing 전환 성공")
+					invalidTransitionCount = 0
+				}
+			}
 			continue
 		case "testing":
-			// testing 상태에서만 live로 수동 전환
 			_, err := svc.LiveBroadcasts.Transition("live", broadcastID, []string{"id", "status"}).Do()
 			if err != nil {
 				log.Printf("[youtube] live 전환 실패 (재시도): %v", err)
@@ -381,10 +443,11 @@ func TransitionToLive(broadcastID string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("방송 live 전환 타임아웃 (90초)")
+	return fmt.Errorf("방송 live 전환 타임아웃 (180초)")
 }
 
-// CleanupBroadcasts — 기존 upcoming/active 방송 정리 (complete 전환 또는 삭제)
+// CleanupBroadcasts — 고착/진행 중인 방송 모두 정리 (complete 전환 또는 삭제)
+// active → complete, testing/testStarting/ready → complete 시도 후 삭제, upcoming → 삭제
 func CleanupBroadcasts() {
 	m := Get()
 	m.mu.Lock()
@@ -396,32 +459,90 @@ func CleanupBroadcasts() {
 		return
 	}
 
-	for _, status := range []string{"active", "upcoming"} {
+	// active/testing/testStarting: complete 전환 시도, 실패 시 삭제
+	for _, status := range []string{"active", "testing", "testStarting"} {
 		resp, err := svc.LiveBroadcasts.List([]string{"id", "status"}).
 			BroadcastStatus(status).BroadcastType("all").Do()
 		if err != nil {
 			continue
 		}
 		for _, bc := range resp.Items {
-			if status == "active" {
-				// active → complete 전환
-				_, err := svc.LiveBroadcasts.Transition("complete", bc.Id, []string{"id"}).Do()
-				if err != nil {
-					log.Printf("[youtube] 방송 종료 실패 %s: %v, 삭제 시도", bc.Id, err)
-					svc.LiveBroadcasts.Delete(bc.Id).Do()
-				} else {
-					log.Printf("[youtube] 방송 종료: %s", bc.Id)
-				}
+			_, err := svc.LiveBroadcasts.Transition("complete", bc.Id, []string{"id"}).Do()
+			if err != nil {
+				log.Printf("[youtube] 방송 종료 실패 %s(%s): %v, 삭제 시도", bc.Id, status, err)
+				svc.LiveBroadcasts.Delete(bc.Id).Do()
 			} else {
-				// upcoming → 삭제
-				if err := svc.LiveBroadcasts.Delete(bc.Id).Do(); err != nil {
-					log.Printf("[youtube] 방송 삭제 실패 %s: %v", bc.Id, err)
-				} else {
-					log.Printf("[youtube] 방송 삭제: %s", bc.Id)
-				}
+				log.Printf("[youtube] 방송 종료: %s (%s→complete)", bc.Id, status)
 			}
 		}
 	}
+
+	// ready: 스트림 없이 고착된 상태 — 삭제
+	for _, status := range []string{"ready", "upcoming"} {
+		resp, err := svc.LiveBroadcasts.List([]string{"id", "status"}).
+			BroadcastStatus(status).BroadcastType("all").Do()
+		if err != nil {
+			continue
+		}
+		for _, bc := range resp.Items {
+			if err := svc.LiveBroadcasts.Delete(bc.Id).Do(); err != nil {
+				log.Printf("[youtube] 방송 삭제 실패 %s(%s): %v", bc.Id, status, err)
+			} else {
+				log.Printf("[youtube] 방송 삭제: %s (%s)", bc.Id, status)
+			}
+		}
+	}
+}
+
+// UploadVideo — YouTube에 동영상 파일을 업로드하고 videoId 반환
+// 업로드 완료 후 thumbnailPath가 비어 있지 않으면 썸네일도 설정
+func UploadVideo(videoPath, title, description, privacy, thumbnailPath string) (string, error) {
+	m := Get()
+	m.mu.Lock()
+	svc := m.service
+	enabled := m.enabled
+	m.mu.Unlock()
+
+	if !enabled || svc == nil {
+		return "", fmt.Errorf("YouTube 미연결")
+	}
+
+	f, err := os.Open(videoPath)
+	if err != nil {
+		return "", fmt.Errorf("비디오 파일 열기 실패: %w", err)
+	}
+	defer f.Close()
+
+	if privacy == "" {
+		privacy = "public"
+	}
+
+	video := &yt.Video{
+		Snippet: &yt.VideoSnippet{
+			Title:       title,
+			Description: description,
+			CategoryId:  "29",
+		},
+		Status: &yt.VideoStatus{
+			PrivacyStatus: privacy,
+		},
+	}
+
+	resp, err := svc.Videos.Insert([]string{"snippet", "status"}, video).Media(f).Do()
+	if err != nil {
+		return "", fmt.Errorf("비디오 업로드 실패: %w", err)
+	}
+	log.Printf("[youtube] 비디오 업로드 성공: %s (%s)", resp.Id, title)
+
+	if thumbnailPath != "" {
+		if err := UploadThumbnailToBroadcast(resp.Id, thumbnailPath); err != nil {
+			log.Printf("[youtube] 썸네일 설정 실패 (업로드는 완료): %v", err)
+		} else {
+			log.Printf("[youtube] 썸네일 설정 완료: %s", resp.Id)
+		}
+	}
+
+	return resp.Id, nil
 }
 
 // GetStreamInfo — YouTube 라이브 스트림의 RTMP URL + 스트림 키 조회

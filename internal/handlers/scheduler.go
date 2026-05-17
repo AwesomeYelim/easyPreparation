@@ -261,8 +261,8 @@ func executeSchedule(entry ScheduleEntry, autoStream bool) {
 					}
 				}
 
-				// OBS 스트림 설정 (커스텀 RTMP)
-				if err := obsM.SetStreamSettings(server, key); err != nil {
+				// OBS 스트림 설정
+				if err := obsM.SetStreamSettingsWithBroadcastID(server, key, broadcastID); err != nil {
 					log.Printf("[scheduler] OBS 스트림 설정 실패: %v", err)
 				}
 
@@ -271,10 +271,14 @@ func executeSchedule(entry ScheduleEntry, autoStream bool) {
 					log.Printf("[scheduler] OBS 스트리밍 시작 실패: %v", err)
 				}
 
-				// EnableAutoStart 미작동 대비 — 수동 live 전환
+				// OBS 실제 스트리밍 확인 후 YouTube live 전환
 				go func(bid string) {
-					if err := youtube.TransitionToLive(bid); err != nil {
-						log.Printf("[scheduler] YouTube live 전환 실패: %v", err)
+					if waitForOBSStreaming(obsM, 30) {
+						if err := youtube.TransitionToLive(bid); err != nil {
+							log.Printf("[scheduler] YouTube live 전환 실패: %v", err)
+						}
+					} else {
+						log.Println("[scheduler] OBS 스트리밍 미확인 — YouTube live 전환 스킵")
 					}
 				}(broadcastID)
 			}
@@ -406,6 +410,24 @@ func ScheduleTestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// waitForOBSStreaming — OBS 스트리밍이 실제로 시작될 때까지 대기 (최대 maxSec초)
+// OBS 30+에서 YouTube RTMP URL 감지 시 팝업이 뜨며 스트리밍 시작이 지연될 수 있음.
+// 사용자가 팝업에서 "닫기"를 클릭하면 스트리밍이 시작됨.
+func waitForOBSStreaming(obsM interface{ GetStreamStatus() obs.StreamStatus }, maxSec int) bool {
+	for i := 0; i < maxSec; i++ {
+		time.Sleep(1 * time.Second)
+		if obsM.GetStreamStatus().Active {
+			log.Printf("[stream] OBS 스트리밍 실제 시작 확인 (%d초 경과)", i+1)
+			return true
+		}
+		if i%5 == 4 {
+			log.Printf("[stream] OBS 스트리밍 대기 중... (%d/%d초, 팝업이 뜬 경우 닫기 클릭)", i+1, maxSec)
+		}
+	}
+	log.Printf("[stream] OBS 스트리밍 %d초 내 미시작", maxSec)
+	return false
+}
+
 // StreamControlHandler — POST: 스트리밍 수동 제어 {action: "start"|"stop"|"status"}
 func StreamControlHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
@@ -438,15 +460,10 @@ func StreamControlHandler(w http.ResponseWriter, r *http.Request) {
 		// 응답 먼저 보내고 백그라운드에서 처리
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
 		go func() {
-			defer streamStartMu.Unlock()
 			obsM := obs.Get()
 			ytM := youtube.Get()
 
 			if ytM.IsEnabled() {
-				// 0. 기존 방송 정리
-				log.Println("[stream] 기존 방송 정리 중...")
-				youtube.CleanupBroadcasts()
-
 				// 제목 결정
 				title := "라이브 예배"
 				cfg, err := thumbnail.LoadConfig()
@@ -455,19 +472,20 @@ func StreamControlHandler(w http.ResponseWriter, r *http.Request) {
 					title = t
 				}
 
-				// 1. YouTube 방송 생성
+				// YouTube 방송 생성 + 스트림 키 바인딩
 				server, key, broadcastID, err := youtube.CreateBroadcastAndBind(title)
 				if err != nil {
 					log.Printf("[stream] YouTube 방송 생성 실패: %v — OBS만 시작", err)
 					obsM.StartStreaming()
+					streamStartMu.Unlock()
 					return
 				}
 				log.Printf("[stream] YouTube 방송 준비 완료: %s", broadcastID)
 
-				// 2. 썸네일 (동기 — upcoming 상태에서 업로드해야 반영됨)
+				// 썸네일
 				GenerateAndUploadThumbnailTo("main_worship", broadcastID)
 
-				// 3. OBS 스트리밍 중이면 중지
+				// OBS 스트리밍 중이면 중지
 				if obsM.GetStreamStatus().Active {
 					log.Println("[stream] 기존 OBS 스트리밍 중지...")
 					obsM.StopStreaming()
@@ -479,23 +497,33 @@ func StreamControlHandler(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 
-				// 4. OBS 스트림 설정
-				if err := obsM.SetStreamSettings(server, key); err != nil {
+				// OBS 스트림 설정
+				if err := obsM.SetStreamSettingsWithBroadcastID(server, key, broadcastID); err != nil {
 					log.Printf("[stream] OBS 스트림 설정 실패: %v", err)
 				}
 				time.Sleep(2 * time.Second)
 
-				// 5. OBS 스트리밍 시작
+				// OBS 스트리밍 시작
 				if err := obsM.StartStreaming(); err != nil {
 					log.Printf("[stream] OBS 스트리밍 시작 실패: %v", err)
+					streamStartMu.Unlock()
 					return
 				}
-				log.Println("[stream] OBS 스트리밍 시작 완료")
+				log.Println("[stream] OBS StartStream 명령 전송 완료 (팝업 뜰 경우 닫기 클릭 필요)")
+				streamStartMu.Unlock()
 
-				// 6. YouTube live 전환
-				youtube.TransitionToLive(broadcastID)
+				// 실제 스트리밍 시작 대기 후 YouTube live 전환
+				bid := broadcastID
+				go func() {
+					if waitForOBSStreaming(obsM, 30) {
+						youtube.TransitionToLive(bid)
+					} else {
+						log.Println("[stream] OBS 스트리밍 미확인 — YouTube live 전환 스킵")
+					}
+				}()
 			} else {
 				obsM.StartStreaming()
+				streamStartMu.Unlock()
 			}
 		}()
 

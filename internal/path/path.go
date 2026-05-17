@@ -26,28 +26,30 @@ func ExecutePath(baseDir string) string {
 		}
 	}
 
-	// 2. Windows: %APPDATA%\easyPreparation 최우선
-	// C:\Program Files\ 는 쓰기 권한이 없고, cwd 탐색에서
-	// "easyPreparation" 세그먼트가 걸려 Program Files 경로를 반환하는 버그 방지
+	// 2. CWD 탐색 (개발 모드 — 모든 플랫폼)
+	// Windows 프로덕션은 APPDATA를 써야 하므로 EASYPREP_DEV=true일 때만 CWD 우선
+	isDev := os.Getenv("EASYPREP_DEV") == "true"
+	if runtime.GOOS != "windows" || isDev {
+		fullPath, err := os.Getwd()
+		if err != nil {
+			log.Printf("작업 디렉터리를 가져오는 중 오류 발생: %v", err)
+		} else {
+			absPath, err := filepath.Abs(fullPath)
+			if err != nil {
+				log.Printf("절대 경로 변환 오류: %v", err)
+			} else if index := strings.Index(absPath, baseDir); index != -1 {
+				return absPath[:index+len(baseDir)]
+			}
+		}
+	}
+
+	// 3. Windows 프로덕션: %APPDATA%\easyPreparation
 	if runtime.GOOS == "windows" {
 		if appData := os.Getenv("APPDATA"); appData != "" {
 			appDataDir := filepath.Join(appData, baseDir)
 			if err := os.MkdirAll(appDataDir, 0755); err == nil {
 				return appDataDir
 			}
-		}
-	}
-
-	// 3. 작업 디렉터리에서 baseDir 탐색 (개발 모드 — Mac/Linux)
-	fullPath, err := os.Getwd()
-	if err != nil {
-		log.Printf("작업 디렉터리를 가져오는 중 오류 발생: %v", err)
-	} else {
-		absPath, err := filepath.Abs(fullPath)
-		if err != nil {
-			log.Printf("절대 경로 변환 오류: %v", err)
-		} else if index := strings.Index(absPath, baseDir); index != -1 {
-			return absPath[:index+len(baseDir)]
 		}
 	}
 

@@ -7,6 +7,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -17,6 +18,7 @@ import (
 
 	"easyPreparation_1.0/internal/obs"
 	"easyPreparation_1.0/internal/path"
+	"easyPreparation_1.0/internal/youtube"
 )
 
 // logoDir — 로고 저장 디렉토리
@@ -125,6 +127,120 @@ func OBSAutoConfigureHandler(w http.ResponseWriter, r *http.Request) {
 		"ok":      true,
 		"message": "OBS WebSocket 서버가 활성화됐습니다. 재시작 중...",
 	})
+}
+
+// syncYouTubeStreamKeyNow — OBS 스트림 서비스를 rtmp_custom으로 전환 (YouTube 통합 모드 다이얼로그 방지)
+// YouTube 연결 시 YouTube 스트림 키 적용, 미연결 시 기존 서버/키 보존하며 rtmp_custom 전환
+func syncYouTubeStreamKeyNow() {
+	obsM := obs.Get()
+	ytM := youtube.Get()
+
+	if ytM.IsEnabled() {
+		s, k, err := youtube.GetStreamInfo()
+		if err != nil {
+			log.Printf("[obs] YouTube 스트림 키 조회 실패: %v", err)
+		} else {
+			if err := obsM.SyncStreamSettingsKeepBroadcastID(s, k); err != nil {
+				log.Printf("[obs] OBS 스트림 설정 실패: %v", err)
+			} else {
+				log.Printf("[obs] YouTube 스트림 키 → OBS 자동 동기화 완료")
+			}
+			return
+		}
+	}
+
+	// YouTube 미연결 또는 키 조회 실패 → 기존 서버/키 보존하며 rtmp_custom 전환 (broadcast_id 유지)
+	server, key, err := obsM.GetStreamServiceSettings()
+	if err != nil {
+		log.Printf("[obs] 기존 스트림 설정 조회 실패, 빈 값으로 전환: %v", err)
+		server, key = "", ""
+	}
+	if err := obsM.SyncStreamSettingsKeepBroadcastID(server, key); err != nil {
+		log.Printf("[obs] OBS rtmp_custom 전환 실패: %v", err)
+	} else {
+		log.Printf("[obs] OBS 스트림 서비스 → rtmp_custom 전환 완료 (server=%s)", server)
+	}
+}
+
+// InitOBSStreamKeySync — OBS 연결 시 YouTube 스트림 키를 자동으로 OBS에 적용하는 훅 등록
+// 서버 시작 시 한 번 호출. OBS가 이미 연결된 경우 즉시 적용, 이후 (재)연결 때마다 자동 갱신.
+func InitOBSStreamKeySync() {
+	obs.Get().SetOnConnectHook(syncYouTubeStreamKeyNow)
+	// 이미 연결된 경우 즉시 실행
+	if obs.Get().GetStatus().Connected {
+		go syncYouTubeStreamKeyNow()
+	}
+}
+
+// OBSSyncStreamKeyHandler — POST /api/obs/sync-stream-key
+// YouTube 스트림 키를 즉시 조회해서 OBS에 적용 (수동 동기화 버튼용)
+func OBSSyncStreamKeyHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	ytM := youtube.Get()
+	if !ytM.IsEnabled() {
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "YouTube 미연결"})
+		return
+	}
+	server, key, err := youtube.GetStreamInfo()
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": err.Error()})
+		return
+	}
+	if err := obs.Get().SyncStreamSettingsKeepBroadcastID(server, key); err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": err.Error()})
+		return
+	}
+	log.Printf("[obs] 수동 스트림 키 동기화 완료")
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+}
+
+// OBSStreamSettingsHandler — POST /api/obs/stream-settings {server, key}
+func OBSStreamSettingsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	var body struct {
+		Server string `json:"server"`
+		Key    string `json:"key"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "잘못된 요청"})
+		return
+	}
+	if body.Key == "" {
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "스트림 키를 입력하세요"})
+		return
+	}
+	if body.Server == "" {
+		body.Server = "rtmp://a.rtmp.youtube.com/live2"
+	}
+
+	m := obs.Get()
+	if m == nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "OBS 미연결"})
+		return
+	}
+	if err := m.SetStreamSettings(body.Server, body.Key); err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": err.Error()})
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
 }
 
 // OBSStatusHandler — GET /api/obs/status (feature gate 없음)

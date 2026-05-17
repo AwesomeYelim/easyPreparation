@@ -1,6 +1,8 @@
 package obs
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -18,6 +20,7 @@ import (
 	"github.com/andreykaipov/goobs/api/requests/scenes"
 	"github.com/andreykaipov/goobs/api/requests/transitions"
 	"github.com/andreykaipov/goobs/api/typedefs"
+	"github.com/gorilla/websocket"
 )
 
 // Config — config/obs.json 구조
@@ -58,6 +61,17 @@ type Manager struct {
 	stopCh       chan struct{}
 	fadeCancel   chan struct{} // 현재 fadeBack 타이머 취소용
 	loopStarted  bool         // connectLoop 고루틴 실행 여부
+	onConnect    func()       // OBS 연결 성공 시 호출되는 훅
+}
+
+// SetOnConnectHook — OBS 연결 성공 직후 실행될 콜백 등록 (YouTube 스트림 키 동기화 등)
+func (m *Manager) SetOnConnectHook(fn func()) {
+	if m == nil {
+		return
+	}
+	m.mu.Lock()
+	m.onConnect = fn
+	m.mu.Unlock()
 }
 
 var (
@@ -385,6 +399,122 @@ func (m *Manager) GetStreamStatus() StreamStatus {
 	}
 }
 
+// rawWSDial — OBS WebSocket에 연결하고 Hello→Identify→Identified 인증을 완료한 conn 반환.
+// 실패 시 conn.Close()를 내부에서 호출하므로, 성공한 conn에만 defer conn.Close() 필요.
+func (m *Manager) rawWSDial() (*websocket.Conn, error) {
+	m.mu.RLock()
+	host := m.config.Host
+	password := m.config.Password
+	m.mu.RUnlock()
+
+	host = strings.Replace(host, "localhost", "127.0.0.1", 1)
+	conn, _, err := websocket.DefaultDialer.Dial("ws://"+host, nil)
+	if err != nil {
+		return nil, fmt.Errorf("OBS WebSocket 연결 실패: %w", err)
+	}
+
+	var hello struct {
+		Op int `json:"op"`
+		D  struct {
+			Auth *struct {
+				Challenge string `json:"challenge"`
+				Salt      string `json:"salt"`
+			} `json:"authentication"`
+		} `json:"d"`
+	}
+	if err := conn.ReadJSON(&hello); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("Hello 수신 실패: %w", err)
+	}
+
+	identify := map[string]interface{}{"op": 1, "d": map[string]interface{}{"rpcVersion": 1}}
+	if hello.D.Auth != nil && password != "" {
+		h1 := sha256.Sum256([]byte(password + hello.D.Auth.Salt))
+		secret := base64.StdEncoding.EncodeToString(h1[:])
+		h2 := sha256.Sum256([]byte(secret + hello.D.Auth.Challenge))
+		identify["d"].(map[string]interface{})["authentication"] = base64.StdEncoding.EncodeToString(h2[:])
+	}
+	if err := conn.WriteJSON(identify); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("Identify 전송 실패: %w", err)
+	}
+
+	var identified struct{ Op int `json:"op"` }
+	if err := conn.ReadJSON(&identified); err != nil || identified.Op != 2 {
+		conn.Close()
+		return nil, fmt.Errorf("OBS 인증 실패")
+	}
+
+	return conn, nil
+}
+
+// GetStreamServiceInfo — OBS 스트림 서비스 타입과 broadcast_id 조회
+func (m *Manager) GetStreamServiceInfo() (serviceType, broadcastID string, err error) {
+	if m == nil || !m.enabled {
+		return "", "", fmt.Errorf("OBS 미연결")
+	}
+	m.mu.RLock()
+	connected := m.connected
+	m.mu.RUnlock()
+	if !connected {
+		return "", "", fmt.Errorf("OBS 미연결")
+	}
+
+	conn, err := m.rawWSDial()
+	if err != nil {
+		return "", "", err
+	}
+	defer conn.Close()
+
+	reqID := fmt.Sprintf("ep-info-%d", time.Now().UnixMilli())
+	if err := conn.WriteJSON(map[string]interface{}{
+		"op": 6,
+		"d": map[string]interface{}{
+			"requestType": "GetStreamServiceSettings",
+			"requestId":   reqID,
+			"requestData": map[string]interface{}{},
+		},
+	}); err != nil {
+		return "", "", fmt.Errorf("GetStreamServiceSettings 전송 실패: %w", err)
+	}
+	var resp struct {
+		Op int `json:"op"`
+		D  struct {
+			ResponseData struct {
+				StreamServiceType     string                 `json:"streamServiceType"`
+				StreamServiceSettings map[string]interface{} `json:"streamServiceSettings"`
+			} `json:"responseData"`
+		} `json:"d"`
+	}
+	if err := conn.ReadJSON(&resp); err != nil {
+		return "", "", fmt.Errorf("GetStreamServiceSettings 응답 실패: %w", err)
+	}
+	serviceType = resp.D.ResponseData.StreamServiceType
+	if s := resp.D.ResponseData.StreamServiceSettings; s != nil {
+		if v, ok := s["broadcast_id"].(string); ok {
+			broadcastID = v
+		}
+	}
+	return serviceType, broadcastID, nil
+}
+
+// GetStreamServiceSettings — 현재 OBS 스트림 서비스 설정 조회 (서버 URL, 스트림 키)
+func (m *Manager) GetStreamServiceSettings() (server, key string, err error) {
+	client, e := m.getClient()
+	if e != nil {
+		return "", "", e
+	}
+	resp, e := client.Config.GetStreamServiceSettings()
+	if e != nil {
+		return "", "", fmt.Errorf("OBS 스트림 설정 조회 실패: %w", e)
+	}
+	if resp.StreamServiceSettings != nil {
+		server = resp.StreamServiceSettings.Server
+		key = resp.StreamServiceSettings.Key
+	}
+	return server, key, nil
+}
+
 // SetStreamSettings — OBS 스트림 서비스를 커스텀 RTMP로 설정
 func (m *Manager) SetStreamSettings(server, key string) error {
 	if m == nil || !m.enabled {
@@ -408,6 +538,198 @@ func (m *Manager) SetStreamSettings(server, key string) error {
 	_, err := client.Config.SetStreamServiceSettings(params)
 	if err != nil {
 		return fmt.Errorf("OBS 스트림 설정 실패: %w", err)
+	}
+
+	log.Printf("[obs] 스트림 설정 완료: server=%s", server)
+	return nil
+}
+
+// SetStreamSettingsWithBroadcastID — OBS 스트림을 rtmp_custom으로 설정
+// broadcast_id는 OBS 30+ YouTube 팝업을 유발하므로 설정하지 않음.
+// YouTube 라우팅은 스트림 키만으로 충분. broadcastID 파라미터는 시그니처 호환을 위해 유지.
+func (m *Manager) SetStreamSettingsWithBroadcastID(server, key, broadcastID string) error {
+	if m == nil || !m.enabled {
+		return fmt.Errorf("OBS 미연결")
+	}
+	m.mu.RLock()
+	connected := m.connected
+	m.mu.RUnlock()
+	if !connected {
+		return fmt.Errorf("OBS 미연결")
+	}
+
+	conn, err := m.rawWSDial()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	// GetStreamServiceSettings → 현재 타입 확인
+	getReqID := fmt.Sprintf("ep-get-%d", time.Now().UnixMilli())
+	if err := conn.WriteJSON(map[string]interface{}{
+		"op": 6,
+		"d": map[string]interface{}{
+			"requestType": "GetStreamServiceSettings",
+			"requestId":   getReqID,
+			"requestData": map[string]interface{}{},
+		},
+	}); err != nil {
+		return fmt.Errorf("GetStreamServiceSettings 전송 실패: %w", err)
+	}
+	var getResp struct {
+		Op int `json:"op"`
+		D  struct {
+			ResponseData struct {
+				StreamServiceType string `json:"streamServiceType"`
+			} `json:"responseData"`
+		} `json:"d"`
+	}
+	if err := conn.ReadJSON(&getResp); err != nil {
+		return fmt.Errorf("GetStreamServiceSettings 응답 수신 실패: %w", err)
+	}
+	// rtmp_youtube 타입은 WebSocket SetStreamServiceSettings를 거부(code=700)하므로 스킵
+	if getResp.D.ResponseData.StreamServiceType == "rtmp_youtube" {
+		log.Printf("[obs] OBS 서비스 타입 rtmp_youtube — 스트림 설정 스킵")
+		return nil
+	}
+
+	// op=6 SetStreamServiceSettings (rtmp_custom)
+	// broadcast_id를 설정하지 않음 — OBS 30+ Windows에서 YouTube 팝업을 유발
+	settings := map[string]interface{}{
+		"server":   server,
+		"key":      key,
+		"use_auth": false,
+		"username": "",
+		"password": "",
+		"bwtest":   false,
+	}
+	reqID := fmt.Sprintf("ep-stream-%d", time.Now().UnixMilli())
+	req := map[string]interface{}{
+		"op": 6,
+		"d": map[string]interface{}{
+			"requestType": "SetStreamServiceSettings",
+			"requestId":   reqID,
+			"requestData": map[string]interface{}{
+				"streamServiceType":     "rtmp_custom",
+				"streamServiceSettings": settings,
+			},
+		},
+	}
+	if err := conn.WriteJSON(req); err != nil {
+		return fmt.Errorf("OBS SetStreamServiceSettings 전송 실패: %w", err)
+	}
+
+	// op=7 응답 수신
+	var resp struct {
+		Op int `json:"op"`
+		D  struct {
+			RequestStatus struct {
+				Result  bool   `json:"result"`
+				Code    int    `json:"code"`
+				Comment string `json:"comment"`
+			} `json:"requestStatus"`
+		} `json:"d"`
+	}
+	if err := conn.ReadJSON(&resp); err != nil {
+		return fmt.Errorf("OBS 응답 수신 실패: %w", err)
+	}
+	if !resp.D.RequestStatus.Result {
+		return fmt.Errorf("OBS SetStreamServiceSettings 실패: code=%d, %s", resp.D.RequestStatus.Code, resp.D.RequestStatus.Comment)
+	}
+
+	log.Printf("[obs] 스트림 설정 완료 (broadcast_id=%s): server=%s", broadcastID, server)
+	return nil
+}
+
+// SyncStreamSettingsKeepBroadcastID — OBS 스트림 서버/키를 rtmp_custom으로 업데이트
+// broadcast_id는 OBS 30+ YouTube 팝업 방지를 위해 설정하지 않음
+func (m *Manager) SyncStreamSettingsKeepBroadcastID(server, key string) error {
+	if m == nil || !m.enabled {
+		return fmt.Errorf("OBS 미연결")
+	}
+	m.mu.RLock()
+	connected := m.connected
+	m.mu.RUnlock()
+	if !connected {
+		return fmt.Errorf("OBS 미연결")
+	}
+
+	conn, err := m.rawWSDial()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	// GetStreamServiceSettings → 기존 broadcast_id 추출
+	getReqID := fmt.Sprintf("ep-get-%d", time.Now().UnixMilli())
+	if err := conn.WriteJSON(map[string]interface{}{
+		"op": 6,
+		"d": map[string]interface{}{
+			"requestType": "GetStreamServiceSettings",
+			"requestId":   getReqID,
+			"requestData": map[string]interface{}{},
+		},
+	}); err != nil {
+		return fmt.Errorf("GetStreamServiceSettings 전송 실패: %w", err)
+	}
+
+	var getResp struct {
+		Op int `json:"op"`
+		D  struct {
+			ResponseData struct {
+				StreamServiceType     string                 `json:"streamServiceType"`
+				StreamServiceSettings map[string]interface{} `json:"streamServiceSettings"`
+			} `json:"responseData"`
+		} `json:"d"`
+	}
+	if err := conn.ReadJSON(&getResp); err != nil {
+		return fmt.Errorf("GetStreamServiceSettings 응답 수신 실패: %w", err)
+	}
+
+	if getResp.D.ResponseData.StreamServiceType == "rtmp_youtube" {
+		log.Printf("[obs] OBS 서비스 타입 rtmp_youtube — YouTube Dock 관리 중, 키 동기화 스킵")
+		return nil
+	}
+
+	settings := map[string]interface{}{
+		"server":   server,
+		"key":      key,
+		"use_auth": false,
+		"username": "",
+		"password": "",
+		"bwtest":   false,
+	}
+
+	setReqID := fmt.Sprintf("ep-set-%d", time.Now().UnixMilli())
+	if err := conn.WriteJSON(map[string]interface{}{
+		"op": 6,
+		"d": map[string]interface{}{
+			"requestType": "SetStreamServiceSettings",
+			"requestId":   setReqID,
+			"requestData": map[string]interface{}{
+				"streamServiceType":     "rtmp_custom",
+				"streamServiceSettings": settings,
+			},
+		},
+	}); err != nil {
+		return fmt.Errorf("SetStreamServiceSettings 전송 실패: %w", err)
+	}
+
+	var setResp struct {
+		Op int `json:"op"`
+		D  struct {
+			RequestStatus struct {
+				Result  bool   `json:"result"`
+				Code    int    `json:"code"`
+				Comment string `json:"comment"`
+			} `json:"requestStatus"`
+		} `json:"d"`
+	}
+	if err := conn.ReadJSON(&setResp); err != nil {
+		return fmt.Errorf("SetStreamServiceSettings 응답 수신 실패: %w", err)
+	}
+	if !setResp.D.RequestStatus.Result {
+		return fmt.Errorf("OBS SetStreamServiceSettings 실패: code=%d, %s", setResp.D.RequestStatus.Code, setResp.D.RequestStatus.Comment)
 	}
 
 	log.Printf("[obs] 스트림 설정 완료: server=%s", server)
@@ -1124,7 +1446,12 @@ func (m *Manager) tryConnect() {
 	m.client = client
 	m.connected = true
 	m.currentScene = resp.CurrentProgramSceneName
+	hook := m.onConnect
 	m.mu.Unlock()
 
 	log.Printf("[obs] OBS 연결 성공 (현재 씬: %s)", resp.CurrentProgramSceneName)
+
+	if hook != nil {
+		go hook()
+	}
 }
