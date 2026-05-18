@@ -15,6 +15,16 @@ import (
 	"easyPreparation_1.0/internal/youtube"
 )
 
+// cleanBibleRef — "고린도후서_47/6:14-6:18" → "고린도후서 6:14-6:18" (내부 북ID 제거)
+func cleanBibleRef(ref string) string {
+	if i := strings.Index(ref, "_"); i != -1 {
+		if j := strings.Index(ref[i:], "/"); j != -1 {
+			return ref[:i] + " " + ref[i+j+1:]
+		}
+	}
+	return ref
+}
+
 // loadSermonDataFromOrder — 현재 display 메모리(currentOrder)에서 말씀 제목과 성경봉독 추출
 // 성경봉독: title=="성경봉독" 우선, 없으면 b_edit 항목 fallback
 func loadSermonDataFromOrder() (sermonTitle, scripture string) {
@@ -27,6 +37,7 @@ func loadSermonDataFromOrder() (sermonTitle, scripture string) {
 		title, _ := item["title"].(string)
 		obj, _ := item["obj"].(string)
 		info, _ := item["info"].(string)
+		obj = cleanBibleRef(obj)
 		if (title == "말씀" || title == "설교") && obj != "" && obj != "-" {
 			sermonTitle = obj
 		}
@@ -59,6 +70,7 @@ func loadSermonDataFromConfig(configPath string) (sermonTitle, scripture string)
 		title, _ := item["title"].(string)
 		obj, _ := item["obj"].(string)
 		info, _ := item["info"].(string)
+		obj = cleanBibleRef(obj)
 		if (title == "말씀" || title == "설교") && obj != "" && obj != "-" {
 			sermonTitle = obj
 		}

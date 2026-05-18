@@ -30,9 +30,9 @@ type TextStyles struct {
 // DefaultTextStyles — 기본 텍스트 스타일
 func DefaultTextStyles() *TextStyles {
 	return &TextStyles{
-		Header: TextStyle{FontName: "NanumBrush", Size: 50, Color: "#ffffff"},
-		Main:   TextStyle{FontName: "NanumBrush", Size: 100, Color: "#ffffff"},
-		Footer: TextStyle{FontName: "NanumBrush", Size: 45, Color: "#ffffff"},
+		Header: TextStyle{FontName: "NanumGothicBold", Size: 50, Color: "#ffffff"},
+		Main:   TextStyle{FontName: "NanumGothicBold", Size: 100, Color: "#ffffff"},
+		Footer: TextStyle{FontName: "NanumGothic", Size: 45, Color: "#ffffff"},
 	}
 }
 
@@ -216,7 +216,7 @@ func weekOrdinal(date time.Time) string {
 
 func defaultConfig() *ThumbnailConfig {
 	return &ThumbnailConfig{
-		FontName:        "NanumBrush",
+		FontName:        "NanumGothicBold",
 		LogoPosition:    "bottom-right",
 		LogoSizePercent: 0, // 기본: 로고 없음
 		Defaults: map[string]DefaultTheme{
