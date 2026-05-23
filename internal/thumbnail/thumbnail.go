@@ -240,10 +240,11 @@ func drawTextCenteredWithShadow(canvas *image.RGBA, f *truetype.Font, text strin
 	drawTextCentered(canvas, f, text, size, canvasWidth, y, col, 0)
 }
 
-// loadFontByName — 이름으로 폰트 파일 로드 (빈 값 또는 "NanumBrush" → NanumBrush.ttf)
+// loadFontByName — 이름으로 폰트 파일 로드
+// 빈 값 또는 알 수 없는 폰트명은 NanumGothicBold(NanumGothic-800.ttf)로 fallback
+// NanumBrush는 golang/freetype에서 한글 글리프를 잘못 렌더링하므로 선택지에서 제거됨
 func loadFontByName(name string) (*truetype.Font, error) {
 	fontFileMap := map[string]string{
-		"":                "NanumBrush.ttf",
 		"NanumBrush":      "NanumBrush.ttf",
 		"NanumGothic":     "NanumGothic-regular.ttf",
 		"NanumGothicBold": "NanumGothic-800.ttf",
@@ -251,7 +252,7 @@ func loadFontByName(name string) (*truetype.Font, error) {
 	}
 	fileName, ok := fontFileMap[name]
 	if !ok {
-		fileName = "NanumBrush.ttf"
+		fileName = "NanumGothic-800.ttf"
 	}
 
 	// 1순위: execPath/public/font/ (프로덕션 — ExtractEmbeddedData가 복사한 파일)

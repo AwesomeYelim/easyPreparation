@@ -28,9 +28,9 @@ const FONT_CSS_MAP: Record<string, { family: string; weight?: number }> = {
 };
 
 const DEFAULT_TEXT_STYLES: TextStyles = {
-  header: { fontName: "NanumBrush", size: 50, color: "#ffffff" },
-  main: { fontName: "NanumBrush", size: 100, color: "#ffffff" },
-  footer: { fontName: "NanumBrush", size: 45, color: "#ffffff" },
+  header: { fontName: "NanumGothicBold", size: 50, color: "#ffffff" },
+  main: { fontName: "NanumGothicBold", size: 100, color: "#ffffff" },
+  footer: { fontName: "NanumGothic", size: 45, color: "#ffffff" },
 };
 
 type ActiveArea = "header" | "main" | "footer";
@@ -160,7 +160,7 @@ function ThumbnailCanvasPreview({
 
   const cssForArea = (area: keyof TextStyles) => {
     const style = textStyles[area] ?? DEFAULT_TEXT_STYLES[area];
-    const fontMap = FONT_CSS_MAP[style.fontName || "NanumBrush"] ?? FONT_CSS_MAP.NanumBrush;
+    const fontMap = FONT_CSS_MAP[style.fontName || "NanumGothicBold"] ?? FONT_CSS_MAP.NanumGothicBold;
     return {
       fontFamily: fontMap.family,
       fontWeight: fontMap.weight ?? "normal",
@@ -321,10 +321,8 @@ function AreaStyleEditor({
   }[area];
 
   const fontOptions = [
-    { value: "NanumBrush", label: "나눔손글씨 붓" },
-    { value: "NanumGothic", label: "나눔고딕" },
     { value: "NanumGothicBold", label: "나눔고딕 Bold" },
-    { value: "JacquesFrancois", label: "Jacques Francois" },
+    { value: "NanumGothic", label: "나눔고딕" },
   ];
 
   const ts = textStyles[area] ?? DEFAULT_TEXT_STYLES[area];
@@ -334,7 +332,7 @@ function AreaStyleEditor({
       <div className="text-[10px] font-semibold text-[#4a9eff]">{label} 스타일</div>
       <div className="flex items-center gap-1.5">
         <select
-          value={ts.fontName || "NanumBrush"}
+          value={ts.fontName || "NanumGothicBold"}
           onChange={(e) => onUpdateStyle(area, "fontName", e.target.value)}
           className="flex-1 px-1.5 py-0.5 border border-white/20 rounded text-[10px] bg-white/10 text-white outline-none"
         >

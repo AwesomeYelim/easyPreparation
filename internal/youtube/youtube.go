@@ -310,8 +310,10 @@ func CreateBroadcastAndBind(title string) (server string, key string, broadcastI
 		log.Printf("[youtube] 새 스트림 생성: %s", stream.Id)
 	}
 
-	// 2. 고착 방송 정리 (ready/testStarting/testing 상태) — 누적되면 새 전환 요청 거부됨
-	for _, stuckStatus := range []string{"testStarting", "testing", "ready"} {
+	// 2. 고착 방송 정리
+	// testing/testStarting: complete 전환 후 삭제
+	// ready: complete 전환 불가(YouTube API 제한) → 직접 삭제
+	for _, stuckStatus := range []string{"testStarting", "testing"} {
 		stuckResp, err := svc.LiveBroadcasts.List([]string{"id", "status"}).
 			BroadcastStatus(stuckStatus).BroadcastType("all").Do()
 		if err != nil {
@@ -326,23 +328,55 @@ func CreateBroadcastAndBind(title string) (server string, key string, broadcastI
 			}
 		}
 	}
+	// ready 상태 방송은 complete 전환 불가 → 직접 삭제 시도
+	if readyResp, err := svc.LiveBroadcasts.List([]string{"id", "status"}).
+		BroadcastStatus("ready").BroadcastType("all").Do(); err == nil {
+		for _, bc := range readyResp.Items {
+			if err := svc.LiveBroadcasts.Delete(bc.Id).Do(); err != nil {
+				log.Printf("[youtube] 고착 ready 방송 삭제 실패 (무시): %s: %v", bc.Id, err)
+			} else {
+				log.Printf("[youtube] 고착 ready 방송 삭제: %s", bc.Id)
+			}
+		}
+	}
 
-	// 3. 기존 upcoming 방송이 있으면 재사용
+	// 3. 기존 upcoming 방송이 있으면 재사용 (ready 상태면 삭제 후 새로 생성)
 	bcResp, err := svc.LiveBroadcasts.List([]string{"id", "snippet", "status", "contentDetails"}).
 		BroadcastStatus("upcoming").BroadcastType("all").Do()
 	if err == nil && len(bcResp.Items) > 0 {
 		bc := bcResp.Items[0]
-		// 제목 + autoStart/autoStop 설정
-		bc.Snippet.Title = title
-		bc.ContentDetails.EnableAutoStart = true
-		bc.ContentDetails.EnableAutoStop = true
-		svc.LiveBroadcasts.Update([]string{"snippet", "contentDetails"}, bc).Do()
-		// 스트림 바인딩 (이미 바인딩되어 있으면 무시됨)
-		svc.LiveBroadcasts.Bind(bc.Id, []string{"id"}).StreamId(stream.Id).Do()
+		// ready 상태 방송은 autoStart 설정·전환 모두 실패하므로 삭제 후 새로 생성
+		if bc.Status != nil && bc.Status.LifeCycleStatus == "ready" {
+			log.Printf("[youtube] ready 방송 발견 — 삭제 후 새로 생성: %s", bc.Id)
+			if derr := svc.LiveBroadcasts.Delete(bc.Id).Do(); derr != nil {
+				log.Printf("[youtube] ready 방송 삭제 실패 (무시): %v", derr)
+			}
+			// fall through to step 4
+		} else {
+			// created 상태 방송 재사용
+			bcStatus := bc.Status
+			bc.Status = nil // Status 포함 시 400 unexpectedPart 에러 발생
+			bc.Snippet.Title = title
+			bc.ContentDetails.EnableAutoStart = true
+			bc.ContentDetails.EnableAutoStop = true
+			bc.ContentDetails.ForceSendFields = append(bc.ContentDetails.ForceSendFields, "BroadcastStreamDelayMs", "EnableAutoStart", "EnableAutoStop")
+			if _, uerr := svc.LiveBroadcasts.Update([]string{"snippet", "contentDetails"}, bc).Do(); uerr != nil {
+				log.Printf("[youtube] 방송 업데이트 실패 (autoStart 미적용 가능): %v", uerr)
+			}
+			// 스트림 바인딩 (이미 바인딩되어 있으면 무시됨)
+			if _, berr := svc.LiveBroadcasts.Bind(bc.Id, []string{"id"}).StreamId(stream.Id).Do(); berr != nil {
+				log.Printf("[youtube] 스트림 바인딩 실패: %v", berr)
+			}
 
-		log.Printf("[youtube] 기존 방송 재사용: %s (%s), autoStart=true, stream=%s", bc.Id, title, stream.Id)
-		info := stream.Cdn.IngestionInfo
-		return info.IngestionAddress, info.StreamName, bc.Id, nil
+			info := stream.Cdn.IngestionInfo
+			keyPrefix := info.StreamName
+			if len(keyPrefix) > 8 {
+				keyPrefix = keyPrefix[:8]
+			}
+			log.Printf("[youtube] 기존 방송 재사용: %s (%s, %s), autoStart=true, stream=%s, key=%s...",
+				bc.Id, title, bcStatus.LifeCycleStatus, stream.Id, keyPrefix)
+			return info.IngestionAddress, info.StreamName, bc.Id, nil
+		}
 	}
 
 	// 4. 새 방송 생성
@@ -371,9 +405,12 @@ func CreateBroadcastAndBind(title string) (server string, key string, broadcastI
 	if err != nil {
 		return "", "", "", fmt.Errorf("스트림 바인딩 실패: %w", err)
 	}
-	log.Printf("[youtube] 스트림 바인딩 완료: broadcast=%s, stream=%s", broadcast.Id, stream.Id)
-
 	info := stream.Cdn.IngestionInfo
+	keyPrefix := info.StreamName
+	if len(keyPrefix) > 8 {
+		keyPrefix = keyPrefix[:8]
+	}
+	log.Printf("[youtube] 스트림 바인딩 완료: broadcast=%s, stream=%s, key=%s...", broadcast.Id, stream.Id, keyPrefix)
 	return info.IngestionAddress, info.StreamName, broadcast.Id, nil
 }
 
@@ -399,9 +436,10 @@ func TransitionToLive(broadcastID string) error {
 
 	// 최대 180초 대기 (90회 × 2초)
 	invalidTransitionCount := 0
+	var boundStreamID string
 	for i := 0; i < 90; i++ {
 		time.Sleep(2 * time.Second)
-		resp, err := svc.LiveBroadcasts.List([]string{"id", "status"}).Id(broadcastID).Do()
+		resp, err := svc.LiveBroadcasts.List([]string{"id", "status", "contentDetails"}).Id(broadcastID).Do()
 		if err != nil {
 			log.Printf("[youtube] 방송 상태 조회 실패 (재시도): %v", err)
 			continue
@@ -409,7 +447,11 @@ func TransitionToLive(broadcastID string) error {
 		if len(resp.Items) == 0 {
 			continue
 		}
-		status := resp.Items[0].Status.LifeCycleStatus
+		bc := resp.Items[0]
+		status := bc.Status.LifeCycleStatus
+		if boundStreamID == "" && bc.ContentDetails != nil {
+			boundStreamID = bc.ContentDetails.BoundStreamId
+		}
 		log.Printf("[youtube] 방송 상태: %s", status)
 
 		switch status {
@@ -419,13 +461,29 @@ func TransitionToLive(broadcastID string) error {
 		case "complete":
 			return fmt.Errorf("방송이 이미 종료됨")
 		case "ready", "testStarting":
-			// autoStart=true여도 YouTube 감지가 느릴 수 있음
-			// 30초 후, 그리고 이전 시도 실패 후 10초 간격으로 testing 전환 시도
+			// 30초마다 YouTube 스트림 수신 여부 진단
+			if boundStreamID != "" && i > 0 && i%15 == 0 {
+				if sr, serr := svc.LiveStreams.List([]string{"id", "status"}).Id(boundStreamID).Do(); serr == nil && len(sr.Items) > 0 {
+					ss := sr.Items[0].Status.StreamStatus
+					log.Printf("[youtube] 스트림 수신 상태: %s (id=%s)", ss, boundStreamID)
+				}
+			}
+			// autoStart=true여도 YouTube 감지가 느릴 수 있음 — 30초 후부터 10초 간격으로 전환 시도
+			// testing 전환 실패 시 monitorStream 비활성 방송으로 간주 → live 직접 전환
 			if i >= 15 && i%5 == 0 {
 				if _, err := svc.LiveBroadcasts.Transition("testing", broadcastID, []string{"id", "status"}).Do(); err != nil {
 					invalidTransitionCount++
 					if invalidTransitionCount <= 3 {
-						log.Printf("[youtube] ready→testing 전환 대기 중 (스트림 미감지): %v", err)
+						log.Printf("[youtube] ready→testing 전환 대기 중: %v", err)
+					}
+					// testing 전환 불가 → live 직접 전환 시도 (monitorStream 비활성 방송)
+					if _, lerr := svc.LiveBroadcasts.Transition("live", broadcastID, []string{"id", "status"}).Do(); lerr != nil {
+						if invalidTransitionCount <= 3 {
+							log.Printf("[youtube] ready→live 직접 전환 실패: %v", lerr)
+						}
+					} else {
+						log.Printf("[youtube] ready→live 직접 전환 성공")
+						return nil
 					}
 				} else {
 					log.Printf("[youtube] ready→testing 전환 성공")

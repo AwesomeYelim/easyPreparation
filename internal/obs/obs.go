@@ -637,7 +637,11 @@ func (m *Manager) SetStreamSettingsWithBroadcastID(server, key, broadcastID stri
 		return fmt.Errorf("OBS SetStreamServiceSettings 실패: code=%d, %s", resp.D.RequestStatus.Code, resp.D.RequestStatus.Comment)
 	}
 
-	log.Printf("[obs] 스트림 설정 완료 (broadcast_id=%s): server=%s", broadcastID, server)
+	keyPrefix := key
+	if len(keyPrefix) > 8 {
+		keyPrefix = keyPrefix[:8]
+	}
+	log.Printf("[obs] 스트림 설정 완료: server=%s, key=%s...", server, keyPrefix)
 	return nil
 }
 

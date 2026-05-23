@@ -177,10 +177,117 @@ Display 전송 후 제어판이 열립니다.
 |-----|------|----------|
 | `localhost:8080/display` | 프로젝터용 전체화면 슬라이드 | Browser Source (1920x1080) |
 | `localhost:8080/display/overlay` | 방송용 가사/텍스트 오버레이 | Browser Source (투명 배경) |
+| `localhost:8080/display/stage` | 무대 모니터 (현재 슬라이드 + 다음 항목 + 타이머) | Browser Source (별도 모니터) |
 
 - **배경**: Figma에서 생성한 배경 이미지 + 항목별 커스텀 배경 (전주, 찬양, 참회의 기도)
 - **키보드**: Display 창에서 ← → 로 직접 이동 가능
 - **서버 재시작**: 마지막 순서/위치가 자동 복원됨
+
+---
+
+### OBS 초기 설정 (신규 설치 체크리스트)
+
+새 PC에 OBS를 설치하거나 easyPreparation을 처음 연동할 때 아래 순서대로 진행합니다.
+
+#### ① WebSocket 서버 활성화
+
+1. OBS 메뉴 → **도구 → WebSocket 서버 설정**
+2. **"WebSocket 서버 활성화"** 체크
+3. 서버 포트: `4455` (기본값 유지)
+4. **비밀번호 설정** → 메모해두기
+5. **확인** 클릭 → OBS 재시작 불필요
+
+#### ② `config/obs.json` 작성
+
+easyPreparation 설정 디렉터리(`config/`)에 `obs.json` 생성:
+
+```json
+{
+  "host": "localhost:4455",
+  "password": "위에서_설정한_비밀번호",
+  "scenes": {
+    "찬송": "camera",
+    "찬양": "camera",
+    "대표기도": "camera",
+    "말씀": "camera",
+    "헌금봉헌": "camera",
+    "봉헌기도": "camera",
+    "축도": "camera",
+    "교회소식": "monitor",
+    "전주": "monitor",
+    "성시교독": "monitor",
+    "신앙고백": "monitor",
+    "주기도문": "monitor",
+    "성경봉독": "monitor",
+    "예배의 부름": "monitor",
+    "참회의 기도": "monitor"
+  },
+  "cameraScene": "camera",
+  "displayScene": "monitor",
+  "fadeMs": 800,
+  "fadeDelaySec": 3
+}
+```
+
+> `"camera"` / `"monitor"` 값은 **실제 OBS 씬 이름**과 정확히 일치해야 합니다 (대소문자 포함).
+
+#### ③ OBS 씬 구성 (권장)
+
+| 씬 이름 | 소스 구성 |
+|---------|----------|
+| `camera` | 카메라 입력 (Video Capture Device) |
+| `monitor` | `EP_Display` Browser Source + 카메라 PIP (선택) |
+
+> 씬 이름은 `obs.json`의 `cameraScene` / `displayScene` 값과 맞추세요.
+
+#### ④ Browser Source 자동 추가 (EP_Display / EP_Overlay)
+
+제어판 내 **OBS 소스 버튼 → Display 탭**에서 자동 설정 가능:
+
+1. 씬 선택 (예: `monitor`)
+2. **"Display 소스 설정"** 클릭 → `EP_Display` 소스 자동 생성 (1920×1080)
+
+오버레이 소스는 수동 추가:
+
+| 소스명 | URL | 너비×높이 | 체크 옵션 |
+|--------|-----|-----------|----------|
+| `EP_Display` | `http://localhost:8080/display` | 1920 × 1080 | — |
+| `EP_Overlay` | `http://localhost:8080/display/overlay` | 1920 × 1080 | **투명 배경 허용** |
+| `EP_PDF` (선택) | `http://localhost:8080/display/pdf` | 1920 × 1080 | — |
+
+> 오버레이는 **"페이지가 투명 배경을 허용"** 반드시 체크 → 자막이 카메라 위에 겹쳐 표시됩니다.
+
+#### ⑤ YouTube 스트리밍 연동 (Pro)
+
+easyPreparation은 방송 시작 시 스트림 키를 OBS에 **자동으로 설정**합니다. OBS 스트리밍 서비스 설정:
+
+1. OBS → **설정 → 방송**
+2. 서비스: **사용자 지정 (rtmp_custom)** 선택
+3. 서버: 임시값 입력 (`rtmp://a.rtmp.youtube.com/live2` 등)  
+   → 방송 시작 시 easyPreparation이 자동으로 덮어씁니다
+4. 스트림 키: 임시값 입력 (마찬가지로 자동 설정됨)
+5. **확인**
+
+> `rtmp_youtube` (YouTube 전용 서비스 타입) 선택 시 자동 키 설정이 **작동하지 않습니다**. 반드시 **사용자 지정**으로 설정하세요.
+
+#### ⑥ YouTube 계정 연동 (Pro)
+
+1. 제어판 → **Pro 시퀀스 패널 → YouTube 아이콘** 클릭
+2. Google OAuth 인증 → 브라우저에서 로그인
+3. 인증 완료 후 `data/youtube_token.json` 생성됨
+
+재설치 시 이 파일을 복사하면 재인증 없이 사용 가능합니다.
+
+#### ⑦ 연동 확인
+
+| 확인 항목 | 정상 상태 |
+|----------|----------|
+| OBS WebSocket | 제어판 상단에 OBS 연결 표시 |
+| Display | OBS Browser Source에서 `localhost:8080/display` 정상 로드 |
+| 방송 시작 | "방송 시작" 클릭 → OBS 스트리밍 시작 + YouTube Live 생성 |
+| 씬 자동 전환 | 예배 순서 슬라이드 변경 시 OBS 씬 자동 전환 |
+
+---
 
 ### OBS 씬 자동 전환 설정
 
