@@ -20,6 +20,7 @@ import (
 	"easyPreparation_1.0/internal/app"
 	"easyPreparation_1.0/internal/bulletin"
 	"easyPreparation_1.0/internal/handlers"
+	"easyPreparation_1.0/internal/license"
 	"easyPreparation_1.0/internal/lyrics"
 	"easyPreparation_1.0/internal/obs"
 	"easyPreparation_1.0/internal/path"
@@ -78,6 +79,11 @@ func (a *App) startup(ctx context.Context) {
 		log.Println("[desktop] 성경 DB 연결 성공 (SQLite)")
 	}
 
+	// 라이선스 초기화 (DB 연결 이후)
+	license.Init(quote.GetDB())
+	log.Printf("[desktop] 라이선스 플랜: %s", license.Get().GetPlan())
+	license.LoadServerConfig(filepath.Join(execPath, "config"))
+
 	// OBS WebSocket 연결
 	obs.Init(filepath.Join(execPath, "config", "obs.json"))
 
@@ -88,6 +94,10 @@ func (a *App) startup(ctx context.Context) {
 	if homeDir, err := os.UserHomeDir(); err == nil {
 		handlers.SetDesktopMode(filepath.Join(homeDir, "Downloads"))
 	}
+
+	// 자동 업데이트 초기화
+	selfupdate.GetUpdater().SetBroadcast(handlers.BroadcastMessage)
+	selfupdate.GetUpdater().SetDownloadDir(filepath.Join(execPath, "data", "update"))
 
 	// Display 상태 복원 (이전 세션)
 	handlers.LoadDisplayState()

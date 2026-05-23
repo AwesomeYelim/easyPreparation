@@ -95,6 +95,7 @@ export default function Bulletin() {
       }
 
       if (message.type === "done") {
+        if (!processingRef.current) return; // done 중복 처리 방지 (StrictMode 이중 WS 구독)
         processingRef.current = false;
         msgQueueRef.current = [];
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }

@@ -85,8 +85,8 @@ func CreateBulletin(data map[string]interface{}) {
 		return
 	}
 
-	handlers.BroadcastProcessDone(target, outputFilename, "presentation")
 	handlers.BroadcastProgress("Finish Data Process", 1, "Finish Data Process !!")
+	handlers.BroadcastProcessDone(target, outputFilename, "presentation")
 
 	// 생성 이력 기록
 	if email, ok := data["email"].(string); ok && email != "" {

@@ -31,7 +31,8 @@ func main() {
 		date        time.Time
 		videoID     string
 	}{
-		{"main_worship", time.Date(2026, 5, 17, 0, 0, 0, 0, time.Local), "E4wMNUUCqK8"},
+		// main_worship 이미 업로드 완료 — 스킵
+		// {"main_worship", time.Date(2026, 5, 17, 0, 0, 0, 0, time.Local), "E4wMNUUCqK8"},
 		{"after_worship", time.Date(2026, 5, 17, 0, 0, 0, 0, time.Local), "A7S2d-hDVlY"},
 	}
 
@@ -50,6 +51,11 @@ func main() {
 		dateLabel := t.date.Format("06.01.02") + " " + labels[t.worshipType]
 
 		sermonTitle, scripture := loadSermon(t.worshipType)
+		// after_worship 실제 본문 수동 지정 (config가 다른 날짜 데이터)
+		if t.worshipType == "after_worship" {
+			sermonTitle = "고린도후서 1:17-20"
+			scripture = "고린도후서 1:17-20"
+		}
 		logoPath := findLogo()
 
 		ts := &thumbnail.TextStyles{
@@ -75,10 +81,19 @@ func main() {
 		}
 		log.Printf("[%s] 생성 완료: %s (SermonTitle=%q, Scripture=%q)", t.worshipType, absPath, sermonTitle, scripture)
 
-		if err := youtube.UploadThumbnailToBroadcast(t.videoID, absPath); err != nil {
-			log.Fatalf("[%s] 업로드 실패: %v", t.worshipType, err)
+		for attempt := 1; attempt <= 5; attempt++ {
+			err := youtube.UploadThumbnailToBroadcast(t.videoID, absPath)
+			if err == nil {
+				fmt.Printf("완료: https://youtu.be/%s\n", t.videoID)
+				break
+			}
+			if attempt == 5 {
+				log.Fatalf("[%s] 업로드 실패 (5회): %v", t.worshipType, err)
+			}
+			wait := time.Duration(attempt*30) * time.Second
+			log.Printf("[%s] 429 재시도 %d/5 — %v 후 재시도: %v", t.worshipType, attempt, wait, err)
+			time.Sleep(wait)
 		}
-		fmt.Printf("완료: https://youtu.be/%s\n", t.videoID)
 	}
 }
 

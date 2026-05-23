@@ -74,8 +74,8 @@ func (pi PdfInfo) Create() {
 		hasBackground := false
 		if _, ok := pathInfo[con.Title]; ok {
 			hasBackground = true
-		} else {
-			// 매칭 이미지 없으면 default_bg.png fallback
+		} else if con.Info != "-" || con.Contents != "" {
+			// 편집 가능 항목 또는 표시할 텍스트가 있는 항목은 default_bg 사용
 			framePath := filepath.Join(pi.ExecPath, "data", "default_bg.png")
 			if _, err := os.Stat(framePath); err == nil {
 				pathInfo[con.Title] = framePath
@@ -131,6 +131,7 @@ func (pi PdfInfo) Create() {
 			log.Printf("[forPresentation] PDF rename 실패: %v", err)
 		} else {
 			log.Printf("[forPresentation] PDF 저장 완료: %s", bulletinPath)
+			handlers.BroadcastProgress("PDF 저장", 1, "[프레젠테이션] PDF 저장 완료")
 		}
 	}
 }

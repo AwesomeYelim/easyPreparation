@@ -75,6 +75,7 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	// 주보 시안 출력 (React+Babel 렌더링 → go-rod PDF)
 	mux.Handle("/display/bulletin-print", middleware.CORS(http.HandlerFunc(handlers.BulletinPrintHandler)))
 	mux.Handle("/display/bulletin-template/", middleware.CORS(http.HandlerFunc(handlers.BulletinTemplateFileHandler)))
+	mux.Handle("/display/bulletin-js/", http.HandlerFunc(handlers.BulletinJsFileHandler))
 	mux.Handle("/api/bulletin-data", middleware.CORS(http.HandlerFunc(handlers.BulletinDataHandler)))
 	mux.Handle("/api/bulletin-pdf", middleware.CORS(http.HandlerFunc(handlers.BulletinPdfHandler)))
 	mux.Handle("/api/bulletin-pdf-save", middleware.CORS(http.HandlerFunc(handlers.BulletinPdfSaveHandler)))

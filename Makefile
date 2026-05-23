@@ -172,7 +172,7 @@ dev-desktop:
 	@echo "Starting Next.js dev (:3000) + Wails Desktop..."
 	@( \
 	  trap 'kill $$(jobs -p) 2>/dev/null; exit 0' EXIT INT TERM; \
-	  (cd ui && NEXT_PUBLIC_DEV_MODE=true $(RUN_NPM) exec -- next dev -p 3000) & \
+	  (cd ui && NEXT_PUBLIC_DEV_MODE=true NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws $(RUN_NPM) exec -- next dev -p 3000) & \
 	  echo "Next.js 시작 대기 중..."; \
 	  until curl -sf http://localhost:3000 >/dev/null 2>&1; do sleep 0.5; done; \
 	  echo "Next.js 준비 완료 — Wails Desktop 시작"; \

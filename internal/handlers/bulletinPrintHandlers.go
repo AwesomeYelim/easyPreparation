@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"context"
-	_ "embed"
+	"embed"
 	"easyPreparation_1.0/internal/bulletin/templates"
 	"easyPreparation_1.0/internal/path"
 	"encoding/json"
@@ -11,9 +11,11 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
+	"log"
 	"math"
 	"net/http"
 	"os"
+	urlpath "path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -24,6 +26,9 @@ import (
 
 //go:embed html/bulletin-print.html
 var bulletinPrintHTMLTmpl string
+
+//go:embed html/react.production.min.js html/react-dom.production.min.js html/babel.min.js
+var bulletinJsFS embed.FS
 
 // ──────────────────── 데이터 타입 ────────────────────
 
@@ -229,6 +234,24 @@ func BulletinPreviewHandler(w http.ResponseWriter, r *http.Request) {
 	openInBrowser(w, previewURL)
 }
 
+// BulletinJsFileHandler — GET /display/bulletin-js/{file}
+// React, ReactDOM, Babel 로컬 서빙 (CDN 의존 제거 → Windows headless Chrome 멈춤 방지)
+func BulletinJsFileHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	fileName := urlpath.Base(r.URL.Path)
+	data, err := bulletinJsFS.ReadFile("html/" + fileName)
+	if err != nil {
+		http.Error(w, "Not found: "+fileName, http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.Write(data)
+}
+
 // BulletinPdfSaveHandler — GET /api/bulletin-pdf-save?type=X&template=N
 // Desktop 모드 전용: PDF를 desktopDownloadDir에 저장 + 폴더 열기
 // 데스크탑 모드가 아닐 때 403 반환 (클라이언트 fallback 신호)
@@ -251,11 +274,14 @@ func BulletinPdfSaveHandler(w http.ResponseWriter, r *http.Request) {
 		templateNum = "1"
 	}
 
+	log.Printf("[bulletin-pdf] 생성 시작: type=%s template=%s", worshipType, templateNum)
 	pdfBytes, err := generateBulletinPDF(worshipType, templateNum)
 	if err != nil {
+		log.Printf("[bulletin-pdf] 생성 실패: %v", err)
 		http.Error(w, "PDF 생성 실패: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	log.Printf("[bulletin-pdf] 생성 완료: %d bytes", len(pdfBytes))
 
 	fileName := fmt.Sprintf("bulletin_%s_%s.pdf", worshipType, time.Now().Format("20060102"))
 	savePath := filepath.Join(desktopDownloadDir, fileName)
@@ -336,6 +362,7 @@ func generateBulletinPDF(worshipType, templateNum string) ([]byte, error) {
 	if chromeBin == "" {
 		return nil, fmt.Errorf("Chrome 또는 Chromium이 설치되어 있지 않습니다. Chrome을 설치한 후 다시 시도하세요.")
 	}
+	log.Printf("[bulletin-pdf] Chrome 경로: %s", chromeBin)
 
 	targetURL := fmt.Sprintf("http://localhost:8080/display/bulletin-print?type=%s&template=%s",
 		worshipType, templateNum)
@@ -345,6 +372,7 @@ func generateBulletinPDF(worshipType, templateNum string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
+	log.Printf("[bulletin-pdf] Chrome 실행: %s → %s", targetURL, outFile)
 	cmd := exec.CommandContext(ctx, chromeBin,
 		"--headless",
 		"--disable-gpu",
@@ -356,9 +384,11 @@ func generateBulletinPDF(worshipType, templateNum string) ([]byte, error) {
 		"--print-to-pdf="+outFile,
 		targetURL,
 	)
-	if out, err := cmd.CombinedOutput(); err != nil {
+	out, err := cmd.CombinedOutput()
+	if err != nil {
 		return nil, fmt.Errorf("PDF 생성 실패: %w\n%s", err, string(out))
 	}
+	log.Printf("[bulletin-pdf] Chrome 완료")
 	return os.ReadFile(outFile)
 }
 
