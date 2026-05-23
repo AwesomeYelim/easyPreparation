@@ -6,6 +6,7 @@ data/cache/
 data/pdf/
 data/logs/
 data/update/
+data/thumbnail/
 data/license.json
 data/templates/
 data/display_config.json
@@ -62,8 +63,11 @@ ui/node_modules/
 ui/.next/
 ui/tsconfig.tsbuildinfo
 
-# UI 디버그 스크린샷 (자동 생성)
+# Claude Code 로컬 파일
 .claude/screenshots/
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/state/
 
 # misc
 .DS_Store
