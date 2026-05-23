@@ -155,10 +155,10 @@ func (pdf *PDF) SetText(fontInfo classification.FontInfo, isB bool, textColor ..
 		return
 	}
 
-	// gofpdf가 경로 앞 '/'를 누락하는 버그 방지
-	fontPath, _ = filepath.Abs(fontPath)
-
-	pdf.AddUTF8Font(filepath.Base(fontPath), "B", fontPath)
+	// gofpdf의 path.Join이 절대경로 앞 '/'를 누락하므로
+	// SetFontLocation으로 디렉토리를 지정하고 파일명만 전달
+	pdf.SetFontLocation(filepath.Dir(fontPath))
+	pdf.AddUTF8Font(filepath.Base(fontPath), "B", filepath.Base(fontPath))
 	if err != nil {
 		fmt.Println("폰트 추가 실패:", err)
 		return
