@@ -303,10 +303,7 @@ export default function ProSequencePanel() {
         e.preventDefault();
         blocked = true;
         const isPrev = e.key === "ArrowLeft" || e.key === "ArrowUp";
-        const newIdx = isPrev
-          ? Math.max(0, idxRef.current - 1)
-          : Math.min(itemsRef.current.length - 1, idxRef.current + 1);
-        handleJump(newIdx);
+        handleNav(isPrev ? "prev" : "next");
         debounceTimer = setTimeout(() => { blocked = false; }, 300);
       }
     };
@@ -315,7 +312,7 @@ export default function ProSequencePanel() {
       window.removeEventListener("keydown", handler);
       clearTimeout(debounceTimer);
     };
-  }, [handleJump]);
+  }, [handleNav]);
 
   if (!seqOpen) return null;
 

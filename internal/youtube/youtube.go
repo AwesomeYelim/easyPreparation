@@ -719,7 +719,7 @@ func OpenAuthHandler(w http.ResponseWriter, r *http.Request) {
 	case "darwin":
 		cmd = exec.Command("open", authURL)
 	case "windows":
-		cmd = exec.Command("cmd", "/c", "start", authURL)
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", authURL)
 	default:
 		cmd = exec.Command("xdg-open", authURL)
 	}
