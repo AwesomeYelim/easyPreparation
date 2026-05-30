@@ -37,6 +37,7 @@ func GetFont(name, weight string, isB bool) (fontPath string, err error) {
 
 	execPath := path.ExecutePath("easyPreparation")
 	savePath := filepath.Join(execPath, "public", "font", saveName)
+	savePath, _ = filepath.Abs(savePath)
 
 	if _, err = os.Stat(savePath); !os.IsNotExist(err) {
 		return savePath, nil
