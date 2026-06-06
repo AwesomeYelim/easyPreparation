@@ -159,6 +159,16 @@ function connect() {
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
     if (msg.type === 'order') loadOrder(msg.items, msg.idx);
+    // position — Display가 보고하는 절대 위치로 동기화 (밀림 방지)
+    if (msg.type === 'position') {
+      if (typeof msg.idx === 'number') {
+        if (msg.idx !== idx) showSlide(msg.idx);
+        if (typeof msg.subPageIdx === 'number' && msg.subPageIdx !== subPageIdx) {
+          subPageIdx = msg.subPageIdx;
+          renderLyricsItem(slides[idx], subPageIdx);
+        }
+      }
+    }
     if (msg.type === 'navigate') {
       if (msg.direction === 'jump' && typeof msg.idx === 'number') {
         showSlide(msg.idx);
