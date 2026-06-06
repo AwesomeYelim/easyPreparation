@@ -251,7 +251,7 @@ func generateThumbnailWithOverrides(worshipType string, date time.Time, headerTe
 
 	execPath := path.ExecutePath("easyPreparation")
 	outPath := filepath.Join(execPath, "data", "templates", "thumbnail", "generated",
-		fmt.Sprintf("%s_%s.png", date.Format("2006-01-02"), worshipType))
+		fmt.Sprintf("%s_%s_%d.png", date.Format("2006-01-02"), worshipType, time.Now().Unix()))
 
 	// 배경 경로가 상대 경로이면 절대 경로로 변환
 	if bgPath != "" && !filepath.IsAbs(bgPath) {

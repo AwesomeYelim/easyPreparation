@@ -54,10 +54,8 @@ function GeneratedThumbnailSection({
   >([]);
   const [loading, setLoading] = useState(false);
 
-  const [cacheBust, setCacheBust] = useState(Date.now());
   const refresh = () => {
     setLoading(true);
-    setCacheBust(Date.now());
     fetch(`${BASE_URL}/api/thumbnail/generated`)
       .then((r) => r.json())
       .then(setList)
@@ -94,9 +92,9 @@ function GeneratedThumbnailSection({
           key={item.filename}
           className="flex items-center gap-2 px-2 py-1.5 bg-white/5 rounded border border-white/10 hover:border-white/20 transition-colors"
         >
-          <a href={`${item.url}?t=${cacheBust}`} target="_blank" rel="noreferrer" className="flex-shrink-0" title="원본 보기">
+          <a href={item.url} target="_blank" rel="noreferrer" className="flex-shrink-0" title="원본 보기">
             <img
-              src={`${item.url}?t=${cacheBust}`}
+              src={item.url}
               alt={item.label}
               className="w-16 h-9 object-cover rounded border border-white/10 hover:border-electric-blue/50 transition-colors"
             />
