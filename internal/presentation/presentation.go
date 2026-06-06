@@ -155,13 +155,14 @@ func (pdf *PDF) SetText(fontInfo classification.FontInfo, isB bool, textColor ..
 		return
 	}
 
-	// gofpdf는 fontDirStr="" → "."로 변환함 (fpdfNew 73줄)
-	// path.Join(".", "/abs/path") → "abs/path" (앞 / 누락)
-	// 따라서 SetFontLocation에 디렉토리를, AddUTF8Font에 파일명만 전달
-	fontDir := filepath.ToSlash(filepath.Dir(fontPath))
-	fontFile := filepath.Base(fontPath)
-	pdf.SetFontLocation(fontDir)
-	pdf.AddUTF8Font(fontFile, "B", fontFile)
+	// gofpdf 경로 처리 버그 우회: fontDirStr="" → "."치환 + path.Join이 절대경로 / 누락
+	// AddUTF8FontFromBytes로 파일을 직접 읽어서 전달 — 경로 처리 완전 회피
+	fontBytes, readErr := os.ReadFile(fontPath)
+	if readErr != nil {
+		fmt.Printf("폰트 파일 읽기 실패 (%s): %v\n", fontPath, readErr)
+		return
+	}
+	pdf.AddUTF8FontFromBytes(filepath.Base(fontPath), "B", fontBytes)
 	if err != nil {
 		fmt.Println("폰트 추가 실패:", err)
 		return
