@@ -631,7 +631,7 @@ export default function InspectorSpecialTab() {
   return (
     <div className="flex flex-col gap-3">
       {/* ── 예배 타입 + 날짜 선택 ── */}
-      <div className="flex gap-1.5 items-center">
+      <div id="thumbnail-editor-top" className="flex gap-1.5 items-center">
         <select
           value={previewSelectVal}
           onChange={(e) => handleSelectChange(e.target.value)}
@@ -927,18 +927,12 @@ export default function InspectorSpecialTab() {
 
       <GeneratedThumbnailSection
         refreshKey={genCounter}
-        onReuse={async (type, date) => {
+        onReuse={(type, date) => {
           setPreviewType(type);
           setPreviewDate(date);
           setPreviewSelectVal(type);
-          // 즉시 재생성
-          setGenerating(true);
-          try {
-            if (thumbConfig) await apiClient.saveThumbnailConfig(thumbConfig);
-            await apiClient.generateThumbnail(type, date, false);
-            setGenCounter((c) => c + 1);
-          } catch (e) { console.error(e); }
-          finally { setGenerating(false); }
+          // 편집 영역으로 스크롤
+          document.getElementById("thumbnail-editor-top")?.scrollIntoView({ behavior: "smooth" });
         }}
       />
     </div>
