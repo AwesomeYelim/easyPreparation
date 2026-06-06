@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -554,15 +555,24 @@ func ThumbnailGeneratedListHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		// 파일명 형식: YYYY-MM-DD_worship_type.png
 		base := strings.TrimSuffix(name, ".png")
-		// 첫 번째 _ 로 날짜와 예배유형 분리
+		// 파일명: YYYY-MM-DD_worship_type_timestamp.png
+		// 첫 번째 _ 로 날짜 분리
 		idx := strings.Index(base, "_")
 		if idx < 0 {
 			continue
 		}
 		dateStr := base[:idx]
-		worshipType := base[idx+1:]
+		rest := base[idx+1:]
 		if _, err := time.Parse("2006-01-02", dateStr); err != nil {
 			continue
+		}
+		// rest에서 마지막 _숫자 (타임스탬프) 제거 → worshipType 추출
+		worshipType := rest
+		if lastUnderscore := strings.LastIndex(rest, "_"); lastUnderscore > 0 {
+			possibleTS := rest[lastUnderscore+1:]
+			if _, tsErr := strconv.ParseInt(possibleTS, 10, 64); tsErr == nil {
+				worshipType = rest[:lastUnderscore]
+			}
 		}
 		// 레이블: "2026.04.06 주일예배"
 		typeLabel := worshipTypeLabels[worshipType]
@@ -577,7 +587,7 @@ func ThumbnailGeneratedListHandler(w http.ResponseWriter, r *http.Request) {
 			labelDate = dateStr
 		}
 		label := labelDate + " " + typeLabel
-		url := "/api/thumbnail/preview?worshipType=" + worshipType + "&date=" + dateStr
+		url := "/api/thumbnail/generated/file?filename=" + name
 
 		items = append(items, GeneratedItem{
 			Filename:    name,
@@ -644,6 +654,24 @@ func ThumbnailGeneratedDeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+}
+
+// ThumbnailGeneratedFileHandler — GET /api/thumbnail/generated/file?filename=xxx
+// 생성된 썸네일 파일을 직접 서빙 (캐시 없음)
+func ThumbnailGeneratedFileHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	filename := filepath.Base(r.URL.Query().Get("filename"))
+	if filename == "" || filename == "." || strings.Contains(filename, "..") {
+		http.Error(w, "잘못된 파일명", http.StatusBadRequest)
+		return
+	}
+	execPath := path.ExecutePath("easyPreparation")
+	filePath := filepath.Join(execPath, "data", "templates", "thumbnail", "generated", filename)
+	w.Header().Set("Cache-Control", "no-cache, no-store")
+	http.ServeFile(w, r, filePath)
 }
 
 // GenerateAndUploadThumbnailTo — 특정 broadcastID에 썸네일 생성 + 업로드

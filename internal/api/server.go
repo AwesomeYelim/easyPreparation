@@ -249,6 +249,7 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
 	})))
+	mux.Handle("/api/thumbnail/generated/file", middleware.CORS(http.HandlerFunc(handlers.ThumbnailGeneratedFileHandler)))
 
 	// YouTube API (auth/setup-obs = Pro, callback/status = 무료)
 	mux.Handle("/api/youtube/auth", middleware.FeatureGate(license.FeatureYouTube, youtube.AuthHandler))
