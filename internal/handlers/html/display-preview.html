@@ -282,7 +282,9 @@ initDisplayConfig().finally(function() {
   subPages = [];
   var itemTitle = item.title || '';
   if ((item.info || '').startsWith('b_') && item.contents) {
-    subPages = paginate(item.contents, 3);
+    var biblePages = paginate(item.contents, 3);
+    var isBibleReading = (item.title || '') === '성경봉독';
+    subPages = isBibleReading ? ['__title__'].concat(biblePages) : biblePages;
   } else if (itemTitle === '신앙고백' && item.contents) {
     subPages = paginate(item.contents, 10);
   } else if ((item.info || '') === 'lyrics_display' && item.pages && item.pages.length > 0) {

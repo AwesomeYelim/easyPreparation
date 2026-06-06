@@ -1393,10 +1393,23 @@ func buildSections(item map[string]interface{}) map[string]interface{} {
 		return item
 	}
 
-	// 1. 성경 본문 → 3줄 단위 페이징
+	// 1. 성경 본문 → 3줄 단위 페이징 (성경봉독은 타이틀 페이지 포함)
 	if strings.HasPrefix(info, "b_") && contents != "" {
 		pages := paginateText(contents, 3)
-		if len(pages) > 1 {
+		if title == "성경봉독" {
+			// Display와 동일하게 __title__ 페이지 추가
+			titleSection := map[string]interface{}{"label": "제목", "startPage": 0, "text": ""}
+			textSections := buildTextSections(pages)
+			// startPage를 1씩 밀기
+			for i := range textSections {
+				if sp, ok := textSections[i]["startPage"].(int); ok {
+					textSections[i]["startPage"] = sp + 1
+				}
+			}
+			combined := []map[string]interface{}{titleSection}
+			combined = append(combined, textSections...)
+			item["sections"] = combined
+		} else if len(pages) > 1 {
 			item["sections"] = buildTextSections(pages)
 		}
 		return item

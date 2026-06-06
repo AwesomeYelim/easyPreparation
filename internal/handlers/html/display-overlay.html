@@ -224,7 +224,9 @@ function showSlide(i) {
   const itemTitle = item.title || '';
 
   if ((item.info || '').startsWith('b_') && item.contents) {
-    subPages = paginate(item.contents, 3);
+    var biblePages = paginate(item.contents, 3);
+    var isBibleReading = (item.title || '') === '성경봉독';
+    subPages = isBibleReading ? ['__title__'].concat(biblePages) : biblePages;
   } else if (itemTitle === '신앙고백' && item.contents) {
     subPages = paginate(item.contents, 10);
   } else if ((item.info || '') === 'lyrics_display' && item.pages && item.pages.length > 0) {
@@ -351,6 +353,13 @@ function renderLyricsItem(item, pageIdx) {
   // 3. 성경 본문
   if (info.startsWith('b_') && contents) {
     var page = subPages[pageIdx] || contents;
+    // __title__ 페이지: 성경봉독 타이틀 (본문 표시 안 함)
+    if (page === '__title__') {
+      slide.innerHTML = '<div class="overlay-box">' +
+        '<div class="bible-overlay-ref">' + esc(obj) + '</div>' +
+        '</div>';
+      return;
+    }
     slide.innerHTML = '<div class="overlay-box">' +
       '<div class="bible-overlay-ref">' + esc(obj) + '</div>' +
       '<div class="bible-overlay-text">' + esc(page) + '</div>' +

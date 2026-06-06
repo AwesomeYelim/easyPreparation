@@ -332,7 +332,8 @@ function buildSubPages(item) {
   var title = sv(item, 'title');
 
   if (info.indexOf('b_') === 0 && item.contents) {
-    return paginateText(item.contents, 3);
+    var biblePages = paginateText(item.contents, 3);
+    return (title === '성경봉독') ? ['__title__'].concat(biblePages) : biblePages;
   }
   if (title === '신앙고백' && item.contents) {
     return paginateText(item.contents, 10);
