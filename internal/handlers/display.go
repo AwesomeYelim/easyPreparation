@@ -27,10 +27,11 @@ import (
 
 // 현재 예배 순서 메모리 저장
 var (
-	orderMu          sync.RWMutex
-	currentOrder     []map[string]interface{}
-	currentIdx       int
-	displayChurchName string
+	orderMu              sync.RWMutex
+	currentOrder         []map[string]interface{}
+	currentIdx           int
+	displayChurchName    string
+	currentWorshipType   string // 현재 로드된 예배 타입 (config 변경 시 자동 갱신 판단용)
 )
 
 // ── Display 상태 파일 영속화 ──
@@ -1236,6 +1237,60 @@ func DisplayStatusHandler(w http.ResponseWriter, r *http.Request) {
 		"timerEnabled":   tEnabled,
 		"scheduleActive": schedActive,
 	})
+}
+
+// refreshDisplayIfNeeded — config 저장 시 현재 display 순서의 변경 항목을 자동 재전처리
+// config의 각 항목 obj 값이 display의 같은 title 항목과 다르면 해당 항목만 재전처리
+func refreshDisplayIfNeeded(configItems []map[string]interface{}) {
+	orderMu.RLock()
+	if len(currentOrder) == 0 {
+		orderMu.RUnlock()
+		return
+	}
+	// 현재 display 항목의 title→index 맵
+	displayMap := make(map[string]int)
+	for i, item := range currentOrder {
+		title, _ := item["title"].(string)
+		if _, exists := displayMap[title]; !exists {
+			displayMap[title] = i
+		}
+	}
+	orderMu.RUnlock()
+
+	var changed bool
+	for _, cfgItem := range configItems {
+		title, _ := cfgItem["title"].(string)
+		cfgObj, _ := cfgItem["obj"].(string)
+		displayIdx, exists := displayMap[title]
+		if !exists {
+			continue
+		}
+		orderMu.RLock()
+		displayObj, _ := currentOrder[displayIdx]["obj"].(string)
+		orderMu.RUnlock()
+
+		if cfgObj != displayObj {
+			log.Printf("[display-refresh] %s 변경 감지: %q → %q, 재전처리", title, displayObj, cfgObj)
+			processed := preprocessItem(cfgItem)
+			processed = buildSections(processed)
+
+			orderMu.Lock()
+			if displayIdx < len(currentOrder) {
+				currentOrder[displayIdx] = processed
+			}
+			orderMu.Unlock()
+			changed = true
+		}
+	}
+
+	if changed {
+		orderMu.RLock()
+		order, idx, cn := deepCopyOrder(currentOrder), currentIdx, displayChurchName
+		orderMu.RUnlock()
+		BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx, "churchName": cn})
+		go saveDisplayState()
+		log.Printf("[display-refresh] 변경 항목 재전처리 완료 → WS broadcast")
+	}
 }
 
 // preprocessItem — 단일 항목 전처리 (성경, 신앙고백, 주기도문, 교회소식, 찬송/교독 이미지)
