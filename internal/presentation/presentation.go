@@ -141,33 +141,21 @@ func (pdf *PDF) WriteText(text, position string, custom ...float64) {
 }
 
 func (pdf *PDF) SetText(fontInfo classification.FontInfo, isB bool, textColor ...color.Color) {
-	var fontPath string
-	var err error
-
+	var weight string
 	if isB {
-		fontPath, err = font.GetFont(fontInfo.FontFamily, "800", isB)
+		weight = "800"
 	} else {
-		fontPath, err = font.GetFont(fontInfo.FontFamily, "regular", isB)
+		weight = "regular"
 	}
 
+	fontName, fontBytes, err := font.GetFontBytes(fontInfo.FontFamily, weight)
 	if err != nil {
-		fmt.Println("폰트 다운로드 에러:", err)
+		fmt.Println("폰트 로드 에러:", err)
 		return
 	}
 
-	// gofpdf 경로 처리 버그 우회: fontDirStr="" → "."치환 + path.Join이 절대경로 / 누락
-	// AddUTF8FontFromBytes로 파일을 직접 읽어서 전달 — 경로 처리 완전 회피
-	fontBytes, readErr := os.ReadFile(fontPath)
-	if readErr != nil {
-		fmt.Printf("폰트 파일 읽기 실패 (%s): %v\n", fontPath, readErr)
-		return
-	}
-	pdf.AddUTF8FontFromBytes(filepath.Base(fontPath), "B", fontBytes)
-	if err != nil {
-		fmt.Println("폰트 추가 실패:", err)
-		return
-	}
-	pdf.SetFont(filepath.Base(fontPath), "B", fontInfo.FontSize)
+	pdf.AddUTF8FontFromBytes(fontName, "B", fontBytes)
+	pdf.SetFont(fontName, "B", fontInfo.FontSize)
 
 	// 텍스트 색상 설정
 	if len(textColor) > 0 {

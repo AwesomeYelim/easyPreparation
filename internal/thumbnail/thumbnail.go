@@ -17,7 +17,7 @@ import (
 	"golang.org/x/image/font"
 	xdraw "golang.org/x/image/draw"
 
-	"easyPreparation_1.0/internal/path"
+	epfont "easyPreparation_1.0/internal/font"
 )
 
 // GenerateConfig — 썸네일 생성 설정
@@ -240,9 +240,8 @@ func drawTextCenteredWithShadow(canvas *image.RGBA, f *truetype.Font, text strin
 	drawTextCentered(canvas, f, text, size, canvasWidth, y, col, 0)
 }
 
-// loadFontByName — 이름으로 폰트 파일 로드
+// loadFontByName — 이름으로 내장 폰트 로드
 // 빈 값 또는 알 수 없는 폰트명은 NanumGothicBold(NanumGothic-800.ttf)로 fallback
-// NanumBrush는 golang/freetype에서 한글 글리프를 잘못 렌더링하므로 선택지에서 제거됨
 func loadFontByName(name string) (*truetype.Font, error) {
 	fontFileMap := map[string]string{
 		"NanumBrush":      "NanumBrush.ttf",
@@ -255,24 +254,9 @@ func loadFontByName(name string) (*truetype.Font, error) {
 		fileName = "NanumGothic-800.ttf"
 	}
 
-	// 1순위: execPath/public/font/ (프로덕션 — ExtractEmbeddedData가 복사한 파일)
-	execPath := path.ExecutePath("easyPreparation")
-	candidates := []string{
-		filepath.Join(execPath, "public", "font", fileName),
-		// 2순위: CWD 기준 ./public/font/ (개발 모드 — make dev 실행 시 CWD = 소스 루트)
-		filepath.Join(".", "public", "font", fileName),
-	}
-
-	var fontData []byte
-	var lastErr error
-	for _, fontPath := range candidates {
-		fontData, lastErr = os.ReadFile(fontPath)
-		if lastErr == nil {
-			break
-		}
-	}
-	if lastErr != nil {
-		return nil, fmt.Errorf("폰트 로드 실패 (%s): %w", fileName, lastErr)
+	fontData, err := epfont.GetFontByFileName(fileName)
+	if err != nil {
+		return nil, fmt.Errorf("폰트 로드 실패 (%s): %w", fileName, err)
 	}
 	f, err := truetype.Parse(fontData)
 	if err != nil {

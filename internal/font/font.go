@@ -1,125 +1,33 @@
 package font
 
 import (
-	"easyPreparation_1.0/internal/path"
-	"easyPreparation_1.0/internal/utils"
-	"encoding/json"
+	"embed"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 )
 
-type WebFontItem struct {
-	Kind         string            `json:"kind"`
-	Family       string            `json:"family"`
-	Category     string            `json:"category"`
-	Variants     []string          `json:"variants"`
-	Subsets      []string          `json:"subsets"`
-	Version      string            `json:"version"`
-	LastModified string            `json:"lastModified"`
-	Files        map[string]string `json:"files"`
-}
+//go:embed fonts/*.ttf
+var embeddedFonts embed.FS
 
-type WebFontList struct {
-	Kind  string        `json:"kind"`
-	Items []WebFontItem `json:"items"`
-}
-
-func GetFont(name, weight string, isB bool) (fontPath string, err error) {
-
-	gistURL := "https://gist.github.com/AwesomeYelim/6dc8fbbf1f2db5ad7d84cf95dbadafa7/raw"
+// GetFontBytes — 내장 폰트를 바이트 배열로 반환합니다.
+// OS별 경로 문제 없이 바이너리에 포함된 폰트를 직접 사용합니다.
+func GetFontBytes(name, weight string) (fontName string, data []byte, err error) {
 	saveName := strings.Replace(name, " ", "", 1)
 	saveName = fmt.Sprintf("%s-%s.ttf", saveName, weight)
 
-	execPath := path.ExecutePath("easyPreparation")
-	savePath := filepath.Join(execPath, "public", "font", saveName)
-	savePath, _ = filepath.Abs(savePath)
-
-	if _, err = os.Stat(savePath); !os.IsNotExist(err) {
-		return savePath, nil
-	}
-
-	_ = utils.CheckDirIs(filepath.Dir(savePath))
-
-	resp, err := http.Get(gistURL)
+	data, err = embeddedFonts.ReadFile("fonts/" + saveName)
 	if err != nil {
-		return "", fmt.Errorf("error fetching the gist: %w", err)
+		return "", nil, fmt.Errorf("내장 폰트 없음 (%s): %w", saveName, err)
 	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("error reading response body: %w", err)
-	}
-
-	var webFontList WebFontList
-	err = json.Unmarshal(body, &webFontList)
-	if err != nil {
-		return "", fmt.Errorf("error unmarshaling JSON: %w", err)
-	}
-
-	var targetUrl string
-	// JSON 데이터를 출력 (예시)
-	for _, font := range webFontList.Items {
-		if font.Family == name {
-			targetUrl = findTargetURL(font.Files, weight, isB)
-			if targetUrl == "" {
-				return "", fmt.Errorf("can not find the weight: %s", weight)
-			}
-			break
-		}
-	}
-
-	targetUrl = fmt.Sprintf("https:%s", targetUrl)
-	fontPath, err = downloadFont(savePath, targetUrl)
-
-	return fontPath, err
+	return saveName, data, nil
 }
 
-// fontWeight 잘못 넣은 경우
-func findTargetURL(files map[string]string, weight string, isB bool) string {
-	if url, ok := files[weight]; ok && url != "" {
-		return url
-	}
-
-	var lsFile []string
-	for k, _ := range files {
-		lsFile = append(lsFile, k)
-	}
-	var newWeight string
-	if isB {
-		newWeight = lsFile[len(lsFile)-1]
-	} else {
-		newWeight = lsFile[0]
-	}
-
-	return findTargetURL(files, newWeight, isB)
-}
-
-func downloadFont(savePath, url string) (string, error) {
-	resp, err := http.Get(url)
+// GetFontByFileName — 파일명으로 내장 폰트를 바이트 배열로 반환합니다.
+// 썸네일 등에서 파일명 기반으로 폰트를 로드할 때 사용합니다.
+func GetFontByFileName(fileName string) ([]byte, error) {
+	data, err := embeddedFonts.ReadFile("fonts/" + fileName)
 	if err != nil {
-		return "", fmt.Errorf("폰트 다운로드 실패: %w", err)
+		return nil, fmt.Errorf("내장 폰트 없음 (%s): %w", fileName, err)
 	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	tmpFile, err := os.Create(savePath)
-	if err != nil {
-		return "", fmt.Errorf("임시 파일 생성 실패: %w", err)
-	}
-	defer func() {
-		_ = tmpFile.Close()
-	}()
-
-	_, err = io.Copy(tmpFile, resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("폰트 저장 실패: %w", err)
-	}
-	return tmpFile.Name(), nil
+	return data, nil
 }
