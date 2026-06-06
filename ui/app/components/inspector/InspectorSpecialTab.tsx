@@ -599,11 +599,13 @@ export default function InspectorSpecialTab() {
     []
   );
 
-  // PNG 생성 (서버 호출) — 캔버스 미리보기에서 편집한 텍스트 오버라이드 전달
+  // PNG 생성 (서버 호출) — 생성 전 config를 먼저 저장하여 스타일 반영 보장
   const handleGeneratePNG = async () => {
-    if (!previewDate) return;
+    if (!previewDate || !thumbConfig) return;
     setGenerating(true);
     try {
+      // 디바운스 대기 없이 즉시 저장 → 서버가 최신 config로 생성
+      await apiClient.saveThumbnailConfig(thumbConfig);
       const overrides = textOverridesByType[previewType];
       await apiClient.generateThumbnail(previewType, previewDate, false, overrides
         ? { header: overrides.header, main: overrides.main, footer: overrides.footer }
