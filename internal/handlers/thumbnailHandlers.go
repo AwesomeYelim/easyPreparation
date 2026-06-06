@@ -180,8 +180,10 @@ func ThumbnailPreviewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 항상 재생성 — 예배 순서·로고·배경·폰트 변경 사항을 즉시 반영
-	imgPath, err := generateThumbnail(worshipType, date)
+	// 프리뷰: 임시 파일에 생성 (generated 디렉토리 오염 방지)
+	execPath := path.ExecutePath("easyPreparation")
+	tmpPath := filepath.Join(execPath, "data", "templates", "thumbnail", "preview_tmp.png")
+	imgPath, err := generateThumbnailToPath(worshipType, date, tmpPath)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -232,101 +234,81 @@ func generateThumbnail(worshipType string, date time.Time) (string, error) {
 	return generateThumbnailWithOverrides(worshipType, date, "", "", "")
 }
 
-// generateThumbnailWithOverrides — 텍스트 오버라이드 지원 생성 함수
-// headerText: 날짜+예배명 (비어있으면 자동 계산)
-// mainText: 말씀 제목 (비어있으면 config에서 로드)
-// footerText: 성경봉독 참조 (비어있으면 config에서 로드)
-func generateThumbnailWithOverrides(worshipType string, date time.Time, headerText, mainText, footerText string) (string, error) {
-	// worshipType 경로 순회 방지
+// generateThumbnailToPath — 지정 경로에 썸네일 생성 (프리뷰용, generated 디렉토리 미사용)
+func generateThumbnailToPath(worshipType string, date time.Time, outPath string) (string, error) {
+	return generateThumbnailWithOverridesAt(worshipType, date, "", "", "", outPath)
+}
+
+// generateThumbnailWithOverridesAt — outPath를 지정하여 생성
+func generateThumbnailWithOverridesAt(worshipType string, date time.Time, headerText, mainText, footerText, outPath string) (string, error) {
 	worshipType = filepath.Base(worshipType)
 	if strings.Contains(worshipType, "..") || worshipType == "." || worshipType == "" {
 		return "", fmt.Errorf("잘못된 worshipType: %s", worshipType)
 	}
-
 	cfg, err := thumbnail.LoadConfig()
 	if err != nil {
 		return "", fmt.Errorf("설정 로드 실패: %w", err)
 	}
-
 	bgPath, _ := cfg.ResolveTheme(worshipType, date)
-
 	execPath := path.ExecutePath("easyPreparation")
-	outPath := filepath.Join(execPath, "data", "templates", "thumbnail", "generated",
-		fmt.Sprintf("%s_%s_%d.png", date.Format("2006-01-02"), worshipType, time.Now().Unix()))
-
-	// 배경 경로가 상대 경로이면 절대 경로로 변환
 	if bgPath != "" && !filepath.IsAbs(bgPath) {
 		bgPath = filepath.Join(execPath, bgPath)
 	}
-
-	// dateLabel 빌드: "26.04.05 주일예배" — 기념 주일이면 해당 레이블로 오버라이드
+	// dateLabel
 	var dateLabel string
 	if headerText != "" {
 		dateLabel = headerText
 	} else {
-		worshipTypeLabels := map[string]string{
-			"main_worship":  "주일예배",
-			"after_worship": "오후예배",
-			"wed_worship":   "수요예배",
-			"fri_worship":   "금요예배",
-		}
-		typeLabel := worshipTypeLabels[worshipType]
-		if typeLabel == "" {
-			typeLabel = "예배"
-		}
-		dateStr := date.Format("2006-01-02")
-		for _, s := range cfg.Specials {
-			if s.Date == dateStr {
-				if s.TitleOverride != "" {
-					typeLabel = s.TitleOverride
-				} else if s.Label != "" {
-					typeLabel = s.Label
-				}
-				break
-			}
-		}
+		labels := map[string]string{"main_worship": "주일예배", "after_worship": "오후예배", "wed_worship": "수요예배", "fri_worship": "금요예배"}
+		typeLabel := labels[worshipType]
+		if typeLabel == "" { typeLabel = "예배" }
 		dateLabel = date.Format("06.01.02") + " " + typeLabel
 	}
-
-	// 말씀 제목 + 성경봉독: 오버라이드 우선 → display 메모리 → config fallback
-	var sermonTitle, scripture string
-	if mainText != "" || footerText != "" {
-		sermonTitle = mainText
-		scripture = footerText
-	} else {
-		sermonTitle, scripture = loadSermonDataFromOrder()
-		if sermonTitle == "" && scripture == "" {
-			configPath := filepath.Join(execPath, "config", worshipType+".json")
-			sermonTitle, scripture = loadSermonDataFromConfig(configPath)
+	// sermon
+	sermonTitle, scripture := "", ""
+	configPath := filepath.Join(execPath, "config", worshipType+".json")
+	if data, rErr := os.ReadFile(configPath); rErr == nil {
+		var items []map[string]interface{}
+		if json.Unmarshal(data, &items) == nil {
+			for _, item := range items {
+				title, _ := item["title"].(string)
+				obj, _ := item["obj"].(string)
+				if (title == "말씀" || title == "설교") && obj != "" && obj != "-" {
+					sermonTitle = obj
+				}
+				if title == "성경봉독" && obj != "" && obj != "-" {
+					scripture = obj
+				}
+			}
 		}
 	}
-
-	// 로고 설정 — 썸네일 전용 설정 우선, 없으면 Display 설정 fallback
-	displayCfg := loadDisplayConfig()
-	logoPath := findLogoPath()
-	logoPosition := displayCfg.LogoPosition
-	logoSizePercent := displayCfg.LogoSizePercent
-	if cfg.LogoPosition != "" {
-		logoPosition = cfg.LogoPosition
+	if mainText != "" { sermonTitle = mainText }
+	if footerText != "" { scripture = footerText }
+	// logo
+	logoPath, logoPosition, logoSizePercent := "", cfg.LogoPosition, cfg.LogoSizePercent
+	for _, ext := range []string{"png", "jpg", "jpeg", "svg"} {
+		p := filepath.Join(execPath, "data", "logo."+ext)
+		if _, sErr := os.Stat(p); sErr == nil { logoPath = p; break }
 	}
-	if cfg.LogoSizePercent > 0 {
-		logoSizePercent = cfg.LogoSizePercent
-	}
+	if cfg.LogoSizePercent > 0 { logoSizePercent = cfg.LogoSizePercent }
 
 	return thumbnail.Generate(thumbnail.GenerateConfig{
-		BackgroundPath:  bgPath,
-		DateLabel:       dateLabel,
-		SermonTitle:     sermonTitle,
-		Scripture:       scripture,
-		LogoPath:        logoPath,
-		LogoPosition:    logoPosition,
-		LogoSizePercent: logoSizePercent,
-		FontName:        cfg.FontName,
-		TextStyles:      cfg.EffectiveTextStyles(),
-		OutputPath:      outPath,
-		Width:           1280,
-		Height:          720,
+		BackgroundPath: bgPath, DateLabel: dateLabel,
+		SermonTitle: sermonTitle, Scripture: scripture,
+		LogoPath: logoPath, LogoPosition: logoPosition, LogoSizePercent: logoSizePercent,
+		FontName: cfg.FontName, TextStyles: cfg.EffectiveTextStyles(),
+		OutputPath: outPath, Width: 1280, Height: 720,
 	})
+}
+
+// generateThumbnailWithOverrides — 텍스트 오버라이드 지원 생성 함수 (generated/ 디렉토리에 저장)
+func generateThumbnailWithOverrides(worshipType string, date time.Time, headerText, mainText, footerText string) (string, error) {
+	execPath := path.ExecutePath("easyPreparation")
+	outDir := filepath.Join(execPath, "data", "templates", "thumbnail", "generated")
+	_ = os.MkdirAll(outDir, 0755)
+	outPath := filepath.Join(outDir,
+		fmt.Sprintf("%s_%s_%d.png", date.Format("2006-01-02"), filepath.Base(worshipType), time.Now().Unix()))
+	return generateThumbnailWithOverridesAt(worshipType, date, headerText, mainText, footerText, outPath)
 }
 
 // ThumbnailUploadHandler — POST /api/thumbnail/upload (multipart)
