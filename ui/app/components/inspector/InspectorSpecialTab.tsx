@@ -927,10 +927,18 @@ export default function InspectorSpecialTab() {
 
       <GeneratedThumbnailSection
         refreshKey={genCounter}
-        onReuse={(type, date) => {
+        onReuse={async (type, date) => {
           setPreviewType(type);
           setPreviewDate(date);
           setPreviewSelectVal(type);
+          // 즉시 재생성
+          setGenerating(true);
+          try {
+            if (thumbConfig) await apiClient.saveThumbnailConfig(thumbConfig);
+            await apiClient.generateThumbnail(type, date, false);
+            setGenCounter((c) => c + 1);
+          } catch (e) { console.error(e); }
+          finally { setGenerating(false); }
         }}
       />
     </div>
