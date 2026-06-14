@@ -143,6 +143,12 @@ async function restoreStateFromServer() {
     var state = await res.json();
     if (state.items && state.items.length > 0) {
       loadOrder(state.items, state.idx);
+      // subPageIdx 복원: loadOrder/showSlide는 항상 0에서 시작하므로 별도 적용
+      var sp = (typeof state.subPageIdx === 'number') ? state.subPageIdx : 0;
+      if (sp > 0) {
+        subPageIdx = sp;
+        renderLyricsItem(slides[idx], subPageIdx);
+      }
     }
   } catch(e) {}
 }

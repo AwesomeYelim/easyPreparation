@@ -30,6 +30,7 @@ var (
 	orderMu              sync.RWMutex
 	currentOrder         []map[string]interface{}
 	currentIdx           int
+	currentSubPageIdx    int
 	displayChurchName    string
 	currentWorshipType   string // 현재 로드된 예배 타입 (config 변경 시 자동 갱신 판단용)
 )
@@ -206,11 +207,12 @@ const apostlesCreed = `나는 전능하신 아버지 하나님, 천지의 창조
 var displayHTML string
 
 // UpdateDisplayIdx — display HTML이 WS로 보고한 현재 위치 업데이트
-func UpdateDisplayIdx(newIdx int) {
+func UpdateDisplayIdx(newIdx int, newSubPageIdx int) {
 	orderMu.Lock()
 	defer orderMu.Unlock()
 	if newIdx >= 0 && newIdx < len(currentOrder) {
 		currentIdx = newIdx
+		currentSubPageIdx = newSubPageIdx
 		go saveDisplayState()
 	}
 }
@@ -588,6 +590,8 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 				"current": i + 1,
 				"total":   len(order),
 			})
+			delete(item, "sections")  // stale sections 강제 제거 (loadCurrentOrder와 동일)
+			delete(item, "lyricsMap") // stale lyricsMap 강제 제거
 			order[i] = preprocessItem(item)
 		}
 	}
@@ -745,6 +749,7 @@ func DisplayJumpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	currentIdx = payload.Index
+	currentSubPageIdx = payload.SubPageIdx
 	item := currentOrder[currentIdx]
 	title, _ := item["title"].(string)
 	info, _ := item["info"].(string)
@@ -1199,6 +1204,7 @@ func DisplayStatusHandler(w http.ResponseWriter, r *http.Request) {
 
 	orderMu.RLock()
 	items, idx, _ := getOrderSnapshotLocked()
+	subPageIdx := currentSubPageIdx
 	count := len(items)
 
 	var title string
@@ -1229,6 +1235,7 @@ func DisplayStatusHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"idx":            idx,
+		"subPageIdx":     subPageIdx,
 		"count":          count,
 		"title":          title,
 		"items":          items,
@@ -1308,6 +1315,7 @@ func preprocessItem(item map[string]interface{}) map[string]interface{} {
 		text, humanRef := fetchBibleTextWithVersion(obj, versionID)
 		if text != "" {
 			item["contents"] = text
+			delete(item, "sections") // contents 변경 시 stale sections 강제 제거
 		}
 		if humanRef != "" {
 			item["obj"] = humanRef

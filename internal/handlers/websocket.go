@@ -107,12 +107,14 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 			if msgType == "position" {
 				if idxFloat, ok := data["idx"].(float64); ok {
 					newIdx := int(idxFloat)
-					UpdateDisplayIdx(newIdx)
-					posPayload := map[string]interface{}{"idx": newIdx}
 					subPage := 0
 					if sp, ok := data["subPageIdx"].(float64); ok {
 						subPage = int(sp)
-						posPayload["subPageIdx"] = subPage
+					}
+					UpdateDisplayIdx(newIdx, subPage)
+					posPayload := map[string]interface{}{"idx": newIdx, "subPageIdx": subPage}
+					if spt, ok := data["subPageTotal"].(float64); ok {
+						posPayload["subPageTotal"] = int(spt)
 					}
 					// Display 본인 제외, 제어판에만 전달
 					BroadcastMessageExcept("position", posPayload, conn)

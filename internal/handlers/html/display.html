@@ -369,9 +369,13 @@ function connect() {
     if (msg.type === 'order') { if (msg.churchName) churchName = msg.churchName; loadOrder(msg.items, msg.idx); }
     if (msg.type === 'navigate') {
       if (msg.direction === 'jump' && typeof msg.idx === 'number') {
+        var targetSp = (typeof msg.subPageIdx === 'number') ? msg.subPageIdx : 0;
+        // targetSp > 0일 때: showSlide가 내부에서 position{subPageIdx:0}을 중간 보고하지 않도록
+        // lastReportedIdx를 미리 설정하여 억제 → 최종 subPageIdx로만 단일 보고
+        if (targetSp > 0) lastReportedIdx = msg.idx;
         showSlide(msg.idx);
-        if (typeof msg.subPageIdx === 'number' && msg.subPageIdx > 0) {
-          subPageIdx = msg.subPageIdx;
+        if (targetSp > 0) {
+          subPageIdx = targetSp;
           renderItem(slides[idx], subPageIdx);
           reportPosition();
         }

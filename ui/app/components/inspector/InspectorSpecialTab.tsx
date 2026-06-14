@@ -6,6 +6,7 @@ import { apiClient } from "@/lib/apiClient";
 import { ThumbnailConfig, TextStyles, TextStyle, WorshipOrderItem } from "@/types";
 import { worshipOrderState, WorshipType } from "@/recoilState";
 import { useAutoSave } from "./useAutoSave";
+import { formatBibleReference } from "@/lib/bibleUtils";
 import DarkImageDropZone from "./DarkImageDropZone";
 
 const WORSHIP_LABELS: Record<string, string> = {
@@ -432,7 +433,7 @@ export default function InspectorSpecialTab() {
       }
     }
     if (!scrip) scrip = bEditFallback;
-    return { sermonTitle: sermon, scripture: scrip };
+    return { sermonTitle: sermon, scripture: formatBibleReference(scrip) };
   }, [worshipOrder, previewType]);
 
   // dateLabel 빌드 (Go 로직 재현): "26.04.05 주일예배"
