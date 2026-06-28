@@ -14,7 +14,6 @@ interface YouTubePanelProps {
 export default function YouTubePanel({ open, onClose }: YouTubePanelProps) {
   const [ytStatus, setYtStatus] = useState<YouTubeStatus | null>(null);
   const [settingUp, setSettingUp] = useState(false);
-  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -56,18 +55,6 @@ export default function YouTubePanel({ open, onClose }: YouTubePanelProps) {
     }
   };
 
-  const handleManualUpload = async () => {
-    setUploading(true);
-    try {
-      const res = await apiClient.generateThumbnail("main_worship", undefined, true);
-      if (res.ok) toast.success("썸네일 생성 + YouTube 업로드 요청 완료");
-      else toast.error(`실패: ${res.error || "알 수 없는 오류"}`);
-    } catch {
-      toast.error("요청 실패");
-    } finally {
-      setUploading(false);
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/50" onClick={onClose}>
@@ -131,18 +118,6 @@ export default function YouTubePanel({ open, onClose }: YouTubePanelProps) {
                   {settingUp ? "설정 중..." : "OBS 스트림 자동 세팅"}
                 </button>
 
-                <div className="h-px bg-[#e5e7eb]" />
-                <div className="text-xs font-semibold text-[#374151]">수동 업로드</div>
-                <p className="text-xs text-[#6b7280] m-0">
-                  현재 활성/예정 라이브 방송에 썸네일을 즉시 생성하고 업로드합니다.
-                </p>
-                <button
-                  className="self-start px-5 py-2 text-xs font-semibold bg-[#1f3f62] text-white border-none rounded-lg cursor-pointer hover:bg-[#2d5a8a] disabled:opacity-60 disabled:cursor-default transition-colors"
-                  onClick={handleManualUpload}
-                  disabled={uploading}
-                >
-                  {uploading ? "업로드 중..." : "썸네일 생성 + 업로드"}
-                </button>
               </>
             )}
           </div>

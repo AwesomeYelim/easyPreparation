@@ -47,10 +47,6 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         return;
       }
       setSettings(local);
-      document.documentElement.setAttribute("data-theme", local.theme || "light");
-      if (local.font_size) {
-        document.documentElement.style.setProperty("--user-font-size", `${local.font_size}px`);
-      }
       onClose();
     } catch (e: any) {
       console.error("설정 저장 에러:", e);
@@ -162,28 +158,6 @@ function GeneralTab({
         </select>
       </label>
       <label className={rowClass}>
-        <span className={labelClass}>테마</span>
-        <select
-          className={inputClass}
-          value={local.theme}
-          onChange={(e) => setLocal({ ...local, theme: e.target.value })}
-        >
-          <option value="light">라이트</option>
-          <option value="dark">다크</option>
-        </select>
-      </label>
-      <label className={rowClass}>
-        <span className={labelClass}>본문 폰트 크기</span>
-        <input
-          type="number"
-          min={12}
-          max={24}
-          className={numberInputClass}
-          value={local.font_size}
-          onChange={(e) => setLocal({ ...local, font_size: Number(e.target.value) })}
-        />
-      </label>
-      <label className={rowClass}>
         <span className={labelClass}>기본 BPM</span>
         <input
           type="number"
@@ -193,18 +167,6 @@ function GeneralTab({
           value={local.default_bpm}
           onChange={(e) => setLocal({ ...local, default_bpm: Number(e.target.value) })}
         />
-      </label>
-      <label className={rowClass}>
-        <span className={labelClass}>Display 레이아웃</span>
-        <select
-          className={inputClass}
-          value={local.display_layout}
-          onChange={(e) => setLocal({ ...local, display_layout: e.target.value })}
-        >
-          <option value="default">기본</option>
-          <option value="wide">와이드</option>
-          <option value="compact">컴팩트</option>
-        </select>
       </label>
 
     </>

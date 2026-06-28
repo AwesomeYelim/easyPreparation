@@ -63,10 +63,10 @@ export type Hymn = {
 
 export type UserSettings = {
   preferred_bible_version: number;
-  theme: string;
-  font_size: number;
   default_bpm: number;
-  display_layout: string;
+  theme?: string;        // deprecated — 미사용, 하위호환
+  font_size?: number;    // deprecated — 미사용, 하위호환
+  display_layout?: string; // deprecated — 미사용, 하위호환
 };
 
 export type GenerationHistory = {

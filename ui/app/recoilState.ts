@@ -73,10 +73,7 @@ export const userSettingsState = atom<UserSettings>({
   key: "userSettingsState",
   default: {
     preferred_bible_version: 1,
-    theme: "light",
-    font_size: 16,
     default_bpm: 100,
-    display_layout: "default",
   },
 });
 
