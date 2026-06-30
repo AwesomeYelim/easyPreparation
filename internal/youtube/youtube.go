@@ -719,7 +719,9 @@ func OpenAuthHandler(w http.ResponseWriter, r *http.Request) {
 	case "darwin":
 		cmd = exec.Command("open", authURL)
 	case "windows":
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", authURL)
+		// rundll32/cmd start는 URL의 &를 명령 구분자로 해석해 OAuth 쿼리 파라미터가 잘림.
+		// explorer.exe는 셸을 거치지 않아 &가 그대로 전달됨.
+		cmd = exec.Command("explorer.exe", authURL)
 	default:
 		cmd = exec.Command("xdg-open", authURL)
 	}

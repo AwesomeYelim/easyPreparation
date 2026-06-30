@@ -5,12 +5,54 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
 )
+
+// resolveCloudflaredPath — 플랫폼별 cloudflared 실행 파일 경로를 찾는다.
+// PATH 우선, 없으면 OS별 표준 설치 경로를 확인한다.
+func resolveCloudflaredPath() string {
+	if p, err := exec.LookPath("cloudflared"); err == nil {
+		return p
+	}
+	var candidates []string
+	switch runtime.GOOS {
+	case "darwin":
+		candidates = []string{
+			"/opt/homebrew/bin/cloudflared",
+			"/usr/local/bin/cloudflared",
+		}
+	case "windows":
+		candidates = []string{
+			filepath.Join(os.Getenv("ProgramFiles"), "cloudflared", "cloudflared.exe"),
+			filepath.Join(os.Getenv("ProgramFiles(x86)"), "cloudflared", "cloudflared.exe"),
+			filepath.Join(os.Getenv("LOCALAPPDATA"), "Microsoft", "WinGet", "Links", "cloudflared.exe"),
+		}
+	default:
+		candidates = []string{
+			"/usr/local/bin/cloudflared",
+			"/usr/bin/cloudflared",
+		}
+	}
+	for _, c := range candidates {
+		if c == "" {
+			continue
+		}
+		if _, err := os.Stat(c); err == nil {
+			return c
+		}
+	}
+	if runtime.GOOS == "windows" {
+		return "cloudflared.exe"
+	}
+	return "cloudflared"
+}
 
 // tunnelState — cloudflared 터널 전역 상태
 var tunnelState = struct {
@@ -59,7 +101,7 @@ func StartTunnel(port string) {
 			}
 
 			cmd := exec.CommandContext(ctx,
-				"/opt/homebrew/bin/cloudflared",
+				resolveCloudflaredPath(),
 				"tunnel", "--url", "http://localhost:"+port,
 			)
 

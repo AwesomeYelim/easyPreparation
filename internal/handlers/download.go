@@ -133,7 +133,7 @@ func openFolder(dir string) {
 	case "darwin":
 		cmd = exec.Command("open", dir)
 	case "windows":
-		cmd = exec.Command("explorer", dir)
+		cmd = exec.Command("explorer.exe", dir)
 	default:
 		cmd = exec.Command("xdg-open", dir)
 	}

@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"time"
 
 	"github.com/wailsapp/wails/v2"
@@ -221,8 +223,15 @@ func (a *App) SaveZip(target string) string {
 	}
 	log.Printf("[desktop] SaveZip 저장 완료: %s", savePath)
 
-	// Finder에서 파일 표시 (macOS)
-	wailsruntime.BrowserOpenURL(a.ctx, "file://"+filepath.Dir(savePath))
+	// 저장 폴더 열기. Windows 경로(C:\...)는 file:///C:/... 형식이어야 함.
+	dir := filepath.Dir(savePath)
+	var fileURL string
+	if runtime.GOOS == "windows" {
+		fileURL = "file:///" + strings.ReplaceAll(dir, "\\", "/")
+	} else {
+		fileURL = "file://" + dir
+	}
+	wailsruntime.BrowserOpenURL(a.ctx, fileURL)
 	return ""
 }
 
