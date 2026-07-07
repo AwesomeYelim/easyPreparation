@@ -305,11 +305,10 @@ easyPreparation/
 │   │   ├── main.go
 │   │   ├── embed_dev.go     # //go:build dev  → getFrontendFS() = nil
 │   │   └── embed_prod.go    # //go:build !dev → embed.FS (ui/out)
-│   ├── desktop/             # Wails v2 Desktop 앱 진입점
+│   └── desktop/             # Wails v2 Desktop 앱 진입점
 │   │   ├── main.go          # Wails App + HTTP 서버 내장
 │   │   ├── embed_dev.go
 │   │   └── embed_prod.go
-│   └── extractMusic/        # 악보 선 검출 실험 도구 (standalone)
 │
 ├── ⚙️  internal/             # Go 백엔드 패키지
 │   ├── api/                 # HTTP 라우터 (StartServer, StopServer)

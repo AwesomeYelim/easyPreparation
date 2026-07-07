@@ -12,7 +12,6 @@ require (
 	github.com/lib/pq v1.12.3
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/wailsapp/wails/v2 v2.12.0
-	gocv.io/x/gocv v0.41.0
 	golang.org/x/image v0.38.0
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/text v0.35.0
