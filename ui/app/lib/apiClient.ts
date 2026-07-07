@@ -39,6 +39,21 @@ export async function openDisplayWindow(force = false) {
 }
 
 export const apiClient = {
+  // 성경 API — verses/search는 연속 호출 시 이전 응답이 최신 상태를 덮어쓰지 않도록 AbortSignal 지원
+  getBibleVersions: () =>
+    fetch(`${BASE_URL}/api/bible/versions`).then((r) => r.json()),
+
+  getBibleBooks: () =>
+    fetch(`${BASE_URL}/api/bible/books`).then((r) => r.json()),
+
+  getBibleVerses: (book: number, chapter: number, version: number, signal?: AbortSignal) =>
+    fetch(`${BASE_URL}/api/bible/verses?book=${book}&chapter=${chapter}&version=${version}`, { signal })
+      .then((r) => r.json()),
+
+  searchBible: (q: string, version: number, signal?: AbortSignal) =>
+    fetch(`${BASE_URL}/api/bible/search?q=${encodeURIComponent(q)}&version=${version}`, { signal })
+      .then((r) => r.json()),
+
   // 예배 순서 API (Go 서버 마스터)
   getWorshipOrder: (type: string) =>
     fetch(`${BASE_URL}/api/worship-order?type=${type}`)

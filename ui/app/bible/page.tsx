@@ -2,12 +2,10 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSetRecoilState, useRecoilValue } from "recoil";
+import toast from "react-hot-toast";
 import { displayPanelOpenState, userSettingsState } from "@/recoilState";
 import { apiClient, openDisplayWindow } from "@/lib/apiClient";
 // bible.scss 마이그레이션 완료 — Tailwind CSS로 전환됨
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
-  || (typeof window !== "undefined" ? window.location.origin : "http://localhost:8080");
 
 type Book = {
   name_kor: string;
@@ -49,8 +47,7 @@ export default function BiblePage() {
   const [compareVerses, setCompareVerses] = useState<Verse[]>([]);
 
   useEffect(() => {
-    fetch(`${BASE_URL}/api/bible/versions`)
-      .then((r) => r.json())
+    apiClient.getBibleVersions()
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
           setVersions(data);
@@ -61,10 +58,12 @@ export default function BiblePage() {
           if (data.length > 1) setCompareVersionId(data[1].id);
         }
       })
-      .catch((e) => console.error("bible fetch 에러:", e));
+      .catch((e) => {
+        console.error("bible fetch 에러:", e);
+        toast.error("성경 역본 목록을 불러오지 못했습니다.");
+      });
 
-    fetch(`${BASE_URL}/api/bible/books`)
-      .then((r) => r.json())
+    apiClient.getBibleBooks()
       .then((data) => {
         if (data && !Array.isArray(data) && typeof data === "object") {
           const parsed: Book[] = Object.entries(data).map(([name, info]: [string, any]) => ({
@@ -77,8 +76,48 @@ export default function BiblePage() {
           setBooks(parsed);
         }
       })
-      .catch((e) => console.error("bible fetch 에러:", e));
+      .catch((e) => {
+        console.error("bible fetch 에러:", e);
+        toast.error("성경 목록을 불러오지 못했습니다.");
+      });
   }, []);
+
+  // 이전 요청 취소용 — 빠른 장/버전 전환 시 이전 응답이 최신 상태를 덮어쓰는 race 방지
+  const versesAbortRef = useRef<AbortController | null>(null);
+  const compareAbortRef = useRef<AbortController | null>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
+
+  const loadVerses = useCallback(
+    (
+      bookOrder: number,
+      chapter: number,
+      version: number,
+      target: "main" | "compare",
+      onLoaded?: () => void
+    ) => {
+      const ref = target === "main" ? versesAbortRef : compareAbortRef;
+      ref.current?.abort();
+      const ctrl = new AbortController();
+      ref.current = ctrl;
+      apiClient.getBibleVerses(bookOrder, chapter, version, ctrl.signal)
+        .then((data) => {
+          if (ctrl.signal.aborted) return;
+          if (Array.isArray(data)) {
+            (target === "main" ? setVerses : setCompareVerses)(data);
+            onLoaded?.();
+          } else if (target === "compare") {
+            setCompareVerses([]);
+          }
+        })
+        .catch((e) => {
+          if (ctrl.signal.aborted) return;
+          console.error("bible fetch 에러:", e);
+          if (target === "compare") setCompareVerses([]);
+          else toast.error("성경 본문을 불러오지 못했습니다.");
+        });
+    },
+    []
+  );
 
   const handleBookSelect = useCallback((book: Book) => {
     setSelectedBook(book);
@@ -97,69 +136,39 @@ export default function BiblePage() {
       setSelectedVerses(highlightVerse ? new Set([highlightVerse]) : new Set());
       versesRef.current?.scrollTo({ top: 0 });
 
-      fetch(
-        `${BASE_URL}/api/bible/verses?book=${bookOrder}&chapter=${chapter}&version=${versionId}`
-      )
-        .then((r) => r.json())
-        .then((data) => {
-          if (Array.isArray(data)) {
-            setVerses(data);
-            if (highlightVerse) {
-              requestAnimationFrame(() => {
-                const el = versesRef.current?.querySelector(`[data-verse="${highlightVerse}"]`);
-                el?.scrollIntoView({ block: "center", behavior: "smooth" });
-              });
-            }
-          }
-        })
-        .catch((e) => console.error("bible fetch 에러:", e));
+      loadVerses(bookOrder, chapter, versionId, "main", () => {
+        if (highlightVerse) {
+          requestAnimationFrame(() => {
+            const el = versesRef.current?.querySelector(`[data-verse="${highlightVerse}"]`);
+            el?.scrollIntoView({ block: "center", behavior: "smooth" });
+          });
+        }
+      });
 
       // 비교 모드가 켜져 있으면 비교 버전도 fetch
       if (compareMode && compareVersionId) {
-        fetch(
-          `${BASE_URL}/api/bible/verses?book=${bookOrder}&chapter=${chapter}&version=${compareVersionId}`
-        )
-          .then((r) => r.json())
-          .then((data) => {
-            if (Array.isArray(data)) setCompareVerses(data);
-            else setCompareVerses([]);
-          })
-          .catch(() => setCompareVerses([]));
+        loadVerses(bookOrder, chapter, compareVersionId, "compare");
       }
     },
-    [versionId, compareMode, compareVersionId]
+    [versionId, compareMode, compareVersionId, loadVerses]
   );
 
   // 메인 버전 변경 시 현재 장 다시 로드
+  // 책/장 전환은 fetchChapter가 담당하므로 의도적으로 versionId에만 반응
   useEffect(() => {
     if (selectedBook && selectedChapter > 0) {
-      fetch(
-        `${BASE_URL}/api/bible/verses?book=${selectedBook.book_order}&chapter=${selectedChapter}&version=${versionId}`
-      )
-        .then((r) => r.json())
-        .then((data) => {
-          if (Array.isArray(data)) setVerses(data);
-        })
-        .catch((e) => console.error("bible fetch 에러:", e));
+      loadVerses(selectedBook.book_order, selectedChapter, versionId, "main");
     }
   }, [versionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 비교 모드 토글 시 / 비교 버전 변경 시 비교 데이터 fetch
   useEffect(() => {
     if (compareMode && compareVersionId && selectedBook && selectedChapter > 0) {
-      fetch(
-        `${BASE_URL}/api/bible/verses?book=${selectedBook.book_order}&chapter=${selectedChapter}&version=${compareVersionId}`
-      )
-        .then((r) => r.json())
-        .then((data) => {
-          if (Array.isArray(data)) setCompareVerses(data);
-          else setCompareVerses([]);
-        })
-        .catch(() => setCompareVerses([]));
+      loadVerses(selectedBook.book_order, selectedChapter, compareVersionId, "compare");
     } else {
       setCompareVerses([]);
     }
-  }, [compareMode, compareVersionId, selectedBook, selectedChapter]);
+  }, [compareMode, compareVersionId, selectedBook, selectedChapter, loadVerses]);
 
   const handleChapterSelect = useCallback(
     (chapter: number) => {
@@ -177,14 +186,24 @@ export default function BiblePage() {
     setVerses([]);
     setCompareVerses([]);
 
-    fetch(`${BASE_URL}/api/bible/search?q=${encodeURIComponent(searchQuery)}&version=${versionId}`)
-      .then((r) => r.json())
+    searchAbortRef.current?.abort();
+    const ctrl = new AbortController();
+    searchAbortRef.current = ctrl;
+    apiClient.searchBible(searchQuery, versionId, ctrl.signal)
       .then((data) => {
+        if (ctrl.signal.aborted) return;
         if (Array.isArray(data)) setSearchResults(data);
         else setSearchResults([]);
       })
-      .catch(() => setSearchResults([]))
-      .finally(() => setSearching(false));
+      .catch((e) => {
+        if (ctrl.signal.aborted) return;
+        console.error("bible fetch 에러:", e);
+        setSearchResults([]);
+        toast.error("성경 검색에 실패했습니다.");
+      })
+      .finally(() => {
+        if (!ctrl.signal.aborted) setSearching(false);
+      });
   }, [searchQuery, versionId]);
 
   const handleSearchResultClick = useCallback(

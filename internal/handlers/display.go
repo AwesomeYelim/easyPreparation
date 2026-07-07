@@ -51,6 +51,7 @@ func saveDisplayState() {
 	orderMu.RLock()
 	snapshot := deepCopyOrder(currentOrder)
 	idx := currentIdx
+	subPage := currentSubPageIdx
 	cn := displayChurchName
 	orderMu.RUnlock()
 
@@ -81,6 +82,7 @@ func saveDisplayState() {
 	state := map[string]interface{}{
 		"items":      snapshot,
 		"idx":        idx,
+		"subPageIdx": subPage,
 		"churchName": cn,
 	}
 
@@ -126,6 +128,7 @@ func LoadDisplayState() {
 	var state struct {
 		Items      []map[string]interface{} `json:"items"`
 		Idx        int                      `json:"idx"`
+		SubPageIdx int                      `json:"subPageIdx"`
 		ChurchName string                   `json:"churchName"`
 	}
 	if err := json.Unmarshal(data, &state); err != nil {
@@ -141,6 +144,7 @@ func LoadDisplayState() {
 			var backupState struct {
 				Items      []map[string]interface{} `json:"items"`
 				Idx        int                      `json:"idx"`
+				SubPageIdx int                      `json:"subPageIdx"`
 				ChurchName string                   `json:"churchName"`
 			}
 			if json.Unmarshal(backupData, &backupState) == nil && len(backupState.Items) > len(state.Items) {
@@ -148,7 +152,7 @@ func LoadDisplayState() {
 				state = backupState
 				// 복원된 상태를 메인 파일에도 저장
 				safefile.WriteJSON(displayStatePath(), map[string]interface{}{
-					"items": backupState.Items, "idx": backupState.Idx, "churchName": backupState.ChurchName,
+					"items": backupState.Items, "idx": backupState.Idx, "subPageIdx": backupState.SubPageIdx, "churchName": backupState.ChurchName,
 				})
 			}
 		}
@@ -163,14 +167,29 @@ func LoadDisplayState() {
 	for _, item := range state.Items {
 		delete(item, "lyricsMap") // 강제 재계산
 		delete(item, "sections")  // startPage 공식 변경 시 구형 값 제거
+		if info, _ := item["info"].(string); info == "lyrics_display" {
+			// 가사 항목은 preprocessItem이 sections를 만들지 못해 리모컨에 "N페이지"로 표시됨
+			// — append 때와 동일하게 가사 텍스트 기준으로 pages/sections 재생성
+			lyr, _ := item["contents"].(string)
+			rebuilt := preprocessLyricsItem(map[string]interface{}{
+				"title":  item["title"],
+				"lyrics": lyr,
+				"bpm":    item["bpm"],
+			})
+			item["pages"] = rebuilt["pages"]
+			item["sections"] = rebuilt["sections"]
+			processed = append(processed, item)
+			continue
+		}
 		processed = append(processed, preprocessItem(item))
 	}
 	orderMu.Lock()
 	currentOrder = processed
 	currentIdx = state.Idx
+	currentSubPageIdx = state.SubPageIdx
 	displayChurchName = state.ChurchName
 	orderMu.Unlock()
-	log.Printf("[display] 상태 복원: %d개 항목, idx=%d", len(processed), state.Idx)
+	log.Printf("[display] 상태 복원: %d개 항목, idx=%d, subPage=%d", len(processed), state.Idx, state.SubPageIdx)
 }
 
 // ── 서버 사이드 자동 넘김 타이머 ──
@@ -915,6 +934,7 @@ func DisplayAppendHandler(w http.ResponseWriter, r *http.Request) {
 		currentOrder = append(currentOrder, processed...)
 	}
 	order, idx, cn := getOrderSnapshotLocked()
+	subPage := currentSubPageIdx
 	orderMu.Unlock()
 
 	BroadcastMessage("display_loading", map[string]interface{}{
@@ -922,7 +942,8 @@ func DisplayAppendHandler(w http.ResponseWriter, r *http.Request) {
 		"done":    true,
 	})
 
-	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx, "churchName": cn})
+	// append는 현재 재생 위치를 바꾸지 않으므로 subPageIdx를 함께 보내 클라이언트 리셋 방지
+	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx, "subPageIdx": subPage, "churchName": cn})
 	go saveDisplayState()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -955,6 +976,7 @@ func DisplayRemoveHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Index out of range", http.StatusBadRequest)
 		return
 	}
+	removedCurrent := payload.Index == currentIdx
 	currentOrder = append(currentOrder[:payload.Index], currentOrder[payload.Index+1:]...)
 	// currentIdx 보정
 	if payload.Index < currentIdx {
@@ -965,10 +987,15 @@ func DisplayRemoveHandler(w http.ResponseWriter, r *http.Request) {
 	if currentIdx < 0 {
 		currentIdx = 0
 	}
+	// 재생 중이던 항목이 삭제된 경우에만 subPage 리셋
+	if removedCurrent {
+		currentSubPageIdx = 0
+	}
 	order, idx, cn := getOrderSnapshotLocked()
+	subPage := currentSubPageIdx
 	orderMu.Unlock()
 
-	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx, "churchName": cn})
+	BroadcastMessage("order", map[string]interface{}{"items": order, "idx": idx, "subPageIdx": subPage, "churchName": cn})
 	go saveDisplayState()
 
 	w.Header().Set("Content-Type", "application/json")

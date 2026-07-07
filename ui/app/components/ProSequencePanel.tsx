@@ -87,7 +87,8 @@ export default function ProSequencePanel() {
           setExpandedItems(new Set());
           if (typeof msg.idx === "number") {
             setIdx(msg.idx);
-            setSubPageIdx(0);
+            // append/remove처럼 재생 위치가 유지되는 브로드캐스트는 subPageIdx를 함께 보냄 — 없을 때만 리셋
+            setSubPageIdx(typeof msg.subPageIdx === "number" ? msg.subPageIdx : 0);
           } else {
             setIdx(0);
             setSubPageIdx(0);
@@ -128,6 +129,8 @@ export default function ProSequencePanel() {
           if (Array.isArray(data.items) && data.items.length > 0 && !reorderSuppressRef.current) {
             setItems(ensureUniqueKeys(data.items as WorshipOrderItem[]));
             if (typeof data.idx === "number") setIdx(data.idx);
+            // 새로고침 시 subPageIdx가 0으로 유실되던 문제 — 서버 상태를 그대로 복원
+            if (typeof data.subPageIdx === "number") setSubPageIdx(data.subPageIdx);
           }
         })
         .catch((e: unknown) => console.error("display/status poll 에러:", e));
