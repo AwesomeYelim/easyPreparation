@@ -7,9 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sync"
 	"time"
 
@@ -18,6 +16,7 @@ import (
 	yt "google.golang.org/api/youtube/v3"
 
 	"easyPreparation_1.0/internal/path"
+	"easyPreparation_1.0/internal/sysopen"
 )
 
 // Manager — YouTube API 싱글턴
@@ -714,18 +713,7 @@ func OpenAuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", authURL)
-	case "windows":
-		// rundll32/cmd start는 URL의 &를 명령 구분자로 해석해 OAuth 쿼리 파라미터가 잘림.
-		// explorer.exe는 셸을 거치지 않아 &가 그대로 전달됨.
-		cmd = exec.Command("explorer.exe", authURL)
-	default:
-		cmd = exec.Command("xdg-open", authURL)
-	}
-	if err := cmd.Start(); err != nil {
+	if err := sysopen.URL(authURL); err != nil {
 		log.Printf("[youtube] 브라우저 열기 실패: %v", err)
 		http.Error(w, "브라우저 열기 실패", http.StatusInternalServerError)
 		return

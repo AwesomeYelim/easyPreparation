@@ -329,21 +329,28 @@ func BulletinPdfHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(pdfBytes)
 }
 
-// findChromeBin — 시스템에 설치된 Chrome/Chromium 경로 반환 (없으면 "")
+// findChromeBin — 시스템에 설치된 Chrome/Chromium/Edge 경로 반환 (없으면 "")
+// Edge는 Chromium 기반이라 --headless --print-to-pdf 동일 지원.
+// Windows 기본 탑재이므로 Chrome 미설치 PC에서도 PDF 생성이 가능하다.
 func findChromeBin() string {
 	candidates := []string{
-		// Windows
+		// Windows — Chrome
 		`C:\Program Files\Google\Chrome\Application\chrome.exe`,
 		`C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`,
 		filepath.Join(os.Getenv("LOCALAPPDATA"), `Google\Chrome\Application\chrome.exe`),
+		// Windows — Edge (기본 탑재)
+		`C:\Program Files\Microsoft\Edge\Application\msedge.exe`,
+		`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`,
 		// macOS
 		`/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`,
 		`/Applications/Chromium.app/Contents/MacOS/Chromium`,
+		`/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge`,
 		// Linux
 		`/usr/bin/google-chrome`,
 		`/usr/bin/google-chrome-stable`,
 		`/usr/bin/chromium-browser`,
 		`/usr/bin/chromium`,
+		`/usr/bin/microsoft-edge`,
 	}
 	for _, p := range candidates {
 		if p == "" {

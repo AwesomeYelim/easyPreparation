@@ -3,13 +3,12 @@ package handlers
 import (
 	"encoding/json"
 	"easyPreparation_1.0/internal/path"
+	"easyPreparation_1.0/internal/sysopen"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 )
 
 // desktopDownloadDir — Desktop 모드에서 파일을 저장할 디렉터리 (비어있으면 비활성)
@@ -97,18 +96,7 @@ func openInBrowser(w http.ResponseWriter, targetURL string) {
 		http.Error(w, "not desktop mode", http.StatusForbidden)
 		return
 	}
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", targetURL)
-	case "windows":
-		// cmd /c start는 URL의 &를 명령 구분자로 해석해 쿼리 파라미터가 잘림.
-		// explorer.exe는 셸을 거치지 않아 &가 그대로 전달됨.
-		cmd = exec.Command("explorer.exe", targetURL)
-	default:
-		cmd = exec.Command("xdg-open", targetURL)
-	}
-	if err := cmd.Start(); err != nil {
+	if err := sysopen.URL(targetURL); err != nil {
 		log.Printf("[download] 브라우저 열기 실패: %v", err)
 		http.Error(w, "브라우저 열기 실패", http.StatusInternalServerError)
 		return
@@ -128,16 +116,7 @@ func OpenMobileInBrowserHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func openFolder(dir string) {
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", dir)
-	case "windows":
-		cmd = exec.Command("explorer.exe", dir)
-	default:
-		cmd = exec.Command("xdg-open", dir)
-	}
-	if err := cmd.Start(); err != nil {
+	if err := sysopen.Folder(dir); err != nil {
 		log.Printf("[download] 폴더 열기 실패: %v", err)
 	}
 }

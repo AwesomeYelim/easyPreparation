@@ -20,20 +20,11 @@ type wsConfig struct {
 }
 
 // obsWebSocketConfigPath — OS별 OBS WebSocket 설정 파일 경로
+// os.UserConfigDir: Windows %APPDATA%, macOS ~/Library/Application Support, Linux ~/.config
 func obsWebSocketConfigPath() (string, error) {
-	var base string
-	switch runtime.GOOS {
-	case "windows":
-		base = os.Getenv("APPDATA")
-	case "darwin":
-		home, _ := os.UserHomeDir()
-		base = filepath.Join(home, "Library", "Application Support")
-	default:
-		home, _ := os.UserHomeDir()
-		base = filepath.Join(home, ".config")
-	}
-	if base == "" {
-		return "", fmt.Errorf("설정 디렉토리를 찾을 수 없습니다")
+	base, err := os.UserConfigDir()
+	if err != nil || base == "" {
+		return "", fmt.Errorf("설정 디렉토리를 찾을 수 없습니다: %v", err)
 	}
 	return filepath.Join(base, "obs-studio", "plugin_config", "obs-websocket", "config.json"), nil
 }
