@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/apiClient";
 import { ThumbnailConfig } from "@/types";
 import { useAutoSave } from "./useAutoSave";
@@ -12,25 +12,8 @@ const WORSHIP_TYPES: { key: string; label: string }[] = [
   { key: "fri_worship", label: "금요예배" },
 ];
 
-// Go의 thumbnail.FormatTitle과 동일한 치환 로직 (미리보기용 재현)
-function weekOrdinal(date: Date): string {
-  const day = date.getDate();
-  const week = Math.floor((day - 1) / 7) + 1;
-  const ordinals = ["첫째주", "둘째주", "셋째주", "넷째주", "다섯째주"];
-  return ordinals[week - 1] || `${week}째주`;
-}
-
-function formatTemplate(format: string, date: Date): string {
-  return format
-    .replaceAll("{year}", String(date.getFullYear()))
-    .replaceAll("{month}", String(date.getMonth() + 1))
-    .replaceAll("{day}", String(date.getDate()))
-    .replaceAll("{weekOrd}", weekOrdinal(date));
-}
-
 export default function InspectorYoutubeTab() {
   const [thumbConfig, setThumbConfig] = useState<ThumbnailConfig | null>(null);
-  const today = useMemo(() => new Date(), []);
 
   useEffect(() => {
     apiClient.getThumbnailConfig().then(setThumbConfig).catch(console.error);
@@ -87,9 +70,6 @@ export default function InspectorYoutubeTab() {
                 onChange={(e) => updateField(key, "titleFormat", e.target.value)}
                 className={inputClass}
               />
-              {titleFormat && (
-                <div className="text-[9px] text-[#60a5fa] truncate">→ {formatTemplate(titleFormat, today)}</div>
-              )}
             </div>
 
             <div className="flex flex-col gap-1">
@@ -101,11 +81,6 @@ export default function InspectorYoutubeTab() {
                 rows={4}
                 className={`${inputClass} resize-y max-h-40 overflow-y-auto`}
               />
-              {descriptionFormat && (
-                <div className="text-[9px] text-[#60a5fa] whitespace-pre-wrap max-h-24 overflow-y-auto break-words border-t border-white/10 pt-1">
-                  → {formatTemplate(descriptionFormat, today)}
-                </div>
-              )}
             </div>
           </div>
         );
