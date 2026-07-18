@@ -1013,23 +1013,37 @@ func (m *Manager) UpdatePresetMapping(title string, preset int) error {
 }
 
 // CreateCameraSource — 카메라 소스 생성 (macOS: av_capture_input_v2, Windows: dshow_input)
+// Windows에서는 캡처 해상도를 1080p/30fps로 고정한다. res_type을 지정하지 않으면
+// OBS가 장치 기본값(대개 640×480 등 저해상도)으로 잡아 송출 화질이 떨어진다.
 func (m *Manager) CreateCameraSource(sceneName, name, deviceID string) (int, error) {
 	client, err := m.getClient()
 	if err != nil {
 		return 0, err
 	}
-	inputKind := "av_capture_input_v2"
-	settingsKey := "device"
+
+	var inputKind string
+	var settings map[string]any
 	if runtime.GOOS == "windows" {
 		inputKind = "dshow_input"
-		settingsKey = "video_device_id"
+		settings = map[string]any{
+			"video_device_id": deviceID,
+			"res_type":        1,           // 1 = 사용자 지정 (0 = 장치 기본값 → 저해상도)
+			"resolution":      "1920x1080", // 캡처 해상도 고정
+			"frame_interval":  333333,      // 30fps (10,000,000 ÷ 30, 단위 100ns)
+			// video_format은 기본값(Any) 유지 → OBS가 1080p30 지원 포맷(MJPEG 등)을 자동 선택.
+			// 카메라가 1080p를 지원하지 않으면 OBS가 가장 가까운 해상도로 폴백한다.
+		}
+	} else {
+		inputKind = "av_capture_input_v2"
+		settings = map[string]any{"device": deviceID}
 	}
+
 	params := inputs.NewCreateInputParams().
 		WithInputKind(inputKind).
 		WithInputName(name).
 		WithSceneName(sceneName).
 		WithSceneItemEnabled(true).
-		WithInputSettings(map[string]any{settingsKey: deviceID})
+		WithInputSettings(settings)
 	resp, err := client.Inputs.CreateInput(params)
 	if err != nil {
 		return 0, fmt.Errorf("카메라 소스 생성 실패: %w", err)
