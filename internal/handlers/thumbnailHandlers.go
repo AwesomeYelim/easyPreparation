@@ -135,7 +135,8 @@ func ThumbnailGenerateHandler(w http.ResponseWriter, r *http.Request) {
 			cfg, _ := thumbnail.LoadConfig()
 			if cfg != nil {
 				_, title := cfg.ResolveTheme(body.WorshipType, date)
-				if err := youtube.UpdateBroadcastTitle(title); err != nil {
+				description := cfg.ResolveDescription(body.WorshipType, date)
+				if err := youtube.UpdateBroadcastTitle(title, description); err != nil {
 					log.Printf("[thumbnail] YouTube 제목 변경 실패: %v", err)
 				}
 			}
@@ -265,23 +266,8 @@ func generateThumbnailWithOverridesAt(worshipType string, date time.Time, header
 		dateLabel = date.Format("06.01.02") + " " + typeLabel
 	}
 	// sermon
-	sermonTitle, scripture := "", ""
 	configPath := filepath.Join(execPath, "config", worshipType+".json")
-	if data, rErr := os.ReadFile(configPath); rErr == nil {
-		var items []map[string]interface{}
-		if json.Unmarshal(data, &items) == nil {
-			for _, item := range items {
-				title, _ := item["title"].(string)
-				obj, _ := item["obj"].(string)
-				if (title == "말씀" || title == "설교") && obj != "" && obj != "-" {
-					sermonTitle = obj
-				}
-				if title == "성경봉독" && obj != "" && obj != "-" {
-					scripture = obj
-				}
-			}
-		}
-	}
+	sermonTitle, scripture := loadSermonDataFromConfig(configPath)
 	if mainText != "" { sermonTitle = mainText }
 	if footerText != "" { scripture = footerText }
 	// logo
@@ -470,6 +456,7 @@ func GenerateAndUploadThumbnail(worshipType string) {
 		return
 	}
 	_, title := cfg.ResolveTheme(worshipType, date)
+	description := cfg.ResolveDescription(worshipType, date)
 
 	outPath, err := generateThumbnail(worshipType, date)
 	if err != nil {
@@ -478,8 +465,8 @@ func GenerateAndUploadThumbnail(worshipType string) {
 	}
 	log.Printf("[thumbnail] 생성 완료: %s", outPath)
 
-	// YouTube 방송 제목 변경
-	if err := youtube.UpdateBroadcastTitle(title); err != nil {
+	// YouTube 방송 제목·설명 변경
+	if err := youtube.UpdateBroadcastTitle(title, description); err != nil {
 		log.Printf("[thumbnail] YouTube 제목 변경 실패: %v", err)
 	}
 
@@ -667,6 +654,7 @@ func GenerateAndUploadThumbnailTo(worshipType, broadcastID string) {
 		return
 	}
 	_, title := cfg.ResolveTheme(worshipType, date)
+	description := cfg.ResolveDescription(worshipType, date)
 
 	outPath, err := generateThumbnail(worshipType, date)
 	if err != nil {
@@ -675,8 +663,8 @@ func GenerateAndUploadThumbnailTo(worshipType, broadcastID string) {
 	}
 	log.Printf("[thumbnail] 생성 완료: %s", outPath)
 
-	// 방송 제목 변경
-	if err := youtube.UpdateBroadcastTitle(title); err != nil {
+	// 방송 제목·설명 변경
+	if err := youtube.UpdateBroadcastTitle(title, description); err != nil {
 		log.Printf("[thumbnail] YouTube 제목 변경 실패: %v", err)
 	}
 

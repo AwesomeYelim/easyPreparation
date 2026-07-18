@@ -17,12 +17,14 @@ import InspectorBackgroundsTab from "./inspector/InspectorBackgroundsTab";
 import InspectorScheduleTab from "./inspector/InspectorScheduleTab";
 import InspectorSpecialTab from "./inspector/InspectorSpecialTab";
 import InspectorConfigTab from "./inspector/InspectorConfigTab";
+import InspectorYoutubeTab from "./inspector/InspectorYoutubeTab";
 
 const TABS: { key: InspectorCategory; label: string; desc: string }[] = [
   { key: "preview",     label: "미리보기", desc: "Display 화면 실시간 미리보기" },
   { key: "display",     label: "화면",    desc: "항목별 배경 이미지" },
   { key: "backgrounds", label: "배경",    desc: "" },
   { key: "special",     label: "썸네일",  desc: "기념주일 썸네일 배경" },
+  { key: "youtube",     label: "유튜브",  desc: "방송 제목 · 설명 템플릿" },
   { key: "schedule",    label: "스케줄",  desc: "정기 스트리밍 스케줄" },
   { key: "obs",         label: "OBS",     desc: "OBS 소스 및 씬 관리" },
   { key: "config",      label: "스타일",  desc: "폰트 · 로고 · 오버레이" },
@@ -110,6 +112,7 @@ export default function ProInspectorPanel() {
             <InspectorSpecialTab />
           </FeatureGate>
         )}
+        {tab === "youtube" && <InspectorYoutubeTab />}
         {tab === "schedule" && <InspectorScheduleTab />}
         {tab === "obs" && (
           <OBSSourcePanel inline open onClose={() => setTab("display")} />

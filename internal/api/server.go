@@ -7,6 +7,7 @@ import (
 	"easyPreparation_1.0/internal/license"
 	"easyPreparation_1.0/internal/middleware"
 	"easyPreparation_1.0/internal/obs"
+	"easyPreparation_1.0/internal/thumbnail"
 	"easyPreparation_1.0/internal/types"
 	"easyPreparation_1.0/internal/version"
 	"easyPreparation_1.0/internal/youtube"
@@ -286,7 +287,11 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 		}
 
 		// YouTube 방송 생성 + 스트림 바인딩
-		server, key, broadcastID, err := youtube.CreateBroadcastAndBind(title)
+		description := ""
+		if cfg, cErr := thumbnail.LoadConfig(); cErr == nil {
+			description = cfg.ResolveDescription(worshipType, time.Now())
+		}
+		server, key, broadcastID, err := youtube.CreateBroadcastAndBind(title, description)
 		if err != nil {
 			json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": err.Error()})
 			return

@@ -110,7 +110,7 @@ export const inspectorOpenState = atom<boolean>({
 });
 
 // Inspector 현재 탭 (ProSequencePanel → ProInspectorPanel 자동 전환)
-export type InspectorCategory = "preview" | "display" | "backgrounds" | "special" | "schedule" | "obs" | "config";
+export type InspectorCategory = "preview" | "display" | "backgrounds" | "special" | "schedule" | "obs" | "config" | "youtube";
 export const inspectorTabState = atom<InspectorCategory>({
   key: "inspectorTabState",
   default: "preview",
@@ -157,4 +157,10 @@ export const bulletinPreviewState = atom<{ template: number | null; worshipType:
 export const scheduleActiveState = atom<boolean>({
   key: "scheduleActiveState",
   default: false,
+});
+
+// 방송 시작 시 유튜브 썸네일/제목 자동 생성 여부 — Studio 썸네일 탭 ↔ 방송 시작 버튼 공유
+export const includeThumbnailOnStreamState = atom<boolean>({
+  key: "includeThumbnailOnStreamState",
+  default: true,
 });

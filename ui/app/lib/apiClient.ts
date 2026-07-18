@@ -226,11 +226,11 @@ export const apiClient = {
       body: JSON.stringify(config),
     }).then((r) => r.json()),
 
-  streamControl: (action: "start" | "stop" | "status") =>
+  streamControl: (action: "start" | "stop" | "status", includeThumbnail?: boolean, isTest?: boolean) =>
     fetch(`${BASE_URL}/api/schedule/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action }),
+      body: JSON.stringify({ action, includeThumbnail, isTest }),
     }).then((r) => r.json()),
 
   scheduleTest: (action: "countdown" | "trigger", worshipType: string) =>

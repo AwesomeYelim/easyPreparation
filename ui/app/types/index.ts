@@ -104,6 +104,7 @@ export type StreamStatus = {
 export type DefaultTheme = {
   background: string;
   titleFormat: string;
+  descriptionFormat?: string;
 };
 
 export type SpecialDate = {

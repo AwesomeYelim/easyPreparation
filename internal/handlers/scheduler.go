@@ -77,6 +77,39 @@ func loadScheduleConfig() ScheduleConfig {
 	return conf
 }
 
+// resolveCurrentWorshipType — 오늘 요일의 스케줄 항목 중 현재 시각과 가장 가까운 예배 종류 반환
+// (수동 "방송 시작" 버튼이 어떤 예배인지 하드코딩 없이 판단할 수 있도록)
+// entry.Enabled(자동 시작 on/off)는 무관 — 요일/시각 데이터는 자동 스케줄러가 꺼져 있어도 유효한 예배 일정
+func resolveCurrentWorshipType() string {
+	scheduleMu.RLock()
+	conf := scheduleConf
+	scheduleMu.RUnlock()
+
+	now := time.Now()
+	weekday := int(now.Weekday())
+
+	var best string
+	var bestDiff time.Duration
+	for _, entry := range conf.Entries {
+		if entry.Weekday != weekday {
+			continue
+		}
+		target := time.Date(now.Year(), now.Month(), now.Day(), entry.Hour, entry.Minute, 0, 0, now.Location())
+		diff := target.Sub(now)
+		if diff < 0 {
+			diff = -diff
+		}
+		if best == "" || diff < bestDiff {
+			best = entry.WorshipType
+			bestDiff = diff
+		}
+	}
+	if best == "" {
+		return "main_worship"
+	}
+	return best
+}
+
 func saveScheduleConfig(conf ScheduleConfig) {
 	data, err := json.MarshalIndent(conf, "", "  ")
 	if err != nil {
@@ -227,16 +260,18 @@ func executeSchedule(entry ScheduleEntry, autoStream bool) {
 	if autoStream {
 		ytM := youtube.Get()
 		if ytM.IsEnabled() {
-			// 썸네일 설정에서 제목 가져오기
+			// 썸네일 설정에서 제목·설명 가져오기
 			cfg, _ := thumbnail.LoadConfig()
 			title := entry.Label
+			description := ""
 			if cfg != nil {
 				_, t := cfg.ResolveTheme(entry.WorshipType, time.Now())
 				title = t
+				description = cfg.ResolveDescription(entry.WorshipType, time.Now())
 			}
 
 			// YouTube 방송 생성 + 스트림 바인딩
-			server, key, broadcastID, err := youtube.CreateBroadcastAndBind(title)
+			server, key, broadcastID, err := youtube.CreateBroadcastAndBind(title, description)
 			if err != nil {
 				log.Printf("[scheduler] YouTube 방송 생성 실패: %v — 기존 방식으로 스트리밍", err)
 				// YouTube 실패해도 기존 OBS 스트리밍은 시도
@@ -440,11 +475,17 @@ func StreamControlHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var body struct {
-		Action string `json:"action"`
+		Action           string `json:"action"`
+		IncludeThumbnail *bool  `json:"includeThumbnail"`
+		IsTest           bool   `json:"isTest"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
+	}
+	includeThumbnail := true
+	if body.IncludeThumbnail != nil {
+		includeThumbnail = *body.IncludeThumbnail
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -464,16 +505,24 @@ func StreamControlHandler(w http.ResponseWriter, r *http.Request) {
 			ytM := youtube.Get()
 
 			if ytM.IsEnabled() {
-				// 제목 결정
-				title := "라이브 예배"
-				cfg, err := thumbnail.LoadConfig()
-				if err == nil {
-					_, t := cfg.ResolveTheme("main_worship", time.Now())
-					title = t
+				var title, worshipType, description string
+				if body.IsTest {
+					// 테스트 방송 — 실제 예배 테마/썸네일과 분리, 제목으로 바로 구분 가능하게
+					title = "TEST " + time.Now().Format("2006-01-02 15:04")
+				} else {
+					// 예배 종류 판별 (오늘 요일의 스케줄 항목 기준 — 하드코딩 금지)
+					worshipType = resolveCurrentWorshipType()
+					title = "라이브 예배"
+					cfg, err := thumbnail.LoadConfig()
+					if err == nil {
+						_, t := cfg.ResolveTheme(worshipType, time.Now())
+						title = t
+						description = cfg.ResolveDescription(worshipType, time.Now())
+					}
 				}
 
 				// YouTube 방송 생성 + 스트림 키 바인딩
-				server, key, broadcastID, err := youtube.CreateBroadcastAndBind(title)
+				server, key, broadcastID, err := youtube.CreateBroadcastAndBind(title, description)
 				if err != nil {
 					log.Printf("[stream] YouTube 방송 생성 실패: %v — OBS만 시작", err)
 					obsM.StartStreaming()
@@ -482,8 +531,10 @@ func StreamControlHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				log.Printf("[stream] YouTube 방송 준비 완료: %s", broadcastID)
 
-				// 썸네일
-				GenerateAndUploadThumbnailTo("main_worship", broadcastID)
+				// 썸네일 (테스트 방송이거나 사용자가 끈 경우 스킵)
+				if includeThumbnail && !body.IsTest {
+					GenerateAndUploadThumbnailTo(worshipType, broadcastID)
+				}
 
 				// OBS 스트리밍 중이면 중지
 				if obsM.GetStreamStatus().Active {

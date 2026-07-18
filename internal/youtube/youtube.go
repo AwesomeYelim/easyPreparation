@@ -205,8 +205,8 @@ func UploadThumbnailToBroadcast(broadcastID, imagePath string) error {
 	return nil
 }
 
-// UpdateBroadcastTitle — 현재 활성/예정 라이브 방송의 제목을 변경
-func UpdateBroadcastTitle(title string) error {
+// UpdateBroadcastTitle — 현재 활성/예정 라이브 방송의 제목·설명을 변경
+func UpdateBroadcastTitle(title, description string) error {
 	m := Get()
 	m.mu.Lock()
 	svc := m.service
@@ -237,6 +237,7 @@ func UpdateBroadcastTitle(title string) error {
 
 	broadcast := resp.Items[0]
 	broadcast.Snippet.Title = title
+	broadcast.Snippet.Description = description
 
 	_, err = svc.LiveBroadcasts.Update([]string{"snippet"}, broadcast).Do()
 	if err != nil {
@@ -273,7 +274,7 @@ func UpdateBroadcastTitleByID(broadcastID, title string) error {
 
 // CreateBroadcastAndBind — YouTube 라이브 방송 생성 + 스트림 바인딩 + 스트림 키 반환
 // 완전 자동화: 방송 생성 → 스트림 연결 → OBS에서 송출하면 라이브
-func CreateBroadcastAndBind(title string) (server string, key string, broadcastID string, err error) {
+func CreateBroadcastAndBind(title, description string) (server string, key string, broadcastID string, err error) {
 	m := Get()
 	m.mu.Lock()
 	svc := m.service
@@ -356,6 +357,7 @@ func CreateBroadcastAndBind(title string) (server string, key string, broadcastI
 			bcStatus := bc.Status
 			bc.Status = nil // Status 포함 시 400 unexpectedPart 에러 발생
 			bc.Snippet.Title = title
+			bc.Snippet.Description = description
 			bc.ContentDetails.EnableAutoStart = true
 			bc.ContentDetails.EnableAutoStop = true
 			bc.ContentDetails.ForceSendFields = append(bc.ContentDetails.ForceSendFields, "BroadcastStreamDelayMs", "EnableAutoStart", "EnableAutoStop")
@@ -383,6 +385,7 @@ func CreateBroadcastAndBind(title string) (server string, key string, broadcastI
 	broadcast, err := svc.LiveBroadcasts.Insert([]string{"snippet", "status", "contentDetails"}, &yt.LiveBroadcast{
 		Snippet: &yt.LiveBroadcastSnippet{
 			Title:              title,
+			Description:        description,
 			ScheduledStartTime: now.Format(time.RFC3339),
 		},
 		Status: &yt.LiveBroadcastStatus{

@@ -116,8 +116,9 @@ type ThumbnailConfig struct {
 
 // DefaultTheme — 예배 유형별 기본 테마
 type DefaultTheme struct {
-	Background  string `json:"background"`
-	TitleFormat string `json:"titleFormat"`
+	Background        string `json:"background"`
+	TitleFormat       string `json:"titleFormat"`
+	DescriptionFormat string `json:"descriptionFormat,omitempty"`
 }
 
 // SpecialDate — 기념 주일 설정
@@ -190,6 +191,15 @@ func (c *ThumbnailConfig) ResolveTheme(worshipType string, date time.Time) (bgPa
 	}
 
 	return "", FormatTitle("{month}월 {weekOrd} 예배", date)
+}
+
+// ResolveDescription — 예배 유형 + 날짜로 유튜브 방송 설명(description) 결정
+// 예배 유형별 descriptionFormat이 없으면 빈 문자열 (제목과 달리 필수 아님)
+func (c *ThumbnailConfig) ResolveDescription(worshipType string, date time.Time) string {
+	if d, ok := c.Defaults[worshipType]; ok && d.DescriptionFormat != "" {
+		return FormatTitle(d.DescriptionFormat, date)
+	}
+	return ""
 }
 
 // FormatTitle — titleFormat 변수를 실제 값으로 치환

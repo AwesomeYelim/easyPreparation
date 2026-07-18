@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, useLayoutEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil"; // eslint-disable-line @typescript-eslint/no-unused-vars
-import { displayItemsState, sequencePanelOpenState, itemTimersState, displayPositionState, inspectorTabState, displaySubPageState, scheduleActiveState } from "@/recoilState";
+import { displayItemsState, sequencePanelOpenState, itemTimersState, displayPositionState, inspectorTabState, displaySubPageState, scheduleActiveState, includeThumbnailOnStreamState } from "@/recoilState";
 import { apiClient, openDisplayWindow } from "@/lib/apiClient";
 import { WorshipOrderItem, OBSStatus, StreamStatus } from "@/types";
 import { useWS } from "@/components/WebSocketProvider";
@@ -23,6 +23,7 @@ export default function ProSequencePanel() {
   const [subPageIdx, setSubPageIdx] = useRecoilState(displaySubPageState);
   const [obsStatus, setObsStatus] = useState<OBSStatus>({ connected: false, currentScene: "" });
   const [streamStatus, setStreamStatus] = useState<StreamStatus>({ active: false, reconnecting: false, timecode: "", bytesSent: 0 });
+  const includeThumbnail = useRecoilValue(includeThumbnailOnStreamState);
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
   const [loadingMsg, setLoadingMsg] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
@@ -203,7 +204,13 @@ export default function ProSequencePanel() {
   // --- Stream toggle ---
   const handleStreamToggle = useCallback(() => {
     const action = streamStatus.active ? "stop" : "start";
-    apiClient.streamControl(action);
+    apiClient.streamControl(action, includeThumbnail);
+  }, [streamStatus.active, includeThumbnail]);
+
+  // --- 테스트 방송 (썸네일 없이, 제목 "TEST ...") ---
+  const handleTestStream = useCallback(() => {
+    if (streamStatus.active) return;
+    apiClient.streamControl("start", false, true);
   }, [streamStatus.active]);
 
   // --- Drag & drop ---
@@ -386,6 +393,15 @@ export default function ProSequencePanel() {
               <span className="text-[10px] text-pro-text-dim/40 px-2">Pro</span>
             }
           >
+            {!streamStatus.active && (
+              <button
+                className="px-2 py-1 text-[10px] font-semibold rounded cursor-pointer flex-shrink-0 bg-pro-elevated text-pro-text-dim border border-pro-border hover:bg-pro-hover hover:text-pro-text"
+                onClick={handleTestStream}
+                title="썸네일 없이 'TEST' 제목으로 방송 시작 (테스트용)"
+              >
+                테스트 방송
+              </button>
+            )}
             <button
               className={`px-2 py-1 text-[10px] font-semibold rounded cursor-pointer flex-shrink-0 ${
                 streamStatus.active
