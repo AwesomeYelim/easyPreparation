@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { WorshipOrderItem } from "@/types";
-import { deleteNode, insertSiblingNode } from "@/lib/treeUtils";
+import { deleteNode, insertSiblingNode, rekeyChildren, replaceChildren } from "@/lib/treeUtils";
 import ConfirmModal from "@/components/ConfirmModal";
 import EditChildNews from "./EditChildNews";
 
@@ -70,6 +70,20 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
     }
   };
 
+  // 대순서(depth 0) 항목 순서 변경 — 형제 배열 내 위치 swap 후 key 재부여
+  const moveTopLevel = (index: number, direction: -1 | 1) => {
+    if (!selectedDetail?.children) return;
+    const targetIdx = index + direction;
+    if (targetIdx < 0 || targetIdx >= selectedDetail.children.length) return;
+
+    const arr = [...selectedDetail.children];
+    [arr[index], arr[targetIdx]] = [arr[targetIdx], arr[index]];
+    const rekeyed = rekeyChildren(selectedDetail.key, arr);
+
+    setSelectedDetail((prev) => (prev ? { ...prev, children: rekeyed } : prev));
+    setSelectedItems((prevItems) => replaceChildren(prevItems, selectedDetail.key, rekeyed));
+  };
+
   const toggleExpand = (key: string) => {
     setExpandedKeys((prev) => {
       const newKeys = new Set(prev);
@@ -110,6 +124,30 @@ const ChurchNews = ({ handleValueChange, selectedDetail, setSelectedDetail, setS
                 fontSize: depth === 0 ? "14px" : "13px",
               }}>
               {depthLabel}{news.title}
+              {depth === 0 && (
+                <>
+                  <button
+                    disabled={i === 0}
+                    className="flex items-center justify-center bg-transparent border-none cursor-pointer transition-colors flex-shrink-0 rounded-full hover:bg-white/10 p-0.5 disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent"
+                    title="위로 이동"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      moveTopLevel(i, -1);
+                    }}>
+                    <span className="w-4 h-4 flex items-center justify-center text-white text-[10px] pointer-events-none">▲</span>
+                  </button>
+                  <button
+                    disabled={i === newsList.length - 1}
+                    className="flex items-center justify-center bg-transparent border-none cursor-pointer transition-colors flex-shrink-0 rounded-full hover:bg-white/10 p-0.5 disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent"
+                    title="아래로 이동"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      moveTopLevel(i, 1);
+                    }}>
+                    <span className="w-4 h-4 flex items-center justify-center text-white text-[10px] pointer-events-none">▼</span>
+                  </button>
+                </>
+              )}
               <button
                 className="flex items-center justify-center bg-transparent border-none cursor-pointer transition-colors ml-1 flex-shrink-0 rounded-full hover:bg-white/10 p-0.5"
                 onClick={(e) => {
