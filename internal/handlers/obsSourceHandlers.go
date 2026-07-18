@@ -152,8 +152,13 @@ func syncYouTubeStreamKeyNow() {
 	// YouTube 미연결 또는 키 조회 실패 → 기존 서버/키 보존하며 rtmp_custom 전환 (broadcast_id 유지)
 	server, key, err := obsM.GetStreamServiceSettings()
 	if err != nil {
-		log.Printf("[obs] 기존 스트림 설정 조회 실패, 빈 값으로 전환: %v", err)
-		server, key = "", ""
+		log.Printf("[obs] 기존 스트림 설정 조회 실패 — 동기화 스킵 (빈 값으로 덮어쓰지 않음): %v", err)
+		return
+	}
+	if server == "" {
+		// 스트림 서비스가 한 번도 설정된 적 없음 — 빈 URL로 덮어쓰면 "구성 URL 없음" 오류 발생
+		log.Printf("[obs] 기존 스트림 서버 URL 없음 — 동기화 스킵 (수동 설정 또는 YouTube 연결 필요)")
+		return
 	}
 	if err := obsM.SyncStreamSettingsKeepBroadcastID(server, key); err != nil {
 		log.Printf("[obs] OBS rtmp_custom 전환 실패: %v", err)

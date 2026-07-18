@@ -19,7 +19,20 @@ var serviceWorkerJS string
 var mobileRemoteHTML string
 
 // getLocalIP — 로컬 WiFi/LAN IP 감지 (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+// 실제 아웃바운드 라우팅에 쓰이는 인터페이스를 우선 사용 — 인터페이스 열거 순서(net.Interfaces)에만
+// 의존하면 카메라 등 전용 장비용 고정 IP 유선 어댑터를 라우팅 우선순위와 무관하게 먼저 골라버려,
+// 정작 휴대폰이 붙어있는 Wi-Fi 대역과 다른 IP를 QR에 넣는 문제가 있었음
 func getLocalIP() string {
+	if conn, err := net.Dial("udp", "8.8.8.8:80"); err == nil {
+		defer conn.Close()
+		if udpAddr, ok := conn.LocalAddr().(*net.UDPAddr); ok && udpAddr.IP != nil {
+			if ip := udpAddr.IP.To4(); ip != nil && !ip.IsLoopback() {
+				return ip.String()
+			}
+		}
+	}
+
+	// 폴백: 라우팅 조회 실패 시 인터페이스 순회
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return "localhost"
