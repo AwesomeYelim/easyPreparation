@@ -611,7 +611,12 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 			})
 			delete(item, "sections")  // stale sections 강제 제거 (loadCurrentOrder와 동일)
 			delete(item, "lyricsMap") // stale lyricsMap 강제 제거
-			order[i] = preprocessItem(item)
+			info, _ := item["info"].(string)
+			if info == "lyrics_display" {
+				order[i] = preprocessLyricsItem(item)
+			} else {
+				order[i] = preprocessItem(item)
+			}
 		}
 	}
 
@@ -1581,6 +1586,10 @@ func buildTextSections(pages []string) []map[string]interface{} {
 func preprocessLyricsItem(song map[string]interface{}) map[string]interface{} {
 	title, _ := song["title"].(string)
 	lyrics, _ := song["lyrics"].(string)
+	if lyrics == "" {
+		// 이미 전처리된 항목(재전처리 시 "lyrics" 없이 "contents"만 존재) 대응 — idempotent 처리
+		lyrics, _ = song["contents"].(string)
+	}
 	bpm := 0
 	switch v := song["bpm"].(type) {
 	case float64:
