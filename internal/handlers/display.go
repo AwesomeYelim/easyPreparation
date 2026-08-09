@@ -1286,21 +1286,28 @@ func refreshDisplayIfNeeded(configItems []map[string]interface{}) {
 		orderMu.RUnlock()
 		return
 	}
-	// 현재 display 항목의 title→index 맵
+	// 현재 display 항목의 key→index 맵 (title은 "찬송"처럼 같은 항목이 여러 개 있을 수 있어 매칭 키로 부적합)
 	displayMap := make(map[string]int)
 	for i, item := range currentOrder {
-		title, _ := item["title"].(string)
-		if _, exists := displayMap[title]; !exists {
-			displayMap[title] = i
+		key, _ := item["key"].(string)
+		if key == "" {
+			continue
+		}
+		if _, exists := displayMap[key]; !exists {
+			displayMap[key] = i
 		}
 	}
 	orderMu.RUnlock()
 
 	var changed bool
 	for _, cfgItem := range configItems {
+		key, _ := cfgItem["key"].(string)
 		title, _ := cfgItem["title"].(string)
 		cfgObj, _ := cfgItem["obj"].(string)
-		displayIdx, exists := displayMap[title]
+		if key == "" {
+			continue
+		}
+		displayIdx, exists := displayMap[key]
 		if !exists {
 			continue
 		}

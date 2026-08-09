@@ -657,6 +657,20 @@ func mapWorshipItemsForBulletin(items []bulletinWorshipItem) (
 	// content도 who도 없는 중복 순서 항목 필터용 (e.g. 프로젝터 전용 슬라이드가 두 번 들어온 경우)
 	seenTitles := map[string]bool{}
 
+	// b_edit 항목의 obj가 "책이름_북코드/장:절" 내부 저장 형식이면 사람이 읽는 형식으로 변환하고,
+	// 그 obj 기준으로 성경 본문을 다시 조회해 contents를 최신 상태로 맞춘다.
+	// (BibleSelect에서 구절만 바꾸고 저장하면 contents는 이전 구절 그대로 남는 문제 수정)
+	for i := range items {
+		if strings.HasPrefix(items[i].Info, "b_") && strings.Contains(items[i].Obj, "_") {
+			if text, humanRef := fetchBibleTextWithVersion(items[i].Obj, 1); humanRef != "" {
+				items[i].Obj = humanRef
+				if text != "" {
+					items[i].Contents = text
+				}
+			}
+		}
+	}
+
 	for _, item := range items {
 		title := strings.TrimSpace(item.Title)
 		obj := strings.TrimSpace(item.Obj)
