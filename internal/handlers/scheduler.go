@@ -265,9 +265,10 @@ func executeSchedule(entry ScheduleEntry, autoStream bool) {
 			title := entry.Label
 			description := ""
 			if cfg != nil {
-				_, t := cfg.ResolveTheme(entry.WorshipType, time.Now())
+				sermonTitle, scripture := sermonDataForWorship(entry.WorshipType)
+				_, t := cfg.ResolveTheme(entry.WorshipType, time.Now(), sermonTitle, scripture)
 				title = t
-				description = cfg.ResolveDescription(entry.WorshipType, time.Now())
+				description = cfg.ResolveDescription(entry.WorshipType, time.Now(), sermonTitle, scripture)
 			}
 
 			// YouTube 방송 생성 + 스트림 바인딩
@@ -477,6 +478,7 @@ func StreamControlHandler(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Action           string `json:"action"`
 		IncludeThumbnail *bool  `json:"includeThumbnail"`
+		IncludeTitle     *bool  `json:"includeTitle"`
 		IsTest           bool   `json:"isTest"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -486,6 +488,10 @@ func StreamControlHandler(w http.ResponseWriter, r *http.Request) {
 	includeThumbnail := true
 	if body.IncludeThumbnail != nil {
 		includeThumbnail = *body.IncludeThumbnail
+	}
+	includeTitle := true
+	if body.IncludeTitle != nil {
+		includeTitle = *body.IncludeTitle
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -513,11 +519,15 @@ func StreamControlHandler(w http.ResponseWriter, r *http.Request) {
 					// 예배 종류 판별 (오늘 요일의 스케줄 항목 기준 — 하드코딩 금지)
 					worshipType = resolveCurrentWorshipType()
 					title = "라이브 예배"
-					cfg, err := thumbnail.LoadConfig()
-					if err == nil {
-						_, t := cfg.ResolveTheme(worshipType, time.Now())
-						title = t
-						description = cfg.ResolveDescription(worshipType, time.Now())
+					// 제목 자동 생성 (사용자가 끈 경우 기본 제목 유지)
+					if includeTitle {
+						cfg, err := thumbnail.LoadConfig()
+						if err == nil {
+							sermonTitle, scripture := sermonDataForWorship(worshipType)
+							_, t := cfg.ResolveTheme(worshipType, time.Now(), sermonTitle, scripture)
+							title = t
+							description = cfg.ResolveDescription(worshipType, time.Now(), sermonTitle, scripture)
+						}
 					}
 				}
 

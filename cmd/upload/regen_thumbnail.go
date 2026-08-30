@@ -37,7 +37,14 @@ func main() {
 	}
 
 	for _, t := range targets {
-		bgPath, _ := cfg.ResolveTheme(t.worshipType, t.date)
+		sermonTitle, scripture := loadSermon(t.worshipType)
+		// after_worship 실제 본문 수동 지정 (config가 다른 날짜 데이터)
+		if t.worshipType == "after_worship" {
+			sermonTitle = "고린도후서 1:17-20"
+			scripture = "고린도후서 1:17-20"
+		}
+
+		bgPath, _ := cfg.ResolveTheme(t.worshipType, t.date, sermonTitle, scripture)
 		if bgPath != "" && !filepath.IsAbs(bgPath) {
 			cwd, _ := os.Getwd()
 			bgPath = filepath.Join(cwd, bgPath)
@@ -49,13 +56,6 @@ func main() {
 
 		labels := map[string]string{"main_worship": "주일예배", "after_worship": "오후예배"}
 		dateLabel := t.date.Format("06.01.02") + " " + labels[t.worshipType]
-
-		sermonTitle, scripture := loadSermon(t.worshipType)
-		// after_worship 실제 본문 수동 지정 (config가 다른 날짜 데이터)
-		if t.worshipType == "after_worship" {
-			sermonTitle = "고린도후서 1:17-20"
-			scripture = "고린도후서 1:17-20"
-		}
 		logoPath := findLogo()
 
 		ts := &thumbnail.TextStyles{

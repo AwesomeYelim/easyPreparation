@@ -159,8 +159,14 @@ export const scheduleActiveState = atom<boolean>({
   default: false,
 });
 
-// 방송 시작 시 유튜브 썸네일/제목 자동 생성 여부 — Studio 썸네일 탭 ↔ 방송 시작 버튼 공유
+// 방송 시작 시 유튜브 썸네일 자동 생성 여부 — Studio 썸네일 탭 ↔ 방송 시작 버튼 공유
 export const includeThumbnailOnStreamState = atom<boolean>({
   key: "includeThumbnailOnStreamState",
+  default: true,
+});
+
+// 방송 시작 시 유튜브 제목·설명 자동 생성 여부 — 썸네일과 독립적으로 on/off
+export const includeTitleOnStreamState = atom<boolean>({
+  key: "includeTitleOnStreamState",
   default: true,
 });

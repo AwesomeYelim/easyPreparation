@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, useLayoutEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil"; // eslint-disable-line @typescript-eslint/no-unused-vars
-import { displayItemsState, sequencePanelOpenState, itemTimersState, displayPositionState, inspectorTabState, displaySubPageState, scheduleActiveState, includeThumbnailOnStreamState } from "@/recoilState";
+import { displayItemsState, sequencePanelOpenState, itemTimersState, displayPositionState, inspectorTabState, displaySubPageState, scheduleActiveState, includeThumbnailOnStreamState, includeTitleOnStreamState } from "@/recoilState";
 import { apiClient, openDisplayWindow } from "@/lib/apiClient";
 import { WorshipOrderItem, OBSStatus, StreamStatus } from "@/types";
 import { useWS } from "@/components/WebSocketProvider";
@@ -24,6 +24,7 @@ export default function ProSequencePanel() {
   const [obsStatus, setObsStatus] = useState<OBSStatus>({ connected: false, currentScene: "" });
   const [streamStatus, setStreamStatus] = useState<StreamStatus>({ active: false, reconnecting: false, timecode: "", bytesSent: 0 });
   const includeThumbnail = useRecoilValue(includeThumbnailOnStreamState);
+  const includeTitle = useRecoilValue(includeTitleOnStreamState);
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
   const [loadingMsg, setLoadingMsg] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
@@ -204,8 +205,8 @@ export default function ProSequencePanel() {
   // --- Stream toggle ---
   const handleStreamToggle = useCallback(() => {
     const action = streamStatus.active ? "stop" : "start";
-    apiClient.streamControl(action, includeThumbnail);
-  }, [streamStatus.active, includeThumbnail]);
+    apiClient.streamControl(action, includeThumbnail, false, includeTitle);
+  }, [streamStatus.active, includeThumbnail, includeTitle]);
 
   // --- 테스트 방송 (썸네일 없이, 제목 "TEST ...") ---
   const handleTestStream = useCallback(() => {

@@ -45,9 +45,9 @@ export default function InspectorYoutubeTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="text-[10px] text-[#888]">
-        방송 시작 시 유튜브에 자동 반영되는 제목·설명 템플릿입니다. 매번 직접 입력할 필요 없이 아래 변수가 자동으로 채워집니다.
+        방송 시작 시 유튜브에 자동 반영되는 제목·설명 템플릿입니다. 매번 직접 입력할 필요 없이 아래 변수가 자동으로 채워집니다. ({"{sermonTitle}"}=말씀 제목, {"{scripture}"}=성경봉독 — 예배 순서에 값이 없으면 빈 문자열로 대체됩니다)
         <div className="mt-1 flex flex-wrap gap-1">
-          {["{year}", "{month}", "{day}", "{weekOrd}"].map((v) => (
+          {["{year}", "{month}", "{day}", "{weekOrd}", "{sermonTitle}", "{scripture}"].map((v) => (
             <code key={v} className="px-1.5 py-0.5 bg-white/10 rounded text-[9px] text-[#9ac2ff]">{v}</code>
           ))}
         </div>
@@ -66,7 +66,7 @@ export default function InspectorYoutubeTab() {
               <input
                 type="text"
                 value={titleFormat}
-                placeholder="예: {month}월 {weekOrd} 주일예배"
+                placeholder="예: {month}월 {weekOrd} 주일예배 / {sermonTitle} - {scripture}"
                 onChange={(e) => updateField(key, "titleFormat", e.target.value)}
                 className={inputClass}
               />

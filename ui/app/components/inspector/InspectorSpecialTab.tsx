@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRecoilValue, useRecoilState } from "recoil";
 import { apiClient } from "@/lib/apiClient";
 import { ThumbnailConfig, TextStyles, TextStyle, WorshipOrderItem } from "@/types";
-import { worshipOrderState, WorshipType, includeThumbnailOnStreamState } from "@/recoilState";
+import { worshipOrderState, WorshipType, includeThumbnailOnStreamState, includeTitleOnStreamState } from "@/recoilState";
 import { useAutoSave } from "./useAutoSave";
 import { formatBibleReference } from "@/lib/bibleUtils";
 import DarkImageDropZone from "./DarkImageDropZone";
@@ -370,6 +370,7 @@ export default function InspectorSpecialTab() {
   const [thumbConfig, setThumbConfig] = useState<ThumbnailConfig | null>(null);
   const worshipOrder = useRecoilValue(worshipOrderState);
   const [includeThumbnailOnStream, setIncludeThumbnailOnStream] = useRecoilState(includeThumbnailOnStreamState);
+  const [includeTitleOnStream, setIncludeTitleOnStream] = useRecoilState(includeTitleOnStreamState);
 
   // 썸네일 로고 설정 (thumbConfig에서 직접 읽음)
   const thumbLogoPos = thumbConfig?.logoPosition ?? "bottom-right";
@@ -632,7 +633,7 @@ export default function InspectorSpecialTab() {
 
   return (
     <div className="flex flex-col gap-3">
-      {/* ── 방송 시작 시 자동 생성 여부 ── */}
+      {/* ── 방송 시작 시 자동 생성 여부 (썸네일/제목 독립 토글) ── */}
       <label className="flex items-center gap-2 text-[10px] text-pro-text cursor-pointer px-2 py-1.5 bg-white/5 rounded-md border border-white/10">
         <input
           type="checkbox"
@@ -640,7 +641,16 @@ export default function InspectorSpecialTab() {
           onChange={(e) => setIncludeThumbnailOnStream(e.target.checked)}
           className="w-3 h-3"
         />
-        방송 시작 시 유튜브 썸네일 · 제목 자동 생성
+        방송 시작 시 유튜브 썸네일 자동 생성
+      </label>
+      <label className="flex items-center gap-2 text-[10px] text-pro-text cursor-pointer px-2 py-1.5 bg-white/5 rounded-md border border-white/10">
+        <input
+          type="checkbox"
+          checked={includeTitleOnStream}
+          onChange={(e) => setIncludeTitleOnStream(e.target.checked)}
+          className="w-3 h-3"
+        />
+        방송 시작 시 유튜브 제목 · 설명 자동 생성
       </label>
 
       {/* ── 예배 타입 + 날짜 선택 ── */}

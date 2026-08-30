@@ -57,7 +57,8 @@ func main() {
 	if title == "" {
 		cfg, err := thumbnail.LoadConfig()
 		if err == nil {
-			_, title = cfg.ResolveTheme(*worshipType, date)
+			sermonTitle, scripture := loadSermonFromConfig(*worshipType)
+			_, title = cfg.ResolveTheme(*worshipType, date, sermonTitle, scripture)
 		}
 	}
 	if title == "" {
@@ -83,7 +84,10 @@ func generateThumb(worshipType string, date time.Time) (string, error) {
 		return "", fmt.Errorf("설정 로드 실패: %w", err)
 	}
 
-	bgPath, _ := cfg.ResolveTheme(worshipType, date)
+	// config 파일에서 말씀 제목 + 성경봉독 로드
+	sermonTitle, scripture := loadSermonFromConfig(worshipType)
+
+	bgPath, _ := cfg.ResolveTheme(worshipType, date, sermonTitle, scripture)
 
 	// 상대 경로 → 절대 경로 변환
 	if bgPath != "" && !filepath.IsAbs(bgPath) {
@@ -117,9 +121,6 @@ func generateThumb(worshipType string, date time.Time) (string, error) {
 		}
 	}
 	dateLabel := date.Format("06.01.02") + " " + typeLabel
-
-	// config 파일에서 말씀 제목 + 성경봉독 로드
-	sermonTitle, scripture := loadSermonFromConfig(worshipType)
 
 	logoPath := findLogoPath()
 

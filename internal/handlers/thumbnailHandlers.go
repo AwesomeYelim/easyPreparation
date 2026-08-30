@@ -88,6 +88,18 @@ func loadSermonDataFromConfig(configPath string) (sermonTitle, scripture string)
 	return
 }
 
+// sermonDataForWorship — worshipType으로 config/{worshipType}.json 경로를 구성해 말씀 제목·성경봉독 로드
+func sermonDataForWorship(worshipType string) (sermonTitle, scripture string) {
+	execPath := path.ExecutePath("easyPreparation")
+	configPath := filepath.Join(execPath, "config", filepath.Base(worshipType)+".json")
+	return loadSermonDataFromConfig(configPath)
+}
+
+// SermonDataForWorship — sermonDataForWorship의 외부 패키지용 공개 래퍼
+func SermonDataForWorship(worshipType string) (sermonTitle, scripture string) {
+	return sermonDataForWorship(worshipType)
+}
+
 // ThumbnailGenerateHandler — POST /api/thumbnail/generate
 // {worshipType: "main_worship", date?: "2026-04-05"}
 func ThumbnailGenerateHandler(w http.ResponseWriter, r *http.Request) {
@@ -134,8 +146,11 @@ func ThumbnailGenerateHandler(w http.ResponseWriter, r *http.Request) {
 			// 방송 제목 변경
 			cfg, _ := thumbnail.LoadConfig()
 			if cfg != nil {
-				_, title := cfg.ResolveTheme(body.WorshipType, date)
-				description := cfg.ResolveDescription(body.WorshipType, date)
+				sermonTitle, scripture := sermonDataForWorship(body.WorshipType)
+				if body.MainText != "" { sermonTitle = body.MainText }
+				if body.FooterText != "" { scripture = body.FooterText }
+				_, title := cfg.ResolveTheme(body.WorshipType, date, sermonTitle, scripture)
+				description := cfg.ResolveDescription(body.WorshipType, date, sermonTitle, scripture)
 				if err := youtube.UpdateBroadcastTitle(title, description); err != nil {
 					log.Printf("[thumbnail] YouTube 제목 변경 실패: %v", err)
 				}
@@ -250,8 +265,14 @@ func generateThumbnailWithOverridesAt(worshipType string, date time.Time, header
 	if err != nil {
 		return "", fmt.Errorf("설정 로드 실패: %w", err)
 	}
-	bgPath, _ := cfg.ResolveTheme(worshipType, date)
 	execPath := path.ExecutePath("easyPreparation")
+	// sermon
+	configPath := filepath.Join(execPath, "config", worshipType+".json")
+	sermonTitle, scripture := loadSermonDataFromConfig(configPath)
+	if mainText != "" { sermonTitle = mainText }
+	if footerText != "" { scripture = footerText }
+
+	bgPath, _ := cfg.ResolveTheme(worshipType, date, sermonTitle, scripture)
 	if bgPath != "" && !filepath.IsAbs(bgPath) {
 		bgPath = filepath.Join(execPath, bgPath)
 	}
@@ -265,11 +286,6 @@ func generateThumbnailWithOverridesAt(worshipType string, date time.Time, header
 		if typeLabel == "" { typeLabel = "예배" }
 		dateLabel = date.Format("06.01.02") + " " + typeLabel
 	}
-	// sermon
-	configPath := filepath.Join(execPath, "config", worshipType+".json")
-	sermonTitle, scripture := loadSermonDataFromConfig(configPath)
-	if mainText != "" { sermonTitle = mainText }
-	if footerText != "" { scripture = footerText }
 	// logo
 	logoPath, logoPosition, logoSizePercent := "", cfg.LogoPosition, cfg.LogoSizePercent
 	for _, ext := range []string{"png", "jpg", "jpeg", "svg"} {
@@ -444,19 +460,9 @@ func isSubPath(base, target string) bool {
 	return strings.HasPrefix(absTarget, absBase+string(filepath.Separator))
 }
 
-// GenerateAndUploadThumbnail — 스케줄러에서 호출하는 공개 함수
-// 썸네일 생성 + YouTube 업로드 + 방송 제목 변경
+// GenerateAndUploadThumbnail — 스케줄러에서 호출하는 공개 함수 (썸네일 생성 + 업로드만, 제목과 독립)
 func GenerateAndUploadThumbnail(worshipType string) {
 	date := time.Now()
-
-	// 설정에서 제목 가져오기
-	cfg, err := thumbnail.LoadConfig()
-	if err != nil {
-		log.Printf("[thumbnail] 설정 로드 실패: %v", err)
-		return
-	}
-	_, title := cfg.ResolveTheme(worshipType, date)
-	description := cfg.ResolveDescription(worshipType, date)
 
 	outPath, err := generateThumbnail(worshipType, date)
 	if err != nil {
@@ -464,11 +470,6 @@ func GenerateAndUploadThumbnail(worshipType string) {
 		return
 	}
 	log.Printf("[thumbnail] 생성 완료: %s", outPath)
-
-	// YouTube 방송 제목·설명 변경
-	if err := youtube.UpdateBroadcastTitle(title, description); err != nil {
-		log.Printf("[thumbnail] YouTube 제목 변경 실패: %v", err)
-	}
 
 	// YouTube 썸네일 업로드
 	if err := youtube.UploadThumbnail(outPath); err != nil {
@@ -643,18 +644,10 @@ func ThumbnailGeneratedFileHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filePath)
 }
 
-// GenerateAndUploadThumbnailTo — 특정 broadcastID에 썸네일 생성 + 업로드
+// GenerateAndUploadThumbnailTo — 특정 broadcastID에 썸네일 생성 + 업로드만 (제목과 독립)
 // setup-obs에서 방송 생성 직후(upcoming 상태) 호출 → 확실히 반영됨
 func GenerateAndUploadThumbnailTo(worshipType, broadcastID string) {
 	date := time.Now()
-
-	cfg, err := thumbnail.LoadConfig()
-	if err != nil {
-		log.Printf("[thumbnail] 설정 로드 실패: %v", err)
-		return
-	}
-	_, title := cfg.ResolveTheme(worshipType, date)
-	description := cfg.ResolveDescription(worshipType, date)
 
 	outPath, err := generateThumbnail(worshipType, date)
 	if err != nil {
@@ -662,11 +655,6 @@ func GenerateAndUploadThumbnailTo(worshipType, broadcastID string) {
 		return
 	}
 	log.Printf("[thumbnail] 생성 완료: %s", outPath)
-
-	// 방송 제목·설명 변경
-	if err := youtube.UpdateBroadcastTitle(title, description); err != nil {
-		log.Printf("[thumbnail] YouTube 제목 변경 실패: %v", err)
-	}
 
 	// 특정 broadcastID에 썸네일 업로드 (upcoming 상태에서 호출 → 확실히 반영)
 	if err := youtube.UploadThumbnailToBroadcast(broadcastID, outPath); err != nil {

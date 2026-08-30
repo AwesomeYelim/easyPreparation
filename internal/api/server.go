@@ -289,7 +289,8 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 		// YouTube 방송 생성 + 스트림 바인딩
 		description := ""
 		if cfg, cErr := thumbnail.LoadConfig(); cErr == nil {
-			description = cfg.ResolveDescription(worshipType, time.Now())
+			sermonTitle, scripture := handlers.SermonDataForWorship(worshipType)
+			description = cfg.ResolveDescription(worshipType, time.Now(), sermonTitle, scripture)
 		}
 		server, key, broadcastID, err := youtube.CreateBroadcastAndBind(title, description)
 		if err != nil {

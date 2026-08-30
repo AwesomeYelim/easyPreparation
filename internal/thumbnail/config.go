@@ -160,8 +160,8 @@ func SaveConfig(cfg *ThumbnailConfig) error {
 	return os.WriteFile(thumbnailConfigPath(), data, 0644)
 }
 
-// ResolveTheme — 예배 유형 + 날짜로 배경/타이틀 결정 (기념 주일은 주일예배만 적용)
-func (c *ThumbnailConfig) ResolveTheme(worshipType string, date time.Time) (bgPath, title string) {
+// ResolveTheme — 예배 유형 + 날짜 + 말씀 제목/성경봉독으로 배경/타이틀 결정 (기념 주일은 주일예배만 적용)
+func (c *ThumbnailConfig) ResolveTheme(worshipType string, date time.Time, sermonTitle, scripture string) (bgPath, title string) {
 	dateStr := date.Format("2006-01-02")
 
 	// 기념 주일 체크 — main_worship에만 적용
@@ -179,7 +179,7 @@ func (c *ThumbnailConfig) ResolveTheme(worshipType string, date time.Time) (bgPa
 					label = s.Label
 				}
 				// "N월 N째주 {기념예배}" 형식
-				t := FormatTitle("{month}월 {weekOrd} "+label, date)
+				t := FormatTitle("{month}월 {weekOrd} "+label, date, sermonTitle, scripture)
 				return bg, t
 			}
 		}
@@ -187,28 +187,30 @@ func (c *ThumbnailConfig) ResolveTheme(worshipType string, date time.Time) (bgPa
 
 	// 기본 테마
 	if d, ok := c.Defaults[worshipType]; ok {
-		return d.Background, FormatTitle(d.TitleFormat, date)
+		return d.Background, FormatTitle(d.TitleFormat, date, sermonTitle, scripture)
 	}
 
-	return "", FormatTitle("{month}월 {weekOrd} 예배", date)
+	return "", FormatTitle("{month}월 {weekOrd} 예배", date, sermonTitle, scripture)
 }
 
-// ResolveDescription — 예배 유형 + 날짜로 유튜브 방송 설명(description) 결정
+// ResolveDescription — 예배 유형 + 날짜 + 말씀 제목/성경봉독으로 유튜브 방송 설명(description) 결정
 // 예배 유형별 descriptionFormat이 없으면 빈 문자열 (제목과 달리 필수 아님)
-func (c *ThumbnailConfig) ResolveDescription(worshipType string, date time.Time) string {
+func (c *ThumbnailConfig) ResolveDescription(worshipType string, date time.Time, sermonTitle, scripture string) string {
 	if d, ok := c.Defaults[worshipType]; ok && d.DescriptionFormat != "" {
-		return FormatTitle(d.DescriptionFormat, date)
+		return FormatTitle(d.DescriptionFormat, date, sermonTitle, scripture)
 	}
 	return ""
 }
 
-// FormatTitle — titleFormat 변수를 실제 값으로 치환
-func FormatTitle(format string, date time.Time) string {
+// FormatTitle — titleFormat 변수를 실제 값으로 치환 (sermonTitle/scripture는 없으면 빈 문자열로 치환됨)
+func FormatTitle(format string, date time.Time, sermonTitle, scripture string) string {
 	r := strings.NewReplacer(
 		"{year}", fmt.Sprintf("%d", date.Year()),
 		"{month}", fmt.Sprintf("%d", date.Month()),
 		"{day}", fmt.Sprintf("%d", date.Day()),
 		"{weekOrd}", weekOrdinal(date),
+		"{sermonTitle}", sermonTitle,
+		"{scripture}", scripture,
 	)
 	return r.Replace(format)
 }
