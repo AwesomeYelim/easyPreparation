@@ -52,6 +52,7 @@ export default function ProSequencePanel() {
   const idxRef = useRef(idx);
   idxRef.current = idx;
   const dragRef = useRef<{ from: number; wasDragging: boolean } | null>(null);
+  const justJumpedRef = useRef(false);
   const schedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reorderLockRef = useRef(false);
   const reorderSuppressRef = useRef(false);
@@ -155,8 +156,12 @@ export default function ProSequencePanel() {
     return () => clearInterval(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // --- Scroll to active item ---
+  // --- Scroll to active item (자연 진행 시에만 — 사용자가 직접 클릭(jump)한 경우는 스크롤 위치 유지) ---
   useLayoutEffect(() => {
+    if (justJumpedRef.current) {
+      justJumpedRef.current = false;
+      return;
+    }
     const container = listRef.current;
     if (!container) return;
     const el = container.querySelector("[data-active='true']") as HTMLElement | null;
@@ -178,12 +183,14 @@ export default function ProSequencePanel() {
   }, []);
 
   const handleJump = useCallback((index: number) => {
+    justJumpedRef.current = true;
     setIdx(index);
     apiClient.jumpDisplay(index);
     setInspectorTab("preview");
   }, [setInspectorTab]);
 
   const handleSectionJump = useCallback((itemIdx: number, subPage: number) => {
+    justJumpedRef.current = true;
     setIdx(itemIdx);
     setSubPageIdx(subPage);
     apiClient.jumpDisplay(itemIdx, subPage);

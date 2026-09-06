@@ -143,7 +143,10 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 
 								// PTZ 프리셋 자동 이동 — camera 씬으로 전환된 항목에서만
 								// (monitor 씬은 카메라가 화면에 안 보이므로 프리셋을 건드리지 않는다)
-								if title != "" {
+								// 성경/찬송 등 애드혹 추가 항목(source: bible/lyrics)은 예정에 없던 삽입이라
+								// 점프해도 카메라 프리셋을 건드리지 않는다.
+								source := GetCurrentSource()
+								if title != "" && source != "bible" && source != "lyrics" {
 									cfg := obs.Get().GetConfig()
 									if preset, ok := cfg.Presets[title]; ok && preset > 0 && cfg.Scenes[sceneTitle] == cfg.CameraScene {
 										go func(p int) {

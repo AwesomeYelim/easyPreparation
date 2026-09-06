@@ -265,7 +265,7 @@ func executeSchedule(entry ScheduleEntry, autoStream bool) {
 			title := entry.Label
 			description := ""
 			if cfg != nil {
-				sermonTitle, scripture := sermonDataForWorship(entry.WorshipType)
+				sermonTitle, scripture := sermonDataPreferLive(entry.WorshipType)
 				_, t := cfg.ResolveTheme(entry.WorshipType, time.Now(), sermonTitle, scripture)
 				title = t
 				description = cfg.ResolveDescription(entry.WorshipType, time.Now(), sermonTitle, scripture)
@@ -523,7 +523,7 @@ func StreamControlHandler(w http.ResponseWriter, r *http.Request) {
 					if includeTitle {
 						cfg, err := thumbnail.LoadConfig()
 						if err == nil {
-							sermonTitle, scripture := sermonDataForWorship(worshipType)
+							sermonTitle, scripture := sermonDataPreferLive(worshipType)
 							_, t := cfg.ResolveTheme(worshipType, time.Now(), sermonTitle, scripture)
 							title = t
 							description = cfg.ResolveDescription(worshipType, time.Now(), sermonTitle, scripture)

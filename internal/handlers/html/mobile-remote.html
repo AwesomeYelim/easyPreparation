@@ -1302,6 +1302,9 @@ function renderList() {
 }
 
 function highlightCurrent() {
+  // currentIdx가 바뀌면 이전 진행바(item-progress-bar)를 제거 — updateProgressBar()가
+  // id 조회로 재사용하면서 엉뚱한(과거 active였던) 카드에 계속 붙어있는 것을 방지
+  document.querySelectorAll('.item-progress-bar').forEach(function(el) { el.remove(); });
   const allItems = document.querySelectorAll('.order-item');
   allItems.forEach(function(el) {
     const idx = parseInt(el.getAttribute('data-idx'), 10);

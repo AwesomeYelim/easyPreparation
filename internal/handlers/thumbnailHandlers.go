@@ -95,6 +95,24 @@ func sermonDataForWorship(worshipType string) (sermonTitle, scripture string) {
 	return loadSermonDataFromConfig(configPath)
 }
 
+// sermonDataPreferLive — 방송 시작 시점에 실제 Display에 떠 있는 현재 순서(currentOrder)를
+// 우선 사용하고, 값이 없을 때만 config/{worshipType}.json으로 폴백한다.
+// 예배 직전 순서를 라이브에서만 수정하고 config에 저장하지 않은 경우
+// 유튜브 설명란과 Display 내용이 어긋나던 문제를 방지한다.
+func sermonDataPreferLive(worshipType string) (sermonTitle, scripture string) {
+	sermonTitle, scripture = loadSermonDataFromOrder()
+	if sermonTitle == "" || scripture == "" {
+		fbTitle, fbScripture := sermonDataForWorship(worshipType)
+		if sermonTitle == "" {
+			sermonTitle = fbTitle
+		}
+		if scripture == "" {
+			scripture = fbScripture
+		}
+	}
+	return sermonTitle, scripture
+}
+
 // SermonDataForWorship — sermonDataForWorship의 외부 패키지용 공개 래퍼
 func SermonDataForWorship(worshipType string) (sermonTitle, scripture string) {
 	return sermonDataForWorship(worshipType)

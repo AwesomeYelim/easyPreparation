@@ -257,6 +257,17 @@ func GetCurrentInfo() string {
 	return ""
 }
 
+// GetCurrentSource — 현재 항목의 source 필드 조회 ("bible"/"lyrics" — 애드혹 추가 항목 표시)
+func GetCurrentSource() string {
+	orderMu.RLock()
+	defer orderMu.RUnlock()
+	if currentIdx >= 0 && currentIdx < len(currentOrder) {
+		source, _ := currentOrder[currentIdx]["source"].(string)
+		return source
+	}
+	return ""
+}
+
 // ── 서버 사이드 타이머 함수 ──
 
 // calcSlideDelayLocked — 현재 항목/서브페이지에 대한 딜레이(초) 계산
