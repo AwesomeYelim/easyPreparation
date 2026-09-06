@@ -131,23 +131,21 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 							currentIdx := globalObsIdx
 							globalObsIdxMu.Unlock()
 							if currentIdx == capturedIdx {
-								// lyrics_display 항목은 항상 camera 씬
-								title := ""
+								title := GetCurrentTitle()
+								// lyrics_display 항목은 항상 "찬양" 매핑 기준으로 씬 전환
+								sceneTitle := title
 								if info := GetCurrentInfo(); info == "lyrics_display" {
-									obs.Get().SwitchScene("찬양")
-								} else {
-									title = GetCurrentTitle()
-									if title != "" {
-										obs.Get().SwitchScene(title)
-									}
+									sceneTitle = "찬양"
 								}
-								// PTZ 프리셋 자동 이동 (navigate PREV/NEXT)
-								if title == "" {
-									title = GetCurrentTitle()
+								if sceneTitle != "" {
+									obs.Get().SwitchScene(sceneTitle)
 								}
+
+								// PTZ 프리셋 자동 이동 — camera 씬으로 전환된 항목에서만
+								// (monitor 씬은 카메라가 화면에 안 보이므로 프리셋을 건드리지 않는다)
 								if title != "" {
 									cfg := obs.Get().GetConfig()
-									if preset, ok := cfg.Presets[title]; ok && preset > 0 {
+									if preset, ok := cfg.Presets[title]; ok && preset > 0 && cfg.Scenes[sceneTitle] == cfg.CameraScene {
 										go func(p int) {
 											if err := ptz.GotoPreset(p); err != nil {
 												log.Printf("[ptz] GotoPreset(%d) 실패 (navigate): %v", p, err)

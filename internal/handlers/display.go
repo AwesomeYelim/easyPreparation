@@ -4,7 +4,6 @@ import (
 	"easyPreparation_1.0/internal/assets"
 	"easyPreparation_1.0/internal/obs"
 	"easyPreparation_1.0/internal/path"
-	"easyPreparation_1.0/internal/ptz"
 	"easyPreparation_1.0/internal/quote"
 	"easyPreparation_1.0/internal/safefile"
 	_ "embed"
@@ -787,23 +786,11 @@ func DisplayJumpHandler(w http.ResponseWriter, r *http.Request) {
 		"info":       info,
 	}
 
-	// OBS 씬 전환 + PTZ 프리셋 — /display 없이도 동작하도록 직접 호출
-	go func() {
-		obsM := obs.Get()
-		// obs.json scenes 맵 기반 자동 전환 (title → 씬 이름)
-		if info == "lyrics_display" {
-			obsM.SwitchScene("찬양")
-		} else if title != "" {
-			obsM.SwitchScene(title)
-		}
-		// PTZ 프리셋 자동 이동 — obs.json presets 맵 기반 (씬 매핑 여부 무관)
-		cfg := obsM.GetConfig()
-		if preset, ok := cfg.Presets[title]; ok && preset > 0 {
-			if err := ptz.GotoPreset(preset); err != nil {
-				log.Printf("[ptz] GotoPreset(%d) 실패: %v", preset, err)
-			}
-		}
-	}()
+	// OBS 씬 전환 + PTZ 프리셋은 여기서 직접 호출하지 않는다.
+	// display 클라이언트가 이 navigate 브로드캐스트를 받아 자기 위치를 position으로 재보고하면
+	// websocket.go의 디바운스 로직이 동일한 전환을 실행한다 (next/prev와 동일 경로).
+	// 과거엔 여기서도 직접 호출해서 두 경로가 겹쳐 PTZ GotoPreset이 300ms 간격으로 중복 발사되며
+	// 카메라가 씬 전환 직후 한 번 더 깜박이는 버그가 있었다.
 
 	log.Printf("[jump] idx=%d title=%s broadcast to clients", payload.Index, title)
 	BroadcastMessage("navigate", navPayload)

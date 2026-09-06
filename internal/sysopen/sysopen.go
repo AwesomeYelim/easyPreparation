@@ -11,8 +11,12 @@ import (
 
 // URL — 시스템 기본 브라우저로 URL을 연다.
 // Windows에서 cmd /c start는 URL의 &를 명령 구분자로 해석해 쿼리 파라미터가 잘리므로
-// 셸을 거치지 않는 explorer.exe를 사용한다.
+// 셸을 거치지 않는 rundll32 url.dll,FileProtocolHandler를 사용한다.
+// (explorer.exe는 URL을 못 알아보면 브라우저 대신 탐색기 창을 띄우는 폴백이 있어 신뢰성이 낮다.)
 func URL(target string) error {
+	if runtime.GOOS == "windows" {
+		return exec.Command("rundll32", "url.dll,FileProtocolHandler", target).Start()
+	}
 	return open(target)
 }
 
