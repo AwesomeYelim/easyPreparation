@@ -499,7 +499,7 @@ make build
 ```
 
 1. Next.js static export (`ui/out/`)
-2. `cmd/server/frontend/`로 복사
+2. `internal/embedded/frontend/`로 복사 (서버/데스크톱 공용 embed)
 3. Go binary 빌드 (frontend embed 포함)
 4. 결과물: `bin/server`
 

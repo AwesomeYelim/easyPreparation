@@ -20,4 +20,4 @@
 
 ## 프론트엔드 embed
 
-프로덕션: `ui/out` → `cmd/server/frontend/` 복사 후 `//go:embed all:frontend`.
+프로덕션: `ui/out` → `internal/embedded/frontend/` 복사(`make embed-assets`) 후 `internal/embedded`가 `//go:embed all:frontend`. 서버/데스크톱이 같은 패키지를 공유.

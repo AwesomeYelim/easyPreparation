@@ -74,26 +74,29 @@ restart:
 	@rm -rf ui/.next
 	@$(MAKE) dev
 
+# ── embed 자산 준비 (서버/데스크톱 공용: internal/embedded/) ─────────────────
+# frontend/ ← ui/out (Next.js static export), data/ ← bible.db + schema.sql
+# data/defaults/ 와 default_bg.png 는 git 관리 — 여기서 덮어쓰지 않음
+EMBED_DIR := internal/embedded
+embed-assets:
+	@echo "Copying frontend to $(EMBED_DIR)/frontend/..."
+	@rm -rf $(EMBED_DIR)/frontend && cp -r ui/out $(EMBED_DIR)/frontend && touch $(EMBED_DIR)/frontend/.gitkeep
+	@echo "Copying embedded data (bible.db + schema.sql)..."
+	@cp data/bible.db $(EMBED_DIR)/data/bible.db
+	@cp data/schema.sql $(EMBED_DIR)/data/schema.sql
+	@cp data/default_bg.png internal/lyrics/Frame.png
+
 # ── 프로덕션 빌드 (Next.js static export → Go embed) ─────────────────────────
 build:
 	@echo "Building Next.js (static export)..."
 	@cd ui && $(RUN_NPM) run build
-	@echo "Copying frontend to cmd/server/frontend/..."
-	@rm -rf cmd/server/frontend && cp -r ui/out cmd/server/frontend
-	@echo "Copying embedded data (defaults/ 는 git 관리 — 덮어쓰지 않음)..."
-	@cp data/bible.db cmd/server/data/bible.db
-	@cp data/schema.sql cmd/server/data/schema.sql
-	@cp data/default_bg.png internal/lyrics/Frame.png
+	@$(MAKE) embed-assets
 	@echo "Building Go binary (with embedded frontend + data)..."
 	@go build -ldflags="$(LDFLAGS)" -o bin/server ./cmd/server/
 	@echo "Done. Run: bin/server"
 
-# ── Go 빌드만 (프로덕션 — cmd/server/frontend/ + data/ 필요) ──────────────────
-build-go:
-	@rm -rf cmd/server/frontend && cp -r ui/out cmd/server/frontend
-	@cp data/bible.db cmd/server/data/bible.db
-	@cp data/schema.sql cmd/server/data/schema.sql
-	@cp data/default_bg.png internal/lyrics/Frame.png
+# ── Go 빌드만 (프로덕션 — ui/out 이 이미 있어야 함) ───────────────────────────
+build-go: embed-assets
 	go build -ldflags="$(LDFLAGS)" -o bin/server ./cmd/server/
 
 # ── Go 빌드 (개발 — embed 없이) ───────────────────────────────────────────────
@@ -107,21 +110,13 @@ build-ui:
 clean:
 	rm -f bin/server
 	rm -rf ui/.next
-	rm -rf cmd/server/frontend cmd/server/data
-	rm -rf cmd/desktop/frontend cmd/desktop/data
+	rm -rf $(EMBED_DIR)/frontend/* $(EMBED_DIR)/data/schema.sql
 
 # ── 프론트엔드 + 데이터 준비 (Desktop 빌드 공통 선행 작업) ──────────────────────
-# bible.db를 cmd/desktop/data/에 복사 → //go:embed all:data 에 포함됨
 build-frontend:
 	@echo "Building Next.js (static export)..."
 	@cd ui && $(RUN_NPM) run build
-	@echo "Copying frontend to cmd/desktop/frontend/..."
-	@rm -rf cmd/desktop/frontend && cp -r ui/out cmd/desktop/frontend
-	@echo "Copying embedded data (bible.db + schema.sql; defaults/ 는 git 관리 — 덮어쓰지 않음)..."
-	@cp data/bible.db cmd/desktop/data/bible.db
-	@cp data/schema.sql cmd/desktop/data/schema.sql
-	@echo "Syncing default_bg.png → lyrics embed..."
-	@cp data/default_bg.png internal/lyrics/Frame.png
+	@$(MAKE) embed-assets
 
 # ── Desktop 앱 빌드 (macOS) — wails.json이 cmd/desktop/에 있으므로 cd 필요 ──
 build-desktop: build-frontend

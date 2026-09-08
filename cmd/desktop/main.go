@@ -21,6 +21,7 @@ import (
 	"easyPreparation_1.0/internal/api"
 	"easyPreparation_1.0/internal/app"
 	"easyPreparation_1.0/internal/bulletin"
+	"easyPreparation_1.0/internal/embedded"
 	"easyPreparation_1.0/internal/handlers"
 	"easyPreparation_1.0/internal/license"
 	"easyPreparation_1.0/internal/lyrics"
@@ -57,7 +58,7 @@ func (a *App) startup(ctx context.Context) {
 	app.SetupLogFile(execPath)
 
 	// embed된 데이터 파일 추출 (첫 실행 시)
-	app.ExtractEmbeddedData(getEmbeddedDataFS(), execPath)
+	app.ExtractEmbeddedData(embedded.DataFS(), execPath)
 
 	// DB 연결
 	dsn, err := quote.LoadDSN(filepath.Join(execPath, "config", "db.json"))
@@ -110,8 +111,8 @@ func (a *App) startup(ctx context.Context) {
 	// OBS 연결 시 YouTube 스트림 키 자동 동기화 훅 등록
 	handlers.InitOBSStreamKeySync()
 
-	// 프론트엔드 정적 파일 서빙 설정 (embed_prod.go / embed_dev.go 분기)
-	api.FrontendFS = getFrontendFS()
+	// 프론트엔드 정적 파일 서빙 설정 (internal/embedded — dev 빌드에서는 nil)
+	api.FrontendFS = embedded.FrontendFS()
 	if api.FrontendFS != nil {
 		log.Println("[desktop] 프론트엔드 정적 파일 서빙 활성화 (embedded)")
 	} else {

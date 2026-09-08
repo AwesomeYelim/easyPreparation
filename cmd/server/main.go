@@ -3,6 +3,7 @@ package main
 import (
 	"easyPreparation_1.0/internal/app"
 	"easyPreparation_1.0/internal/bulletin"
+	"easyPreparation_1.0/internal/embedded"
 	"easyPreparation_1.0/internal/lyrics"
 	"easyPreparation_1.0/internal/version"
 	"log"
@@ -24,8 +25,8 @@ func main() {
 	version.Set(Version, Commit, BuildTime)
 	log.Printf("easyPreparation %s (commit: %s, built: %s)", Version, Commit, BuildTime)
 	a := app.Initialize(app.Config{
-		FrontendFS:     getFrontendFS(),
-		EmbeddedDataFS: getEmbeddedDataFS(),
+		FrontendFS:     embedded.FrontendFS(),
+		EmbeddedDataFS: embedded.DataFS(),
 	})
 	defer a.Shutdown()
 
