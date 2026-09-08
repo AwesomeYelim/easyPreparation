@@ -257,6 +257,7 @@ jobs:
           cat release_notes.md
       - uses: softprops/action-gh-release@v2
         with:
+          prerelease: ${{ contains(github.ref_name, '-beta') }}
           body_path: release_notes.md
           fail_on_unmatched_files: true
           files: |

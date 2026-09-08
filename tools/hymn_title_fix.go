@@ -14,12 +14,12 @@ import (
 	"sync"
 	"time"
 
+	"easyPreparation_1.0/tools/pgdsn"
 	_ "github.com/lib/pq"
 	_ "modernc.org/sqlite"
 )
 
 const (
-	pgDSN     = "postgres://postgres:02031122@138.2.119.220:5432/bible_db?sslmode=disable"
 	sqliteDB  = "data/bible.db"
 	maxRetry  = 3
 	batchSize = 50 // 배치 크기 (50곡씩 처리 후 중간 로그)
@@ -28,6 +28,7 @@ const (
 var reTitle = regexp.MustCompile(`hymntitleheader'>(.*?)</div>`)
 
 func main() {
+	pgDSN := pgdsn.MustLoad()
 	// --- SQLite 연결 ---
 	lite, err := sql.Open("sqlite", sqliteDB)
 	if err != nil {

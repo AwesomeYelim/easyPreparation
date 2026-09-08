@@ -28,7 +28,7 @@ endif
 # ── Node.js bin 경로 감지 (wails dev PATH 주입용) ────────────────────────────
 # 우선순위: 1) 이미 PATH에 npm 있음  2) nvm(macOS/Linux)  3) nvm-windows(APPDATA)
 ifdef IS_WINDOWS
-  _NPM_CMD     := $(shell where npm 2>NUL | head -1)
+  _NPM_CMD     := $(shell where npm 2>/dev/null | head -1)
   NODE_BIN_DIR := $(strip $(if $(_NPM_CMD),$(dir $(_NPM_CMD)),$(shell ls -d "$$APPDATA/nvm/v22"*/ 2>/dev/null | head -1)))
 else
   _NPM_CMD     := $(shell command -v npm 2>/dev/null)

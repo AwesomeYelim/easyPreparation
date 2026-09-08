@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
+	"easyPreparation_1.0/tools/pgdsn"
 	_ "github.com/lib/pq"
 )
 
 func main() {
-	dsn := "postgres://postgres:02031122@138.2.119.220:5432/bible_db?sslmode=disable"
-	db, err := sql.Open("postgres", dsn)
+	db, err := sql.Open("postgres", pgdsn.MustLoad())
 	if err != nil {
 		log.Fatal(err)
 	}

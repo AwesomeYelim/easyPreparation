@@ -11,16 +11,15 @@ import (
 	"os"
 	"time"
 
+	"easyPreparation_1.0/tools/pgdsn"
 	_ "github.com/lib/pq"
 	_ "modernc.org/sqlite"
 )
 
-const (
-	pgDSN      = "postgres://postgres:02031122@138.2.119.220:5432/bible_db?sslmode=disable"
-	sqlitePath = "data/bible.db"
-)
+const sqlitePath = "data/bible.db"
 
 func main() {
+	pgDSN := pgdsn.MustLoad()
 	start := time.Now()
 
 	// 1. 기존 SQLite 파일 삭제 (WAL/SHM 포함)

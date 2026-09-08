@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"easyPreparation_1.0/tools/pgdsn"
 	_ "github.com/lib/pq"
 )
 
@@ -63,11 +64,16 @@ type BibleBook struct {
 func main() {
 	versionFlag := flag.String("version", "all", "크롤링할 버전: all 또는 DB ID (예: 2)")
 	bibleInfoFlag := flag.String("bible-info", "data/defaults/bible_info.json", "bible_info.json 경로")
-	dsnFlag := flag.String("dsn", "postgres://postgres:02031122@138.2.119.220:5432/bible_db?sslmode=disable", "PostgreSQL DSN")
+	dsnFlag := flag.String("dsn", "", "PostgreSQL DSN (미지정 시 PG_DSN 환경변수 → config/db.json)")
 	flag.Parse()
 
+	dsn := *dsnFlag
+	if dsn == "" {
+		dsn = pgdsn.MustLoad()
+	}
+
 	// PostgreSQL 연결
-	db, err := sql.Open("postgres", *dsnFlag)
+	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -1,6 +1,7 @@
 *.pdf
 /bin/
 /build/
+/NUL
 # Runtime data (ignore)
 data/cache/
 data/pdf/
