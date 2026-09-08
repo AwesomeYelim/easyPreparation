@@ -80,12 +80,9 @@ build:
 	@cd ui && $(RUN_NPM) run build
 	@echo "Copying frontend to cmd/server/frontend/..."
 	@rm -rf cmd/server/frontend && cp -r ui/out cmd/server/frontend
-	@echo "Copying embedded data..."
-	@rm -rf cmd/server/data && mkdir -p cmd/server/data/defaults
+	@echo "Copying embedded data (defaults/ 는 git 관리 — 덮어쓰지 않음)..."
 	@cp data/bible.db cmd/server/data/bible.db
-	@for f in main_worship after_worship wed_worship fri_worship; do \
-		[ -f config/$${f}.json ] && cp config/$${f}.json cmd/server/data/defaults/$${f}.json || true; \
-	done
+	@cp data/schema.sql cmd/server/data/schema.sql
 	@cp data/default_bg.png internal/lyrics/Frame.png
 	@echo "Building Go binary (with embedded frontend + data)..."
 	@go build -ldflags="$(LDFLAGS)" -o bin/server ./cmd/server/
@@ -94,11 +91,8 @@ build:
 # ── Go 빌드만 (프로덕션 — cmd/server/frontend/ + data/ 필요) ──────────────────
 build-go:
 	@rm -rf cmd/server/frontend && cp -r ui/out cmd/server/frontend
-	@rm -rf cmd/server/data && mkdir -p cmd/server/data/defaults
 	@cp data/bible.db cmd/server/data/bible.db
-	@for f in main_worship after_worship wed_worship fri_worship; do \
-		[ -f config/$${f}.json ] && cp config/$${f}.json cmd/server/data/defaults/$${f}.json || true; \
-	done
+	@cp data/schema.sql cmd/server/data/schema.sql
 	@cp data/default_bg.png internal/lyrics/Frame.png
 	go build -ldflags="$(LDFLAGS)" -o bin/server ./cmd/server/
 
@@ -123,13 +117,9 @@ build-frontend:
 	@cd ui && $(RUN_NPM) run build
 	@echo "Copying frontend to cmd/desktop/frontend/..."
 	@rm -rf cmd/desktop/frontend && cp -r ui/out cmd/desktop/frontend
-	@echo "Copying embedded data (bible.db + config defaults + assets)..."
-	@rm -rf cmd/desktop/data && mkdir -p cmd/desktop/data/defaults/video-bg
+	@echo "Copying embedded data (bible.db + schema.sql; defaults/ 는 git 관리 — 덮어쓰지 않음)..."
 	@cp data/bible.db cmd/desktop/data/bible.db
-	@for f in main_worship after_worship wed_worship fri_worship; do \
-		[ -f config/$${f}.json ] && cp config/$${f}.json cmd/desktop/data/defaults/$${f}.json || true; \
-	done
-	@[ -f data/video-bg/lent.mp4 ] && cp data/video-bg/lent.mp4 cmd/desktop/data/defaults/video-bg/lent.mp4 || true
+	@cp data/schema.sql cmd/desktop/data/schema.sql
 	@echo "Syncing default_bg.png → lyrics embed..."
 	@cp data/default_bg.png internal/lyrics/Frame.png
 
