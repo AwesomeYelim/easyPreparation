@@ -28,8 +28,10 @@ data/local.db
 data/bible.db-shm
 data/bible.db-wal
 data/display_state.json
+data/display_state.json.backup
 data/schedule.json
 data/thumbnail_config.json
+data/church_info.json
 output/*/*.pdf
 output/display/
 config/*
