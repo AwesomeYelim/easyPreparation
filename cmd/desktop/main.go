@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -11,27 +10,19 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"easyPreparation_1.0/internal/api"
 	"easyPreparation_1.0/internal/app"
 	"easyPreparation_1.0/internal/bulletin"
 	"easyPreparation_1.0/internal/embedded"
 	"easyPreparation_1.0/internal/handlers"
-	"easyPreparation_1.0/internal/license"
 	"easyPreparation_1.0/internal/lyrics"
-	"easyPreparation_1.0/internal/obs"
-	"easyPreparation_1.0/internal/path"
-	"easyPreparation_1.0/internal/quote"
 	"easyPreparation_1.0/internal/selfupdate"
-	"easyPreparation_1.0/internal/types"
 	"easyPreparation_1.0/internal/version"
-	"easyPreparation_1.0/internal/youtube"
 )
 
 // 빌드 시 ldflags로 주입됩니다:
@@ -44,93 +35,25 @@ var (
 
 // App — Wails 앱 구조체
 type App struct {
-	ctx      context.Context
-	dataChan chan types.DataEnvelope
+	ctx  context.Context
+	core *app.App
 }
 
 // startup — Wails WebView가 초기화된 후 호출됨
+// 서버/DB/라이선스/OBS/스케줄러 초기화는 internal/app.Initialize 가 담당하고,
+// 여기서는 데스크톱 고유 동작(다운로드 경로, 시작 실패 다이얼로그, 헬스체크·롤백, 창 표시)만 처리한다.
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
-	execPath := path.ExecutePath("easyPreparation")
-
-	// 로그 파일 설정 (execPath/logs/app_YYYY-MM-DD.log)
-	app.SetupLogFile(execPath)
-
-	// embed된 데이터 파일 추출 (첫 실행 시)
-	app.ExtractEmbeddedData(embedded.DataFS(), execPath)
-
-	// DB 연결
-	dsn, err := quote.LoadDSN(filepath.Join(execPath, "config", "db.json"))
-	if err != nil {
-		log.Printf("[desktop] DB 설정 로드 실패 (성경 조회 비활성): %v", err)
-	} else {
-		if err := quote.InitDB(dsn); err != nil {
-			log.Printf("[desktop] DB 연결 실패 (성경 조회 비활성): %v", err)
-		} else {
-			handlers.InitAPIDB(quote.GetDB())
-			log.Println("[desktop] DB 연결 성공")
-		}
-	}
-
-	// 성경 DB 연결 (SQLite)
-	biblePath := filepath.Join(execPath, "data", "bible.db")
-	if err := quote.InitBibleDB(biblePath); err != nil {
-		log.Printf("[desktop] 성경 DB 연결 실패 (성경 조회 비활성): %v", err)
-	} else {
-		handlers.InitBibleDB(quote.GetBibleDB())
-		log.Println("[desktop] 성경 DB 연결 성공 (SQLite)")
-	}
-
-	// 라이선스 초기화 (DB 연결 이후)
-	license.Init(quote.GetDB())
-	log.Printf("[desktop] 라이선스 플랜: %s", license.Get().GetPlan())
-	license.LoadServerConfig(filepath.Join(execPath, "config"))
-
-	// OBS WebSocket 연결
-	obs.Init(filepath.Join(execPath, "config", "obs.json"))
-
-	// YouTube API 초기화
-	youtube.Init(youtube.DefaultOAuthPath(), youtube.DefaultTokenPath())
-
-	// Desktop 모드 활성화 — ~/Downloads에 파일 저장
+	// Desktop 모드 활성화 — ~/Downloads에 파일 저장 (서버 시작 전에 설정)
 	if homeDir, err := os.UserHomeDir(); err == nil {
 		handlers.SetDesktopMode(filepath.Join(homeDir, "Downloads"))
 	}
 
-	// 자동 업데이트 초기화
-	selfupdate.GetUpdater().SetBroadcast(handlers.BroadcastMessage)
-	selfupdate.GetUpdater().SetDownloadDir(filepath.Join(execPath, "data", "update"))
-
-	// Display 상태 복원 (이전 세션)
-	handlers.LoadDisplayState()
-
-	// 스케줄러 초기화
-	handlers.InitScheduler()
-
-	// OBS 연결 시 YouTube 스트림 키 자동 동기화 훅 등록
-	handlers.InitOBSStreamKeySync()
-
-	// 프론트엔드 정적 파일 서빙 설정 (internal/embedded — dev 빌드에서는 nil)
-	api.FrontendFS = embedded.FrontendFS()
-	if api.FrontendFS != nil {
-		log.Println("[desktop] 프론트엔드 정적 파일 서빙 활성화 (embedded)")
-	} else {
-		log.Println("[desktop] 프론트엔드 정적 파일 서빙 비활성 (Next.js dev server 사용)")
-	}
-
-	// HTTP 서버를 goroutine으로 시작
-	a.dataChan = make(chan types.DataEnvelope, 100)
-	go api.StartServer(a.dataChan)
-	go handlers.StartKeepAliveBroadcast()
-
-	// 백그라운드 작업 큐 처리 goroutine
-	go a.processDataChan()
-
-	// 서버 에러 감지 → 다이얼로그 표시 후 앱 종료
-	go func() {
-		select {
-		case err := <-api.ServerError:
+	a.core = app.Initialize(app.Config{
+		FrontendFS:     embedded.FrontendFS(),
+		EmbeddedDataFS: embedded.DataFS(),
+		OnServerError: func(err error) {
 			log.Printf("[desktop] 서버 시작 실패: %v", err)
 			wailsruntime.WindowShow(ctx)
 			wailsruntime.MessageDialog(ctx, wailsruntime.MessageDialogOptions{
@@ -139,19 +62,18 @@ func (a *App) startup(ctx context.Context) {
 				Message: err.Error(),
 			})
 			wailsruntime.Quit(ctx)
-			return
-		case <-time.After(10 * time.Second):
-			// 타임아웃 — 서버가 조용히 실패했을 수 있음
-		}
-	}()
+		},
+	})
+
+	// 백그라운드 작업 큐 처리 goroutine
+	go a.processDataChan()
 
 	// 서버가 준비될 때까지 대기 → 헬스체크 → 윈도우 표시
 	go func() {
-		waitForServer("http://localhost:8080")
+		app.WaitForServer(app.LocalBaseURL)
 		log.Println("[desktop] 서버 준비 완료")
 
-		// 헬스체크 실행
-		healthy := runHealthCheck()
+		healthy := app.RunHealthCheck(app.LocalBaseURL)
 		if !healthy && selfupdate.GetUpdater().HasBackup() {
 			// 이전 버전 백업이 있고 헬스체크 실패 → 롤백 제안
 			wailsruntime.WindowShow(ctx)
@@ -180,7 +102,7 @@ func (a *App) startup(ctx context.Context) {
 					return
 				}
 			}
-		} else {
+		} else if healthy {
 			// 헬스체크 통과 → 이전 백업 정리
 			selfupdate.GetUpdater().CleanupBackup()
 		}
@@ -195,7 +117,7 @@ func (a *App) SaveZip(target string) string {
 	log.Printf("[desktop] SaveZip 호출: %s", target)
 
 	// ZIP 다운로드
-	resp, err := http.Get(fmt.Sprintf("http://localhost:8080/download?target=%s", target))
+	resp, err := http.Get(fmt.Sprintf("%s/download?target=%s", app.LocalBaseURL, target))
 	if err != nil {
 		log.Printf("[desktop] SaveZip 다운로드 실패: %v", err)
 		return "다운로드 실패: " + err.Error()
@@ -241,38 +163,19 @@ func (a *App) OpenURL(url string) {
 	wailsruntime.BrowserOpenURL(a.ctx, url)
 }
 
-// shutdown — 앱 종료 시 호출됨
+// shutdown — 앱 종료 시 호출됨. 서버 정지·스케줄러·OBS·DB·로그 정리는 app.Shutdown 이 역순으로 수행.
 func (a *App) shutdown(ctx context.Context) {
 	log.Println("[desktop] 앱 종료 중...")
-
-	// HTTP 서버 graceful shutdown
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := api.StopServer(shutdownCtx); err != nil {
-		log.Printf("[desktop] HTTP 서버 종료 실패: %v", err)
+	if a.core != nil {
+		a.core.Shutdown()
+		close(a.core.DataChan)
 	}
-
-	handlers.StopScheduler()
-	handlers.StopKeepAliveBroadcast()
-
-	if m := obs.Get(); m != nil {
-		m.Disconnect()
-	}
-
-	if err := quote.CloseDB(); err != nil {
-		log.Printf("[desktop] DB 닫기 실패: %v", err)
-	}
-
-	if a.dataChan != nil {
-		close(a.dataChan)
-	}
-
 	log.Println("[desktop] 앱 종료 완료")
 }
 
 // processDataChan — bulletin/lyrics 생성 작업을 백그라운드에서 처리
 func (a *App) processDataChan() {
-	for data := range a.dataChan {
+	for data := range a.core.DataChan {
 		switch data.Type {
 		case "submit":
 			go bulletin.CreateBulletin(data.Payload)
@@ -282,47 +185,11 @@ func (a *App) processDataChan() {
 	}
 }
 
-// runHealthCheck — /api/health 호출하여 서버 상태 확인
-func runHealthCheck() bool {
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get("http://localhost:8080/api/health")
-	if err != nil {
-		log.Printf("[desktop] 헬스체크 요청 실패: %v", err)
-		return false
-	}
-	defer resp.Body.Close()
-
-	var result struct {
-		Status string `json:"status"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		log.Printf("[desktop] 헬스체크 응답 파싱 실패: %v", err)
-		return false
-	}
-
-	log.Printf("[desktop] 헬스체크 결과: %s", result.Status)
-	return result.Status != "unhealthy"
-}
-
-// waitForServer — HTTP 서버가 응답할 때까지 대기 (최대 5초)
-func waitForServer(baseURL string) {
-	client := &http.Client{Timeout: 500 * time.Millisecond}
-	for i := 0; i < 50; i++ {
-		resp, err := client.Get(baseURL + "/display/status")
-		if err == nil {
-			resp.Body.Close()
-			return
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	log.Println("[desktop] 서버 대기 타임아웃 — 계속 진행")
-}
-
 func main() {
 	version.Set(Version, Commit, BuildTime)
 	log.Printf("easyPreparation %s (commit: %s, built: %s)", Version, Commit, BuildTime)
 
-	app := &App{}
+	desktop := &App{}
 
 	err := wails.Run(&options.App{
 		Title:         "easyPreparation",
@@ -334,9 +201,9 @@ func main() {
 		DisableResize: false,
 		Fullscreen:    false,
 		StartHidden:   true, // startup에서 서버 준비 후 WindowShow 호출
-		OnStartup:     app.startup,
-		OnShutdown:    app.shutdown,
-		Bind:          []interface{}{app},
+		OnStartup:     desktop.startup,
+		OnShutdown:    desktop.shutdown,
+		Bind:          []interface{}{desktop},
 		AssetServer: &assetserver.Options{
 			// 서버 준비될 때까지 로딩 화면 표시 후 자동 전환
 			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -358,7 +225,7 @@ func main() {
   <div class="msg">서버를 시작하는 중...</div>
 </div><script>
 (function check(){
-  fetch("http://localhost:8080/display/status",{mode:'no-cors'})
+  fetch("` + app.LocalBaseURL + `/display/status",{mode:'no-cors'})
     .then(function(){window.location.replace("` + getUIBaseURL() + `")})
     .catch(function(){setTimeout(check,500)});
 })();

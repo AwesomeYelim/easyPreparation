@@ -27,6 +27,9 @@ type Config struct {
 	FrontendFS fs.FS
 	// EmbeddedDataFS — embed된 bible.db + 기본 설정 파일 FS. nil이면 개발 모드
 	EmbeddedDataFS fs.FS
+	// OnServerError — HTTP 서버 시작 실패 시 호출. nil이면 로그 후 프로세스 종료(log.Fatalf).
+	// 데스크톱은 여기서 다이얼로그를 띄우고 앱을 종료한다.
+	OnServerError func(error)
 }
 
 // App — 초기화 결과 및 종료 훅을 담는 구조체
@@ -161,9 +164,8 @@ func Initialize(cfg Config) *App {
 	selfupdate.GetUpdater().SetBroadcast(handlers.BroadcastMessage)
 	// 다운로드 디렉토리 설정
 	selfupdate.GetUpdater().SetDownloadDir(filepath.Join(execPath, "data", "update"))
-	// .bak 정리는 헬스체크 통과 후 수행 (롤백 기회 보존)
-	// → Desktop: startup()에서 헬스체크 후 CleanupBackup 호출
-	// → Server: cmd/server/main.go에서 헬스체크 후 CleanupBackup 호출
+	// .bak 정리는 여기서 하지 않는다 — 호출자가 WaitForServer → RunHealthCheck 통과 후
+	// CleanupBackup 을 호출해 롤백 기회를 보존한다 (cmd/server, cmd/desktop 동일 정책)
 
 	// 프론트엔드 정적 파일 서빙 설정
 	api.FrontendFS = cfg.FrontendFS
@@ -176,12 +178,26 @@ func Initialize(cfg Config) *App {
 	// HTTP 서버 + keepalive broadcast 시작
 	go api.StartServer(app.DataChan)
 	go handlers.StartKeepAliveBroadcast()
-
-	// 서버 에러 감지 → 로그 출력 후 종료
-	go func() {
-		if err := <-api.ServerError; err != nil {
-			log.Fatalf("[server] %v", err)
+	// 종료 시 역순 실행이므로 서버 정지가 가장 먼저 수행된다
+	app.shutdownFns = append(app.shutdownFns, handlers.StopKeepAliveBroadcast, func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := api.StopServer(ctx); err != nil {
+			log.Printf("[server] HTTP 서버 종료 실패: %v", err)
 		}
+	})
+
+	// 서버 에러 감지
+	go func() {
+		err := <-api.ServerError
+		if err == nil {
+			return
+		}
+		if cfg.OnServerError != nil {
+			cfg.OnServerError(err)
+			return
+		}
+		log.Fatalf("[server] %v", err)
 	}()
 
 	return app
@@ -237,18 +253,6 @@ func ExtractEmbeddedData(dataFS fs.FS, execPath string) {
 	videoBgDir := filepath.Join(execPath, "data", "video-bg")
 	os.MkdirAll(videoBgDir, 0755)
 	extractFile(dataFS, "defaults/video-bg/lent.mp4", filepath.Join(videoBgDir, "lent.mp4"))
-
-	// 썸네일 폰트 추출 (thumbnail.go가 execPath/public/font/ 에서 읽음)
-	fontDir := filepath.Join(execPath, "public", "font")
-	os.MkdirAll(fontDir, 0755)
-	for _, fontFile := range []string{
-		"JacquesFrancois-regular.ttf",
-		"NanumBrush.ttf",
-		"NanumGothic-regular.ttf",
-		"NanumGothic-800.ttf",
-	} {
-		extractFile(dataFS, "public/font/"+fontFile, filepath.Join(fontDir, fontFile))
-	}
 }
 
 // extractFile — srcFS에서 srcPath를 읽어 dstPath에 저장합니다.

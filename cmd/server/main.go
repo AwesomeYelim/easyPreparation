@@ -5,6 +5,7 @@ import (
 	"easyPreparation_1.0/internal/bulletin"
 	"easyPreparation_1.0/internal/embedded"
 	"easyPreparation_1.0/internal/lyrics"
+	"easyPreparation_1.0/internal/selfupdate"
 	"easyPreparation_1.0/internal/version"
 	"log"
 	"os"
@@ -29,6 +30,14 @@ func main() {
 		EmbeddedDataFS: embedded.DataFS(),
 	})
 	defer a.Shutdown()
+
+	// 헬스체크 통과 시 이전 버전 백업(.bak) 정리 — 실패하면 롤백 여지를 남겨둔다
+	go func() {
+		app.WaitForServer(app.LocalBaseURL)
+		if app.RunHealthCheck(app.LocalBaseURL) {
+			selfupdate.GetUpdater().CleanupBackup()
+		}
+	}()
 
 	// Graceful shutdown — Windows는 SIGTERM 미지원, os.Interrupt(Ctrl+C)만 사용
 	sigChan := make(chan os.Signal, 1)
