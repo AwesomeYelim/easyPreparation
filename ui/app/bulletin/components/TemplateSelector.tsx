@@ -5,6 +5,16 @@ import { useSetRecoilState } from "recoil";
 import { bulletinPreviewState, inspectorOpenState } from "@/recoilState";
 import toast from "react-hot-toast";
 
+// 서버 에러 본문은 {"error": "..."} JSON — 사용자에게는 message 만 보여준다
+async function errorMessage(res: Response, fallback: string): Promise<string> {
+  const text = await res.text().catch(() => "");
+  try {
+    return JSON.parse(text).error || text || fallback;
+  } catch {
+    return text || fallback;
+  }
+}
+
 interface TemplateSelectorProps {
   worshipType: string;
 }
@@ -83,12 +93,11 @@ export default function TemplateSelector({ worshipType }: TemplateSelectorProps)
         return;
       }
       if (saveRes.status !== 403) {
-        const text = await saveRes.text();
-        throw new Error(text || "저장 실패");
+        throw new Error(await errorMessage(saveRes, "저장 실패"));
       }
       // 웹 브라우저 모드: fetch → blob → a.click()
       const res = await fetch(`/api/bulletin-pdf?type=${worshipType}&template=${n}`);
-      if (!res.ok) throw new Error((await res.text()) || "PDF 생성 실패");
+      if (!res.ok) throw new Error(await errorMessage(res, "PDF 생성 실패"));
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

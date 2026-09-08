@@ -29,7 +29,11 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, init);
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
-    throw new Error(text || `HTTP ${res.status}`);
+    let msg = text;
+    try {
+      msg = JSON.parse(text).error || text; // 서버 에러는 {"error": "..."} JSON
+    } catch {}
+    throw new Error(msg || `HTTP ${res.status}`);
   }
   return res.json() as Promise<T>;
 }
