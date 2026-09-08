@@ -2,15 +2,17 @@ package handlers
 
 import (
 	"encoding/json"
-	"easyPreparation_1.0/internal/quote"
 	"net/http"
+
+	"easyPreparation_1.0/internal/httpx"
+	"easyPreparation_1.0/internal/quote"
 )
 
 // SetupStatusHandler — GET /api/setup/status
 // churches 테이블에서 id=1 조회, 없으면 needsSetup=true
 func SetupStatusHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
@@ -58,7 +60,7 @@ func SetupStatusHandler(w http.ResponseWriter, r *http.Request) {
 // name, englishName 받아서 churches(id=1)에 INSERT OR REPLACE
 func SetupHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
@@ -68,7 +70,7 @@ func SetupHandler(w http.ResponseWriter, r *http.Request) {
 		db = quote.GetDB()
 	}
 	if db == nil {
-		http.Error(w, `{"error":"DB not initialized"}`, http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "DB not initialized")
 		return
 	}
 
@@ -77,7 +79,7 @@ func SetupHandler(w http.ResponseWriter, r *http.Request) {
 		EnglishName string `json:"englishName"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" {
-		http.Error(w, `{"error":"name is required"}`, http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "name is required")
 		return
 	}
 
@@ -87,7 +89,7 @@ func SetupHandler(w http.ResponseWriter, r *http.Request) {
 	`, body.Name, body.EnglishName)
 
 	if err != nil {
-		http.Error(w, `{"error":"save failed: `+err.Error()+`"}`, http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "save failed: "+err.Error())
 		return
 	}
 

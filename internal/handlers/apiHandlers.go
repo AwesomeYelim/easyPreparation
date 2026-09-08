@@ -2,14 +2,16 @@ package handlers
 
 import (
 	"database/sql"
-	"easyPreparation_1.0/internal/quote"
 	"encoding/json"
 	"net/http"
 	"strconv"
+
+	"easyPreparation_1.0/internal/httpx"
+	"easyPreparation_1.0/internal/quote"
 )
 
-var apiDB *sql.DB     // 앱 DB (SQLite — churches, licenses, settings)
-var bibleDB *sql.DB   // 성경 DB (PostgreSQL — verses, books, hymns)
+var apiDB *sql.DB   // 앱 DB (SQLite — churches, licenses, settings)
+var bibleDB *sql.DB // 성경 DB (PostgreSQL — verses, books, hymns)
 
 // InitAPIDB — handlers 패키지에서 사용할 앱 DB 연결 설정
 func InitAPIDB(db *sql.DB) {
@@ -26,7 +28,7 @@ func InitBibleDB(db *sql.DB) {
 func BibleBooksHandler(w http.ResponseWriter, r *http.Request) {
 	books, err := quote.GetBooksWithChapters()
 	if err != nil {
-		http.Error(w, "bible books not available: "+err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "bible books not available: "+err.Error())
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -41,7 +43,7 @@ func UserHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		upsertUserHandler(w, r)
 	default:
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 	}
 }
 
@@ -65,7 +67,7 @@ func getUserHandler(w http.ResponseWriter, r *http.Request) {
 	var id int
 	var name, englishName, emailVal string
 	if err := row.Scan(&id, &name, &englishName, &emailVal); err != nil {
-		http.Error(w, `{"error":"User church info not found"}`, http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, "User church info not found")
 		return
 	}
 
@@ -85,7 +87,7 @@ func upsertUserHandler(w http.ResponseWriter, r *http.Request) {
 		Email       string `json:"email"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Email == "" {
-		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "invalid body")
 		return
 	}
 
@@ -95,13 +97,13 @@ func upsertUserHandler(w http.ResponseWriter, r *http.Request) {
 	if exists == 1 {
 		if _, err := apiDB.Exec("UPDATE churches SET name=?, english_name=? WHERE email=?",
 			body.Name, body.EnglishName, body.Email); err != nil {
-			http.Error(w, `{"error":"update failed"}`, http.StatusInternalServerError)
+			httpx.Error(w, http.StatusInternalServerError, "update failed")
 			return
 		}
 	} else {
 		if _, err := apiDB.Exec("INSERT INTO churches (name, english_name, email) VALUES (?,?,?)",
 			body.Name, body.EnglishName, body.Email); err != nil {
-			http.Error(w, `{"error":"insert failed"}`, http.StatusInternalServerError)
+			httpx.Error(w, http.StatusInternalServerError, "insert failed")
 			return
 		}
 	}
@@ -114,7 +116,7 @@ func upsertUserHandler(w http.ResponseWriter, r *http.Request) {
 func BibleVersionsHandler(w http.ResponseWriter, r *http.Request) {
 	versions, err := quote.GetBibleVersions()
 	if err != nil {
-		http.Error(w, `{"error":"versions not found"}`, http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "versions not found")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -125,7 +127,7 @@ func BibleVersionsHandler(w http.ResponseWriter, r *http.Request) {
 func BibleSearchHandler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
 	if q == "" {
-		http.Error(w, `{"error":"q parameter required"}`, http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "q parameter required")
 		return
 	}
 	versionID := 1
@@ -137,7 +139,7 @@ func BibleSearchHandler(w http.ResponseWriter, r *http.Request) {
 
 	results, err := quote.SearchBibleVerses(q, versionID, 50)
 	if err != nil {
-		http.Error(w, `{"error":"search failed"}`, http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "search failed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -149,18 +151,18 @@ func BibleVersesHandler(w http.ResponseWriter, r *http.Request) {
 	bookStr := r.URL.Query().Get("book")
 	chapterStr := r.URL.Query().Get("chapter")
 	if bookStr == "" || chapterStr == "" {
-		http.Error(w, `{"error":"book and chapter required"}`, http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "book and chapter required")
 		return
 	}
 
 	bookOrder, err := strconv.Atoi(bookStr)
 	if err != nil || bookOrder <= 0 || bookOrder > 66 {
-		http.Error(w, `{"error":"invalid book"}`, http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "invalid book")
 		return
 	}
 	chapter, err := strconv.Atoi(chapterStr)
 	if err != nil || chapter < 0 {
-		http.Error(w, `{"error":"invalid chapter"}`, http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "invalid chapter")
 		return
 	}
 
@@ -175,7 +177,7 @@ func BibleVersesHandler(w http.ResponseWriter, r *http.Request) {
 	if chapter == 0 {
 		count, err := quote.GetBookChapterCount(versionID, bookOrder)
 		if err != nil {
-			http.Error(w, `{"error":"chapter count failed"}`, http.StatusInternalServerError)
+			httpx.Error(w, http.StatusInternalServerError, "chapter count failed")
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -185,10 +187,9 @@ func BibleVersesHandler(w http.ResponseWriter, r *http.Request) {
 
 	verses, err := quote.GetChapterVerses(versionID, bookOrder, chapter)
 	if err != nil {
-		http.Error(w, `{"error":"verses not found"}`, http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "verses not found")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(verses)
 }
-

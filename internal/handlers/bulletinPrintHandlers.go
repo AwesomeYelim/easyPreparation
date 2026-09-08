@@ -3,8 +3,6 @@ package handlers
 import (
 	"context"
 	"embed"
-	"easyPreparation_1.0/internal/bulletin/templates"
-	"easyPreparation_1.0/internal/path"
 	"encoding/json"
 	"fmt"
 	"image"
@@ -20,6 +18,10 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"easyPreparation_1.0/internal/bulletin/templates"
+	"easyPreparation_1.0/internal/httpx"
+	"easyPreparation_1.0/internal/path"
 
 	"os/exec"
 )
@@ -76,9 +78,9 @@ type BulletinData struct {
 	ChurchName    string              `json:"churchName"`
 	ChurchNameEn  string              `json:"churchNameEn"`
 	Pastor        string              `json:"pastor"`
-	Website       string              `json:"website"`    // 교회 웹사이트 URL
-	BlogInfo      string              `json:"blogInfo"`   // 블로그/SNS 표시 텍스트
-	Tagline       string              `json:"tagline"`    // 교회 표어/모토
+	Website       string              `json:"website"`  // 교회 웹사이트 URL
+	BlogInfo      string              `json:"blogInfo"` // 블로그/SNS 표시 텍스트
+	Tagline       string              `json:"tagline"`  // 교회 표어/모토
 	Date          string              `json:"date"`
 	WeekNumber    string              `json:"weekNumber"`
 	Scripture     string              `json:"scripture"`
@@ -134,7 +136,7 @@ func BulletinPrintHandler(w http.ResponseWriter, r *http.Request) {
 
 	worshipType := r.URL.Query().Get("type")
 	if !validWorshipTypes[worshipType] {
-		http.Error(w, "Invalid worship type", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid worship type")
 		return
 	}
 	templateNum := r.URL.Query().Get("template")
@@ -171,7 +173,7 @@ func BulletinTemplateFileHandler(w http.ResponseWriter, r *http.Request) {
 	fileName := filepath.Base(strings.TrimPrefix(r.URL.Path, "/display/bulletin-template/"))
 	data, err := templates.FS.ReadFile(fileName)
 	if err != nil {
-		http.Error(w, "Template not found: "+fileName, http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, "Template not found: "+fileName)
 		return
 	}
 	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
@@ -188,17 +190,17 @@ func BulletinDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	worshipType := r.URL.Query().Get("type")
 	if !validWorshipTypes[worshipType] {
-		http.Error(w, "Invalid worship type", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid worship type")
 		return
 	}
 	bd, err := buildBulletinData(worshipType)
 	if err != nil {
-		http.Error(w, "데이터 로드 실패: "+err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "데이터 로드 실패: "+err.Error())
 		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -216,12 +218,12 @@ func BulletinPreviewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if desktopDownloadDir == "" {
-		http.Error(w, "not desktop mode", http.StatusForbidden)
+		httpx.Error(w, http.StatusForbidden, "not desktop mode")
 		return
 	}
 	worshipType := r.URL.Query().Get("type")
 	if !validWorshipTypes[worshipType] {
-		http.Error(w, "Invalid worship type", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid worship type")
 		return
 	}
 	templateNum := r.URL.Query().Get("template")
@@ -244,7 +246,7 @@ func BulletinJsFileHandler(w http.ResponseWriter, r *http.Request) {
 	fileName := urlpath.Base(r.URL.Path)
 	data, err := bulletinJsFS.ReadFile("html/" + fileName)
 	if err != nil {
-		http.Error(w, "Not found: "+fileName, http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, "Not found: "+fileName)
 		return
 	}
 	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
@@ -261,12 +263,12 @@ func BulletinPdfSaveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if desktopDownloadDir == "" {
-		http.Error(w, "not desktop mode", http.StatusForbidden)
+		httpx.Error(w, http.StatusForbidden, "not desktop mode")
 		return
 	}
 	worshipType := r.URL.Query().Get("type")
 	if !validWorshipTypes[worshipType] {
-		http.Error(w, "Invalid worship type", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid worship type")
 		return
 	}
 	templateNum := r.URL.Query().Get("template")
@@ -278,7 +280,7 @@ func BulletinPdfSaveHandler(w http.ResponseWriter, r *http.Request) {
 	pdfBytes, err := generateBulletinPDF(worshipType, templateNum)
 	if err != nil {
 		log.Printf("[bulletin-pdf] 생성 실패: %v", err)
-		http.Error(w, "PDF 생성 실패: "+err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "PDF 생성 실패: "+err.Error())
 		return
 	}
 	log.Printf("[bulletin-pdf] 생성 완료: %d bytes", len(pdfBytes))
@@ -286,7 +288,7 @@ func BulletinPdfSaveHandler(w http.ResponseWriter, r *http.Request) {
 	fileName := fmt.Sprintf("bulletin_%s_%s.pdf", worshipType, time.Now().Format("20060102"))
 	savePath := filepath.Join(desktopDownloadDir, fileName)
 	if err := os.WriteFile(savePath, pdfBytes, 0644); err != nil {
-		http.Error(w, "저장 실패: "+err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "저장 실패: "+err.Error())
 		return
 	}
 
@@ -303,12 +305,12 @@ func BulletinPdfHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	worshipType := r.URL.Query().Get("type")
 	if !validWorshipTypes[worshipType] {
-		http.Error(w, "Invalid worship type", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid worship type")
 		return
 	}
 	templateNum := r.URL.Query().Get("template")
@@ -318,7 +320,7 @@ func BulletinPdfHandler(w http.ResponseWriter, r *http.Request) {
 
 	pdfBytes, err := generateBulletinPDF(worshipType, templateNum)
 	if err != nil {
-		http.Error(w, "PDF 생성 실패: "+err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "PDF 생성 실패: "+err.Error())
 		return
 	}
 
@@ -420,23 +422,23 @@ func BulletinCoverHandler(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, p)
 	case http.MethodPost:
 		if err := r.ParseMultipartForm(20 << 20); err != nil {
-			http.Error(w, "파일 파싱 실패", http.StatusBadRequest)
+			httpx.Error(w, http.StatusBadRequest, "파일 파싱 실패")
 			return
 		}
 		file, header, err := r.FormFile("file")
 		if err != nil {
-			http.Error(w, "파일 없음", http.StatusBadRequest)
+			httpx.Error(w, http.StatusBadRequest, "파일 없음")
 			return
 		}
 		defer file.Close()
 		ext := strings.ToLower(filepath.Ext(header.Filename))
 		if ext != ".png" && ext != ".jpg" && ext != ".jpeg" {
-			http.Error(w, "PNG/JPG만 허용합니다", http.StatusBadRequest)
+			httpx.Error(w, http.StatusBadRequest, "PNG/JPG만 허용합니다")
 			return
 		}
 		dataDir := filepath.Join(path.ExecutePath("easyPreparation"), "data")
 		if err := os.MkdirAll(dataDir, 0755); err != nil {
-			http.Error(w, "디렉토리 생성 실패", http.StatusInternalServerError)
+			httpx.Error(w, http.StatusInternalServerError, "디렉토리 생성 실패")
 			return
 		}
 		// 기존 파일 삭제 (다른 확장자일 수 있으므로)
@@ -446,12 +448,12 @@ func BulletinCoverHandler(w http.ResponseWriter, r *http.Request) {
 		savePath := filepath.Join(dataDir, "bulletin_cover"+ext)
 		dst, err := os.Create(savePath)
 		if err != nil {
-			http.Error(w, "파일 저장 실패", http.StatusInternalServerError)
+			httpx.Error(w, http.StatusInternalServerError, "파일 저장 실패")
 			return
 		}
 		defer dst.Close()
 		if _, err := io.Copy(dst, file); err != nil {
-			http.Error(w, "파일 쓰기 실패", http.StatusInternalServerError)
+			httpx.Error(w, http.StatusInternalServerError, "파일 쓰기 실패")
 			return
 		}
 		// 표지 이미지에서 주조색 자동 추출 → bulletin_theme.json 저장
@@ -461,7 +463,7 @@ func BulletinCoverHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 	default:
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 	}
 }
 
@@ -492,17 +494,17 @@ func ChurchInfoHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPut, http.MethodPost:
 		var ci ChurchInfo
 		if err := json.NewDecoder(r.Body).Decode(&ci); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 			return
 		}
 		if err := saveChurchInfo(ci); err != nil {
-			http.Error(w, "저장 실패: "+err.Error(), http.StatusInternalServerError)
+			httpx.Error(w, http.StatusInternalServerError, "저장 실패: "+err.Error())
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 	default:
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 	}
 }
 
@@ -837,17 +839,17 @@ func BulletinThemeHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPut, http.MethodPost:
 		var t BulletinTheme
 		if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 			return
 		}
 		if err := saveBulletinTheme(t); err != nil {
-			http.Error(w, "저장 실패: "+err.Error(), http.StatusInternalServerError)
+			httpx.Error(w, http.StatusInternalServerError, "저장 실패: "+err.Error())
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 	default:
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 	}
 }
 

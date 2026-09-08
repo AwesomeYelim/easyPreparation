@@ -3,7 +3,15 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io/fs"
+	"net"
+	"net/http"
+	"strings"
+	"time"
+
 	"easyPreparation_1.0/internal/handlers"
+	"easyPreparation_1.0/internal/httpx"
 	"easyPreparation_1.0/internal/license"
 	"easyPreparation_1.0/internal/middleware"
 	"easyPreparation_1.0/internal/obs"
@@ -11,12 +19,6 @@ import (
 	"easyPreparation_1.0/internal/types"
 	"easyPreparation_1.0/internal/version"
 	"easyPreparation_1.0/internal/youtube"
-	"fmt"
-	"io/fs"
-	"net"
-	"net/http"
-	"strings"
-	"time"
 )
 
 // FrontendFS — main.go에서 embed.FS 서브 디렉토리를 설정
@@ -130,7 +132,7 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 		case http.MethodDelete:
 			handlers.HandleLogoDelete(w, r)
 		default:
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		}
 	})))
 
@@ -142,7 +144,7 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 		case http.MethodPut, http.MethodPost:
 			handlers.HandleDisplayConfigSet(w, r)
 		default:
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		}
 	})))
 
@@ -247,7 +249,7 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 		case http.MethodDelete, http.MethodPost:
 			handlers.ThumbnailGeneratedDeleteHandler(w, r)
 		default:
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		}
 	})))
 	mux.Handle("/api/thumbnail/generated/file", middleware.CORS(http.HandlerFunc(handlers.ThumbnailGeneratedFileHandler)))
@@ -265,7 +267,7 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 			return
 		}
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")

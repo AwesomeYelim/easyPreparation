@@ -1,17 +1,19 @@
 package handlers
 
 import (
-	"easyPreparation_1.0/internal/types"
-	middleware "easyPreparation_1.0/internal/middleware"
-	"easyPreparation_1.0/internal/path"
-	"easyPreparation_1.0/internal/sanitize"
-	"easyPreparation_1.0/internal/utils"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
+
+	"easyPreparation_1.0/internal/httpx"
+	middleware "easyPreparation_1.0/internal/middleware"
+	"easyPreparation_1.0/internal/path"
+	"easyPreparation_1.0/internal/sanitize"
+	"easyPreparation_1.0/internal/types"
+	"easyPreparation_1.0/internal/utils"
 )
 
 func SubmitLyricsHandler(dataChan chan types.DataEnvelope) http.Handler {
@@ -19,13 +21,13 @@ func SubmitLyricsHandler(dataChan chan types.DataEnvelope) http.Handler {
 		execPath := path.ExecutePath("easyPreparation")
 
 		if r.Method != http.MethodPost {
-			http.Error(w, "Invalid method", http.StatusMethodNotAllowed)
+			httpx.Error(w, http.StatusMethodNotAllowed, "Invalid method")
 			return
 		}
 
 		var response map[string]interface{}
 		if err := json.NewDecoder(r.Body).Decode(&response); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 			return
 		}
 
@@ -40,7 +42,7 @@ func SubmitLyricsHandler(dataChan chan types.DataEnvelope) http.Handler {
 		// 2. songs 파싱
 		rawSongs, ok := response["songs"].([]interface{})
 		if !ok {
-			http.Error(w, "songs 형식이 잘못되었습니다", http.StatusBadRequest)
+			httpx.Error(w, http.StatusBadRequest, "songs 형식이 잘못되었습니다")
 			return
 		}
 
@@ -59,7 +61,7 @@ func SubmitLyricsHandler(dataChan chan types.DataEnvelope) http.Handler {
 			}
 		}
 		if len(expectedFiles) == 0 {
-			http.Error(w, "생성 가능한 가사 데이터가 없습니다", http.StatusBadRequest)
+			httpx.Error(w, http.StatusBadRequest, "생성 가능한 가사 데이터가 없습니다")
 			return
 		}
 
@@ -96,13 +98,13 @@ func SubmitLyricsHandler(dataChan chan types.DataEnvelope) http.Handler {
 			}
 		}
 		if len(existFiles) == 0 {
-			http.Error(w, "PDF 생성 실패", http.StatusInternalServerError)
+			httpx.Error(w, http.StatusInternalServerError, "PDF 생성 실패")
 			return
 		}
 
 		zipBytes, err := utils.CreateZipBufferFromFiles(existFiles, fileNames)
 		if err != nil {
-			http.Error(w, "ZIP 생성 실패: "+err.Error(), http.StatusInternalServerError)
+			httpx.Error(w, http.StatusInternalServerError, "ZIP 생성 실패: "+err.Error())
 			return
 		}
 

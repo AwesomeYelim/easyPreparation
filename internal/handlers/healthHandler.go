@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"easyPreparation_1.0/internal/path"
-	"easyPreparation_1.0/internal/version"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,6 +9,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"easyPreparation_1.0/internal/httpx"
+	"easyPreparation_1.0/internal/path"
+	"easyPreparation_1.0/internal/version"
 )
 
 // checkResult — 개별 체크 항목 결과
@@ -30,7 +32,7 @@ type healthResponse struct {
 // config 디렉토리, data 쓰기 가능, Ghostscript 실행 가능 여부를 체크한다.
 func HealthCheck(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 

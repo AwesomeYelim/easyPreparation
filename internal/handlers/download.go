@@ -2,13 +2,15 @@ package handlers
 
 import (
 	"encoding/json"
-	"easyPreparation_1.0/internal/path"
-	"easyPreparation_1.0/internal/sysopen"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"easyPreparation_1.0/internal/httpx"
+	"easyPreparation_1.0/internal/path"
+	"easyPreparation_1.0/internal/sysopen"
 )
 
 // desktopDownloadDir — Desktop 모드에서 파일을 저장할 디렉터리 (비어있으면 비활성)
@@ -34,13 +36,13 @@ func DownloadPDFHandler(w http.ResponseWriter, r *http.Request) {
 	execPath := path.ExecutePath("easyPreparation")
 
 	if target == "" {
-		http.Error(w, "Target parameter is missing", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Target parameter is missing")
 		return
 	}
 
 	pdfPath, err := findPresentationPDF(execPath, target)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, err.Error())
 		return
 	}
 
@@ -52,12 +54,12 @@ func DownloadPDFHandler(w http.ResponseWriter, r *http.Request) {
 // SaveToDownloadsHandler — Desktop 모드 전용: PDF를 ~/Downloads에 저장 후 폴더 열기
 func SaveToDownloadsHandler(w http.ResponseWriter, r *http.Request) {
 	if desktopDownloadDir == "" {
-		http.Error(w, "not desktop mode", http.StatusForbidden)
+		httpx.Error(w, http.StatusForbidden, "not desktop mode")
 		return
 	}
 	target := r.URL.Query().Get("target")
 	if target == "" {
-		http.Error(w, "target required", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "target required")
 		return
 	}
 
@@ -65,21 +67,21 @@ func SaveToDownloadsHandler(w http.ResponseWriter, r *http.Request) {
 	pdfPath, err := findPresentationPDF(execPath, target)
 	if err != nil {
 		log.Printf("[download] SaveToDownloads PDF 없음: %v", err)
-		http.Error(w, err.Error(), http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, err.Error())
 		return
 	}
 
 	// PDF 파일 복사
 	data, err := os.ReadFile(pdfPath)
 	if err != nil {
-		http.Error(w, "파일 읽기 실패: "+err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "파일 읽기 실패: "+err.Error())
 		return
 	}
 
 	savePath := filepath.Join(desktopDownloadDir, target+".pdf")
 	if err := os.WriteFile(savePath, data, 0644); err != nil {
 		log.Printf("[download] SaveToDownloads 저장 실패: %v", err)
-		http.Error(w, "저장 실패: "+err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "저장 실패: "+err.Error())
 		return
 	}
 	log.Printf("[download] SaveToDownloads 저장 완료: %s (%d bytes)", savePath, len(data))
@@ -93,12 +95,12 @@ func SaveToDownloadsHandler(w http.ResponseWriter, r *http.Request) {
 // openInBrowser — Desktop 모드 공통 브라우저 열기 헬퍼
 func openInBrowser(w http.ResponseWriter, targetURL string) {
 	if desktopDownloadDir == "" {
-		http.Error(w, "not desktop mode", http.StatusForbidden)
+		httpx.Error(w, http.StatusForbidden, "not desktop mode")
 		return
 	}
 	if err := sysopen.URL(targetURL); err != nil {
 		log.Printf("[download] 브라우저 열기 실패: %v", err)
-		http.Error(w, "브라우저 열기 실패", http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "브라우저 열기 실패")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

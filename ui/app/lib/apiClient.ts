@@ -16,6 +16,21 @@ export interface DisplayConfig {
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
   || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8080');
 
+/**
+ * 응답 본문을 JSON 으로 파싱한다. 서버는 에러도 {"error": "..."} JSON 으로 주지만,
+ * 프록시/네트워크 계층이 plain text 를 돌려주는 경우에도 SyntaxError 대신
+ * { ok: false, error: <본문 또는 HTTP 상태> } 를 반환해 호출자의 res.ok / res.error 계약을 유지한다.
+ */
+async function toJSON(res: Response): Promise<any> {
+  const text = await res.text();
+  if (!text) return res.ok ? {} : { ok: false, error: `HTTP ${res.status}` };
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { ok: false, error: text.trim() || `HTTP ${res.status}` };
+  }
+}
+
 type SongItem = { title: string; lyrics: string };
 
 /** Display 창 참조 — 이미 열려있으면 reload 방지 */
@@ -41,23 +56,23 @@ export async function openDisplayWindow(force = false) {
 export const apiClient = {
   // 성경 API — verses/search는 연속 호출 시 이전 응답이 최신 상태를 덮어쓰지 않도록 AbortSignal 지원
   getBibleVersions: () =>
-    fetch(`${BASE_URL}/api/bible/versions`).then((r) => r.json()),
+    fetch(`${BASE_URL}/api/bible/versions`).then(toJSON),
 
   getBibleBooks: () =>
-    fetch(`${BASE_URL}/api/bible/books`).then((r) => r.json()),
+    fetch(`${BASE_URL}/api/bible/books`).then(toJSON),
 
   getBibleVerses: (book: number, chapter: number, version: number, signal?: AbortSignal) =>
     fetch(`${BASE_URL}/api/bible/verses?book=${book}&chapter=${chapter}&version=${version}`, { signal })
-      .then((r) => r.json()),
+      .then(toJSON),
 
   searchBible: (q: string, version: number, signal?: AbortSignal) =>
     fetch(`${BASE_URL}/api/bible/search?q=${encodeURIComponent(q)}&version=${version}`, { signal })
-      .then((r) => r.json()),
+      .then(toJSON),
 
   // 예배 순서 API (Go 서버 마스터)
   getWorshipOrder: (type: string) =>
     fetch(`${BASE_URL}/api/worship-order?type=${type}`)
-      .then((r) => r.json()) as Promise<WorshipOrderItem[]>,
+      .then(toJSON) as Promise<WorshipOrderItem[]>,
 
   saveWorshipOrder: (type: string, items: WorshipOrderItem[]) =>
     fetch(`${BASE_URL}/api/worship-order`, {
@@ -111,7 +126,7 @@ export const apiClient = {
   getDisplayStatus: () =>
     fetch(`${BASE_URL}/display/status`).then((res) => {
       if (!res.ok) throw new Error(`display/status ${res.status}`);
-      return res.json();
+      return toJSON(res);
     }),
 
   timerControl: (action: string, factor?: number) =>
@@ -178,78 +193,78 @@ export const apiClient = {
   // 찬송가 API
   getHymns: (page = 1, limit = 50, book?: string) =>
     fetch(`${BASE_URL}/api/hymns?page=${page}&limit=${limit}${book ? `&book=${book}` : ""}`)
-      .then((r) => r.json()),
+      .then(toJSON),
 
   searchHymns: (q: string, type?: string) =>
     fetch(`${BASE_URL}/api/hymns/search?q=${encodeURIComponent(q)}${type ? `&type=${type}` : ""}`)
-      .then((r) => r.json()),
+      .then(toJSON),
 
   getHymnDetail: (number: number, book = "new") =>
     fetch(`${BASE_URL}/api/hymns/detail?number=${number}&book=${book}`)
-      .then((r) => r.json()),
+      .then(toJSON),
 
   // 설정 API
   getSettings: (email: string) =>
     fetch(`${BASE_URL}/api/settings?email=${encodeURIComponent(email)}`)
-      .then((r) => r.json()),
+      .then(toJSON),
 
   saveSettings: (email: string, settings: Partial<UserSettings>) =>
     fetch(`${BASE_URL}/api/settings`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, ...settings }),
-    }).then((r) => r.json()),
+    }).then(toJSON),
 
   saveLicense: (email: string, licenseKey: string, token: string) =>
     fetch(`${BASE_URL}/api/settings/license`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, license_key: licenseKey, token }),
-    }).then((r) => r.json()),
+    }).then(toJSON),
 
   // 이력 API
   getHistory: (email: string, type?: string, page = 1) =>
     fetch(`${BASE_URL}/api/history?email=${encodeURIComponent(email)}${type ? `&type=${type}` : ""}&page=${page}`)
-      .then((r) => r.json()),
+      .then(toJSON),
 
   deleteHistory: (id: number, email: string) =>
     fetch(`${BASE_URL}/api/history?id=${id}&email=${encodeURIComponent(email)}`, { method: "DELETE" }),
 
   // 스케줄러 API
   getSchedule: () =>
-    fetch(`${BASE_URL}/api/schedule`).then((r) => r.json()),
+    fetch(`${BASE_URL}/api/schedule`).then(toJSON),
 
   saveSchedule: (config: ScheduleConfig) =>
     fetch(`${BASE_URL}/api/schedule`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(config),
-    }).then((r) => r.json()),
+    }).then(toJSON),
 
   streamControl: (action: "start" | "stop" | "status", includeThumbnail?: boolean, isTest?: boolean, includeTitle?: boolean) =>
     fetch(`${BASE_URL}/api/schedule/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, includeThumbnail, isTest, includeTitle }),
-    }).then((r) => r.json()),
+    }).then(toJSON),
 
   scheduleTest: (action: "countdown" | "trigger", worshipType: string) =>
     fetch(`${BASE_URL}/api/schedule/test`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, worshipType }),
-    }).then((r) => r.json()),
+    }).then(toJSON),
 
   // 썸네일 API
   getThumbnailConfig: () =>
-    fetch(`${BASE_URL}/api/thumbnail/config`).then((r) => r.json()),
+    fetch(`${BASE_URL}/api/thumbnail/config`).then(toJSON),
 
   saveThumbnailConfig: (config: ThumbnailConfig) =>
     fetch(`${BASE_URL}/api/thumbnail/config`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(config),
-    }).then((r) => r.json()),
+    }).then(toJSON),
 
   generateThumbnail: (
     worshipType: string,
@@ -268,7 +283,7 @@ export const apiClient = {
         mainText: overrides?.main ?? "",
         footerText: overrides?.footer ?? "",
       }),
-    }).then((r) => r.json()),
+    }).then(toJSON),
 
   getThumbnailPreviewUrl: (worshipType: string, date?: string) =>
     `${BASE_URL}/api/thumbnail/preview?worshipType=${worshipType}${date ? `&date=${date}` : ""}`,
@@ -278,7 +293,7 @@ export const apiClient = {
     fd.append("image", file);
     if (target) fd.append("target", target);
     return fetch(`${BASE_URL}/api/thumbnail/upload`, { method: "POST", body: fd })
-      .then((r) => r.json());
+      .then(toJSON);
   },
 
   getThumbnailImageUrl: (path: string) =>
@@ -286,14 +301,14 @@ export const apiClient = {
 
   // 버전 + 업데이트 API
   getVersion: () =>
-    fetch(`${BASE_URL}/api/version`).then((r) => r.json()) as Promise<{
+    fetch(`${BASE_URL}/api/version`).then(toJSON) as Promise<{
       version: string;
       commit: string;
       buildTime: string;
     }>,
 
   checkUpdate: () =>
-    fetch(`${BASE_URL}/api/update/check`).then((r) => r.json()) as Promise<{
+    fetch(`${BASE_URL}/api/update/check`).then(toJSON) as Promise<{
       ok: boolean;
       current: string;
       latest?: string;
@@ -305,17 +320,17 @@ export const apiClient = {
 
   startUpdateDownload: async () => {
     const res = await fetch(`${BASE_URL}/api/update/download`, { method: 'POST' });
-    return res.json() as Promise<{ ok: boolean; version?: string; error?: string }>;
+    return toJSON(res) as Promise<{ ok: boolean; version?: string; error?: string }>;
   },
 
   applyUpdate: async () => {
     const res = await fetch(`${BASE_URL}/api/update/apply`, { method: 'POST' });
-    return res.json() as Promise<{ ok: boolean; restartRequired?: boolean; error?: string }>;
+    return toJSON(res) as Promise<{ ok: boolean; restartRequired?: boolean; error?: string }>;
   },
 
   getUpdateStatus: async () => {
     const res = await fetch(`${BASE_URL}/api/update/status`);
-    return res.json() as Promise<{
+    return toJSON(res) as Promise<{
       state: 'idle' | 'checking' | 'downloading' | 'downloaded' | 'applying' | 'restart_required' | 'error';
       percent: number;
       totalBytes: number;
@@ -327,13 +342,13 @@ export const apiClient = {
 
   cancelUpdateDownload: async () => {
     const res = await fetch(`${BASE_URL}/api/update/cancel`, { method: 'POST' });
-    return res.json() as Promise<{ ok: boolean }>;
+    return toJSON(res) as Promise<{ ok: boolean }>;
   },
 
   // 라이선스 API
   getLicenseStatus: async (): Promise<LicenseStatus> => {
     const res = await fetch(`${BASE_URL}/api/license`);
-    return res.json();
+    return toJSON(res);
   },
 
   activateLicense: async (licenseKey: string) => {
@@ -342,17 +357,17 @@ export const apiClient = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ license_key: licenseKey }),
     });
-    return res.json();
+    return toJSON(res);
   },
 
   deactivateLicense: async () => {
     const res = await fetch(`${BASE_URL}/api/license/deactivate`, { method: 'POST' });
-    return res.json();
+    return toJSON(res);
   },
 
   verifyLicense: async () => {
     const res = await fetch(`${BASE_URL}/api/license/verify`, { method: 'POST' });
-    return res.json();
+    return toJSON(res);
   },
 
   // 결제 API
@@ -362,7 +377,7 @@ export const apiClient = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ plan }),
     });
-    return res.json() as Promise<{ checkoutUrl: string; sessionId: string }>;
+    return toJSON(res) as Promise<{ checkoutUrl: string; sessionId: string }>;
   },
 
   pollActivation: async (sessionId: string) => {
@@ -371,7 +386,7 @@ export const apiClient = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId }),
     });
-    return res.json() as Promise<{ status: 'pending' | 'completed'; plan?: string; licenseKey?: string }>;
+    return toJSON(res) as Promise<{ status: 'pending' | 'completed'; plan?: string; licenseKey?: string }>;
   },
 
   getPortalUrl: async () => {
@@ -379,7 +394,7 @@ export const apiClient = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
-    return res.json() as Promise<{ portalUrl: string }>;
+    return toJSON(res) as Promise<{ portalUrl: string }>;
   },
 
   setLicensePlan: async (plan: string, password?: string) => {
@@ -390,13 +405,13 @@ export const apiClient = {
     });
     if (res.status === 401) throw new Error('비밀번호가 올바르지 않습니다.');
     if (!res.ok) throw new Error('플랜 변경 실패');
-    return res.json();
+    return toJSON(res);
   },
 
   // 배경 템플릿 API
   getTemplates: (category: string) =>
     fetch(`${BASE_URL}/api/templates?category=${category}`)
-      .then((r) => r.json()) as Promise<{ files: { name: string; url: string; size: number }[] }>,
+      .then(toJSON) as Promise<{ files: { name: string; url: string; size: number }[] }>,
 
   uploadTemplate: (file: File, category: string, name?: string) => {
     const fd = new FormData();
@@ -404,19 +419,19 @@ export const apiClient = {
     fd.append("category", category);
     if (name) fd.append("name", name);
     return fetch(`${BASE_URL}/api/templates/upload`, { method: "POST", body: fd })
-      .then((r) => r.json()) as Promise<{ ok: boolean; name: string; url: string }>;
+      .then(toJSON) as Promise<{ ok: boolean; name: string; url: string }>;
   },
 
   deleteTemplate: (category: string, filename: string) =>
     fetch(`${BASE_URL}/api/templates/${category}/${encodeURIComponent(filename)}`, { method: "DELETE" })
-      .then((r) => r.json()) as Promise<{ ok: boolean }>,
+      .then(toJSON) as Promise<{ ok: boolean }>,
 
   getTemplateUrl: (category: string, filename: string) =>
     `${BASE_URL}/api/templates/${category}/${encodeURIComponent(filename)}`,
 
   // YouTube API
   getYoutubeStatus: () =>
-    fetch(`${BASE_URL}/api/youtube/status`).then((r) => r.json()),
+    fetch(`${BASE_URL}/api/youtube/status`).then(toJSON),
 
   getYoutubeAuthUrl: () => `${BASE_URL}/api/youtube/auth`,
   openYoutubeAuth: () => fetch(`${BASE_URL}/api/youtube/open-auth`),
@@ -426,23 +441,23 @@ export const apiClient = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ worshipType: worshipType || "main_worship" }),
-    }).then((r) => r.json()),
+    }).then(toJSON),
 
   // OBS 소스 관리 API
   getOBSScenes: () =>
-    fetch(`${BASE_URL}/api/obs/scenes`).then((r) => r.json()) as Promise<{
+    fetch(`${BASE_URL}/api/obs/scenes`).then(toJSON) as Promise<{
       connected: boolean; scenes: string[]; currentScene?: string; error?: string;
     }>,
 
   getOBSSources: (scene: string) =>
     fetch(`${BASE_URL}/api/obs/sources?scene=${encodeURIComponent(scene)}`)
-      .then((r) => r.json()) as Promise<{ items: OBSSourceItem[]; error?: string }>,
+      .then(toJSON) as Promise<{ items: OBSSourceItem[]; error?: string }>,
 
   uploadOBSLogo: (file: File) => {
     const fd = new FormData();
     fd.append("image", file);
     return fetch(`${BASE_URL}/api/obs/logo/upload`, { method: "POST", body: fd })
-      .then((r) => r.json()) as Promise<{ ok: boolean; path?: string }>;
+      .then(toJSON) as Promise<{ ok: boolean; path?: string }>;
   },
 
   applyOBSLogo: (scene: string, position: string, scale: number, x?: number, y?: number) =>
@@ -450,10 +465,10 @@ export const apiClient = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scene, position, scale, x: x ?? 0, y: y ?? 0 }),
-    }).then((r) => r.json()) as Promise<{ ok: boolean; sceneItemId?: number; error?: string }>,
+    }).then(toJSON) as Promise<{ ok: boolean; sceneItemId?: number; error?: string }>,
 
   getOBSCameraDevices: () =>
-    fetch(`${BASE_URL}/api/obs/camera/devices`).then((r) => r.json()) as Promise<{
+    fetch(`${BASE_URL}/api/obs/camera/devices`).then(toJSON) as Promise<{
       devices: OBSDevice[]; error?: string;
     }>,
 
@@ -462,61 +477,61 @@ export const apiClient = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scene, deviceId, inputName }),
-    }).then((r) => r.json()) as Promise<{ ok: boolean; sceneItemId?: number; error?: string }>,
+    }).then(toJSON) as Promise<{ ok: boolean; sceneItemId?: number; error?: string }>,
 
   toggleOBSSource: (scene: string, sceneItemId: number, enabled: boolean) =>
     fetch(`${BASE_URL}/api/obs/sources/toggle`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scene, sceneItemId, enabled }),
-    }).then((r) => r.json()) as Promise<{ ok: boolean; error?: string }>,
+    }).then(toJSON) as Promise<{ ok: boolean; error?: string }>,
 
   removeOBSSource: (inputName: string) =>
     fetch(`${BASE_URL}/api/obs/sources/remove`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ inputName }),
-    }).then((r) => r.json()) as Promise<{ ok: boolean; error?: string }>,
+    }).then(toJSON) as Promise<{ ok: boolean; error?: string }>,
 
   setupOBSDisplay: (scene?: string, url?: string) =>
     fetch(`${BASE_URL}/api/obs/setup-display`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scene: scene ?? "", url: url ?? "" }),
-    }).then((r) => r.json()) as Promise<{ ok: boolean; sceneItemId?: number; inputName?: string; scene?: string; url?: string; error?: string }>,
+    }).then(toJSON) as Promise<{ ok: boolean; sceneItemId?: number; inputName?: string; scene?: string; url?: string; error?: string }>,
 
   obsSetupInitial: (cameraDeviceId?: string) =>
     fetch(`${BASE_URL}/api/obs/setup-initial`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ cameraDeviceId: cameraDeviceId ?? "" }),
-    }).then((r) => r.json()) as Promise<OBSInitialSetupResult>,
+    }).then(toJSON) as Promise<OBSInitialSetupResult>,
 
   obsGetStatus: () =>
-    fetch(`${BASE_URL}/api/obs/status`).then((r) => r.json()) as Promise<{ connected: boolean; currentScene?: string }>,
+    fetch(`${BASE_URL}/api/obs/status`).then(toJSON) as Promise<{ connected: boolean; currentScene?: string }>,
 
   obsConnect: (ip: string, port: number, password: string) =>
     fetch(`${BASE_URL}/api/obs/connect`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ip, port, password }),
-    }).then((r) => r.json()) as Promise<{ ok: boolean; connected: boolean; host: string }>,
+    }).then(toJSON) as Promise<{ ok: boolean; connected: boolean; host: string }>,
 
   obsSetStreamSettings: (server: string, key: string) =>
     fetch(`${BASE_URL}/api/obs/stream-settings`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ server, key }),
-    }).then((r) => r.json()) as Promise<{ ok: boolean; error?: string }>,
+    }).then(toJSON) as Promise<{ ok: boolean; error?: string }>,
 
   obsSyncStreamKey: () =>
     fetch(`${BASE_URL}/api/obs/sync-stream-key`, { method: "POST" })
-      .then((r) => r.json()) as Promise<{ ok: boolean; error?: string }>,
+      .then(toJSON) as Promise<{ ok: boolean; error?: string }>,
 
   getOBSLogoHistory: async (): Promise<{ paths: string[] }> => {
     const res = await fetch(`${BASE_URL}/api/obs/logo/history`);
     if (!res.ok) return { paths: [] };
-    return res.json();
+    return toJSON(res);
   },
 
   getOBSLogoImageUrl: (name: string) =>
@@ -529,12 +544,12 @@ export const apiClient = {
     const fd = new FormData();
     fd.append("logo", file);
     return fetch(`${BASE_URL}/api/logo`, { method: "POST", body: fd })
-      .then((r) => r.json()) as Promise<{ ok: boolean }>;
+      .then(toJSON) as Promise<{ ok: boolean }>;
   },
 
   deleteLogo: () =>
     fetch(`${BASE_URL}/api/logo`, { method: "DELETE" })
-      .then((r) => r.json()) as Promise<{ ok: boolean }>,
+      .then(toJSON) as Promise<{ ok: boolean }>,
 
   hasLogo: () =>
     fetch(`${BASE_URL}/api/logo`, { method: "HEAD" })
@@ -544,62 +559,62 @@ export const apiClient = {
   // Display 전역 설정 (폰트 + 오버레이 + 비디오 배경)
   getDisplayConfig: () =>
     fetch(`${BASE_URL}/api/display-config`)
-      .then((r) => r.json()) as Promise<DisplayConfig>,
+      .then(toJSON) as Promise<DisplayConfig>,
 
   saveDisplayConfig: (config: Partial<DisplayConfig>) =>
     fetch(`${BASE_URL}/api/display-config`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(config),
-    }).then((r) => r.json()) as Promise<DisplayConfig>,
+    }).then(toJSON) as Promise<DisplayConfig>,
 
   // 비디오 배경
   uploadVideoBg: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    return fetch(`${BASE_URL}/api/video-bg/upload`, { method: "POST", body: fd }).then((r) => r.json());
+    return fetch(`${BASE_URL}/api/video-bg/upload`, { method: "POST", body: fd }).then(toJSON);
   },
   listVideoBg: () =>
-    fetch(`${BASE_URL}/api/video-bg/list`).then((r) => r.json()) as Promise<{ filename: string; url: string }[]>,
+    fetch(`${BASE_URL}/api/video-bg/list`).then(toJSON) as Promise<{ filename: string; url: string }[]>,
   deleteVideoBg: (filename: string) =>
     fetch(`${BASE_URL}/api/video-bg/delete?filename=${encodeURIComponent(filename)}`, {
       method: "DELETE",
-    }).then((r) => r.json()),
+    }).then(toJSON),
 
   // PTZ 카메라 API
   getPTZConfig: () =>
-    fetch(`${BASE_URL}/api/ptz/config`).then((r) => r.json()) as Promise<PTZConfig>,
+    fetch(`${BASE_URL}/api/ptz/config`).then(toJSON) as Promise<PTZConfig>,
 
   savePTZConfig: (config: PTZConfig) =>
     fetch(`${BASE_URL}/api/ptz/config`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(config),
-    }).then((r) => r.json()) as Promise<{ ok: boolean }>,
+    }).then(toJSON) as Promise<{ ok: boolean }>,
 
   ptzGoto: (preset: number) =>
     fetch(`${BASE_URL}/api/ptz/goto`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ preset }),
-    }).then((r) => r.json()) as Promise<{ ok: boolean }>,
+    }).then(toJSON) as Promise<{ ok: boolean }>,
 
   ptzSetSource: (mode: "camera" | "slides") =>
     fetch(`${BASE_URL}/api/ptz/source`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode }),
-    }).then((r) => r.json()) as Promise<{ ok: boolean }>,
+    }).then(toJSON) as Promise<{ ok: boolean }>,
 
   ptzPing: () =>
-    fetch(`${BASE_URL}/api/ptz/ping`).then((r) => r.json()) as Promise<{ ok: boolean; latency_ms?: number; error?: string }>,
+    fetch(`${BASE_URL}/api/ptz/ping`).then(toJSON) as Promise<{ ok: boolean; latency_ms?: number; error?: string }>,
 
   ptzGetPresets: () =>
-    fetch(`${BASE_URL}/api/ptz/presets`).then((r) => r.json()) as Promise<{ ok: boolean; presets?: PTZPreset[]; error?: string }>,
+    fetch(`${BASE_URL}/api/ptz/presets`).then(toJSON) as Promise<{ ok: boolean; presets?: PTZPreset[]; error?: string }>,
 
   // OBS 씬 매핑 (obs.json scenes 맵) 조회/수정
   getObsSceneMapping: () =>
-    fetch(`${BASE_URL}/api/obs/scene-mapping`).then((r) => r.json()) as Promise<{
+    fetch(`${BASE_URL}/api/obs/scene-mapping`).then(toJSON) as Promise<{
       mapping: Record<string, string>;
       cameraScene: string;
       displayScene: string;
@@ -610,12 +625,12 @@ export const apiClient = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, scene }),
-    }).then((r) => r.json()) as Promise<{ ok: boolean }>,
+    }).then(toJSON) as Promise<{ ok: boolean }>,
 
   setObsPresetMapping: (title: string, preset: number) =>
     fetch(`${BASE_URL}/api/obs/scene-mapping`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, preset }),
-    }).then((r) => r.json()) as Promise<{ ok: boolean }>,
+    }).then(toJSON) as Promise<{ ok: boolean }>,
 };

@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"easyPreparation_1.0/internal/httpx"
 )
 
 // CustomSong — 커스텀 찬양 곡 구조체
@@ -24,17 +26,17 @@ type CustomSong struct {
 // title, artist, lyrics 전문 검색, 결과 최대 20개
 func CustomSongSearchHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "허용되지 않는 메서드입니다", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "허용되지 않는 메서드입니다")
 		return
 	}
 	if apiDB == nil {
-		http.Error(w, "데이터베이스에 연결할 수 없습니다", http.StatusServiceUnavailable)
+		httpx.Error(w, http.StatusServiceUnavailable, "데이터베이스에 연결할 수 없습니다")
 		return
 	}
 
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	if q == "" {
-		http.Error(w, "q 파라미터가 필요합니다", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "q 파라미터가 필요합니다")
 		return
 	}
 
@@ -48,7 +50,7 @@ func CustomSongSearchHandler(w http.ResponseWriter, r *http.Request) {
 		LIMIT 20
 	`, q, q, q)
 	if err != nil {
-		http.Error(w, "검색 중 오류가 발생했습니다: "+err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "검색 중 오류가 발생했습니다: "+err.Error())
 		return
 	}
 	defer rows.Close()
@@ -75,11 +77,11 @@ func CustomSongSearchHandler(w http.ResponseWriter, r *http.Request) {
 // 텍스트 파일 일괄 임포트
 func CustomSongImportHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "허용되지 않는 메서드입니다", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "허용되지 않는 메서드입니다")
 		return
 	}
 	if apiDB == nil {
-		http.Error(w, "데이터베이스에 연결할 수 없습니다", http.StatusServiceUnavailable)
+		httpx.Error(w, http.StatusServiceUnavailable, "데이터베이스에 연결할 수 없습니다")
 		return
 	}
 
@@ -87,13 +89,13 @@ func CustomSongImportHandler(w http.ResponseWriter, r *http.Request) {
 		Text string `json:"text"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "요청 형식이 올바르지 않습니다: "+err.Error(), http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "요청 형식이 올바르지 않습니다: "+err.Error())
 		return
 	}
 
 	songs := parseImportText(body.Text)
 	if len(songs) == 0 {
-		http.Error(w, "임포트할 곡이 없습니다. 형식을 확인해주세요", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "임포트할 곡이 없습니다. 형식을 확인해주세요")
 		return
 	}
 
@@ -130,14 +132,14 @@ func CustomSongCRUDHandler(w http.ResponseWriter, r *http.Request) {
 		case http.MethodPost:
 			customSongCreateHandler(w, r)
 		default:
-			http.Error(w, "허용되지 않는 메서드입니다", http.StatusMethodNotAllowed)
+			httpx.Error(w, http.StatusMethodNotAllowed, "허용되지 않는 메서드입니다")
 		}
 		return
 	}
 
 	id, err := strconv.Atoi(path)
 	if err != nil {
-		http.Error(w, "유효하지 않은 곡 ID입니다", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "유효하지 않은 곡 ID입니다")
 		return
 	}
 
@@ -149,7 +151,7 @@ func CustomSongCRUDHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		customSongDeleteHandler(w, r, id)
 	default:
-		http.Error(w, "허용되지 않는 메서드입니다", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "허용되지 않는 메서드입니다")
 	}
 }
 
@@ -157,7 +159,7 @@ func CustomSongCRUDHandler(w http.ResponseWriter, r *http.Request) {
 // 전체 목록 (최근 사용순)
 func customSongListHandler(w http.ResponseWriter, r *http.Request) {
 	if apiDB == nil {
-		http.Error(w, "데이터베이스에 연결할 수 없습니다", http.StatusServiceUnavailable)
+		httpx.Error(w, http.StatusServiceUnavailable, "데이터베이스에 연결할 수 없습니다")
 		return
 	}
 
@@ -168,7 +170,7 @@ func customSongListHandler(w http.ResponseWriter, r *http.Request) {
 		LIMIT 100
 	`)
 	if err != nil {
-		http.Error(w, "목록 조회 중 오류가 발생했습니다: "+err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "목록 조회 중 오류가 발생했습니다: "+err.Error())
 		return
 	}
 	defer rows.Close()
@@ -195,7 +197,7 @@ func customSongListHandler(w http.ResponseWriter, r *http.Request) {
 // used_count + last_used 업데이트
 func customSongGetHandler(w http.ResponseWriter, r *http.Request, id int) {
 	if apiDB == nil {
-		http.Error(w, "데이터베이스에 연결할 수 없습니다", http.StatusServiceUnavailable)
+		httpx.Error(w, http.StatusServiceUnavailable, "데이터베이스에 연결할 수 없습니다")
 		return
 	}
 
@@ -206,7 +208,7 @@ func customSongGetHandler(w http.ResponseWriter, r *http.Request, id int) {
 		FROM custom_songs WHERE id = ?
 	`, id).Scan(&s.ID, &s.Title, &s.Artist, &s.Lyrics, &tagsJSON, &s.UsedCount, &s.LastUsed, &s.CreatedAt)
 	if err != nil {
-		http.Error(w, "곡을 찾을 수 없습니다", http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, "곡을 찾을 수 없습니다")
 		return
 	}
 
@@ -230,7 +232,7 @@ func customSongGetHandler(w http.ResponseWriter, r *http.Request, id int) {
 // customSongCreateHandler — POST /api/songs
 func customSongCreateHandler(w http.ResponseWriter, r *http.Request) {
 	if apiDB == nil {
-		http.Error(w, "데이터베이스에 연결할 수 없습니다", http.StatusServiceUnavailable)
+		httpx.Error(w, http.StatusServiceUnavailable, "데이터베이스에 연결할 수 없습니다")
 		return
 	}
 
@@ -241,15 +243,15 @@ func customSongCreateHandler(w http.ResponseWriter, r *http.Request) {
 		Tags   []string `json:"tags"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "요청 형식이 올바르지 않습니다: "+err.Error(), http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "요청 형식이 올바르지 않습니다: "+err.Error())
 		return
 	}
 	if strings.TrimSpace(input.Title) == "" {
-		http.Error(w, "제목은 필수입니다", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "제목은 필수입니다")
 		return
 	}
 	if strings.TrimSpace(input.Lyrics) == "" {
-		http.Error(w, "가사는 필수입니다", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "가사는 필수입니다")
 		return
 	}
 	if input.Tags == nil {
@@ -262,7 +264,7 @@ func customSongCreateHandler(w http.ResponseWriter, r *http.Request) {
 		VALUES (?, ?, ?, ?)
 	`, input.Title, input.Artist, input.Lyrics, string(tagsJSON))
 	if err != nil {
-		http.Error(w, "곡 저장 중 오류가 발생했습니다: "+err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "곡 저장 중 오류가 발생했습니다: "+err.Error())
 		return
 	}
 
@@ -287,7 +289,7 @@ func customSongCreateHandler(w http.ResponseWriter, r *http.Request) {
 // customSongUpdateHandler — PUT /api/songs/:id
 func customSongUpdateHandler(w http.ResponseWriter, r *http.Request, id int) {
 	if apiDB == nil {
-		http.Error(w, "데이터베이스에 연결할 수 없습니다", http.StatusServiceUnavailable)
+		httpx.Error(w, http.StatusServiceUnavailable, "데이터베이스에 연결할 수 없습니다")
 		return
 	}
 
@@ -298,15 +300,15 @@ func customSongUpdateHandler(w http.ResponseWriter, r *http.Request, id int) {
 		Tags   []string `json:"tags"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "요청 형식이 올바르지 않습니다: "+err.Error(), http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "요청 형식이 올바르지 않습니다: "+err.Error())
 		return
 	}
 	if strings.TrimSpace(input.Title) == "" {
-		http.Error(w, "제목은 필수입니다", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "제목은 필수입니다")
 		return
 	}
 	if strings.TrimSpace(input.Lyrics) == "" {
-		http.Error(w, "가사는 필수입니다", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "가사는 필수입니다")
 		return
 	}
 	if input.Tags == nil {
@@ -319,12 +321,12 @@ func customSongUpdateHandler(w http.ResponseWriter, r *http.Request, id int) {
 		WHERE id = ?
 	`, input.Title, input.Artist, input.Lyrics, string(tagsJSON), id)
 	if err != nil {
-		http.Error(w, "곡 수정 중 오류가 발생했습니다: "+err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "곡 수정 중 오류가 발생했습니다: "+err.Error())
 		return
 	}
 	affected, _ := result.RowsAffected()
 	if affected == 0 {
-		http.Error(w, "곡을 찾을 수 없습니다", http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, "곡을 찾을 수 없습니다")
 		return
 	}
 
@@ -346,18 +348,18 @@ func customSongUpdateHandler(w http.ResponseWriter, r *http.Request, id int) {
 // customSongDeleteHandler — DELETE /api/songs/:id
 func customSongDeleteHandler(w http.ResponseWriter, r *http.Request, id int) {
 	if apiDB == nil {
-		http.Error(w, "데이터베이스에 연결할 수 없습니다", http.StatusServiceUnavailable)
+		httpx.Error(w, http.StatusServiceUnavailable, "데이터베이스에 연결할 수 없습니다")
 		return
 	}
 
 	result, err := apiDB.Exec(`DELETE FROM custom_songs WHERE id = ?`, id)
 	if err != nil {
-		http.Error(w, "곡 삭제 중 오류가 발생했습니다: "+err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "곡 삭제 중 오류가 발생했습니다: "+err.Error())
 		return
 	}
 	affected, _ := result.RowsAffected()
 	if affected == 0 {
-		http.Error(w, "곡을 찾을 수 없습니다", http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, "곡을 찾을 수 없습니다")
 		return
 	}
 

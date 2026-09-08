@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+
+	"easyPreparation_1.0/internal/httpx"
 )
 
 // SettingsHandler — GET/PUT /api/settings
@@ -14,14 +16,14 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPut:
 		putSettingsHandler(w, r)
 	default:
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 	}
 }
 
 func getSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	churchID := resolveChurchID(r.URL.Query().Get("email"))
 	if churchID == 0 {
-		http.Error(w, `{"error":"church not found"}`, http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, "church not found")
 		return
 	}
 
@@ -38,10 +40,10 @@ func getSettingsHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"preferred_bible_version": 1,
-			"theme":                  "light",
-			"font_size":              16,
-			"default_bpm":            100,
-			"display_layout":         "default",
+			"theme":                   "light",
+			"font_size":               16,
+			"default_bpm":             100,
+			"display_layout":          "default",
 		})
 		return
 	}
@@ -49,10 +51,10 @@ func getSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"preferred_bible_version": preferredBibleVersion,
-		"theme":                  theme,
-		"font_size":              fontSize,
-		"default_bpm":            defaultBpm,
-		"display_layout":         displayLayout,
+		"theme":                   theme,
+		"font_size":               fontSize,
+		"default_bpm":             defaultBpm,
+		"display_layout":          displayLayout,
 	})
 }
 
@@ -66,13 +68,13 @@ func putSettingsHandler(w http.ResponseWriter, r *http.Request) {
 		DisplayLayout         string `json:"display_layout"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "invalid body")
 		return
 	}
 
 	churchID := resolveChurchID(body.Email)
 	if churchID == 0 {
-		http.Error(w, `{"error":"church not found"}`, http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, "church not found")
 		return
 	}
 
@@ -106,7 +108,7 @@ func putSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	`, churchID, body.PreferredBibleVersion, body.Theme, body.FontSize, body.DefaultBpm, body.DisplayLayout)
 
 	if err != nil {
-		http.Error(w, `{"error":"save failed"}`, http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "save failed")
 		return
 	}
 
@@ -120,30 +122,30 @@ func HistoryHandler(w http.ResponseWriter, r *http.Request) {
 		id := r.URL.Query().Get("id")
 		email := r.URL.Query().Get("email")
 		if id == "" {
-			http.Error(w, "id required", http.StatusBadRequest)
+			httpx.Error(w, http.StatusBadRequest, "id required")
 			return
 		}
 		churchID := resolveChurchID(email)
 		if churchID == 0 {
-			http.Error(w, "church not found", http.StatusNotFound)
+			httpx.Error(w, http.StatusNotFound, "church not found")
 			return
 		}
 		_, err := apiDB.Exec(`DELETE FROM generation_history WHERE id = ? AND church_id = ?`, id, churchID)
 		if err != nil {
-			http.Error(w, "delete failed", http.StatusInternalServerError)
+			httpx.Error(w, http.StatusInternalServerError, "delete failed")
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
 	churchID := resolveChurchID(r.URL.Query().Get("email"))
 	if churchID == 0 {
-		http.Error(w, `{"error":"church not found"}`, http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, "church not found")
 		return
 	}
 
@@ -174,7 +176,7 @@ func HistoryHandler(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := apiDB.Query(query, args...)
 	if err != nil {
-		http.Error(w, `{"error":"query failed"}`, http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "query failed")
 		return
 	}
 	defer rows.Close()
@@ -223,7 +225,7 @@ func HistoryHandler(w http.ResponseWriter, r *http.Request) {
 // LicenseHandler — PUT /api/settings/license
 func LicenseHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
@@ -233,13 +235,13 @@ func LicenseHandler(w http.ResponseWriter, r *http.Request) {
 		Token      string `json:"token"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "invalid body")
 		return
 	}
 
 	churchID := resolveChurchID(body.Email)
 	if churchID == 0 {
-		http.Error(w, `{"error":"church not found"}`, http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, "church not found")
 		return
 	}
 
@@ -253,7 +255,7 @@ func LicenseHandler(w http.ResponseWriter, r *http.Request) {
 	`, churchID, body.LicenseKey, body.Token)
 
 	if err != nil {
-		http.Error(w, `{"error":"save failed"}`, http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "save failed")
 		return
 	}
 

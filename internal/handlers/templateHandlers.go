@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"easyPreparation_1.0/internal/httpx"
 	"easyPreparation_1.0/internal/path"
 )
 
@@ -37,14 +38,14 @@ func TemplateListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
 	category := r.URL.Query().Get("category")
 	dir := templateDir(category)
 	if dir == "" {
-		http.Error(w, "잘못된 카테고리", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "잘못된 카테고리")
 		return
 	}
 
@@ -107,7 +108,7 @@ func TemplateUploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
@@ -115,7 +116,7 @@ func TemplateUploadHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseMultipartForm(10 << 20)
 	file, header, err := r.FormFile("image")
 	if err != nil {
-		http.Error(w, "이미지 파일 없음", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "이미지 파일 없음")
 		return
 	}
 	defer file.Close()
@@ -125,13 +126,13 @@ func TemplateUploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	dir := templateDir(category)
 	if dir == "" {
-		http.Error(w, "잘못된 카테고리", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "잘못된 카테고리")
 		return
 	}
 
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 	if !isImageExt(ext) {
-		http.Error(w, "PNG/JPG만 허용", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "PNG/JPG만 허용")
 		return
 	}
 
@@ -157,26 +158,26 @@ func TemplateUploadHandler(w http.ResponseWriter, r *http.Request) {
 	// 경로 순회 방지
 	saveName = filepath.Base(saveName)
 	if strings.Contains(saveName, "..") || saveName == "." || saveName == "" {
-		http.Error(w, "잘못된 파일명", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "잘못된 파일명")
 		return
 	}
 
 	savePath := filepath.Clean(filepath.Join(dir, saveName))
 	cleanDir := filepath.Clean(dir)
 	if !strings.HasPrefix(savePath, cleanDir+string(filepath.Separator)) {
-		http.Error(w, "허용되지 않는 경로", http.StatusForbidden)
+		httpx.Error(w, http.StatusForbidden, "허용되지 않는 경로")
 		return
 	}
 
 	dst, err := os.Create(savePath)
 	if err != nil {
-		http.Error(w, "파일 저장 실패", http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "파일 저장 실패")
 		return
 	}
 	defer dst.Close()
 
 	if _, err := io.Copy(dst, file); err != nil {
-		http.Error(w, "파일 쓰기 실패", http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "파일 쓰기 실패")
 		return
 	}
 
@@ -195,7 +196,7 @@ func TemplateDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodDelete {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
@@ -203,7 +204,7 @@ func TemplateDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	trimmed := strings.TrimPrefix(r.URL.Path, "/api/templates/")
 	parts := strings.SplitN(trimmed, "/", 2)
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		http.Error(w, "잘못된 경로", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "잘못된 경로")
 		return
 	}
 
@@ -212,28 +213,28 @@ func TemplateDeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	dir := templateDir(category)
 	if dir == "" {
-		http.Error(w, "잘못된 카테고리", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "잘못된 카테고리")
 		return
 	}
 
 	// display-default/lyrics 고정 파일은 삭제 불가
 	if category == "display-default" || category == "lyrics" {
-		http.Error(w, "고정 파일은 삭제할 수 없습니다 (교체만 가능)", http.StatusForbidden)
+		httpx.Error(w, http.StatusForbidden, "고정 파일은 삭제할 수 없습니다 (교체만 가능)")
 		return
 	}
 
 	filePath := filepath.Clean(filepath.Join(dir, filename))
 	cleanDir := filepath.Clean(dir)
 	if !strings.HasPrefix(filePath, cleanDir+string(filepath.Separator)) {
-		http.Error(w, "허용되지 않는 경로", http.StatusForbidden)
+		httpx.Error(w, http.StatusForbidden, "허용되지 않는 경로")
 		return
 	}
 
 	if err := os.Remove(filePath); err != nil {
 		if os.IsNotExist(err) {
-			http.Error(w, "파일 없음", http.StatusNotFound)
+			httpx.Error(w, http.StatusNotFound, "파일 없음")
 		} else {
-			http.Error(w, "삭제 실패", http.StatusInternalServerError)
+			httpx.Error(w, http.StatusInternalServerError, "삭제 실패")
 		}
 		return
 	}
@@ -249,14 +250,14 @@ func TemplateServeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
 	trimmed := strings.TrimPrefix(r.URL.Path, "/api/templates/")
 	parts := strings.SplitN(trimmed, "/", 2)
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		http.Error(w, "잘못된 경로", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "잘못된 경로")
 		return
 	}
 
@@ -265,19 +266,19 @@ func TemplateServeHandler(w http.ResponseWriter, r *http.Request) {
 
 	dir := templateDir(category)
 	if dir == "" {
-		http.Error(w, "잘못된 카테고리", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "잘못된 카테고리")
 		return
 	}
 
 	filePath := filepath.Clean(filepath.Join(dir, filename))
 	cleanDir := filepath.Clean(dir)
 	if !strings.HasPrefix(filePath, cleanDir+string(filepath.Separator)) {
-		http.Error(w, "허용되지 않는 경로", http.StatusForbidden)
+		httpx.Error(w, http.StatusForbidden, "허용되지 않는 경로")
 		return
 	}
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		http.Error(w, "파일 없음", http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, "파일 없음")
 		return
 	}
 
@@ -311,6 +312,6 @@ func TemplateHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		TemplateDeleteHandler(w, r)
 	default:
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 	}
 }

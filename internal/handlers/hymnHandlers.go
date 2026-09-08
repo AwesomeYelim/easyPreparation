@@ -5,16 +5,18 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"easyPreparation_1.0/internal/httpx"
 )
 
 // HymnListHandler — GET /api/hymns?page=&limit=&book=
 func HymnListHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	if bibleDB == nil {
-		http.Error(w, `{"error":"bible DB not available"}`, http.StatusServiceUnavailable)
+		httpx.Error(w, http.StatusServiceUnavailable, "bible DB not available")
 		return
 	}
 
@@ -53,7 +55,7 @@ func HymnListHandler(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := bibleDB.Query(query, args...)
 	if err != nil {
-		http.Error(w, `{"error":"query failed"}`, http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "query failed")
 		return
 	}
 	defer rows.Close()
@@ -108,17 +110,17 @@ func HymnListHandler(w http.ResponseWriter, r *http.Request) {
 // HymnSearchHandler — GET /api/hymns/search?q=&type=
 func HymnSearchHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	if bibleDB == nil {
-		http.Error(w, `{"error":"bible DB not available"}`, http.StatusServiceUnavailable)
+		httpx.Error(w, http.StatusServiceUnavailable, "bible DB not available")
 		return
 	}
 
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	if q == "" {
-		http.Error(w, `{"error":"q parameter required"}`, http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "q parameter required")
 		return
 	}
 
@@ -139,7 +141,7 @@ func HymnSearchHandler(w http.ResponseWriter, r *http.Request) {
 	case "number":
 		num, err := strconv.Atoi(q)
 		if err != nil {
-			http.Error(w, `{"error":"invalid number"}`, http.StatusBadRequest)
+			httpx.Error(w, http.StatusBadRequest, "invalid number")
 			return
 		}
 		query = `SELECT id, hymnbook, number, title, first_line, category, lyrics, has_pdf
@@ -158,7 +160,7 @@ func HymnSearchHandler(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := bibleDB.Query(query, args...)
 	if err != nil {
-		http.Error(w, `{"error":"search failed"}`, http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "search failed")
 		return
 	}
 	defer rows.Close()
@@ -203,22 +205,22 @@ func HymnSearchHandler(w http.ResponseWriter, r *http.Request) {
 // HymnDetailHandler — GET /api/hymns/detail?number=&book=
 func HymnDetailHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	if bibleDB == nil {
-		http.Error(w, `{"error":"bible DB not available"}`, http.StatusServiceUnavailable)
+		httpx.Error(w, http.StatusServiceUnavailable, "bible DB not available")
 		return
 	}
 
 	numStr := r.URL.Query().Get("number")
 	if numStr == "" {
-		http.Error(w, `{"error":"number required"}`, http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "number required")
 		return
 	}
 	number, err := strconv.Atoi(numStr)
 	if err != nil {
-		http.Error(w, `{"error":"invalid number"}`, http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "invalid number")
 		return
 	}
 
@@ -238,7 +240,7 @@ func HymnDetailHandler(w http.ResponseWriter, r *http.Request) {
 	`, hymnbook, number).Scan(&id, &title, &firstLine, &category, &lyrics, &hasPdf)
 
 	if err != nil {
-		http.Error(w, `{"error":"hymn not found"}`, http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, "hymn not found")
 		return
 	}
 

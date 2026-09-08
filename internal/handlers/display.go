@@ -1,11 +1,6 @@
 package handlers
 
 import (
-	"easyPreparation_1.0/internal/assets"
-	"easyPreparation_1.0/internal/obs"
-	"easyPreparation_1.0/internal/path"
-	"easyPreparation_1.0/internal/quote"
-	"easyPreparation_1.0/internal/safefile"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -22,16 +17,23 @@ import (
 	"sync"
 	"time"
 	"unicode"
+
+	"easyPreparation_1.0/internal/assets"
+	"easyPreparation_1.0/internal/httpx"
+	"easyPreparation_1.0/internal/obs"
+	"easyPreparation_1.0/internal/path"
+	"easyPreparation_1.0/internal/quote"
+	"easyPreparation_1.0/internal/safefile"
 )
 
 // 현재 예배 순서 메모리 저장
 var (
-	orderMu              sync.RWMutex
-	currentOrder         []map[string]interface{}
-	currentIdx           int
-	currentSubPageIdx    int
-	displayChurchName    string
-	currentWorshipType   string // 현재 로드된 예배 타입 (config 변경 시 자동 갱신 판단용)
+	orderMu            sync.RWMutex
+	currentOrder       []map[string]interface{}
+	currentIdx         int
+	currentSubPageIdx  int
+	displayChurchName  string
+	currentWorshipType string // 현재 로드된 예배 타입 (config 변경 시 자동 갱신 판단용)
 )
 
 // ── Display 상태 파일 영속화 ──
@@ -553,7 +555,7 @@ func DisplayTmpHandler(w http.ResponseWriter, r *http.Request) {
 	cacheRoot := filepath.Join(execPath, "data", "cache")
 	imgPath := filepath.Clean(filepath.Join(cacheRoot, rel))
 	if !strings.HasPrefix(imgPath, cacheRoot+string(filepath.Separator)) {
-		http.Error(w, "Bad Request", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Bad Request")
 		return
 	}
 	http.ServeFile(w, r, imgPath)
@@ -567,14 +569,14 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
 	var order []map[string]interface{}
 	var raw json.RawMessage
 	if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 	// wrapper format: {"items": [...], "churchName": "..."} 또는 plain array [...]
@@ -591,7 +593,7 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 	rawStr := strings.TrimSpace(string(raw))
 	if len(rawStr) > 0 && rawStr[0] == '{' {
 		if err := json.Unmarshal(raw, &wrapper); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 			return
 		}
 		order = wrapper.Items
@@ -600,7 +602,7 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 		skipPreprocess = wrapper.Preprocessed
 	} else {
 		if err := json.Unmarshal(raw, &order); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 			return
 		}
 	}
@@ -700,11 +702,11 @@ func DisplayNavigateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		Direction   string `json:"direction"`   // "next" | "prev" | "jump_sub"
-		SubPageIdx  int    `json:"subPageIdx"`
+		Direction  string `json:"direction"` // "next" | "prev" | "jump_sub"
+		SubPageIdx int    `json:"subPageIdx"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
@@ -726,13 +728,13 @@ func DisplayPushHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
 	var payload map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
@@ -772,14 +774,14 @@ func DisplayJumpHandler(w http.ResponseWriter, r *http.Request) {
 		SubPageIdx int `json:"subPageIdx"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
 	orderMu.Lock()
 	if payload.Index < 0 || payload.Index >= len(currentOrder) {
 		orderMu.Unlock()
-		http.Error(w, "Index out of range", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Index out of range")
 		return
 	}
 	currentIdx = payload.Index
@@ -817,7 +819,7 @@ func DisplayLyricsOrderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
@@ -829,7 +831,7 @@ func DisplayLyricsOrderHandler(w http.ResponseWriter, r *http.Request) {
 		} `json:"songs"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
@@ -877,7 +879,7 @@ func DisplayAppendHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
@@ -887,11 +889,11 @@ func DisplayAppendHandler(w http.ResponseWriter, r *http.Request) {
 		AfterIdx *int                     `json:"afterIdx"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 	if len(payload.Items) == 0 {
-		http.Error(w, "No items", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "No items")
 		return
 	}
 
@@ -961,7 +963,7 @@ func DisplayRemoveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
@@ -969,14 +971,14 @@ func DisplayRemoveHandler(w http.ResponseWriter, r *http.Request) {
 		Index int `json:"index"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
 	orderMu.Lock()
 	if payload.Index < 0 || payload.Index >= len(currentOrder) {
 		orderMu.Unlock()
-		http.Error(w, "Index out of range", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Index out of range")
 		return
 	}
 	removedCurrent := payload.Index == currentIdx
@@ -1013,23 +1015,23 @@ func DisplayItemPatchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	var payload struct {
-		Index     int  `json:"index"`
-		PtzPreset int  `json:"ptzPreset"`  // 1~9 | 0 (삭제)
+		Index        int  `json:"index"`
+		PtzPreset    int  `json:"ptzPreset"` // 1~9 | 0 (삭제)
 		HasPtzPreset bool `json:"hasPtzPreset"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
 	orderMu.Lock()
 	if payload.Index < 0 || payload.Index >= len(currentOrder) {
 		orderMu.Unlock()
-		http.Error(w, "Index out of range", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Index out of range")
 		return
 	}
 	item := currentOrder[payload.Index]
@@ -1060,7 +1062,7 @@ func DisplayTimerHandler(w http.ResponseWriter, r *http.Request) {
 		Factor float64 `json:"factor"` // speed 조절 배율
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
@@ -1127,7 +1129,7 @@ func DisplayReorderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
@@ -1136,7 +1138,7 @@ func DisplayReorderHandler(w http.ResponseWriter, r *http.Request) {
 		To   int `json:"to"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
@@ -1144,7 +1146,7 @@ func DisplayReorderHandler(w http.ResponseWriter, r *http.Request) {
 	n := len(currentOrder)
 	if payload.From < 0 || payload.From >= n || payload.To < 0 || payload.To >= n {
 		orderMu.Unlock()
-		http.Error(w, "Index out of range", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Index out of range")
 		return
 	}
 
@@ -1200,7 +1202,7 @@ func DisplayChurchNameHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
@@ -1208,7 +1210,7 @@ func DisplayChurchNameHandler(w http.ResponseWriter, r *http.Request) {
 		ChurchName string `json:"churchName"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 

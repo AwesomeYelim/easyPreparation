@@ -1,15 +1,16 @@
 package handlers
 
 import (
-	"easyPreparation_1.0/internal/obs"
-	"easyPreparation_1.0/internal/ptz"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
 	"sync"
 	"time"
+
+	"easyPreparation_1.0/internal/obs"
+	"easyPreparation_1.0/internal/ptz"
+	"github.com/gorilla/websocket"
 )
 
 var upgrader = websocket.Upgrader{
@@ -27,8 +28,8 @@ var clientsMu sync.Mutex
 
 // OBS 씬 전환 중복 방지 + 디바운스 (빠른 이동 시 마지막 항목에서만 전환)
 var (
-	globalObsIdx      = -1
-	globalObsIdxMu    sync.Mutex
+	globalObsIdx       = -1
+	globalObsIdxMu     sync.Mutex
 	sceneDebounceTimer *time.Timer
 )
 

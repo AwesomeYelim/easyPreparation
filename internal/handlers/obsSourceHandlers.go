@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"easyPreparation_1.0/internal/httpx"
 	"easyPreparation_1.0/internal/obs"
 	"easyPreparation_1.0/internal/path"
 	"easyPreparation_1.0/internal/youtube"
@@ -39,7 +40,7 @@ func OBSConnectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -50,7 +51,7 @@ func OBSConnectHandler(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "잘못된 요청", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "잘못된 요청")
 		return
 	}
 	if body.IP == "" {
@@ -64,7 +65,7 @@ func OBSConnectHandler(w http.ResponseWriter, r *http.Request) {
 	configPath := filepath.Join(path.ExecutePath("easyPreparation"), "config", "obs.json")
 	m := obs.Get()
 	if m == nil {
-		http.Error(w, "OBS 매니저 초기화 안됨", http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "OBS 매니저 초기화 안됨")
 		return
 	}
 
@@ -94,7 +95,7 @@ func OBSAutoConfigureHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -185,7 +186,7 @@ func OBSSyncStreamKeyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -215,7 +216,7 @@ func OBSStreamSettingsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -274,7 +275,7 @@ func OBSScenesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -336,29 +337,29 @@ func OBSSceneMappingHandler(w http.ResponseWriter, r *http.Request) {
 			Preset *int    `json:"preset"` // nil = 변경 없음
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 			return
 		}
 		if body.Title == "" {
-			http.Error(w, "title required", http.StatusBadRequest)
+			httpx.Error(w, http.StatusBadRequest, "title required")
 			return
 		}
 		if body.Scene != nil {
 			if err := m.UpdateScenesMapping(body.Title, *body.Scene); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				httpx.Error(w, http.StatusInternalServerError, err.Error())
 				return
 			}
 		}
 		if body.Preset != nil {
 			if err := m.UpdatePresetMapping(body.Title, *body.Preset); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				httpx.Error(w, http.StatusInternalServerError, err.Error())
 				return
 			}
 		}
 		json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 
 	default:
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 	}
 }
 
@@ -369,7 +370,7 @@ func OBSSourcesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -422,7 +423,7 @@ func OBSLogoUploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -430,14 +431,14 @@ func OBSLogoUploadHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseMultipartForm(10 << 20) // 10MB
 	file, header, err := r.FormFile("image")
 	if err != nil {
-		http.Error(w, "이미지 파일 없음", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "이미지 파일 없음")
 		return
 	}
 	defer file.Close()
 
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 	if ext != ".png" && ext != ".jpg" && ext != ".jpeg" {
-		http.Error(w, "PNG/JPG만 허용", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "PNG/JPG만 허용")
 		return
 	}
 
@@ -448,13 +449,13 @@ func OBSLogoUploadHandler(w http.ResponseWriter, r *http.Request) {
 	savePath := logoFilePath()
 	dst, err := os.Create(savePath)
 	if err != nil {
-		http.Error(w, "파일 저장 실패", http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "파일 저장 실패")
 		return
 	}
 
 	if _, err := io.Copy(dst, file); err != nil {
 		dst.Close()
-		http.Error(w, "파일 쓰기 실패", http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "파일 쓰기 실패")
 		return
 	}
 	dst.Close()
@@ -469,20 +470,20 @@ func OBSLogoUploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	srcFile, err := os.Open(savePath)
 	if err != nil {
-		http.Error(w, "파일 복사 실패", http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "파일 복사 실패")
 		return
 	}
 	defer srcFile.Close()
 
 	slotDst, err := os.Create(slotPath)
 	if err != nil {
-		http.Error(w, "순환 저장 실패", http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "순환 저장 실패")
 		return
 	}
 	defer slotDst.Close()
 
 	if _, err := io.Copy(slotDst, srcFile); err != nil {
-		http.Error(w, "순환 파일 쓰기 실패", http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "순환 파일 쓰기 실패")
 		return
 	}
 
@@ -548,7 +549,7 @@ func OBSLogoImageHandler(w http.ResponseWriter, r *http.Request) {
 		"logo_3.png": true,
 	}
 	if !allowed[name] {
-		http.Error(w, "허용되지 않는 파일명", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "허용되지 않는 파일명")
 		return
 	}
 
@@ -563,7 +564,7 @@ func OBSLogoApplyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -576,11 +577,11 @@ func OBSLogoApplyHandler(w http.ResponseWriter, r *http.Request) {
 		Y        float64 `json:"y"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "잘못된 요청", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "잘못된 요청")
 		return
 	}
 	if body.Scene == "" {
-		http.Error(w, "scene 필수", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "scene 필수")
 		return
 	}
 	if body.Scale <= 0 {
@@ -589,7 +590,7 @@ func OBSLogoApplyHandler(w http.ResponseWriter, r *http.Request) {
 
 	logoPath := logoFilePath()
 	if _, err := os.Stat(logoPath); os.IsNotExist(err) {
-		http.Error(w, "로고 파일이 없습니다. 먼저 업로드하세요.", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "로고 파일이 없습니다. 먼저 업로드하세요.")
 		return
 	}
 
@@ -617,8 +618,8 @@ func OBSLogoApplyHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		imgFile.Close()
 	}
-	targetW := 1920.0 * body.Scale            // 캔버스에서 차지할 목표 너비(px)
-	obsScale := targetW / imgW                  // OBS에 적용할 실제 스케일
+	targetW := 1920.0 * body.Scale // 캔버스에서 차지할 목표 너비(px)
+	obsScale := targetW / imgW     // OBS에 적용할 실제 스케일
 	logoRenderedW := targetW
 	logoRenderedH := imgH * obsScale
 
@@ -655,7 +656,7 @@ func OBSCameraDevicesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -679,7 +680,7 @@ func OBSCameraAddHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -690,11 +691,11 @@ func OBSCameraAddHandler(w http.ResponseWriter, r *http.Request) {
 		InputName string `json:"inputName"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "잘못된 요청", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "잘못된 요청")
 		return
 	}
 	if body.Scene == "" || body.DeviceID == "" {
-		http.Error(w, "scene, deviceId 필수", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "scene, deviceId 필수")
 		return
 	}
 	if body.InputName == "" {
@@ -722,7 +723,7 @@ func OBSSourceToggleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -733,11 +734,11 @@ func OBSSourceToggleHandler(w http.ResponseWriter, r *http.Request) {
 		Enabled     bool   `json:"enabled"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "잘못된 요청", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "잘못된 요청")
 		return
 	}
 	if body.Scene == "" || body.SceneItemID == 0 {
-		http.Error(w, "scene, sceneItemId 필수", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "scene, sceneItemId 필수")
 		return
 	}
 
@@ -759,7 +760,7 @@ func OBSSetupDisplayHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -778,7 +779,7 @@ func OBSSetupDisplayHandler(w http.ResponseWriter, r *http.Request) {
 		sceneName = cfg.DisplayScene
 	}
 	if sceneName == "" {
-		http.Error(w, "씬 이름 필수 (config/obs.json displayScene 또는 body.scene)", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "씬 이름 필수 (config/obs.json displayScene 또는 body.scene)")
 		return
 	}
 
@@ -816,7 +817,7 @@ func OBSSourceRemoveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -825,11 +826,11 @@ func OBSSourceRemoveHandler(w http.ResponseWriter, r *http.Request) {
 		InputName string `json:"inputName"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "잘못된 요청", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "잘못된 요청")
 		return
 	}
 	if body.InputName == "" {
-		http.Error(w, "inputName 필수", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "inputName 필수")
 		return
 	}
 
@@ -850,7 +851,7 @@ func OBSSetupInitialHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

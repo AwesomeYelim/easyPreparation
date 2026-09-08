@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 
+	"easyPreparation_1.0/internal/httpx"
 	qrcode "github.com/skip2/go-qrcode"
 )
 
@@ -123,7 +124,7 @@ func MobileQRHandler(w http.ResponseWriter, r *http.Request) {
 
 	png, err := qrcode.Encode(targetURL, qrcode.Medium, 256)
 	if err != nil {
-		http.Error(w, "QR 생성 실패: "+err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "QR 생성 실패: "+err.Error())
 		return
 	}
 

@@ -1,10 +1,6 @@
 package handlers
 
 import (
-	"easyPreparation_1.0/internal/obs"
-	"easyPreparation_1.0/internal/path"
-	"easyPreparation_1.0/internal/thumbnail"
-	"easyPreparation_1.0/internal/youtube"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,6 +9,12 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"easyPreparation_1.0/internal/httpx"
+	"easyPreparation_1.0/internal/obs"
+	"easyPreparation_1.0/internal/path"
+	"easyPreparation_1.0/internal/thumbnail"
+	"easyPreparation_1.0/internal/youtube"
 )
 
 // ── 스케줄러 데이터 구조 ──
@@ -358,7 +360,7 @@ func ScheduleHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		var conf ScheduleConfig
 		if err := json.NewDecoder(r.Body).Decode(&conf); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 			return
 		}
 		scheduleMu.Lock()
@@ -369,7 +371,7 @@ func ScheduleHandler(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
 
 	default:
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 	}
 }
 
@@ -382,7 +384,7 @@ func ScheduleTestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
@@ -391,7 +393,7 @@ func ScheduleTestHandler(w http.ResponseWriter, r *http.Request) {
 		WorshipType string `json:"worshipType"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
@@ -409,7 +411,7 @@ func ScheduleTestHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if entry == nil {
-		http.Error(w, "Unknown worshipType", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Unknown worshipType")
 		return
 	}
 
@@ -442,7 +444,7 @@ func ScheduleTestHandler(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "message": "스케줄 즉시 실행"})
 
 	default:
-		http.Error(w, "Unknown action (countdown|trigger)", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Unknown action (countdown|trigger)")
 	}
 }
 
@@ -471,7 +473,7 @@ func StreamControlHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
@@ -482,7 +484,7 @@ func StreamControlHandler(w http.ResponseWriter, r *http.Request) {
 		IsTest           bool   `json:"isTest"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 	includeThumbnail := true
@@ -601,6 +603,6 @@ func StreamControlHandler(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(status)
 
 	default:
-		http.Error(w, "Unknown action", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Unknown action")
 	}
 }

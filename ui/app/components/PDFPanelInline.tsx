@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { apiClient } from "@/lib/apiClient";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
@@ -80,11 +81,8 @@ export default function PDFPanelInline({ connected }: PDFPanelInlineProps) {
 
   const handleAddOBSSource = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/api/obs/setup-display`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: "http://localhost:8080/display/pdf" }),
-      }).then((r) => r.json());
+      // scene 미지정 → 서버가 config.displayScene 사용 (OBSSourcePanel 과 동일 엔드포인트·헬퍼)
+      const res = await apiClient.setupOBSDisplay(undefined, "http://localhost:8080/display/pdf");
       if (res.ok) {
         showToast("EP_PDF 소스가 씬에 추가되었습니다.", "info");
       } else {

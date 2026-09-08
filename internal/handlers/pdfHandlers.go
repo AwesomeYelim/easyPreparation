@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"easyPreparation_1.0/internal/httpx"
 	"easyPreparation_1.0/internal/path"
 )
 
@@ -40,7 +41,7 @@ func PDFUploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -92,7 +93,7 @@ func PDFCountHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
@@ -142,7 +143,7 @@ func PDFSlidesHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
 
 	default:
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 	}
 }
 
@@ -153,7 +154,7 @@ func PDFNavigateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -163,7 +164,7 @@ func PDFNavigateHandler(w http.ResponseWriter, r *http.Request) {
 		Index  int    `json:"index"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "잘못된 요청", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "잘못된 요청")
 		return
 	}
 
@@ -194,7 +195,7 @@ func PDFNavigateHandler(w http.ResponseWriter, r *http.Request) {
 func PDFFileHandler(w http.ResponseWriter, r *http.Request) {
 	fp := pdfFilePath()
 	if _, err := os.Stat(fp); os.IsNotExist(err) {
-		http.Error(w, "Not Found", http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, "Not Found")
 		return
 	}
 	w.Header().Set("Content-Type", "application/pdf")

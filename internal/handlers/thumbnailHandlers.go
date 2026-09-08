@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"easyPreparation_1.0/internal/httpx"
 	"easyPreparation_1.0/internal/path"
 	"easyPreparation_1.0/internal/thumbnail"
 	"easyPreparation_1.0/internal/youtube"
@@ -126,7 +127,7 @@ func ThumbnailGenerateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
@@ -140,7 +141,7 @@ func ThumbnailGenerateHandler(w http.ResponseWriter, r *http.Request) {
 		FooterText string `json:"footerText"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
@@ -165,8 +166,12 @@ func ThumbnailGenerateHandler(w http.ResponseWriter, r *http.Request) {
 			cfg, _ := thumbnail.LoadConfig()
 			if cfg != nil {
 				sermonTitle, scripture := sermonDataForWorship(body.WorshipType)
-				if body.MainText != "" { sermonTitle = body.MainText }
-				if body.FooterText != "" { scripture = body.FooterText }
+				if body.MainText != "" {
+					sermonTitle = body.MainText
+				}
+				if body.FooterText != "" {
+					scripture = body.FooterText
+				}
 				_, title := cfg.ResolveTheme(body.WorshipType, date, sermonTitle, scripture)
 				description := cfg.ResolveDescription(body.WorshipType, date, sermonTitle, scripture)
 				if err := youtube.UpdateBroadcastTitle(title, description); err != nil {
@@ -210,7 +215,7 @@ func ThumbnailPreviewHandler(w http.ResponseWriter, r *http.Request) {
 	// worshipType에서 경로 순회 방지
 	worshipType = filepath.Base(worshipType)
 	if strings.Contains(worshipType, "..") || worshipType == "." {
-		http.Error(w, "잘못된 worshipType", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "잘못된 worshipType")
 		return
 	}
 
@@ -219,7 +224,7 @@ func ThumbnailPreviewHandler(w http.ResponseWriter, r *http.Request) {
 	tmpPath := filepath.Join(execPath, "data", "templates", "thumbnail", "preview_tmp.png")
 	imgPath, err := generateThumbnailToPath(worshipType, date, tmpPath)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -239,7 +244,7 @@ func ThumbnailConfigHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		cfg, err := thumbnail.LoadConfig()
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			httpx.Error(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -248,18 +253,18 @@ func ThumbnailConfigHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		var cfg thumbnail.ThumbnailConfig
 		if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 			return
 		}
 		if err := thumbnail.SaveConfig(&cfg); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			httpx.Error(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
 
 	default:
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 	}
 }
 
@@ -287,8 +292,12 @@ func generateThumbnailWithOverridesAt(worshipType string, date time.Time, header
 	// sermon
 	configPath := filepath.Join(execPath, "config", worshipType+".json")
 	sermonTitle, scripture := loadSermonDataFromConfig(configPath)
-	if mainText != "" { sermonTitle = mainText }
-	if footerText != "" { scripture = footerText }
+	if mainText != "" {
+		sermonTitle = mainText
+	}
+	if footerText != "" {
+		scripture = footerText
+	}
 
 	bgPath, _ := cfg.ResolveTheme(worshipType, date, sermonTitle, scripture)
 	if bgPath != "" && !filepath.IsAbs(bgPath) {
@@ -301,16 +310,23 @@ func generateThumbnailWithOverridesAt(worshipType string, date time.Time, header
 	} else {
 		labels := map[string]string{"main_worship": "주일예배", "after_worship": "오후예배", "wed_worship": "수요예배", "fri_worship": "금요예배"}
 		typeLabel := labels[worshipType]
-		if typeLabel == "" { typeLabel = "예배" }
+		if typeLabel == "" {
+			typeLabel = "예배"
+		}
 		dateLabel = date.Format("06.01.02") + " " + typeLabel
 	}
 	// logo
 	logoPath, logoPosition, logoSizePercent := "", cfg.LogoPosition, cfg.LogoSizePercent
 	for _, ext := range []string{"png", "jpg", "jpeg", "svg"} {
 		p := filepath.Join(execPath, "data", "logo."+ext)
-		if _, sErr := os.Stat(p); sErr == nil { logoPath = p; break }
+		if _, sErr := os.Stat(p); sErr == nil {
+			logoPath = p
+			break
+		}
 	}
-	if cfg.LogoSizePercent > 0 { logoSizePercent = cfg.LogoSizePercent }
+	if cfg.LogoSizePercent > 0 {
+		logoSizePercent = cfg.LogoSizePercent
+	}
 
 	return thumbnail.Generate(thumbnail.GenerateConfig{
 		BackgroundPath: bgPath, DateLabel: dateLabel,
@@ -339,7 +355,7 @@ func ThumbnailUploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
@@ -347,7 +363,7 @@ func ThumbnailUploadHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseMultipartForm(10 << 20)
 	file, header, err := r.FormFile("image")
 	if err != nil {
-		http.Error(w, "이미지 파일 없음", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "이미지 파일 없음")
 		return
 	}
 	defer file.Close()
@@ -375,7 +391,7 @@ func ThumbnailUploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 파일명에 경로 순회 문자가 없는지 최종 확인
 	if strings.Contains(saveName, "..") || saveName == "." || saveName == "" {
-		http.Error(w, "잘못된 파일명", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "잘못된 파일명")
 		return
 	}
 
@@ -384,7 +400,7 @@ func ThumbnailUploadHandler(w http.ResponseWriter, r *http.Request) {
 	if len(target) > 8 && target[:8] == "default_" {
 		typeName := filepath.Base(target[8:]) // "main_worship" 등 — Base로 경로 순회 방지
 		if strings.Contains(typeName, "..") || typeName == "." || typeName == "" {
-			http.Error(w, "잘못된 target", http.StatusBadRequest)
+			httpx.Error(w, http.StatusBadRequest, "잘못된 target")
 			return
 		}
 		savePath = filepath.Join(execPath, "data", "templates", "thumbnail", typeName+ext)
@@ -398,14 +414,14 @@ func ThumbnailUploadHandler(w http.ResponseWriter, r *http.Request) {
 	cleanSavePath := filepath.Clean(savePath)
 	thumbDir := filepath.Clean(filepath.Join(execPath, "data", "templates", "thumbnail"))
 	if !strings.HasPrefix(cleanSavePath, thumbDir+string(filepath.Separator)) {
-		http.Error(w, "허용되지 않는 저장 경로", http.StatusForbidden)
+		httpx.Error(w, http.StatusForbidden, "허용되지 않는 저장 경로")
 		return
 	}
 	savePath = cleanSavePath
 
 	dst, err := os.Create(savePath)
 	if err != nil {
-		http.Error(w, "파일 저장 실패", http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "파일 저장 실패")
 		return
 	}
 	defer dst.Close()
@@ -439,7 +455,7 @@ func ThumbnailImageHandler(w http.ResponseWriter, r *http.Request) {
 
 	relPath := r.URL.Query().Get("path")
 	if relPath == "" {
-		http.Error(w, "path 파라미터 없음", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "path 파라미터 없음")
 		return
 	}
 
@@ -449,12 +465,12 @@ func ThumbnailImageHandler(w http.ResponseWriter, r *http.Request) {
 	// 보안: data/templates/thumbnail/ 하위만 허용
 	thumbDir := filepath.Clean(filepath.Join(execPath, "data", "templates", "thumbnail"))
 	if !isSubPath(thumbDir, absPath) {
-		http.Error(w, "허용되지 않는 경로", http.StatusForbidden)
+		httpx.Error(w, http.StatusForbidden, "허용되지 않는 경로")
 		return
 	}
 
 	if _, err := os.Stat(absPath); os.IsNotExist(err) {
-		http.Error(w, "파일 없음", http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, "파일 없음")
 		return
 	}
 
@@ -513,7 +529,7 @@ func ThumbnailGeneratedListHandler(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode([]interface{}{})
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -611,20 +627,20 @@ func ThumbnailGeneratedDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
 	filename := r.URL.Query().Get("filename")
 	if filename == "" {
-		http.Error(w, "filename 파라미터 없음", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "filename 파라미터 없음")
 		return
 	}
 
 	// 경로 순회 방지
 	filename = filepath.Base(filename)
 	if strings.Contains(filename, "..") || filename == "." || filename == "" {
-		http.Error(w, "잘못된 파일명", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "잘못된 파일명")
 		return
 	}
 
@@ -633,10 +649,10 @@ func ThumbnailGeneratedDeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := os.Remove(targetPath); err != nil {
 		if os.IsNotExist(err) {
-			http.Error(w, "파일 없음", http.StatusNotFound)
+			httpx.Error(w, http.StatusNotFound, "파일 없음")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -653,7 +669,7 @@ func ThumbnailGeneratedFileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	filename := filepath.Base(r.URL.Query().Get("filename"))
 	if filename == "" || filename == "." || strings.Contains(filename, "..") {
-		http.Error(w, "잘못된 파일명", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "잘못된 파일명")
 		return
 	}
 	execPath := path.ExecutePath("easyPreparation")

@@ -1,13 +1,15 @@
 package handlers
 
 import (
-	middleware "easyPreparation_1.0/internal/middleware"
-	"easyPreparation_1.0/internal/parser"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
+
+	"easyPreparation_1.0/internal/httpx"
+	middleware "easyPreparation_1.0/internal/middleware"
+	"easyPreparation_1.0/internal/parser"
 )
 
 type Song struct {
@@ -20,13 +22,13 @@ func SearchLyrics() http.Handler {
 	return middleware.CORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		if r.Method != http.MethodPost {
-			http.Error(w, "Invalid method", http.StatusMethodNotAllowed)
+			httpx.Error(w, http.StatusMethodNotAllowed, "Invalid method")
 			return
 		}
 
 		var data map[string]interface{}
 		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 			return
 		}
 		BroadcastProgress("Response SearchLyrics", 1, fmt.Sprintf("Response SearchLyrics: %+v", data))

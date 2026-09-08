@@ -1,11 +1,13 @@
 package handlers
 
 import (
-	"easyPreparation_1.0/internal/path"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"easyPreparation_1.0/internal/httpx"
+	"easyPreparation_1.0/internal/path"
 )
 
 // AssetServeHandler — data/cache/pdf/ 디렉토리에서 PDF 파일을 서빙합니다.
@@ -13,7 +15,7 @@ import (
 // 예: /api/assets/hymn/032.pdf → data/cache/pdf/hymn/032.pdf
 func AssetServeHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
@@ -21,7 +23,7 @@ func AssetServeHandler(w http.ResponseWriter, r *http.Request) {
 	trimmed := strings.TrimPrefix(r.URL.Path, "/api/assets/")
 	parts := strings.SplitN(trimmed, "/", 2)
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		http.Error(w, "Not Found", http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, "Not Found")
 		return
 	}
 
@@ -30,7 +32,7 @@ func AssetServeHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 허용 카테고리 제한
 	if category != "hymn" && category != "responsive_reading" {
-		http.Error(w, "Not Found", http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, "Not Found")
 		return
 	}
 
@@ -44,12 +46,12 @@ func AssetServeHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 해석된 경로가 허용 디렉토리 내에 있는지 검증
 	if !strings.HasPrefix(filePath, baseDir+string(filepath.Separator)) && filePath != baseDir {
-		http.Error(w, "Bad Request", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Bad Request")
 		return
 	}
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		http.Error(w, "Not Found", http.StatusNotFound)
+		httpx.Error(w, http.StatusNotFound, "Not Found")
 		return
 	}
 

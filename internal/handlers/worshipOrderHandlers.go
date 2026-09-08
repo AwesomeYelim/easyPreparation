@@ -2,13 +2,15 @@ package handlers
 
 import (
 	"encoding/json"
-	"easyPreparation_1.0/internal/path"
-	"easyPreparation_1.0/internal/safefile"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
+
+	"easyPreparation_1.0/internal/httpx"
+	"easyPreparation_1.0/internal/path"
+	"easyPreparation_1.0/internal/safefile"
 )
 
 // 허용할 예배 타입 (path traversal 방지)
@@ -32,7 +34,7 @@ func WorshipOrderHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPut:
 		putWorshipOrder(w, r)
 	default:
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 	}
 }
 
@@ -40,7 +42,7 @@ func WorshipOrderHandler(w http.ResponseWriter, r *http.Request) {
 func getWorshipOrder(w http.ResponseWriter, r *http.Request) {
 	worshipType := r.URL.Query().Get("type")
 	if !validWorshipTypes[worshipType] {
-		http.Error(w, "Invalid worship type", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid worship type")
 		return
 	}
 
@@ -66,12 +68,12 @@ func putWorshipOrder(w http.ResponseWriter, r *http.Request) {
 		Items []map[string]interface{} `json:"items"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
 	if !validWorshipTypes[body.Type] {
-		http.Error(w, "Invalid worship type", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid worship type")
 		return
 	}
 
@@ -80,7 +82,7 @@ func putWorshipOrder(w http.ResponseWriter, r *http.Request) {
 
 	if err := safefile.WriteJSON(filePath, body.Items); err != nil {
 		log.Printf("[worship-order] 안전 저장 실패: %v", err)
-		http.Error(w, "File write error: "+err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "File write error: "+err.Error())
 		return
 	}
 

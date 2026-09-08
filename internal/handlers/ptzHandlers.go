@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 
+	"easyPreparation_1.0/internal/httpx"
 	"easyPreparation_1.0/internal/obs"
 	"easyPreparation_1.0/internal/ptz"
 )
@@ -22,7 +23,7 @@ func PTZConfigHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		cfg, err := ptz.LoadConfig()
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			httpx.Error(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		json.NewEncoder(w).Encode(cfg)
@@ -30,17 +31,17 @@ func PTZConfigHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		var cfg ptz.Config
 		if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 			return
 		}
 		if err := ptz.SaveConfig(&cfg); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			httpx.Error(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 
 	default:
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 	}
 }
 
@@ -54,12 +55,12 @@ func PTZGotoHandler(w http.ResponseWriter, r *http.Request) {
 		Preset int `json:"preset"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 	if err := ptz.GotoPreset(body.Preset); err != nil {
 		log.Printf("[ptz] GotoPreset(%d) 실패: %v", body.Preset, err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -70,7 +71,7 @@ func PTZGotoHandler(w http.ResponseWriter, r *http.Request) {
 func PTZStreamProxyHandler(w http.ResponseWriter, r *http.Request) {
 	cfg, err := ptz.LoadConfig()
 	if err != nil || !cfg.Enabled || cfg.IP == "" {
-		http.Error(w, "PTZ 카메라 미설정", http.StatusServiceUnavailable)
+		httpx.Error(w, http.StatusServiceUnavailable, "PTZ 카메라 미설정")
 		return
 	}
 
@@ -88,7 +89,7 @@ func PTZStreamProxyHandler(w http.ResponseWriter, r *http.Request) {
 
 	req, err := http.NewRequest("GET", targetURL, nil)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	req.SetBasicAuth(cfg.Username, cfg.Password)
@@ -96,7 +97,7 @@ func PTZStreamProxyHandler(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{} // no timeout — streaming
 	resp, err := client.Do(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		httpx.Error(w, http.StatusBadGateway, err.Error())
 		return
 	}
 	defer resp.Body.Close()
@@ -165,7 +166,7 @@ func PTZSourceToggleHandler(w http.ResponseWriter, r *http.Request) {
 		Mode string `json:"mode"` // "camera" | "slides"
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 

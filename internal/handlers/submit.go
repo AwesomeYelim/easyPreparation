@@ -1,11 +1,13 @@
 package handlers
 
 import (
-	"easyPreparation_1.0/internal/types"
-	middleware "easyPreparation_1.0/internal/middleware"
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"easyPreparation_1.0/internal/httpx"
+	middleware "easyPreparation_1.0/internal/middleware"
+	"easyPreparation_1.0/internal/types"
 )
 
 func SubmitHandler(dataChan chan types.DataEnvelope) http.Handler {
@@ -15,13 +17,13 @@ func SubmitHandler(dataChan chan types.DataEnvelope) http.Handler {
 			return
 		}
 		if r.Method != http.MethodPost {
-			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+			httpx.Error(w, http.StatusMethodNotAllowed, "Invalid request method")
 			return
 		}
 
 		var data map[string]interface{}
 		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			httpx.Error(w, http.StatusBadRequest, "Invalid JSON")
 			return
 		}
 

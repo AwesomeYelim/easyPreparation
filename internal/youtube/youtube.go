@@ -15,6 +15,7 @@ import (
 	"golang.org/x/oauth2/google"
 	yt "google.golang.org/api/youtube/v3"
 
+	"easyPreparation_1.0/internal/httpx"
 	"easyPreparation_1.0/internal/path"
 	"easyPreparation_1.0/internal/sysopen"
 )
@@ -61,7 +62,7 @@ func Init(oauthConfigPath, tokenPath string) {
 			"https://www.googleapis.com/auth/youtube",
 			"https://www.googleapis.com/auth/youtube.upload",
 		},
-		Endpoint: google.Endpoint,
+		Endpoint:    google.Endpoint,
 		RedirectURL: "http://localhost:8080/api/youtube/callback",
 	}
 
@@ -695,7 +696,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	m := Get()
 	url, err := m.GetAuthURL()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
@@ -712,13 +713,13 @@ func OpenAuthHandler(w http.ResponseWriter, r *http.Request) {
 	m := Get()
 	authURL, err := m.GetAuthURL()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	if err := sysopen.URL(authURL); err != nil {
 		log.Printf("[youtube] 브라우저 열기 실패: %v", err)
-		http.Error(w, "브라우저 열기 실패", http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "브라우저 열기 실패")
 		return
 	}
 
@@ -730,13 +731,13 @@ func OpenAuthHandler(w http.ResponseWriter, r *http.Request) {
 func CallbackHandler(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	if code == "" {
-		http.Error(w, "code 파라미터 없음", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "code 파라미터 없음")
 		return
 	}
 
 	m := Get()
 	if err := m.HandleCallback(code); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 

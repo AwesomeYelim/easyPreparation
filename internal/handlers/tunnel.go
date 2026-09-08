@@ -57,11 +57,10 @@ func resolveCloudflaredPath() string {
 // tunnelState — cloudflared 터널 전역 상태
 var tunnelState = struct {
 	mu        sync.RWMutex
-	publicURL string      // "https://xxxx.trycloudflare.com" | ""
+	publicURL string // "https://xxxx.trycloudflare.com" | ""
 	running   bool
 	cancel    context.CancelFunc
-}{
-}
+}{}
 
 // GetTunnelURL — 현재 터널 public URL 반환 (없으면 "")
 func GetTunnelURL() string {

@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"encoding/json"
+	"net/http"
+
+	"easyPreparation_1.0/internal/httpx"
 	"easyPreparation_1.0/internal/selfupdate"
 	"easyPreparation_1.0/internal/version"
-	"net/http"
 )
 
 // UpdateCheckHandler — GET /api/update/check
@@ -15,7 +17,7 @@ func UpdateCheckHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
@@ -53,7 +55,7 @@ func UpdateStatusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -69,7 +71,7 @@ func UpdateDownloadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -117,7 +119,7 @@ func UpdateApplyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -145,7 +147,7 @@ func UpdateCancelHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

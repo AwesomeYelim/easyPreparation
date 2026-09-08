@@ -1,11 +1,13 @@
 package handlers
 
 import (
-	"easyPreparation_1.0/internal/path"
 	"encoding/json"
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"easyPreparation_1.0/internal/httpx"
+	"easyPreparation_1.0/internal/path"
 )
 
 // DisplayConfig — Display 전역 설정
@@ -110,12 +112,12 @@ func HandleDisplayConfigGet(w http.ResponseWriter, r *http.Request) {
 // HandleDisplayConfigSet — PUT /api/display-config
 func HandleDisplayConfigSet(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut && r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 	var cfg DisplayConfig
 	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
-		http.Error(w, "JSON 파싱 실패", http.StatusBadRequest)
+		httpx.Error(w, http.StatusBadRequest, "JSON 파싱 실패")
 		return
 	}
 	allowedFont := map[string]bool{
@@ -159,25 +161,25 @@ func HandleDisplayConfigSet(w http.ResponseWriter, r *http.Request) {
 
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
-		http.Error(w, "JSON 직렬화 실패", http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "JSON 직렬화 실패")
 		return
 	}
 	if err := os.WriteFile(displayConfigPath(), data, 0644); err != nil {
-		http.Error(w, "설정 저장 실패", http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "설정 저장 실패")
 		return
 	}
 
 	// Display/Overlay 페이지에 실시간 반영
 	BroadcastMessage("display_config", map[string]interface{}{
-		"font":                   cfg.Font,
-		"overlayBgOpacity":       cfg.OverlayBgOpacity,
-		"overlayTextColor":       cfg.OverlayTextColor,
-		"overlayPosition":        cfg.OverlayPosition,
-		"overlayFontScale":       cfg.OverlayFontScale,
-		"globalVideoBg":          cfg.GlobalVideoBg,
-		"globalImageBgDisabled":  cfg.GlobalImageBgDisabled,
-		"logoPosition":           cfg.LogoPosition,
-		"logoSizePercent":        cfg.LogoSizePercent,
+		"font":                  cfg.Font,
+		"overlayBgOpacity":      cfg.OverlayBgOpacity,
+		"overlayTextColor":      cfg.OverlayTextColor,
+		"overlayPosition":       cfg.OverlayPosition,
+		"overlayFontScale":      cfg.OverlayFontScale,
+		"globalVideoBg":         cfg.GlobalVideoBg,
+		"globalImageBgDisabled": cfg.GlobalImageBgDisabled,
+		"logoPosition":          cfg.LogoPosition,
+		"logoSizePercent":       cfg.LogoSizePercent,
 	})
 
 	w.Header().Set("Content-Type", "application/json")
