@@ -1,3 +1,6 @@
+//go:build ignore
+
+// 사용법: go run tools/hymn_crawler.go
 package main
 
 import (

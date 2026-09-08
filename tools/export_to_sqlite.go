@@ -1,3 +1,5 @@
+//go:build ignore
+
 // tools/export_to_sqlite.go
 // PostgreSQL bible_db → SQLite data/bible.db 전체 마이그레이션 스크립트
 //
