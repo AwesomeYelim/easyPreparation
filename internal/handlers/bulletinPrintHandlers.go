@@ -22,6 +22,7 @@ import (
 	"easyPreparation_1.0/internal/bulletin/templates"
 	"easyPreparation_1.0/internal/httpx"
 	"easyPreparation_1.0/internal/path"
+	"easyPreparation_1.0/internal/safefile"
 
 	"os/exec"
 )
@@ -515,7 +516,7 @@ func churchInfoPath() string {
 }
 
 func loadChurchInfo() ChurchInfo {
-	if data, err := os.ReadFile(churchInfoPath()); err == nil {
+	if data, err := safefile.ReadJSONWithRecovery(churchInfoPath()); err == nil {
 		var ci ChurchInfo
 		if json.Unmarshal(data, &ci) == nil && ci.ChurchName != "" {
 			return ci
@@ -547,15 +548,10 @@ func loadFixedAnnouncements() []BulletinAnn {
 }
 
 func saveChurchInfo(ci ChurchInfo) error {
-	dirPath := filepath.Dir(churchInfoPath())
-	if err := os.MkdirAll(dirPath, 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(churchInfoPath()), 0755); err != nil {
 		return err
 	}
-	data, err := json.MarshalIndent(ci, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(churchInfoPath(), data, 0644)
+	return safefile.WriteJSON(churchInfoPath(), ci)
 }
 
 func loadWorshipItemsForBulletin(worshipType string) ([]bulletinWorshipItem, error) {
@@ -858,7 +854,7 @@ func bulletinThemePath() string {
 }
 
 func loadBulletinTheme() BulletinTheme {
-	data, err := os.ReadFile(bulletinThemePath())
+	data, err := safefile.ReadJSONWithRecovery(bulletinThemePath())
 	if err != nil {
 		return BulletinTheme{}
 	}
@@ -868,15 +864,10 @@ func loadBulletinTheme() BulletinTheme {
 }
 
 func saveBulletinTheme(t BulletinTheme) error {
-	dirPath := filepath.Dir(bulletinThemePath())
-	if err := os.MkdirAll(dirPath, 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(bulletinThemePath()), 0755); err != nil {
 		return err
 	}
-	data, err := json.MarshalIndent(t, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(bulletinThemePath(), data, 0644)
+	return safefile.WriteJSON(bulletinThemePath(), t)
 }
 
 // ──────────────────── 표지 이미지 주조색 추출 ────────────────────

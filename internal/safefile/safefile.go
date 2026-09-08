@@ -81,8 +81,12 @@ func ReadJSONWithRecovery(filePath string) ([]byte, error) {
 	if err == nil {
 		return data, nil
 	}
+	// 파일 자체가 없으면 복구 대상이 아님 (첫 실행·선택적 설정 파일) — 호출자가 기본값으로 처리
+	if os.IsNotExist(err) {
+		return nil, err
+	}
 
-	// 원본 실패 → .backup 시도
+	// 원본 손상 → .backup 시도
 	backupPath := filePath + ".backup"
 	log.Printf("[safefile] 원본 읽기 실패 (%v) — 백업에서 복구 시도: %s", err, backupPath)
 

@@ -13,6 +13,7 @@ import (
 	"easyPreparation_1.0/internal/httpx"
 	"easyPreparation_1.0/internal/obs"
 	"easyPreparation_1.0/internal/path"
+	"easyPreparation_1.0/internal/safefile"
 	"easyPreparation_1.0/internal/thumbnail"
 	"easyPreparation_1.0/internal/youtube"
 )
@@ -64,7 +65,7 @@ func defaultSchedule() ScheduleConfig {
 }
 
 func loadScheduleConfig() ScheduleConfig {
-	data, err := os.ReadFile(schedulePath())
+	data, err := safefile.ReadJSONWithRecovery(schedulePath())
 	if err != nil {
 		log.Printf("[scheduler] 설정 파일 없음 — 기본값 생성")
 		conf := defaultSchedule()
@@ -113,13 +114,8 @@ func resolveCurrentWorshipType() string {
 }
 
 func saveScheduleConfig(conf ScheduleConfig) {
-	data, err := json.MarshalIndent(conf, "", "  ")
-	if err != nil {
-		log.Printf("[scheduler] 설정 저장 실패 (marshal): %v", err)
-		return
-	}
-	if err := os.WriteFile(schedulePath(), data, 0644); err != nil {
-		log.Printf("[scheduler] 설정 저장 실패 (write): %v", err)
+	if err := safefile.WriteJSON(schedulePath(), conf); err != nil {
+		log.Printf("[scheduler] 설정 저장 실패: %v", err)
 	}
 }
 
