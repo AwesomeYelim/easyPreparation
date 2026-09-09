@@ -269,8 +269,8 @@ func executeSchedule(entry ScheduleEntry, autoStream bool) {
 				description = cfg.ResolveDescription(entry.WorshipType, time.Now(), sermonTitle, scripture)
 			}
 
-			// YouTube 방송 생성 + 스트림 바인딩
-			server, key, broadcastID, err := youtube.CreateBroadcastAndBind(title, description)
+			// YouTube 방송 생성 + 썸네일 업로드 + OBS 송출 중이면 정지 (setup-obs 와 공유)
+			server, key, broadcastID, err := prepareYouTubeBroadcast(entry.WorshipType, title, description, true)
 			if err != nil {
 				log.Printf("[scheduler] YouTube 방송 생성 실패: %v — 기존 방식으로 스트리밍", err)
 				// YouTube 실패해도 기존 OBS 스트리밍은 시도
@@ -278,22 +278,7 @@ func executeSchedule(entry ScheduleEntry, autoStream bool) {
 					log.Printf("[scheduler] OBS 스트리밍 시작 실패: %v", err)
 				}
 			} else {
-				// 썸네일 생성 + 업로드 (upcoming 상태에서 → 확실히 반영)
-				GenerateAndUploadThumbnailTo(entry.WorshipType, broadcastID)
-
-				// OBS 스트리밍 중이면 먼저 중지
 				obsM := obs.Get()
-				streamStatus := obsM.GetStreamStatus()
-				if streamStatus.Active {
-					obsM.StopStreaming()
-					for i := 0; i < 10; i++ {
-						s := obsM.GetStreamStatus()
-						if !s.Active {
-							break
-						}
-						time.Sleep(500 * time.Millisecond)
-					}
-				}
 
 				// OBS 스트림 설정
 				if err := obsM.SetStreamSettingsWithBroadcastID(server, key, broadcastID); err != nil {
