@@ -90,10 +90,6 @@ export const licenseState = atom<LicenseStatus>({
   },
 });
 
-export const sidebarCollapsedState = atom<boolean>({
-  key: "sidebarCollapsedState",
-  default: false,
-});
 
 // ── ProShell 전용 UI 상태 ──
 

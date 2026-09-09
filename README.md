@@ -451,12 +451,12 @@ apt install ghostscript
 
 | 파일 | 용도 | 필수 여부 |
 |------|------|:---------:|
-| `db.json` | SQLite DSN (없으면 자동 생성 `data/ep.db`) | 선택 |
+| `db.json` | SQLite DSN (없으면 자동 생성 `data/easyprep.db`) | 선택 |
 | `google_oauth.json` | YouTube OAuth Client ID/Secret | Pro 전용 |
 | `obs.json` | OBS WebSocket 씬 매핑 (없으면 OBS 비활성) | Pro 전용 |
 | `custom.json` | PDF 크기 / 폰트 / 색상 설정 | 선택 |
 
-> **SQLite 자동 초기화**: `config/db.json`이 없어도 서버 시작 시 `data/ep.db`에 자동 스키마 적용. 별도 DB 서버 없이 바로 실행 가능합니다.
+> **SQLite 자동 초기화**: `config/db.json`이 없어도 서버 시작 시 `data/easyprep.db`에 자동 스키마 적용. 별도 DB 서버 없이 바로 실행 가능합니다.
 
 ### 환경변수 (선택)
 

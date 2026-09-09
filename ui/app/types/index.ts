@@ -188,3 +188,6 @@ declare global {
     __resetTour?: () => void;
   }
 }
+
+// 서버 파일 목록 API(배경/영상 등)가 반환하는 항목
+export type FileItem = { name: string; url: string; size: number };

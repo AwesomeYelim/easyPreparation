@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { apiClient } from "@/lib/apiClient";
 
-type FileItem = { name: string; url: string; size: number };
+import type { FileItem } from "@/types";
 
 interface Props {
   baseUrl: string;

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import ConfirmModal from "@/components/ConfirmModal";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
@@ -82,6 +83,7 @@ export default function CustomSongManager() {
   const [form, setForm] = useState<SongForm>(emptyForm());
   const [isNew, setIsNew] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadList = useCallback(async () => {
@@ -144,9 +146,14 @@ export default function CustomSongManager() {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!selected) return;
-    if (!window.confirm(`"${selected.title}"을(를) 삭제하시겠습니까?`)) return;
+    setConfirmDelete(true);
+  };
+
+  const doDelete = async () => {
+    setConfirmDelete(false);
+    if (!selected) return;
     try {
       await songsApi.remove(selected.id);
       toast.success("삭제되었습니다.");
@@ -367,6 +374,14 @@ export default function CustomSongManager() {
           )}
         </div>
       </div>
+      <ConfirmModal
+        open={confirmDelete}
+        message={`"${selected?.title ?? ""}"을(를) 삭제하시겠습니까?`}
+        confirmLabel="삭제"
+        danger
+        onConfirm={doDelete}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }

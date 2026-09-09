@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { ResultPart } from "./components/ResultPage";
 import { useWS } from "@/components/WebSocketProvider";
+import ConfirmModal from "@/components/ConfirmModal";
 
 export default function Bulletin() {
   const [selectedWorshipType, setSelectedWorshipTypeRaw] = useState<WorshipType>(() => {
@@ -44,6 +45,8 @@ export default function Bulletin() {
   const [wsLogs, setWsLogs] = useState<string[]>([]);
   const [displayLoading, setDisplayLoading] = useState(false);
   const [displayProgress, setDisplayProgress] = useState("");
+  // 순서가 너무 적을 때 전송 확인 대기 중인 순서 (null = 모달 닫힘)
+  const [pendingSend, setPendingSend] = useState<WorshipOrderItem[] | null>(null);
   const msgQueueRef = useRef<string[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastMsgRef = useRef("");
@@ -129,9 +132,13 @@ export default function Bulletin() {
       return;
     }
     if (processedInfo.length <= 3) {
-      const ok = window.confirm(`예배 순서가 ${processedInfo.length}개뿐입니다. 정말 전송하시겠습니까?`);
-      if (!ok) return;
+      setPendingSend(processedInfo);
+      return;
     }
+    await doSendToDisplay(processedInfo);
+  };
+
+  const doSendToDisplay = async (processedInfo: WorshipOrderItem[]) => {
     setDisplayPanelOpen(true);
     openDisplayWindow();
     try {
@@ -300,6 +307,17 @@ export default function Bulletin() {
           <ResultPart selectedItems={selectedInfo} />
         </div>
       </div>
+      <ConfirmModal
+        open={pendingSend !== null}
+        message={`예배 순서가 ${pendingSend?.length ?? 0}개뿐입니다. 정말 전송하시겠습니까?`}
+        confirmLabel="전송"
+        onConfirm={() => {
+          const items = pendingSend;
+          setPendingSend(null);
+          if (items) doSendToDisplay(items);
+        }}
+        onCancel={() => setPendingSend(null)}
+      />
     </div>
   );
 }

@@ -1,6 +1,14 @@
 package lyrics
 
 import (
+	_ "embed"
+	"fmt"
+	"image/color"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"easyPreparation_1.0/internal/classification"
 	"easyPreparation_1.0/internal/extract"
 	"easyPreparation_1.0/internal/handlers"
@@ -9,14 +17,7 @@ import (
 	"easyPreparation_1.0/internal/presentation"
 	"easyPreparation_1.0/internal/sanitize"
 	"easyPreparation_1.0/internal/utils"
-	_ "embed"
-	"fmt"
 	"github.com/jung-kurt/gofpdf/v2"
-	"image/color"
-	"log"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 //go:embed Frame.png
@@ -161,7 +162,6 @@ func (lpm *LyricsPresentationManager) CreatePresentation(data map[string]interfa
 			}, false, color.RGBA{R: 255, G: 255, B: 255})
 			objPdf.MultiCell(textWidth, labelH, label, "", "R", false)
 		}
-		_ = utils.ReplaceDirPath(fileName, "./")
 
 		if err := objPdf.OutputFileAndClose(fileName); err != nil {
 			log.Printf("PDF 저장 중 에러 발생: %v", err)

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { apiClient } from "@/lib/apiClient";
 import ConfirmModal from "@/components/ConfirmModal";
 
-type FileItem = { name: string; url: string; size: number };
+import type { FileItem } from "@/types";
 
 interface Props {
   baseUrl: string;
