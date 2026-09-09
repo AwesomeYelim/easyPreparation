@@ -78,6 +78,9 @@ jobs:
           fail=0
           check() { if grep -qF -- "$1" "$LOG"; then echo "ok   $1"; else echo "::error::로그에 없음: $1"; fail=1; fi; }
           absent() { if grep -qF -- "$1" "$LOG"; then echo "::error::로그에 있어선 안 됨: $1"; fail=1; else echo "ok   (없음) $1"; fi; }
+          # 서버 자체 헬스체크(WaitForServer → RunHealthCheck)는 비동기 goroutine 이라 curl 성공 직후엔
+          # 아직 로그가 없을 수 있음 → 최대 15초 대기 후 단언
+          for i in $(seq 1 30); do grep -qF "[health] 헬스체크 결과" "$LOG" && break; sleep 0.5; done
           check "[embed] 추출 완료: schema.sql"
           check "[embed] 추출 완료: main_worship.json"
           check "[DB] 스키마 자동 초기화 완료"
