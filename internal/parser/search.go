@@ -5,9 +5,13 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
+
+// bugsHTTPClient — bugs.co.kr 접속 불가 시 무한 대기 방지용 타임아웃 클라이언트
+var bugsHTTPClient = &http.Client{Timeout: 8 * time.Second}
 
 // SearchLyricsList 함수는 가사 목록을 검색합니다.
 func (si *SlideData) SearchLyricsList(baseUrl, query string, isDirect bool) error {
@@ -39,7 +43,7 @@ func (si *SlideData) SearchLyricsList(baseUrl, query string, isDirect bool) erro
 func (si *SlideData) doSearch(baseUrl, query string, isDirect bool) error {
 	searchUrl := formatSearchURL(baseUrl, query, isDirect)
 
-	resp, err := http.Get(searchUrl)
+	resp, err := bugsHTTPClient.Get(searchUrl)
 	if err != nil {
 		return fmt.Errorf("HTTP 요청 실패: %v", err)
 	}
