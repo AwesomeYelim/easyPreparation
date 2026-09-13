@@ -52,7 +52,7 @@ export default function ProSequencePanel() {
   const idxRef = useRef(idx);
   idxRef.current = idx;
   const dragRef = useRef<{ from: number; wasDragging: boolean } | null>(null);
-  const justJumpedRef = useRef(false);
+  const lastJumpedIdxRef = useRef<number | null>(null);
   const schedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reorderLockRef = useRef(false);
   const reorderSuppressRef = useRef(false);
@@ -158,10 +158,13 @@ export default function ProSequencePanel() {
 
   // --- Scroll to active item (자연 진행 시에만 — 사용자가 직접 클릭(jump)한 경우는 스크롤 위치 유지) ---
   useLayoutEffect(() => {
-    if (justJumpedRef.current) {
-      justJumpedRef.current = false;
+    // idx가 점프로 세팅된 값과 아직 같으면(React StrictMode의 effect 이중 실행 포함) 스크롤 스킵.
+    // idx가 실제로 다른 값으로 바뀌는 순간에만 여기서 클리어 — 나중에 같은 위치로
+    // 자연 진행(WS)으로 돌아와도 정상적으로 스크롤되도록.
+    if (lastJumpedIdxRef.current === idx) {
       return;
     }
+    lastJumpedIdxRef.current = null;
     const container = listRef.current;
     if (!container) return;
     const el = container.querySelector("[data-active='true']") as HTMLElement | null;
@@ -183,14 +186,14 @@ export default function ProSequencePanel() {
   }, []);
 
   const handleJump = useCallback((index: number) => {
-    justJumpedRef.current = true;
+    lastJumpedIdxRef.current = index;
     setIdx(index);
     apiClient.jumpDisplay(index);
     setInspectorTab("preview");
   }, [setInspectorTab]);
 
   const handleSectionJump = useCallback((itemIdx: number, subPage: number) => {
-    justJumpedRef.current = true;
+    lastJumpedIdxRef.current = itemIdx;
     setIdx(itemIdx);
     setSubPageIdx(subPage);
     apiClient.jumpDisplay(itemIdx, subPage);

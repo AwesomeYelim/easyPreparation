@@ -27,13 +27,9 @@ func cleanBibleRef(ref string) string {
 	return ref
 }
 
-// loadSermonDataFromOrder — 현재 display 메모리(currentOrder)에서 말씀 제목과 성경봉독 추출
+// extractSermonData — order 슬라이스에서 말씀 제목과 성경봉독 참조 추출 (순수 함수, 락 없음)
 // 성경봉독: title=="성경봉독" 우선, 없으면 b_edit 항목 fallback
-func loadSermonDataFromOrder() (sermonTitle, scripture string) {
-	orderMu.RLock()
-	order := deepCopyOrder(currentOrder)
-	orderMu.RUnlock()
-
+func extractSermonData(order []map[string]interface{}) (sermonTitle, scripture string) {
 	var bEditFallback string
 	for _, item := range order {
 		title, _ := item["title"].(string)
@@ -96,12 +92,14 @@ func sermonDataForWorship(worshipType string) (sermonTitle, scripture string) {
 	return loadSermonDataFromConfig(configPath)
 }
 
-// sermonDataPreferLive — 방송 시작 시점에 실제 Display에 떠 있는 현재 순서(currentOrder)를
-// 우선 사용하고, 값이 없을 때만 config/{worshipType}.json으로 폴백한다.
-// 예배 직전 순서를 라이브에서만 수정하고 config에 저장하지 않은 경우
-// 유튜브 설명란과 Display 내용이 어긋나던 문제를 방지한다.
+// sermonDataPreferLive — "방송 시작"을 누른 시점이 아니라 마지막으로 Display에 전송한
+// 시점(DisplayOrderHandler)의 스냅샷을 우선 사용하고, 값이 없을 때만
+// config/{worshipType}.json으로 폴백한다.
+// (currentOrder를 그 자리에서 다시 읽으면, Display 전송 이후 다른 예배 타입을 잠깐
+// 열어보는 등 중간에 currentOrder가 바뀌었을 때 엉뚱한 내용으로 어긋날 수 있어서,
+// 전송 시점에 고정된 스냅샷을 쓴다.)
 func sermonDataPreferLive(worshipType string) (sermonTitle, scripture string) {
-	sermonTitle, scripture = loadSermonDataFromOrder()
+	sermonTitle, scripture = GetLastSentSermonData()
 	if sermonTitle == "" || scripture == "" {
 		fbTitle, fbScripture := sermonDataForWorship(worshipType)
 		if sermonTitle == "" {
@@ -112,11 +110,6 @@ func sermonDataPreferLive(worshipType string) (sermonTitle, scripture string) {
 		}
 	}
 	return sermonTitle, scripture
-}
-
-// SermonDataForWorship — sermonDataForWorship의 외부 패키지용 공개 래퍼
-func SermonDataForWorship(worshipType string) (sermonTitle, scripture string) {
-	return sermonDataForWorship(worshipType)
 }
 
 // ThumbnailGenerateHandler — POST /api/thumbnail/generate

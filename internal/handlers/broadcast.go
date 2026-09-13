@@ -73,7 +73,7 @@ func YouTubeSetupOBSHandler(w http.ResponseWriter, r *http.Request) {
 
 	description := ""
 	if cfg, cErr := thumbnail.LoadConfig(); cErr == nil {
-		sermonTitle, scripture := SermonDataForWorship(worshipType)
+		sermonTitle, scripture := sermonDataPreferLive(worshipType)
 		description = cfg.ResolveDescription(worshipType, time.Now(), sermonTitle, scripture)
 	}
 

@@ -34,6 +34,8 @@ var (
 	currentSubPageIdx  int
 	displayChurchName  string
 	currentWorshipType string // 현재 로드된 예배 타입 (config 변경 시 자동 갱신 판단용)
+	lastSermonTitle    string // 마지막으로 Display에 전송된 순서의 말씀 제목 (유튜브 설명란 싱크용 스냅샷)
+	lastScripture      string // 마지막으로 Display에 전송된 순서의 성경봉독 참조
 )
 
 // ── Display 상태 파일 영속화 ──
@@ -259,15 +261,11 @@ func GetCurrentInfo() string {
 	return ""
 }
 
-// GetCurrentSource — 현재 항목의 source 필드 조회 ("bible"/"lyrics" — 애드혹 추가 항목 표시)
-func GetCurrentSource() string {
+// GetLastSentSermonData — 마지막 Display 전송(DisplayOrderHandler) 시점에 스냅샷한 말씀 제목·성경봉독
+func GetLastSentSermonData() (sermonTitle, scripture string) {
 	orderMu.RLock()
 	defer orderMu.RUnlock()
-	if currentIdx >= 0 && currentIdx < len(currentOrder) {
-		source, _ := currentOrder[currentIdx]["source"].(string)
-		return source
-	}
-	return ""
+	return lastSermonTitle, lastScripture
 }
 
 // ── 서버 사이드 타이머 함수 ──
@@ -585,10 +583,12 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 		ChurchName   string                   `json:"churchName"`
 		Email        string                   `json:"email"`
 		Preprocessed bool                     `json:"preprocessed"`
+		WorshipType  string                   `json:"worshipType"`
 	}
 	var displayEmail string
 	var skipPreprocess bool
 	var newChurchName string
+	var newWorshipType string
 	// wrapper format 판별: JSON이 '{' 로 시작하면 wrapper, '[' 로 시작하면 plain array
 	rawStr := strings.TrimSpace(string(raw))
 	if len(rawStr) > 0 && rawStr[0] == '{' {
@@ -598,6 +598,7 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		order = wrapper.Items
 		newChurchName = wrapper.ChurchName
+		newWorshipType = wrapper.WorshipType
 		displayEmail = wrapper.Email
 		skipPreprocess = wrapper.Preprocessed
 	} else {
@@ -664,10 +665,17 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 	// 새 순서 로드 시 타이머 초기화
 	stopServerTimer()
 
+	// 유튜브 설명란 싱크용 스냅샷 — "방송 시작" 시점이 아니라 지금(Display 전송 시점) 기준으로 고정
+	// 이후 다른 예배 타입을 잠깐 열어보는 등 currentOrder가 바뀌어도 이 값은 안 흔들림
+	snapSermonTitle, snapScripture := extractSermonData(order)
+
 	orderMu.Lock()
 	currentOrder = order
 	currentIdx = 0
 	displayChurchName = newChurchName
+	currentWorshipType = newWorshipType
+	lastSermonTitle = snapSermonTitle
+	lastScripture = snapScripture
 	cn := displayChurchName
 	orderMu.Unlock()
 
@@ -1280,9 +1288,12 @@ func DisplayStatusHandler(w http.ResponseWriter, r *http.Request) {
 
 // refreshDisplayIfNeeded — config 저장 시 현재 display 순서의 변경 항목을 자동 재전처리
 // config의 각 항목 obj 값이 display의 같은 title 항목과 다르면 해당 항목만 재전처리
-func refreshDisplayIfNeeded(configItems []map[string]interface{}) {
+// worshipType이 현재 Display에 로드된 예배 타입과 다르면 아무것도 하지 않는다 —
+// key("1","2","3"...)는 예배 타입 간에 겹칠 수 있어서, 다른 예배 타입을 저장했다고
+// 지금 방송 중인 화면의 엉뚱한 항목이 그 내용으로 바뀌는 걸 방지한다.
+func refreshDisplayIfNeeded(worshipType string, configItems []map[string]interface{}) {
 	orderMu.RLock()
-	if len(currentOrder) == 0 {
+	if len(currentOrder) == 0 || worshipType != currentWorshipType {
 		orderMu.RUnlock()
 		return
 	}
@@ -1435,8 +1446,11 @@ func buildSections(item map[string]interface{}) map[string]interface{} {
 	title, _ := item["title"].(string)
 	contents, _ := item["contents"].(string)
 
-	// 이미 sections가 있으면 스킵 (lyrics 등)
-	if _, ok := item["sections"]; ok {
+	// lyrics_display는 sections를 여기서 만들지 않고 별도 pages를 쓰므로 스킵.
+	// (성경/신앙고백/찬송 등은 항상 contents/images 기준으로 새로 빌드 —
+	//  과거엔 "sections 필드가 존재하기만 하면" 무조건 스킵해서, obj/contents가
+	//  바뀐 뒤에도 예전 내용의 sections가 영구히 안 갱신되는 버그가 있었음)
+	if info == "lyrics_display" {
 		return item
 	}
 

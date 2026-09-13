@@ -89,7 +89,8 @@ func putWorshipOrder(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[worship-order] 저장 완료: %s (%d items)", body.Type, len(body.Items))
 
 	// config 변경 시 현재 display 순서에 해당 항목이 있으면 자동 재전처리
-	go refreshDisplayIfNeeded(body.Items)
+	// (현재 로드된 예배 타입과 일치할 때만 — refreshDisplayIfNeeded 참고)
+	go refreshDisplayIfNeeded(body.Type, body.Items)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})

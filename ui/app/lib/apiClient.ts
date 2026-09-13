@@ -102,11 +102,11 @@ export const apiClient = {
       body: JSON.stringify(payload),
     }),
 
-  startDisplay: (order: WorshipOrderItem[], churchName?: string, email?: string, preprocessed?: boolean) =>
+  startDisplay: (order: WorshipOrderItem[], churchName?: string, email?: string, preprocessed?: boolean, worshipType?: string) =>
     fetch(`${BASE_URL}/display/order`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items: order, churchName: churchName || "", email: email || "", ...(preprocessed ? { preprocessed: true } : {}) }),
+      body: JSON.stringify({ items: order, churchName: churchName || "", email: email || "", worshipType: worshipType || "", ...(preprocessed ? { preprocessed: true } : {}) }),
     }),
 
   navigateDisplay: (direction: "next" | "prev") =>

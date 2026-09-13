@@ -145,7 +145,7 @@ export default function Bulletin() {
       setDisplayLoading(true);
       setDisplayProgress("예배 순서 전송 중...");
       await apiClient.saveWorshipOrder(selectedWorshipType, processedInfo);
-      const res = await apiClient.startDisplay(processedInfo, userInfo.english_name, userInfo.email);
+      const res = await apiClient.startDisplay(processedInfo, userInfo.english_name, userInfo.email, false, selectedWorshipType);
       if (!res.ok) throw new Error("Display 전송 실패");
     } catch (error) {
       console.error("Display 전송 에러:", error);
