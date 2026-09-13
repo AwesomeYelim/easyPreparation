@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -16,6 +17,17 @@ import (
 var AssetBaseURL = "http://138.2.119.220/assets"
 
 var httpClient = &http.Client{Timeout: 30 * time.Second}
+
+// downloadLocks — category/base 키 단위 뮤텍스. 같은 항목(예: 성시교독 037)을
+// display 전처리와 주보 생성이 동시에 요청해도 다운로드가 겹치지 않도록 직렬화한다.
+// (동시 요청 중 하나가 일시적 오류를 만나면 DownloadPNGPages가 "페이지 끝"으로
+// 오판해 뒷 페이지를 누락시키는 문제가 있었음 — 겹침 자체를 막아서 해결)
+var downloadLocks sync.Map // key: "category/base" -> *sync.Mutex
+
+func downloadLockFor(key string) *sync.Mutex {
+	actual, _ := downloadLocks.LoadOrStore(key, &sync.Mutex{})
+	return actual.(*sync.Mutex)
+}
 
 // downloadFile — url을 localPath에 원자적으로 저장합니다. 404/5xx는 에러 반환.
 func downloadFile(url, localPath string) error {
@@ -65,6 +77,12 @@ func downloadFile(url, localPath string) error {
 //	AssetBaseURL/responsive_reading_pages/001/1.png
 func DownloadPNGPages(category, filename, cacheRoot string) []string {
 	base := strings.TrimSuffix(filename, ".pdf")
+
+	// 같은 항목을 향한 동시 호출 직렬화 (display 전처리 vs 주보 생성 등)
+	mu := downloadLockFor(category + "/" + base)
+	mu.Lock()
+	defer mu.Unlock()
+
 	dirURL := fmt.Sprintf("%s/%s_pages/%s", AssetBaseURL, category, base)
 	localDir := filepath.Join(cacheRoot, category, base)
 
