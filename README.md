@@ -90,7 +90,7 @@ flowchart TD
     end
 
     subgraph Ext["External Services"]
-        R2["Cloudflare R2\n찬송가 / 성시교독 PDF"]
+        R2["Oracle Cloud nginx\n찬송가 · 성시교독 PDF/PNG (로컬 캐시)"]
         BUGS["bugs.co.kr\n가사 검색"]
         OBS["OBS WebSocket\n씬 전환 + 스트리밍"]
         PTZ["PTZ 카메라\n프리셋 이동 (HTTP)"]
@@ -338,7 +338,7 @@ easyPreparation/
 │   ├── quote/               # 성경 구절 DB 조회 (SQLite, 다중 버전)
 │   ├── selfupdate/          # GitHub Releases API 업데이트 체커
 │   ├── thumbnail/           # YouTube 썸네일 생성
-│   ├── assets/              # PDF 에셋 다운로더 (Cloudflare R2 + 로컬 캐시)
+│   ├── assets/              # PDF/PNG 에셋 다운로더 (Oracle Cloud nginx `AssetBaseURL` + data/cache 로컬 캐시)
 │   └── youtube/             # YouTube OAuth + 라이브 방송 + 썸네일 업로드
 │
 ├── 🎨 ui/                   # Next.js 프론트엔드 (Tailwind CSS v3)
@@ -372,7 +372,7 @@ easyPreparation/
 │           └── LicenseContext.tsx   # 라이선스 상태 전역 Context
 │
 ├── 🌐 landing/              # 홍보 랜딩 페이지 (Next.js 14, Vercel 배포)
-├── ☁️  workers/license-api/ # CF Workers 라이선스+에셋 서버 (Hono+토스페이먼츠+R2)
+├── ☁️  workers/license-api/ # CF Workers 라이선스 API 서버 (Hono + 토스페이먼츠) — 에셋 서빙 아님
 ├── 🔧 tools/                # Go 유틸 스크립트 (찬송 크롤러, DB 마이그레이션) — PostgreSQL 접속은 PG_DSN 또는 config/db.json "dsn"
 ├── 📦 config/               # 설정 파일 (gitignore) + 예배 순서 config/{type}.json
 ├── 💾 data/                 # SQLite DB, PDF/PNG 캐시, 상태 파일 (*.backup = safefile 롤백 사본, gitignore)
@@ -641,14 +641,14 @@ mux.Handle("/api/schedule", middleware.FeatureGate(license.FeatureAutoScheduler,
 | 파일 | 트리거 | 동작 |
 |------|--------|------|
 | `release.yml` | `v*` 태그 push | Server 4플랫폼 + Desktop 3플랫폼 빌드 → GitHub Release |
-| `test.yml` | Pull Request | `go vet` + `go build` 빠른 검증 |
+| `test.yml` | `master` push + Pull Request | 3 OS `go vet`/`go build`/`-race` 스모크 테스트, `integration`(dev 빌드 API 테스트), `fresh-install`(prod 빌드 신규 설치 기동 검증) |
 | `landing.yml` | `landing/` 변경 PR | 랜딩 페이지 빌드 검증 |
 
 ### 빌드 아티팩트
 
 | 아티팩트 | 플랫폼 |
 |----------|--------|
-| `easyPreparation_desktop_darwin_arm64.zip` | macOS ARM Desktop (.app) |
+| `easyPreparation_desktop_darwin_arm64.dmg` | macOS ARM Desktop (.dmg 안의 .app) |
 | `easyPreparation_desktop_windows_amd64_setup.exe` | Windows Desktop |
 | `easyPreparation_desktop_linux_amd64` | Linux Desktop |
 | `easyPreparation_server_darwin_arm64` | macOS ARM Server |
@@ -771,7 +771,7 @@ iOS/Android Chrome에서 홈 화면에 추가하면 전체화면 앱으로 실�
 
 | 리소스 | 용도 |
 |--------|------|
-| **Cloudflare R2** | 찬송가 악보 PDF / 성시교독 PDF (CDN 캐시) |
+| **Oracle Cloud nginx** | 찬송가 악보 · 성시교독 PDF/PNG 에셋 서빙 (`internal/assets`, 로컬 `data/cache` 캐시). `tools/upload-r2.sh` 는 과거 Cloudflare R2 업로드 스크립트로 현재 런타임 경로와 무관 |
 | **SQLite** | 성경 구절 DB (7개 번역판), 찬송가, 사용자 설정/이력, 라이선스 |
 | **OBS WebSocket** | 방송 씬 전환 + 스트리밍 + 상태 모니터링 (goobs) |
 | **YouTube Data API v3** | 라이브 방송 생성/관리, 썸네일 업로드 (OAuth 2.0) |
@@ -782,18 +782,20 @@ iOS/Android Chrome에서 홈 화면에 추가하면 전체화면 앱으로 실�
 
 ## 📐 PDF Size Reference
 
+코드 기본값 (`internal/extract/extract.go` `initConfig`). `config/custom.json` 으로 덮어쓸 수 있으며, 아래 수치는 OS 와 무관하게 동일합니다.
+
 ```
-# 16:9
-  width : 1409.0,  height : 792.5
-  inner — width : 1270,  height : 530
-
-# 16:10
-  width : 1409.0,  height : 880.6
-  inner — width : 1270,  height : 590
-
-# A4 (주보 인쇄용)
+# 주보 인쇄용 (Bulletin.Print)
   width : 1409.0,  height : 996.0
+  inner — width : 584,   height : 860        (본문 박스)
+  font  : Nanum Gothic 45
 
-※ mac 환경은 항상 16:10 비율을 따릅니다.
+# 주보 프레젠테이션용 (Bulletin.Presentation, 16:10)
+  width : 1409.0,  height : 880.6
+  inner — width : 1210,  height : 590
+  font  : Nanum Gothic 100
+
+# 가사 슬라이드 (Lyrics.Presentation)
+  width : 1409.0,  height : 880.0
 ```
 

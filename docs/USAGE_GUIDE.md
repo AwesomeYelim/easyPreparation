@@ -28,13 +28,13 @@
 
 ## 1. 시작하기
 
-### 로그인
-1. 우측 상단 로그인 아이콘 클릭 → Google 계정으로 로그인
-2. 로그인 후 설정/테마/교회 정보가 자동 로드됩니다
+### 첫 실행 (온보딩)
+1. 앱을 처음 실행하면 초기 설정 위저드가 열립니다 — 교회명(한글/영문) 입력 → 저장
+2. 별도 로그인·계정은 없습니다. 설정/교회 정보는 이 PC의 데이터 폴더에 저장됩니다
 
-### 교회 정보 등록
+### 교회 정보 수정
 1. 우측 상단 프로필 → 사이드바 열기
-2. "교회 정보" 영역 클릭 → 한글명/영문명 입력 → 저장
+2. "교회 정보" 영역 클릭 → 한글명/영문명·담임목사·웹사이트 등 수정 → 저장
 
 ---
 
@@ -54,9 +54,8 @@
 > 드롭다운을 전환해도 각 예배의 편집 내용은 유지됩니다.
 
 ### 주보 PDF 생성
-1. Figma key/token 설정 필요 (사이드바 → 설정)
-2. "예배 자료 생성하기" 클릭
-3. 진행 상황이 실시간으로 표시되고, 완료 시 자동 다운로드
+1. "예배 자료 생성하기" 클릭
+2. 진행 상황이 실시간으로 표시되고, 완료 시 자동 다운로드
 
 ### Display 전송
 1. "Display 전송" 클릭 → Display 창이 열리고 제어판 활성화
@@ -70,7 +69,7 @@
 1. **Lyrics** 탭 → "자유 곡" 탭
 2. 곡 제목 입력 → 추가 → 가사 입력
 3. "중복 제거" 버튼으로 반복 구절 정리
-4. "전체 가사를 검색"으로 Google 자동 검색
+4. "전체 가사를 검색"으로 자동 검색 (찬송가 DB → 커스텀 곡 → bugs.co.kr 순)
 5. "가사 기반으로 PDF 생성"으로 ZIP 다운로드
 
 ### 찬송가 검색 탭
@@ -179,7 +178,7 @@ Display 전송 후 제어판이 열립니다.
 | `localhost:8080/display/overlay` | 방송용 가사/텍스트 오버레이 | Browser Source (투명 배경) |
 | `localhost:8080/display/stage` | 무대 모니터 (현재 슬라이드 + 다음 항목 + 타이머) | Browser Source (별도 모니터) |
 
-- **배경**: Figma에서 생성한 배경 이미지 + 항목별 커스텀 배경 (전주, 찬양, 참회의 기도)
+- **배경**: 기본 배경 이미지(`data/default_bg.png`) + 항목별 커스텀 배경/영상 배경 (설정 → 배경에서 업로드)
 - **키보드**: Display 창에서 ← → 로 직접 이동 가능
 - **서버 재시작**: 마지막 순서/위치가 자동 복원됨
 
@@ -552,19 +551,21 @@ Desktop 앱은 실행 파일 위치를 기준으로 설정 파일을 탐색합�
 ```
 easyPreparation.app/Contents/MacOS/ (실행 파일 위치)
 ├── config/
-│   ├── db.json           ← PostgreSQL 연결 정보
+│   ├── db.json           ← 앱 SQLite 파일 경로 (선택, 없으면 data/easyprep.db)
 │   ├── obs.json          ← OBS WebSocket 설정 (선택)
 │   └── main_worship.json ← 예배 순서 (선택)
 └── data/                 ← 자동 생성
 ```
 
-`config/db.json` 예시:
+`config/db.json` 예시 (선택 — 없으면 `data/easyprep.db` 를 자동 생성·초기화):
 
 ```json
 {
-  "dsn": "host=localhost port=5432 user=postgres password=yourpassword dbname=easyprep sslmode=disable"
+  "path": "data/easyprep.db"
 }
 ```
+
+> 앱 DB는 항상 SQLite 입니다. PostgreSQL 은 사용하지 않습니다 (`"dsn"` 키는 `tools/` 크롤러 스크립트 전용).
 
 ---
 
@@ -624,7 +625,7 @@ go build -tags dev -o /dev/null ./cmd/server/
 
 - 주보 PDF 생성
 - 찬양 PDF 생성
-- Google Drive 파일 다운로드 (찬송/교독)
+- 찬송가 악보·성시교독 PDF/PNG 자동 다운로드 (에셋 서버 + 로컬 캐시)
 - 예배 화면 Display (`/display`)
 - 가사 오버레이 (`/display/overlay`)
 - 성경 조회 (다중 버전)
