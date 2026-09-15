@@ -54,11 +54,11 @@
 
 ```mermaid
 flowchart TD
-    subgraph Client["Client"]
-        UI_B["Bulletin UI\n(Next.js)"]
-        UI_L["Lyrics UI\n(Next.js)"]
-        UI_BIBLE["Bible UI\n(Next.js)"]
-        DISPLAY["Display\n(OBS / 별도 창)"]
+    subgraph Client["Client — 단일 Next.js 앱 (ui/) 의 페이지들"]
+        UI_B["/bulletin\n주보 편집"]
+        UI_L["/lyrics\n가사 PPT · 찬송가"]
+        UI_BIBLE["/bible\n성경 검색"]
+        DISPLAY["Display\n(OBS Browser Source / 별도 창)"]
         MOBILE["Mobile PWA\n(스마트폰 리모컨)"]
     end
 
@@ -80,7 +80,7 @@ flowchart TD
 
     subgraph Bulletin["Bulletin Pipeline"]
         B_QUOTE["Quote\n성경 구절 조회"]
-        B_PRINT["forPrint\n인쇄용 PDF"]
+        B_PRINT["bulletin.go\n인쇄용 PDF"]
         B_PRES["forPresentation\n프레젠테이션 PDF"]
     end
 
@@ -93,6 +93,7 @@ flowchart TD
         R2["Cloudflare R2\n찬송가 / 성시교독 PDF"]
         BUGS["bugs.co.kr\n가사 검색"]
         OBS["OBS WebSocket\n씬 전환 + 스트리밍"]
+        PTZ["PTZ 카메라\n프리셋 이동 (HTTP)"]
         SQLITE[("SQLite\n성경 DB + 찬송가 + 설정")]
         YOUTUBE["YouTube API\n라이브 방송 + 썸네일"]
         GITHUB["GitHub Releases\n자동 업데이트 체크"]
@@ -137,6 +138,7 @@ flowchart TD
     DL -->|ZIP| OUT_BP
     DL -->|ZIP| OUT_BPR
     DISP --> OBS
+    DISP -->|항목 점프 시 프리셋| PTZ
     Server --> YOUTUBE
 ```
 
@@ -158,6 +160,7 @@ flowchart TD
 | 📱 **모바일 PWA** | `/mobile` — 스마트폰으로 슬라이드 next/prev 리모컨 제어 | Free |
 | 🧙 **초기 설정 위저드** | 첫 실행 시 교회명(한글/영문) 입력, 간편 온보딩 | Free |
 | 🔔 **자동 업데이트 알림** | GitHub Releases → 새 버전 발견 시 헤더 배너 표시 | Free |
+| 🎥 **PTZ 카메라 제어** | 항목별 프리셋 매핑(`config/obs.json` `presets`) → Display 점프 시 자동 이동, 스트림 프리뷰·수동 이동 (`/api/ptz/*`) | Free |
 | 🔑 **라이선스 시스템** | Free / Pro / Enterprise, `FeatureGate`로 기능 게이팅 | — |
 | 📡 **OBS 통합 제어** | 씬 전환 + 스트리밍 시작/종료 + 상태 모니터링 | **Pro** |
 | ⏰ **자동 스케줄러** | 예배 시간 자동 감지 → 카운트다운 → OBS 스트리밍 시작 | **Pro** |
@@ -301,22 +304,28 @@ OBS 메뉴 → **도구(Tools) → WebSocket 서버 설정**
 ```
 easyPreparation/
 ├── 🚀 cmd/
-│   ├── server/              # Go 서버 진입점 (:8080)
-│   │   ├── main.go
-│   │   ├── embed_dev.go     # //go:build dev  → getFrontendFS() = nil
-│   │   └── embed_prod.go    # //go:build !dev → embed.FS (ui/out)
-│   └── desktop/             # Wails v2 Desktop 앱 진입점
-│   │   ├── main.go          # Wails App + HTTP 서버 내장
-│   │   ├── embed_dev.go
-│   │   └── embed_prod.go
+│   ├── server/              # Go 서버 진입점 (:8080) — app.Initialize() 호출
+│   │   └── main.go
+│   └── desktop/             # Wails v2 Desktop 앱 진입점 — 같은 app.Initialize() 공유
+│       ├── main.go          # Wails 생명주기 + 헬스체크/롤백 다이얼로그 + 창 표시
+│       ├── uibase_dev.go    # //go:build dev  → WebView 가 Next.js dev(:3000) 로
+│       └── uibase_prod.go   # //go:build !dev → WebView 가 내장 서버(:8080) 로
 │
 ├── ⚙️  internal/             # Go 백엔드 패키지
 │   ├── api/                 # HTTP 라우터 (StartServer, StopServer)
-│   ├── app/                 # 공통 초기화 로직 (DB, OBS, YouTube, 스케줄러)
+│   ├── app/                 # 서버·데스크톱 공통 초기화 (DB, 라이선스, OBS, YouTube, 스케줄러, 헬스체크)
+│   ├── embedded/            # 서버·데스크톱 공용 embed 자산 — frontend/ (ui/out) + data/ (bible.db, schema.sql, defaults/)
+│   │                        #   `make embed-assets` 가 채움. //go:build dev 에서는 nil (로컬 파일 사용)
+│   ├── httpx/               # HTTP 응답 헬퍼 — 모든 API 에러는 {"error": "..."} JSON
+│   ├── safefile/            # 설정 JSON 원자적 저장 (임시파일 → 검증 → .backup → rename) + 손상 시 자동 복구
+│   ├── path/                # 데이터 루트 결정 (EASYPREP_DATA_DIR → 저장소(dev) → 포터블 → OS 사용자 디렉터리)
 │   ├── bulletin/            # 주보 PDF 생성
-│   │   ├── forPresentation/
-│   │   └── forPrint/
-│   ├── handlers/            # HTTP + WebSocket + Display + 스케줄러 핸들러
+│   │   ├── bulletin.go      # 인쇄용 PDF
+│   │   ├── forPresentation/ # 프레젠테이션용 PDF
+│   │   ├── define/          # 예배 순서 정의
+│   │   └── templates/       # 주보 시안 JSX 템플릿 (브라우저 인쇄)
+│   ├── handlers/            # HTTP + WebSocket + Display + 스케줄러 + 방송 시작(broadcast.go) 핸들러
+│   ├── ptz/                 # PTZ 카메라 제어 (프리셋 이동, 스트림 프록시)
 │   ├── license/             # 라이선스 매니저 (Plan/Feature/오프라인 캐시)
 │   │   ├── types.go         # Plan/Feature 상수, PlanFeatures 맵
 │   │   ├── manager.go       # 싱글턴 (DB + 파일 캐시 이중 저장)
@@ -364,10 +373,13 @@ easyPreparation/
 │
 ├── 🌐 landing/              # 홍보 랜딩 페이지 (Next.js 14, Vercel 배포)
 ├── ☁️  workers/license-api/ # CF Workers 라이선스+에셋 서버 (Hono+토스페이먼츠+R2)
-├── 🔧 tools/                # Go 유틸 스크립트 (찬송 크롤러, DB 마이그레이션)
-├── 📦 config/               # 설정 파일 (gitignore)
-├── 💾 data/                 # SQLite DB, PDF/PNG 캐시, 상태 파일
-│   ├── schema.sql           # 자동 초기화 스키마 (서버 시작 시 적용)
+├── 🔧 tools/                # Go 유틸 스크립트 (찬송 크롤러, DB 마이그레이션) — PostgreSQL 접속은 PG_DSN 또는 config/db.json "dsn"
+├── 📦 config/               # 설정 파일 (gitignore) + 예배 순서 config/{type}.json
+├── 💾 data/                 # SQLite DB, PDF/PNG 캐시, 상태 파일 (*.backup = safefile 롤백 사본, gitignore)
+│   ├── schema.sql           # 앱 DB 자동 초기화 스키마 (embed 에 포함, 첫 실행 시 적용)
+│   ├── easyprep.db          # 앱 DB (churches, licenses, custom_songs …) — 첫 실행 시 생성
+│   ├── bible.db             # 성경·찬송가 DB (embed 에서 추출)
+│   ├── church_info.json     # 교회 정보 (설정 화면에서 저장, 런타임 데이터 — git 미추적)
 │   ├── display_state.json   # Display 상태 영속화
 │   ├── schedule.json        # 스케줄 설정 영속화
 │   └── license.json         # 라이선스 캐시 (권한 0600)
@@ -434,7 +446,7 @@ openDisplayWindow()                       // Display 창 열기 (중복 reload �
 ### 사전 요구사항
 
 ```shell
-# Go 1.23+
+# Go 1.25+ (go.mod 기준)
 # Node.js 22+ (npm)
 # Ghostscript (PDF → PNG 변환)
 
@@ -451,10 +463,11 @@ apt install ghostscript
 
 | 파일 | 용도 | 필수 여부 |
 |------|------|:---------:|
-| `db.json` | SQLite DSN (없으면 자동 생성 `data/easyprep.db`) | 선택 |
+| `db.json` | `{"path": "..."}` 앱 SQLite 파일 경로 (없으면 `data/easyprep.db`). `"dsn"` 키는 `tools/` 스크립트 전용 PostgreSQL 접속 문자열 | 선택 |
 | `google_oauth.json` | YouTube OAuth Client ID/Secret | Pro 전용 |
-| `obs.json` | OBS WebSocket 씬 매핑 (없으면 OBS 비활성) | Pro 전용 |
+| `obs.json` | OBS WebSocket 씬 매핑 + PTZ 프리셋(`presets`) (없으면 OBS 비활성) | Pro 전용 |
 | `custom.json` | PDF 크기 / 폰트 / 색상 설정 | 선택 |
+| `{type}_worship.json` | 예배 순서 (`main/after/wed/fri`). 없으면 embed 기본 템플릿이 첫 실행 시 생성됨 | 자동 생성 |
 
 > **SQLite 자동 초기화**: `config/db.json`이 없어도 서버 시작 시 `data/easyprep.db`에 자동 스키마 적용. 별도 DB 서버 없이 바로 실행 가능합니다.
 
@@ -463,7 +476,18 @@ apt install ghostscript
 ```env
 # ui/.env.local (기본값: http://localhost:8080)
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+
+# Go 서버
+EASYPREP_DATA_DIR=/path/to/data-root   # 데이터 루트 강제 지정 (config/, data/, logs/ 가 이 아래에 생성). 테스트·다중 인스턴스용
+EASYPREP_DEV=true                       # 개발 모드 판정 강제 (make dev 가 설정) — 저장소 루트를 데이터 루트로 사용
+DB_PATH=/path/to/easyprep.db            # 앱 DB 파일 경로 (config/db.json 보다 우선)
+
+# tools/ 스크립트 (찬송 크롤러 등)
+PG_DSN=postgres://user:pass@host:5432/bible_db?sslmode=disable   # 없으면 config/db.json 의 "dsn"
 ```
+
+> 데이터 루트 결정 순서(`internal/path`): `EASYPREP_DATA_DIR` → 개발 모드(저장소 루트) → 포터블(실행 파일 옆 `easyPreparation/`) → OS 사용자 디렉터리(`%APPDATA%\easyPreparation`, `~/Library/Application Support/easyPreparation`, `~/.config/easyPreparation`).
+> **빌드된 바이너리를 저장소 폴더 안에서 실행하면 개발 모드로 판정**되어 저장소 데이터를 쓰니, 배포 동작 테스트는 저장소 밖에서 실행할 것.
 
 ### 실행
 
@@ -488,6 +512,8 @@ make dev-desktop     # Desktop 개발 모드
 ## 🔌 API 엔드포인트
 
 서버는 `0.0.0.0:8080`에서 실행됩니다.
+
+> **에러 응답 규칙**: 모든 API 에러는 상태코드와 함께 `{"error": "<message>"}` JSON 으로 반환됩니다(`internal/httpx`). 프론트는 상태코드와 무관하게 `body.error` 를 읽으면 됩니다. 기능 게이트 차단은 `403 {"error": "feature_locked", ...}`.
 
 ### 핵심 API
 
@@ -642,6 +668,21 @@ git add -p && git commit -m "feat: ..." && git push
 # 태그 생성 + push → GitHub Actions 자동 빌드 + Release 생성
 git tag v1.2.0 && git push origin v1.2.0
 ```
+
+### 베타 채널
+
+| 태그 형식 | GitHub Release | 자동업데이트(`/api/update/check`) |
+|---|---|---|
+| `vX.Y.Z` | 정식 | **대상** — `releases/latest` 가 가리킴 → 모든 사용자에게 알림 |
+| `vX.Y.Z-beta.N` | **prerelease** (`release.yml` 이 `-beta` 포함 태그를 자동 표시) | 대상 아님 — 릴리즈 페이지 링크로만 배포 |
+
+```bash
+# 베타 교회에만 배포 → 확인 후 정식 태그
+git tag v1.2.0-beta.1 && git push origin v1.2.0-beta.1   # prerelease, latest 는 그대로
+git tag v1.2.0        && git push origin v1.2.0          # 정식 → latest 갱신 → 자동업데이트
+```
+
+> `test.yml` 의 `fresh-install` 잡이 매 push 마다 "prod 빌드 → 빈 디렉터리 기동 → schema 적용 → `/api/health` 200 → graceful 종료" 를 검증하므로, 신규 설치 경로가 깨지면 CI 에서 먼저 실패합니다.
 
 ---
 

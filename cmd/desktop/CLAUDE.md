@@ -25,6 +25,9 @@ make build-desktop  # 위 명령 래핑
 
 macOS `UniformTypeIdentifiers` 프레임워크 필수.
 
-## embed 분리
+## embed / 초기화
 
-`embed_dev.go` / `embed_prod.go` — `cmd/server/`와 동일 패턴.
+- embed 자산은 `internal/embedded` 공용 패키지(`FrontendFS()`, `DataFS()`). 이 디렉터리에 embed 코드 없음.
+- `uibase_dev.go` / `uibase_prod.go` — WebView 가 리디렉션할 UI URL 만 분기 (dev: `:3000` Next.js, prod: `:8080` 내장 서버).
+- 서버/DB/라이선스/OBS/스케줄러 초기화는 `internal/app.Initialize()` 를 그대로 사용한다(`main.go` startup). 데스크톱 고유 동작은 `SetDesktopMode`(다운로드 경로), `OnServerError` 다이얼로그, 헬스체크 실패 시 롤백 제안, `WindowShow` 만.
+- 초기화 단계를 추가할 때는 `internal/app/init.go` 에 넣을 것 — 여기 따로 넣으면 서버와 다시 어긋난다(과거에 라이선스 백그라운드 검증이 데스크톱에서 빠졌던 원인).
