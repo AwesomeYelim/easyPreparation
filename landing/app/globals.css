@@ -1,3 +1,38 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: #0b1220;
+  color: #e6edf7;
+  -webkit-font-smoothing: antialiased;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Screenshot placeholder — replaced by <img> once real captures are supplied */
+.shot {
+  border: 1px dashed #2a3a55;
+  background: repeating-linear-gradient(
+    135deg,
+    #0f172a 0 12px,
+    #111b2e 12px 24px
+  );
+  color: #7c8ba3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.5;
+}

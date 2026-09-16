@@ -1,0 +1,238 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+  <style>
+    body { margin: 0; font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", system-ui, sans-serif; color: #e6edf7; background: #0b1220; -webkit-font-smoothing: antialiased; }
+    a { color: #7fb3e6; text-decoration: none; } a:hover { color: #a9cdf0; }
+    h1, h2, h3, p { margin: 0; }
+    .shot { border: 1px dashed #2a3a55; background: repeating-linear-gradient(135deg, #0f172a 0 12px, #111b2e 12px 24px); color: #7c8ba3; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 13px; line-height: 1.5; }
+    .num { font-variant-numeric: tabular-nums; }
+  </style>
+</helmet>
+<div style="width: 1440px; min-height: 4560px; background: #0b1220; display: flex; flex-direction: column;">
+
+  <!-- 헤더 -->
+  <div style="position: sticky; top: 0; z-index: 10; border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(11,18,32,0.85); backdrop-filter: blur(10px);">
+    <div style="max-width: 1152px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; color: #ffffff;">
+        <img src="ep-logo.svg" alt="ep" style="width: 28px; height: 28px; display: block; border-radius: 7px; box-shadow: 0 0 0 1px rgba(255,255,255,0.12);">
+        <span>easyPreparation</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 28px; font-size: 14px; font-weight: 500; color: #a7b4c8;">
+        <span>기능</span>
+        <span>요금제</span>
+        <span>다운로드</span>
+        <span>문서</span>
+        <span style="display: inline-flex; align-items: center; height: 38px; padding: 0 16px; border-radius: 6px; background: #ffffff; color: #0b1220; font-weight: 700;">무료 다운로드</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 히어로 -->
+  <div style="position: relative; overflow: hidden; padding: 104px 24px 88px; background: radial-gradient(1200px 520px at 20% -10%, rgba(79,140,201,0.22), transparent 60%), #0b1220;">
+    <div style="position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px); background-size: 48px 48px; mask-image: linear-gradient(180deg, rgba(0,0,0,0.9), transparent 85%);"></div>
+    <div style="position: relative; max-width: 1152px; margin: 0 auto; display: grid; grid-template-columns: 1.05fr 1fr; gap: 56px; align-items: center;">
+      <div style="display: flex; flex-direction: column; gap: 26px;">
+        <span style="display: inline-flex; align-self: flex-start; align-items: center; gap: 8px; height: 28px; padding: 0 12px 0 8px; border-radius: 999px; border: 1px solid rgba(127,179,230,0.35); background: rgba(79,140,201,0.12); color: #a9cdf0; font-size: 12px; font-weight: 600; letter-spacing: 0.02em;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #7fb3e6;"></span>교회 미디어팀을 위한 예배 준비 소프트웨어</span>
+        <h1 style="font-size: 54px; line-height: 1.12; font-weight: 800; letter-spacing: -0.025em; color: #ffffff; text-wrap: pretty;">주일 아침,<br>봉사자 누구나 자신 있게<br>돌릴 수 있는 예배 준비</h1>
+        <p style="font-size: 18px; line-height: 1.7; color: #a7b4c8; max-width: 520px;">주보 PDF, 찬송 악보, 성경 슬라이드, OBS 송출까지 한 화면에서. 집에서 미리 준비해 두면 주일 현장이 한결 가벼워집니다.</p>
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <span style="display: inline-flex; align-items: center; height: 48px; padding: 0 24px; border-radius: 6px; background: #ffffff; color: #0b1220; font-size: 15px; font-weight: 700;">무료 다운로드</span>
+          <span style="display: inline-flex; align-items: center; height: 48px; padding: 0 22px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.16); color: #e6edf7; font-size: 15px; font-weight: 600; background: rgba(255,255,255,0.03);">요금제 보기</span>
+        </div>
+        <p style="font-size: 13px; color: #7c8ba3;">카드 등록 없음 · macOS / Windows / Linux · 자동 업데이트</p>
+      </div>
+      <div style="position: relative; height: 460px;">
+        <div style="position: absolute; left: 0; top: 0; right: 44px; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 30px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,0,0,0.4); background: #0f172a;">
+          <div style="height: 34px; display: flex; align-items: center; gap: 6px; padding: 0 12px; background: #111b2e; border-bottom: 1px solid rgba(255,255,255,0.08);">
+            <span style="width: 10px; height: 10px; border-radius: 50%; background: #2a3a55;"></span>
+            <span style="width: 10px; height: 10px; border-radius: 50%; background: #2a3a55;"></span>
+            <span style="width: 10px; height: 10px; border-radius: 50%; background: #2a3a55;"></span>
+            <span style="margin-left: 10px; height: 18px; flex: 1; border-radius: 4px; background: #0b1220; border: 1px solid rgba(255,255,255,0.08);"></span>
+          </div>
+          <div class="shot" style="height: 362px;">[스크린샷 1]<br>주보 편집 화면<br>(예배 순서 · 상세 편집 · 미리보기)</div>
+        </div>
+        <div style="position: absolute; right: 0; bottom: 0; width: 150px; height: 300px; border-radius: 26px; border: 5px solid #1c2740; background: #0f172a; box-shadow: 0 24px 48px rgba(0,0,0,0.55); overflow: hidden;">
+          <div class="shot" style="height: 100%; border: none; border-radius: 20px;">[스크린샷 4]<br>모바일 리모컨</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 신뢰 라인 -->
+  <div style="border-top: 1px solid rgba(255,255,255,0.08); border-bottom: 1px solid rgba(255,255,255,0.08); background: #0d1526;">
+    <div style="max-width: 1152px; margin: 0 auto; padding: 26px 24px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px;">
+      <div style="display: flex; flex-direction: column; gap: 4px; align-items: center;"><span class="num" style="font-size: 30px; font-weight: 800; color: #ffffff;">645곡</span><span style="font-size: 13px; color: #7c8ba3;">새찬송가 악보 자동 표시</span></div>
+      <div style="display: flex; flex-direction: column; gap: 4px; align-items: center;"><span class="num" style="font-size: 30px; font-weight: 800; color: #ffffff;">7개</span><span style="font-size: 13px; color: #7c8ba3;">성경 번역판 · 비교 모드</span></div>
+      <div style="display: flex; flex-direction: column; gap: 4px; align-items: center;"><span class="num" style="font-size: 30px; font-weight: 800; color: #ffffff;">8종</span><span style="font-size: 13px; color: #7c8ba3;">주보 시안 템플릿</span></div>
+      <div style="display: flex; flex-direction: column; gap: 4px; align-items: center;"><span class="num" style="font-size: 30px; font-weight: 800; color: #ffffff;">3 OS</span><span style="font-size: 13px; color: #7c8ba3;">macOS · Windows · Linux</span></div>
+    </div>
+  </div>
+
+  <!-- 한 곳에서: 4단계 -->
+  <div style="max-width: 1152px; margin: 0 auto; padding: 104px 24px 88px; display: flex; flex-direction: column; gap: 52px;">
+    <div style="display: flex; flex-direction: column; gap: 14px; max-width: 720px;">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.14em; color: #7fb3e6;">WORKFLOW</span>
+      <h2 style="font-size: 38px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">예배 준비부터 진행까지, 한 곳에서</h2>
+      <p style="font-size: 17px; color: #a7b4c8; line-height: 1.7;">토요일에 주보를 만들면 그 순서가 그대로 주일 화면이 됩니다. 프로그램을 옮겨 다니며 다시 입력할 일이 없습니다.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px;">
+      <div style="display: flex; flex-direction: column; gap: 16px; padding: 20px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: #0f172a;">
+        <div class="shot" style="height: 140px; border-radius: 6px;">[스크린샷 1 크롭]<br>주보 편집</div>
+        <div style="display: flex; align-items: center; gap: 10px;"><span class="num" style="font-size: 12px; font-weight: 700; color: #7fb3e6; letter-spacing: 0.1em;">01</span><h3 style="font-size: 17px; font-weight: 700; color: #ffffff;">주보 편집</h3></div>
+        <p style="font-size: 14px; line-height: 1.65; color: #a7b4c8;">예배 순서를 끌어다 놓고 찬송 번호·성경 구절을 고르면 인쇄용 PDF와 시안 8종이 나옵니다.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 16px; padding: 20px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: #0f172a;">
+        <div class="shot" style="height: 140px; border-radius: 6px;">[스크린샷 2]<br>Display 화면</div>
+        <div style="display: flex; align-items: center; gap: 10px;"><span class="num" style="font-size: 12px; font-weight: 700; color: #7fb3e6; letter-spacing: 0.1em;">02</span><h3 style="font-size: 17px; font-weight: 700; color: #ffffff;">Display 송출</h3></div>
+        <p style="font-size: 14px; line-height: 1.65; color: #a7b4c8;">같은 순서가 프로젝터 화면·방송 오버레이·무대 모니터 세 가지로 렌더링됩니다. OBS Browser Source 하나면 끝.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 16px; padding: 20px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: #0f172a;">
+        <div class="shot" style="height: 140px; border-radius: 6px;">[스크린샷 3]<br>제어판</div>
+        <div style="display: flex; align-items: center; gap: 10px;"><span class="num" style="font-size: 12px; font-weight: 700; color: #7fb3e6; letter-spacing: 0.1em;">03</span><h3 style="font-size: 17px; font-weight: 700; color: #ffffff;">제어판으로 진행</h3></div>
+        <p style="font-size: 14px; line-height: 1.65; color: #a7b4c8;">항목 점프·자동 넘김·타이머. 예배 중 성경이나 찬양이 추가돼도 순서에 바로 끼워 넣습니다.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 16px; padding: 20px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: #0f172a;">
+        <div class="shot" style="height: 140px; border-radius: 6px;">[스크린샷 4 크롭]<br>모바일 리모컨</div>
+        <div style="display: flex; align-items: center; gap: 10px;"><span class="num" style="font-size: 12px; font-weight: 700; color: #7fb3e6; letter-spacing: 0.1em;">04</span><h3 style="font-size: 17px; font-weight: 700; color: #ffffff;">어디서든 넘기기</h3></div>
+        <p style="font-size: 14px; line-height: 1.65; color: #a7b4c8;">같은 Wi-Fi의 스마트폰으로 QR 한 번에 연결. 자리에 앉아서도 슬라이드를 넘길 수 있습니다.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 기능 카드 -->
+  <div style="border-top: 1px solid rgba(255,255,255,0.08); border-bottom: 1px solid rgba(255,255,255,0.08); background: #0d1526;">
+    <div style="max-width: 1152px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 48px;">
+      <div style="display: flex; flex-direction: column; gap: 14px; max-width: 720px;">
+        <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.14em; color: #7fb3e6;">FEATURES</span>
+        <h2 style="font-size: 38px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">필요한 건 전부, 복잡함은 없이</h2>
+        <p style="font-size: 17px; color: #a7b4c8; line-height: 1.7;">기본 기능은 전부 무료입니다. 방송 자동화가 필요할 때만 Pro로 올리면 됩니다.</p>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px;">
+        <div style="display: flex; flex-direction: column; gap: 14px; padding: 28px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: #0f172a;">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7fb3e6" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 13h7M9 17h5"/></svg>
+          <h3 style="font-size: 18px; font-weight: 700; color: #ffffff;">주보 PDF · 시안 8종</h3>
+          <p style="font-size: 14px; line-height: 1.65; color: #a7b4c8;">인쇄용 A4와 프레젠테이션 PDF를 한 번에. 교회소식은 계층형으로 편집하고, 시안 템플릿은 브라우저에서 바로 인쇄합니다.</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 14px; padding: 28px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: #0f172a;">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7fb3e6" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg>
+          <h3 style="font-size: 18px; font-weight: 700; color: #ffffff;">찬송가 · 성시교독 자동 표시</h3>
+          <p style="font-size: 14px; line-height: 1.65; color: #a7b4c8;">번호만 입력하면 645곡 악보와 교독문이 자동으로 내려와 화면에 뜹니다. 한 번 받은 파일은 로컬에 캐시됩니다.</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 14px; padding: 28px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: #0f172a;">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7fb3e6" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4z"/><path d="M20 5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/></svg>
+          <h3 style="font-size: 18px; font-weight: 700; color: #ffffff;">성경 7개 번역판 · 비교 모드</h3>
+          <p style="font-size: 14px; line-height: 1.65; color: #a7b4c8;">책·장·절을 고르면 본문이 슬라이드로. 두 번역판을 나란히 비교해 보여 줄 수도 있습니다.</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 14px; padding: 28px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: #0f172a;">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7fb3e6" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+          <h3 style="font-size: 18px; font-weight: 700; color: #ffffff;">예배 화면 3종</h3>
+          <p style="font-size: 14px; line-height: 1.65; color: #a7b4c8;">프로젝터용 전체 화면, 방송용 자막 오버레이, 다음 순서와 타이머가 보이는 무대 모니터를 각각 URL 하나로.</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 14px; padding: 28px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: #0f172a;">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7fb3e6" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+          <h3 style="font-size: 18px; font-weight: 700; color: #ffffff;">가사 PPT · 커스텀 곡</h3>
+          <p style="font-size: 14px; line-height: 1.65; color: #a7b4c8;">곡 제목만 넣으면 가사를 찾아 슬라이드로 묶어 ZIP으로. 우리 교회 곡은 직접 등록해 재사용합니다.</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 14px; padding: 28px; border-radius: 10px; border: 1px solid rgba(127,179,230,0.45); background: linear-gradient(180deg, rgba(79,140,201,0.14), rgba(79,140,201,0.04)), #0f172a;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#7fb3e6" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>
+            <span style="display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 4px; background: #7fb3e6; color: #0b1220; font-size: 11px; font-weight: 800; letter-spacing: 0.06em;">PRO</span>
+          </div>
+          <h3 style="font-size: 18px; font-weight: 700; color: #ffffff;">방송 자동화</h3>
+          <p style="font-size: 14px; line-height: 1.65; color: #a7b4c8;">항목마다 OBS 씬 자동 전환, 예배 시간 카운트다운 후 송출 시작, YouTube 방송·썸네일 자동 생성, PTZ 카메라 프리셋 이동.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 역할별 -->
+  <div style="max-width: 1152px; margin: 0 auto; padding: 104px 24px; display: flex; flex-direction: column; gap: 48px;">
+    <div style="display: flex; flex-direction: column; gap: 14px; max-width: 720px;">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.14em; color: #7fb3e6;">FOR EVERY ROLE</span>
+      <h2 style="font-size: 38px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">팀의 모든 역할을 위해</h2>
+      <p style="font-size: 17px; color: #a7b4c8; line-height: 1.7;">한 사람에게 모든 걸 맡기지 않아도 됩니다. 각자 자기 몫만 하면 주일이 굴러갑니다.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px;">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div class="shot" style="height: 220px; border-radius: 10px;">[사진]<br>미디어팀 봉사자</div>
+        <h3 style="font-size: 18px; font-weight: 700; color: #ffffff;">미디어팀 봉사자</h3>
+        <p style="font-size: 14px; line-height: 1.65; color: #a7b4c8;">처음 온 주일에도 됩니다. 순서는 이미 만들어져 있고, 할 일은 다음 버튼을 누르는 것뿐입니다.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div class="shot" style="height: 220px; border-radius: 10px;">[사진]<br>찬양 인도자</div>
+        <h3 style="font-size: 18px; font-weight: 700; color: #ffffff;">찬양 인도자</h3>
+        <p style="font-size: 14px; line-height: 1.65; color: #a7b4c8;">찬송 번호와 곡 제목만 넘기면 악보와 가사 슬라이드가 준비됩니다. 다시 타이핑할 일이 없습니다.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div class="shot" style="height: 220px; border-radius: 10px;">[사진]<br>목회자</div>
+        <h3 style="font-size: 18px; font-weight: 700; color: #ffffff;">목회자</h3>
+        <p style="font-size: 14px; line-height: 1.65; color: #a7b4c8;">본문과 설교 제목을 넣으면 주보·화면·YouTube 설명란까지 같은 내용으로 맞춰집니다.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div class="shot" style="height: 220px; border-radius: 10px;">[사진]<br>방송팀</div>
+        <h3 style="font-size: 18px; font-weight: 700; color: #ffffff;">방송팀</h3>
+        <p style="font-size: 14px; line-height: 1.65; color: #a7b4c8;">OBS·YouTube·PTZ 카메라가 순서에 맞춰 움직입니다. 주일 아침에 손댈 게 하나 줄어듭니다.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 요금 티저 -->
+  <div style="border-top: 1px solid rgba(255,255,255,0.08); border-bottom: 1px solid rgba(255,255,255,0.08); background: #0d1526;">
+    <div style="max-width: 960px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 44px;">
+      <div style="display: flex; flex-direction: column; gap: 14px; align-items: center; text-align: center;">
+        <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.14em; color: #7fb3e6;">PRICING</span>
+        <h2 style="font-size: 38px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">교회 예산에 맞는 요금</h2>
+        <p style="font-size: 17px; color: #a7b4c8; line-height: 1.7;">기본 기능은 전부 무료. 방송 자동화만 Pro입니다.</p>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px;">
+        <div style="display: flex; flex-direction: column; gap: 14px; padding: 32px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: #0f172a;">
+          <h3 style="font-size: 18px; font-weight: 700; color: #a7b4c8;">Free</h3>
+          <p class="num" style="font-size: 34px; font-weight: 800; color: #ffffff;">무료</p>
+          <p style="font-size: 14px; color: #a7b4c8; line-height: 1.65;">주보 PDF · 찬송/교독 악보 · 성경 · 예배 화면 3종 · 가사 PPT · 모바일 리모컨 · 자동 업데이트</p>
+          <span style="display: inline-flex; align-items: center; justify-content: center; height: 44px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.16); color: #e6edf7; font-size: 14px; font-weight: 600;">무료 다운로드</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 14px; padding: 32px; border-radius: 10px; border: 1px solid rgba(127,179,230,0.5); background: linear-gradient(180deg, rgba(79,140,201,0.14), rgba(79,140,201,0.03)), #0f172a; position: relative;">
+          <span style="position: absolute; top: -12px; left: 32px; display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 4px; background: #7fb3e6; color: #0b1220; font-size: 11px; font-weight: 800; letter-spacing: 0.04em;">방송하는 교회에 추천</span>
+          <h3 style="font-size: 18px; font-weight: 700; color: #a9cdf0;">Pro</h3>
+          <p class="num" style="font-size: 34px; font-weight: 800; color: #ffffff;">월 9,900원 <span style="font-size: 14px; font-weight: 500; color: #7c8ba3;">· 연 99,000원(2개월 무료)</span></p>
+          <p style="font-size: 14px; color: #a7b4c8; line-height: 1.65;">Free 기능 전부, 그리고 OBS 씬 자동 전환 · 자동 스케줄러 · YouTube 방송 자동 생성 · 썸네일 · PTZ 카메라</p>
+          <span style="display: inline-flex; align-items: center; justify-content: center; height: 44px; border-radius: 6px; background: #ffffff; color: #0b1220; font-size: 14px; font-weight: 700;">Pro 시작하기</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 마무리 CTA -->
+  <div style="padding: 96px 24px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 20px; background: radial-gradient(800px 300px at 50% 120%, rgba(79,140,201,0.25), transparent 70%), #0b1220;">
+    <h2 style="font-size: 40px; font-weight: 800; letter-spacing: -0.02em; color: #ffffff;">덜 긴장하고, 더 좋은 주일을.</h2>
+    <p style="font-size: 16px; color: #a7b4c8;">설치 한 번, 카드 등록 없이 오늘 바로 시작할 수 있습니다.</p>
+    <span style="display: inline-flex; align-items: center; height: 48px; padding: 0 28px; border-radius: 6px; background: #ffffff; color: #0b1220; font-size: 15px; font-weight: 700;">무료 다운로드</span>
+  </div>
+
+  <!-- 푸터 -->
+  <div style="border-top: 1px solid rgba(255,255,255,0.08); background: #0d1526;">
+    <div style="max-width: 1152px; margin: 0 auto; padding: 56px 24px 32px; display: grid; grid-template-columns: 1.4fr repeat(4, minmax(0, 1fr)); gap: 32px; font-size: 14px; color: #a7b4c8;">
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: #ffffff;"><img src="ep-logo.svg" alt="ep" style="width: 22px; height: 22px; display: block; border-radius: 6px;"><span>easyPreparation</span></div>
+        <p style="line-height: 1.6; color: #7c8ba3;">교회 예배 준비 자동화 데스크톱 앱</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px;"><span style="font-weight: 700; color: #ffffff;">제품</span><span>기능</span><span>요금제</span><span>다운로드</span><span>릴리즈 노트</span></div>
+      <div style="display: flex; flex-direction: column; gap: 10px;"><span style="font-weight: 700; color: #ffffff;">사용 안내</span><span>설치 가이드</span><span>OBS 연동 설정</span><span>사용 설명서</span><span>GitHub</span></div>
+      <div style="display: flex; flex-direction: column; gap: 10px;"><span style="font-weight: 700; color: #ffffff;">베타</span><span>베타 참여하기</span><span>문의 [이메일 작성 필요]</span></div>
+      <div style="display: flex; flex-direction: column; gap: 10px;"><span style="font-weight: 700; color: #ffffff;">회사</span><span>개인정보 처리방침 [작성 필요]</span><span>이용약관 [작성 필요]</span></div>
+    </div>
+    <div style="max-width: 1152px; margin: 0 auto; padding: 0 24px 32px; font-size: 12px; color: #55627a;">© 2026 easyPreparation</div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

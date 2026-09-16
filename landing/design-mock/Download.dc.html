@@ -1,0 +1,101 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+  <style>
+    body { margin: 0; font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", system-ui, sans-serif; color: #e6edf7; background: #0b1220; -webkit-font-smoothing: antialiased; }
+    a { color: #7fb3e6; text-decoration: none; } a:hover { color: #a9cdf0; }
+    h1, h2, h3, p { margin: 0; }
+    code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+    .shot { border: 1px dashed #2a3a55; background: repeating-linear-gradient(135deg, #0f172a 0 12px, #111b2e 12px 24px); color: #7c8ba3; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 13px; line-height: 1.5; }
+  </style>
+</helmet>
+<div style="width: 1440px; min-height: 2100px; background: #0b1220; display: flex; flex-direction: column;">
+
+  <div style="border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(11,18,32,0.85);">
+    <div style="max-width: 1152px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; color: #ffffff;"><img src="ep-logo.svg" alt="ep" style="width: 28px; height: 28px; display: block;"><span>easyPreparation</span></div>
+      <div style="display: flex; align-items: center; gap: 28px; font-size: 14px; font-weight: 500; color: #a7b4c8;"><span>기능</span><span>요금제</span><span style="color: #ffffff; font-weight: 700;">다운로드</span><span style="display: inline-flex; align-items: center; height: 38px; padding: 0 16px; border-radius: 6px; background: #ffffff; color: #0b1220; font-weight: 700;">무료 다운로드</span></div>
+    </div>
+  </div>
+
+  <div style="max-width: 960px; margin: 0 auto; padding: 80px 24px 96px; display: flex; flex-direction: column; gap: 56px;">
+    <div style="display: flex; flex-direction: column; gap: 14px; align-items: center; text-align: center;">
+      <h1 style="font-size: 44px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">다운로드</h1>
+      <p style="font-size: 17px; color: #a7b4c8; line-height: 1.7; max-width: 560px;">운영체제를 고르면 바로 받습니다. 기본 기능은 전부 무료, 설치 후 자동으로 최신 버전을 유지합니다.</p>
+      <p style="font-size: 13px; color: #7c8ba3;">최신 안정 버전 <strong style="color: #ffffff;">v1.5.8</strong> · 릴리즈 노트 보기</p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px;">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 28px 20px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: #0f172a;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#7fb3e6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3c-1 2-3 2-4 1 1-2 3-2 4-1z"/><path d="M12 7c-4 0-6 3-6 7 0 3 2 7 4 7 1 0 2-1 3-1s2 1 3 1c2 0 4-4 4-7 0-2-1-4-3-5-2 0-3 1-5 1z"/></svg>
+        <div style="text-align: center; display: flex; flex-direction: column; gap: 4px;"><p style="font-size: 17px; font-weight: 700; color: #ffffff;">macOS</p><p style="font-size: 12px; color: #7c8ba3;">Apple Silicon (M1~M4) · .dmg</p></div>
+        <span style="display: inline-flex; align-items: center; justify-content: center; height: 44px; width: 100%; border-radius: 6px; background: #ffffff; color: #0b1220; font-size: 14px; font-weight: 700;">.dmg 다운로드</span>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 28px 20px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: #0f172a;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#7fb3e6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5l8-1.2v7.2H3zM12 4.2l9-1.2v8.5h-9zM3 12.5h8v7.2l-8-1.2zM12 12.5h9V21l-9-1.2z"/></svg>
+        <div style="text-align: center; display: flex; flex-direction: column; gap: 4px;"><p style="font-size: 17px; font-weight: 700; color: #ffffff;">Windows</p><p style="font-size: 12px; color: #7c8ba3;">Windows 10 / 11 (64-bit) · 설치 프로그램</p></div>
+        <span style="display: inline-flex; align-items: center; justify-content: center; height: 44px; width: 100%; border-radius: 6px; background: #ffffff; color: #0b1220; font-size: 14px; font-weight: 700;">setup.exe 다운로드</span>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 28px 20px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: #0f172a;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#7fb3e6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 17l3-6 2 4 1-2 2 4"/></svg>
+        <div style="text-align: center; display: flex; flex-direction: column; gap: 4px;"><p style="font-size: 17px; font-weight: 700; color: #ffffff;">Linux</p><p style="font-size: 12px; color: #7c8ba3;">Ubuntu 22.04+ / Debian 12+ · 실행 파일</p></div>
+        <span style="display: inline-flex; align-items: center; justify-content: center; height: 44px; width: 100%; border-radius: 6px; border: 1px solid rgba(255,255,255,0.16); color: #e6edf7; font-size: 14px; font-weight: 600;">다운로드</span>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <h2 style="font-size: 18px; font-weight: 700; color: #ffffff;">터미널 한 줄 설치 <span style="font-size: 13px; font-weight: 500; color: #7c8ba3;">— 보안 경고(Gatekeeper / SmartScreen)까지 자동 처리</span></h2>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+        <div style="display: flex; flex-direction: column; gap: 6px; padding: 16px 18px; border-radius: 10px; background: #111b2e; border: 1px solid rgba(255,255,255,0.08);"><span style="font-size: 12px; color: #94a3b8;">macOS · Terminal</span><code style="font-size: 13px; color: #86efac; white-space: pre-wrap; word-break: break-all;">curl -fsSL https://github.com/AwesomeYelim/easyPreparation/releases/latest/download/install-mac.sh | bash</code></div>
+        <div style="display: flex; flex-direction: column; gap: 6px; padding: 16px 18px; border-radius: 10px; background: #111b2e; border: 1px solid rgba(255,255,255,0.08);"><span style="font-size: 12px; color: #94a3b8;">Windows · PowerShell</span><code style="font-size: 13px; color: #86efac; white-space: pre-wrap; word-break: break-all;">irm https://github.com/AwesomeYelim/easyPreparation/releases/latest/download/install-windows.ps1 | iex</code></div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px;">
+      <div style="display: flex; flex-direction: column; gap: 12px; padding: 24px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: #0f172a;">
+        <h3 style="font-size: 16px; font-weight: 700; color: #ffffff;">더 많은 플랫폼</h3>
+        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px; color: #c5cfdd;">
+          <div style="display: flex; justify-content: space-between;"><span>macOS (Intel) — 서버 바이너리</span><span style="color: #7fb3e6; font-weight: 600;">받기</span></div>
+          <div style="display: flex; justify-content: space-between;"><span>Linux / Windows / macOS — 서버 바이너리</span><span style="color: #7fb3e6; font-weight: 600;">받기</span></div>
+          <div style="display: flex; justify-content: space-between;"><span>SHA256 체크섬 (checksums.txt)</span><span style="color: #7fb3e6; font-weight: 600;">받기</span></div>
+        </div>
+        <p style="font-size: 12px; color: #7c8ba3; line-height: 1.5;">서버 바이너리는 데스크톱 앱 없이 터미널에서 실행하고 브라우저로 <code>http://localhost:8080</code> 에 접속합니다.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px; padding: 24px; border-radius: 10px; border: 1px solid rgba(127,179,230,0.45); background: linear-gradient(180deg, rgba(79,140,201,0.14), rgba(79,140,201,0.03)), #0f172a;">
+        <div style="display: flex; align-items: center; gap: 8px;"><span style="display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 4px; background: #7fb3e6; color: #0b1220; font-size: 11px; font-weight: 800;">BETA</span><h3 style="font-size: 16px; font-weight: 700; color: #ffffff;">베타 채널</h3></div>
+        <p style="font-size: 14px; color: #c5cfdd; line-height: 1.6;">새 기능을 먼저 써보고 피드백을 주실 교회를 찾습니다. 베타 빌드는 자동 업데이트로 배포되지 않고 이 링크로만 받습니다.</p>
+        <div style="display: flex; justify-content: space-between; font-size: 14px;"><span style="color: #374151;">현재 베타 <strong>v1.5.9-beta.4</strong></span><span style="color: #7fb3e6; font-weight: 600;">베타 받기 · 참여 문의</span></div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      <h2 style="font-size: 22px; font-weight: 800; color: #ffffff;">설치 후 5분</h2>
+      <div style="display: grid; grid-template-columns: 1.1fr 1fr; gap: 28px; align-items: center;">
+        <div class="shot" style="height: 280px; border-radius: 12px;">[스크린샷 1 또는 3]<br>첫 실행 · 예배 순서 화면</div>
+        <div style="display: flex; flex-direction: column; gap: 14px; font-size: 15px; color: #c5cfdd;">
+          <div style="display: flex; gap: 12px;"><span style="width: 26px; height: 26px; flex: none; border-radius: 50%; background: #7fb3e6; color: #0b1220; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">1</span><span>앱을 열면 교회 이름을 묻는 초기 설정이 뜹니다. 한글·영문 이름을 넣고 저장.</span></div>
+          <div style="display: flex; gap: 12px;"><span style="width: 26px; height: 26px; flex: none; border-radius: 50%; background: #7fb3e6; color: #0b1220; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">2</span><span>예배 순서를 고르고 찬송 번호·성경 구절을 채운 뒤 <strong>Display 전송</strong>.</span></div>
+          <div style="display: flex; gap: 12px;"><span style="width: 26px; height: 26px; flex: none; border-radius: 50%; background: #7fb3e6; color: #0b1220; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">3</span><span>OBS에 Browser Source로 <code>http://localhost:8080/display</code> 를 추가하면 송출 화면이 됩니다.</span></div>
+          <div style="display: flex; gap: 12px;"><span style="width: 26px; height: 26px; flex: none; border-radius: 50%; background: #7fb3e6; color: #0b1220; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">4</span><span>스마트폰으로 <code>/mobile</code> QR을 찍으면 리모컨이 됩니다.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 12px; padding: 22px 24px; border-radius: 10px; border: 1px solid rgba(232,184,109,0.4); background: rgba(232,184,109,0.08);">
+      <h3 style="font-size: 15px; font-weight: 700; color: #f3cf95;">첫 실행에 보안 경고가 뜨면</h3>
+      <p style="font-size: 14px; color: #d9c6a3; line-height: 1.65;">macOS: Finder에서 앱 우클릭 → 열기 → 열기. Windows: "추가 정보" → "실행". 위의 터미널 한 줄 설치를 쓰면 이 단계가 필요 없습니다. 한 번 허용하면 이후엔 나오지 않습니다.</p>
+    </div>
+  </div>
+
+  <div style="background: #0d1526; border-top: 1px solid rgba(255,255,255,0.08); padding: 32px 24px; text-align: center; font-size: 12px; color: #55627a;">© 2026 easyPreparation</div>
+</div>
+</x-dc>
+</body>
+</html>
