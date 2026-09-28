@@ -193,7 +193,7 @@ export default function DownloadPage() {
         <h2 className="text-[22px] font-extrabold text-white">설치 후 5분</h2>
         <div className="grid items-center gap-7 md:grid-cols-[1.1fr_1fr]">
           <div className="h-[280px] overflow-hidden rounded-xl">
-            <Shot label={"[스크린샷 1 또는 3]\n첫 실행 · 예배 순서 화면"} className="h-full rounded-xl" />
+            <Shot src="/shots/bulletin.jpg" label="첫 실행 · 예배 순서 화면" className="h-full rounded-xl" />
           </div>
           <ol className="flex flex-col gap-3.5 text-[15px] text-list">
             {firstRun.map((step, i) => (

@@ -11,10 +11,10 @@ import { Band, Button, Card, SectionHead, Tag } from "./components/ui";
 
 // Screenshot slots. Drop files into /public/shots and set `src` here.
 const shots = {
-  bulletin: undefined as string | undefined, // 주보 편집 화면
-  display: undefined as string | undefined, // Display 화면
-  control: undefined as string | undefined, // 제어판
-  mobile: undefined as string | undefined, // 모바일 리모컨
+  bulletin: "/shots/bulletin.jpg", // 주보 편집 화면 (Pro Console)
+  display: "/shots/display.jpg", // Display 화면 (찬송 악보 슬라이드)
+  control: "/shots/control.jpg", // 제어판 (순서 패널 · PREV/NEXT)
+  mobile: "/shots/mobile.jpg", // 모바일 리모컨
 };
 
 const stats = [
@@ -30,28 +30,28 @@ const steps = [
     title: "주보 편집",
     desc: "예배 순서를 끌어다 놓고 찬송 번호·성경 구절을 고르면 인쇄용 PDF와 시안 8종이 나옵니다.",
     shot: shots.bulletin,
-    label: "[스크린샷 1]\n주보 편집",
+    label: "주보 편집 화면",
   },
   {
     n: "02",
     title: "Display 송출",
     desc: "같은 순서가 프로젝터 화면·방송 오버레이·무대 모니터 세 가지로 렌더링됩니다. OBS Browser Source 하나면 끝.",
     shot: shots.display,
-    label: "[스크린샷 2]\nDisplay 화면",
+    label: "Display 화면",
   },
   {
     n: "03",
     title: "제어판으로 진행",
     desc: "항목 점프·자동 넘김·타이머. 예배 중 성경이나 찬양이 추가돼도 순서에 바로 끼워 넣습니다.",
     shot: shots.control,
-    label: "[스크린샷 3]\n제어판",
+    label: "제어판",
   },
   {
     n: "04",
     title: "어디서든 넘기기",
     desc: "같은 Wi-Fi의 스마트폰으로 QR 한 번에 연결. 자리에 앉아서도 슬라이드를 넘길 수 있습니다.",
     shot: shots.mobile,
-    label: "[스크린샷 4]\n모바일 리모컨",
+    label: "모바일 리모컨",
   },
 ];
 
@@ -158,7 +158,7 @@ export default function Home() {
               <div className="h-[220px] sm:h-[300px] md:h-[362px]">
                 <Shot
                   src={shots.bulletin}
-                  label={"[스크린샷 1]\n주보 편집 화면\n(예배 순서 · 상세 편집 · 미리보기)"}
+                  label="주보 편집 화면 (예배 순서 · 상세 편집 · 미리보기)"
                   className="h-full"
                 />
               </div>
@@ -166,7 +166,7 @@ export default function Home() {
             <div className="absolute bottom-0 right-0 h-[200px] w-[100px] overflow-hidden rounded-[26px] border-[5px] border-[#1c2740] bg-surface shadow-[0_24px_48px_rgba(0,0,0,0.55)] sm:h-[300px] sm:w-[150px]">
               <Shot
                 src={shots.mobile}
-                label={"[스크린샷 4]\n모바일 리모컨"}
+                label="모바일 리모컨"
                 className="h-full rounded-[20px] !border-0"
               />
             </div>
@@ -252,13 +252,11 @@ export default function Home() {
         />
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {roles.map((r) => (
-            <div key={r.title} className="flex flex-col gap-4">
-              <div className="h-[220px] overflow-hidden rounded-card">
-                <Shot label={`[사진]\n${r.title}`} className="h-full rounded-card" />
-              </div>
+            <Card key={r.title} className="flex flex-col gap-3 p-7">
+              <span className="h-1 w-8 rounded-full bg-accent" />
               <h3 className="text-lg font-bold text-white">{r.title}</h3>
               <p className="text-sm leading-[1.65] text-muted">{r.desc}</p>
-            </div>
+            </Card>
           ))}
         </div>
       </section>
