@@ -125,8 +125,10 @@ export default function Home() {
             </span>
             <h1 className="text-4xl font-extrabold leading-[1.12] tracking-[-0.025em] text-white sm:text-5xl md:text-[54px]">
               주일 아침,
+              {" "}
               <br className="hidden sm:block" />
               봉사자 누구나 자신 있게
+              {" "}
               <br className="hidden sm:block" />
               돌릴 수 있는 예배 준비
             </h1>
@@ -147,15 +149,17 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="relative h-[300px] sm:h-[400px] md:h-[460px]">
-            <div className="absolute left-0 right-11 top-0 overflow-hidden rounded-card border border-white/[0.12] bg-surface shadow-[0_30px_60px_rgba(0,0,0,0.5),0_0_0_1px_rgba(0,0,0,0.4)]">
+          {/* Frame height follows the 1440x900 capture (16:10); the phone
+              sits inside reserved right/bottom padding so nothing clips. */}
+          <div className="relative pb-14 pr-[14%] sm:pb-16">
+            <div className="overflow-hidden rounded-card border border-white/[0.12] bg-surface shadow-[0_30px_60px_rgba(0,0,0,0.5),0_0_0_1px_rgba(0,0,0,0.4)]">
               <div className="flex h-[34px] items-center gap-1.5 border-b border-line bg-raised px-3">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#2a3a55]" />
                 <span className="h-2.5 w-2.5 rounded-full bg-[#2a3a55]" />
                 <span className="h-2.5 w-2.5 rounded-full bg-[#2a3a55]" />
                 <span className="ml-2.5 h-[18px] flex-1 rounded border border-line bg-bg" />
               </div>
-              <div className="h-[220px] sm:h-[300px] md:h-[362px]">
+              <div className="aspect-[16/10]">
                 <Shot
                   src={shots.bulletin}
                   label="주보 편집 화면 (예배 순서 · 상세 편집 · 미리보기)"
@@ -163,7 +167,7 @@ export default function Home() {
                 />
               </div>
             </div>
-            <div className="absolute bottom-0 right-0 h-[200px] w-[100px] overflow-hidden rounded-[26px] border-[5px] border-[#1c2740] bg-surface shadow-[0_24px_48px_rgba(0,0,0,0.55)] sm:h-[300px] sm:w-[150px]">
+            <div className="absolute bottom-0 right-0 aspect-[390/844] w-[28%] max-w-[150px] overflow-hidden rounded-[26px] border-[5px] border-[#1c2740] bg-surface shadow-[0_24px_48px_rgba(0,0,0,0.55)]">
               <Shot
                 src={shots.mobile}
                 label="모바일 리모컨"
