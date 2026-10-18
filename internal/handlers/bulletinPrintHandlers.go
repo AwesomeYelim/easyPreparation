@@ -379,6 +379,15 @@ func generateBulletinPDF(worshipType, templateNum string) ([]byte, error) {
 	outFile := filepath.Join(os.TempDir(), fmt.Sprintf("bulletin_%d.pdf", time.Now().UnixNano()))
 	defer os.Remove(outFile)
 
+	// 전용 user-data-dir 필수: 지정하지 않으면 사용자가 평소 쓰는 Chrome(또는 겹쳐 눌린
+	// 다른 PDF 생성 요청)의 기본 프로필과 충돌해 headless 프로세스가 멈추거나
+	// 타임아웃/강제종료 실패(Access is denied)로 이어진다.
+	userDataDir, err := os.MkdirTemp("", "bulletin-pdf-profile-*")
+	if err != nil {
+		return nil, fmt.Errorf("임시 프로필 디렉토리 생성 실패: %w", err)
+	}
+	defer os.RemoveAll(userDataDir)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
@@ -388,6 +397,8 @@ func generateBulletinPDF(worshipType, templateNum string) ([]byte, error) {
 		"--disable-gpu",
 		"--no-sandbox",
 		"--disable-dev-shm-usage",
+		"--user-data-dir="+userDataDir,
+		"--no-first-run",
 		"--run-all-compositor-stages-before-draw",
 		"--virtual-time-budget=15000",
 		"--print-to-pdf-no-header",
