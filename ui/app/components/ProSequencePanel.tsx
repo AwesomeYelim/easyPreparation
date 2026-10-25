@@ -52,7 +52,6 @@ export default function ProSequencePanel() {
   const idxRef = useRef(idx);
   idxRef.current = idx;
   const dragRef = useRef<{ from: number; wasDragging: boolean } | null>(null);
-  const lastJumpedIdxRef = useRef<number | null>(null);
   const schedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reorderLockRef = useRef(false);
   const reorderSuppressRef = useRef(false);
@@ -156,29 +155,7 @@ export default function ProSequencePanel() {
     return () => clearInterval(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // --- Scroll to active item (자연 진행 시에만 — 사용자가 직접 클릭(jump)한 경우는 스크롤 위치 유지) ---
-  useLayoutEffect(() => {
-    // idx가 점프로 세팅된 값과 아직 같으면(React StrictMode의 effect 이중 실행 포함) 스크롤 스킵.
-    // idx가 실제로 다른 값으로 바뀌는 순간에만 여기서 클리어 — 나중에 같은 위치로
-    // 자연 진행(WS)으로 돌아와도 정상적으로 스크롤되도록.
-    if (lastJumpedIdxRef.current === idx) {
-      return;
-    }
-    lastJumpedIdxRef.current = null;
-    const container = listRef.current;
-    if (!container) return;
-    const el = container.querySelector("[data-active='true']") as HTMLElement | null;
-    if (!el) return;
-    const cRect = container.getBoundingClientRect();
-    const eRect = el.getBoundingClientRect();
-    const relTop = eRect.top - cRect.top + container.scrollTop;
-    const relBottom = relTop + eRect.height;
-    if (relTop < container.scrollTop) {
-      container.scrollTop = relTop - 8;
-    } else if (relBottom > container.scrollTop + container.clientHeight) {
-      container.scrollTop = relBottom - container.clientHeight + 8;
-    }
-  }, [idx, subPageIdx, items]);
+  // 사이드바 자동 스크롤 없음 — 현재 항목이 바뀌어도(클릭/자연 진행/폴링 모두) 운영자의 스크롤 위치를 건드리지 않는다.
 
   // --- Navigation ---
   const handleNav = useCallback((dir: "prev" | "next") => {
@@ -186,14 +163,12 @@ export default function ProSequencePanel() {
   }, []);
 
   const handleJump = useCallback((index: number) => {
-    lastJumpedIdxRef.current = index;
     setIdx(index);
     apiClient.jumpDisplay(index);
     setInspectorTab("preview");
   }, [setInspectorTab]);
 
   const handleSectionJump = useCallback((itemIdx: number, subPage: number) => {
-    lastJumpedIdxRef.current = itemIdx;
     setIdx(itemIdx);
     setSubPageIdx(subPage);
     apiClient.jumpDisplay(itemIdx, subPage);
