@@ -19,4 +19,5 @@ PR → `go vet` + `go build` (server만, desktop 제외).
 
 ## landing.yml
 
-`landing/` 변경 push → Vercel 배포.
+PR(`landing/**` 변경) → `npm ci` + `npm run build` 빌드 검사만. 배포는 하지 않는다.
+실제 배포는 `master` push 시 Vercel Git 연동이 처리한다 (`landing/CLAUDE.md` 참고).
