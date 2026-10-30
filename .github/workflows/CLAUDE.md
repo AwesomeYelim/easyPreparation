@@ -15,7 +15,7 @@ git tag v1.2.0 && git push origin v1.2.0
 
 ## test.yml
 
-PR → `go vet` + `go build` (server만, desktop 제외).
+`master` push + 모든 PR → `go vet` + `go build` (server만, desktop 제외).
 
 ## landing.yml
 
