@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { IconBook, IconDoc, IconMusic, IconScreen } from "../icons";
 import Stage from "./Stage";
 import { useTicker } from "./hooks";
-import { BulletinMock, DisplayMock, RemoteMock, Slide } from "./mocks";
+import { sequence } from "./data";
+import { BulletinMock, DisplayMock, PhoneMock, RemoteMock, Slide } from "./mocks";
 
 // Raycast-style playground: one big app frame, a dock that swaps what runs
 // inside it, and keyboard control (← → for slides, digits + Enter for hymns).
@@ -26,9 +27,35 @@ const verses = [
 
 /* ---------------------------------------------------------------- Hymn */
 
-function HymnMock({ typed, number, page }: { typed: string; number: number; page: number }) {
-  const hasScore = number === 524;
-  const pages = 4;
+// Real score pages shipped for the demo (/public/hymns/{n}/1-4.jpg). The app
+// itself pulls all 645 from the asset server; the landing page carries a few.
+const HYMNS: Record<number, string> = {
+  28: "복의 근원 강림하사",
+  96: "예수님은 누구신가",
+  288: "예수를 나의 구주 삼고",
+  524: "갈 길을 밝히 보이시니",
+};
+const DEMO_HYMNS = Object.keys(HYMNS).map(Number);
+const PAGES = 4;
+
+function HymnPage({ number, page, className = "" }: { number: number; page: number; className?: string }) {
+  if (HYMNS[number]) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={`/hymns/${number}/${(page % PAGES) + 1}.jpg`} alt={`찬송가 ${number}장 ${HYMNS[number]} 악보 ${(page % PAGES) + 1}`} className={`object-contain ${className}`} />
+    );
+  }
+  return (
+    <div className={`flex flex-col items-center justify-center gap-3 bg-black px-6 text-center text-white ${className}`}>
+      <p className="text-[clamp(28px,8cqw,120px)] font-extrabold leading-none">{number}장</p>
+      <p className="text-[clamp(12px,2.6cqw,34px)] text-[#9ca3af]">앱에서는 645곡 악보가 전부 자동으로 뜹니다.</p>
+      <p className="text-[clamp(11px,2.2cqw,28px)] text-[#7fb3e6]">체험판 악보: {DEMO_HYMNS.join(" · ")}장</p>
+    </div>
+  );
+}
+
+function HymnMock({ typed, number, page, onPick }: { typed: string; number: number; page: number; onPick: (n: number) => void }) {
+  const pages = PAGES;
   const p = page % pages;
   return (
     <div className="grid h-full grid-cols-[360px_1fr] bg-[#1c1c1c] font-sans text-[#e5e5e5]">
@@ -41,15 +68,19 @@ function HymnMock({ typed, number, page }: { typed: string; number: number; page
         </div>
         <div key={number} className="live-fade flex flex-col gap-2 text-[15px]">
           <p className="text-[#8a8a8a]">불러온 곡</p>
-          <div className="flex items-center gap-3 rounded-lg bg-[#26324a] px-4 py-3">
-            <span className="num text-[22px] font-extrabold text-white">{number}장</span>
-            <span className="ml-auto rounded bg-[#064e3b] px-2 py-0.5 text-[12px] text-[#6ee7b7]">악보 {pages}장 캐시됨</span>
+          <div className="flex flex-col gap-1 rounded-lg bg-[#26324a] px-4 py-3">
+            <span className="flex items-center">
+              <span className="num text-[22px] font-extrabold text-white">{number}장</span>
+              {HYMNS[number] && <span className="ml-auto rounded bg-[#064e3b] px-2 py-0.5 text-[12px] text-[#6ee7b7]">악보 캐시됨</span>}
+            </span>
+            <span className="text-[14px] text-[#93c5fd]">{HYMNS[number] ?? "체험판에 없는 곡"}</span>
           </div>
-          {[1, 2, 3].map((k) => (
-            <div key={k} className="flex items-center gap-3 rounded-lg px-4 py-2 text-[#9ca3af]">
-              <span className="num">{((number + k * 137) % 645) + 1}장</span>
-              <span className="ml-auto text-[12px]">최근</span>
-            </div>
+          <p className="mt-2 text-[#8a8a8a]">체험판 악보</p>
+          {DEMO_HYMNS.filter((n) => n !== number).map((n) => (
+            <button key={n} type="button" onClick={() => onPick(n)} className="flex items-center gap-3 rounded-lg px-4 py-2 text-left text-[#c4c4c4] hover:bg-white/5">
+              <span className="num w-12 font-semibold">{n}장</span>
+              <span className="truncate text-[13px] text-[#8a8a8a]">{HYMNS[n]}</span>
+            </button>
           ))}
         </div>
         <div className="mt-auto flex gap-2">
@@ -59,17 +90,8 @@ function HymnMock({ typed, number, page }: { typed: string; number: number; page
         </div>
       </div>
       <div className="flex items-center justify-center p-8">
-        <div key={`${number}-${p}`} className="live-fade w-full overflow-hidden rounded-xl border border-[#2e2e2e]">
-          {hasScore ? (
-            <Slide index={13} />
-          ) : (
-            <Stage w={1280} h={720} className="bg-black">
-              <div className="flex h-full flex-col items-center justify-center text-white">
-                <p className="text-[150px] font-extrabold">{number}장</p>
-                <p className="mt-2 text-[40px] text-[#9ca3af]">{p + 1}절 · 악보 {p + 1} / {pages}</p>
-              </div>
-            </Stage>
-          )}
+        <div key={`${number}-${p}`} className="live-fade w-full overflow-hidden rounded-xl border border-[#2e2e2e] bg-black [container-type:inline-size]">
+          <HymnPage number={number} page={p} className="aspect-video h-full w-full" />
         </div>
       </div>
     </div>
@@ -114,13 +136,11 @@ type Mode = { key: string; label: string; icon: ReactNode; title: string; desc: 
 
 const modes: Mode[] = [
   { key: "bulletin", label: "주보", icon: <IconDoc />, title: "주보 편집.", desc: "순서를 고르면 표가 채워지고, 인쇄용 PDF가 바로 나옵니다." },
-  { key: "hymn", label: "찬송", icon: <IconMusic />, title: "찬송 번호만.", desc: "번호를 치고 Enter — 645곡 악보가 슬라이드로 뜹니다. 524를 눌러 보세요." },
+  { key: "hymn", label: "찬송", icon: <IconMusic />, title: "찬송 번호만.", desc: "번호를 치고 Enter — 악보가 슬라이드로 뜹니다. 여기선 28 · 96 · 288 · 524장을, 앱에선 645곡 전부를." },
   { key: "bible", label: "성경", icon: <IconBook />, title: "성경 비교 모드.", desc: "두 번역판을 나란히. ← → 로 절을 넘깁니다." },
   { key: "display", label: "송출", icon: <IconScreen />, title: "화면 세 가지.", desc: "프로젝터 · 방송 오버레이 · 무대 모니터가 같은 순서로 움직입니다." },
   { key: "remote", label: "리모컨", icon: <IconPhone />, title: "폰으로 넘기기.", desc: "같은 Wi-Fi의 스마트폰이 리모컨이 됩니다." },
 ];
-
-const AUTO_HYMN = "524";
 
 function Key({ children, onClick, wide, submit }: { children: ReactNode; onClick?: () => void; wide?: boolean; submit?: boolean }) {
   return (
@@ -131,6 +151,72 @@ function Key({ children, onClick, wide, submit }: { children: ReactNode; onClick
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * Phone-width version: the whole console scaled down is unreadable, so show
+ * only the output of each mode at real size.
+ */
+function MobileView({ mode, beat, bulletinStep, hymn, t }: { mode: number; beat: number; bulletinStep: number; hymn: number; t: number }) {
+  const v = verses[beat % verses.length];
+  const shown = Math.min(sequence.length, Math.max(4, bulletinStep));
+  const body: ReactNode[] = [
+    <div key="b" className="flex flex-col divide-y divide-white/[0.06] rounded-xl border border-white/[0.08] bg-[#17181c] px-4">
+      <p className="py-3 text-xs tracking-[0.2em] text-dim">생성된 예배 내용</p>
+      {sequence.slice(0, shown).slice(-6).map((it, i) => (
+        <div key={`${it.title}-${i}`} className="live-fade grid grid-cols-[1fr_auto] gap-2 py-2.5 text-sm">
+          <span className="font-semibold text-white">{it.title} <span className="font-normal text-dim">{it.detail !== "-" && it.detail}</span></span>
+          <span className="text-dim">{it.who}</span>
+        </div>
+      ))}
+      <p className="py-3 text-xs text-accent">{shown >= sequence.length ? "✓ 주보 PDF 생성 완료" : `${shown} / ${sequence.length} 항목`}</p>
+    </div>,
+    <div key="h" className="flex flex-col gap-2">
+      <p className="text-sm text-muted">
+        <b className="num text-white">{hymn}장</b> {HYMNS[hymn] ?? ""}
+        <span className="num float-right text-dim">{(beat % PAGES) + 1} / {PAGES}</span>
+      </p>
+      <div key={`${hymn}-${beat % PAGES}`} className="live-fade overflow-hidden rounded-xl border border-white/[0.08] bg-black [container-type:inline-size]">
+        <HymnPage number={hymn} page={beat} className="aspect-[4/3] w-full" />
+      </div>
+    </div>,
+    <div key="s" className="flex flex-col gap-3">
+      <div key={v.n} className="live-fade rounded-xl border border-white/[0.08] bg-black p-5">
+        <p className="mb-2 text-xs text-accent">개역한글 · 요 1:{v.n}</p>
+        <p className="text-lg font-bold leading-[1.6] text-white">{v.ko}</p>
+      </div>
+      <div key={`en-${v.n}`} className="live-fade rounded-xl border border-white/[0.08] bg-black p-5">
+        <p className="mb-2 text-xs text-[#e8aa5a]">KJV · John 1:{v.n}</p>
+        <p className="text-base leading-[1.6] text-[#d1d5db]">{v.en}</p>
+      </div>
+    </div>,
+    <div key="d" className="flex flex-col gap-3">
+      <p className="text-xs text-dim">프로젝터</p>
+      <div className="overflow-hidden rounded-xl border border-white/[0.08]">
+        <Slide index={[13, 1, 8, 3][beat % 4]} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <p className="mb-1.5 text-xs text-dim">방송 오버레이</p>
+          <div className="overflow-hidden rounded-lg border border-white/[0.08]"><Slide index={[13, 1, 8, 3][beat % 4]} mode="overlay" /></div>
+        </div>
+        <div>
+          <p className="mb-1.5 text-xs text-dim">무대 모니터</p>
+          <div className="overflow-hidden rounded-lg border border-white/[0.08]"><Slide index={[13, 1, 8, 3][beat % 4]} t={t % 60} mode="stage" /></div>
+        </div>
+      </div>
+    </div>,
+    <div key="r" className="mx-auto w-[260px] overflow-hidden rounded-[30px] border-[6px] border-[#1c2740] shadow-[0_24px_48px_rgba(0,0,0,0.55)]">
+      <Stage w={390} h={844}>
+        <PhoneMock index={9 + beat} />
+      </Stage>
+    </div>,
+  ];
+  return (
+    <div key={mode} className="live-fade w-full sm:hidden">
+      {body[mode]}
+    </div>
   );
 }
 
@@ -149,8 +235,10 @@ export default function Playground() {
   const autoMode = Math.floor(t / 9) % modes.length;
   const m = manual ? mode : (1 + autoMode) % modes.length;
   const beat = manual ? step : Math.floor((t % 9) / 2.5);
-  const autoTyped = AUTO_HYMN.slice(0, Math.max(0, (t % 9) - 1));
-  const shownTyped = manual ? typed : autoTyped.length < 3 ? autoTyped : "";
+  const autoHymn = DEMO_HYMNS[(DEMO_HYMNS.indexOf(524) + Math.floor(t / 45)) % DEMO_HYMNS.length];
+  const autoTyped = String(autoHymn).slice(0, Math.max(0, (t % 9) - 1));
+  const shownTyped = manual ? typed : autoTyped.length < String(autoHymn).length ? autoTyped : "";
+  const shownHymn = manual ? hymn : autoHymn;
 
   const take = () => {
     if (!manual) {
@@ -206,7 +294,7 @@ export default function Playground() {
 
   const screens = [
     <BulletinMock key="b" step={manual ? 6 + step * 3 : (t % 9) * 2} />,
-    <HymnMock key="h" typed={shownTyped} number={manual ? hymn : 524} page={beat} />,
+    <HymnMock key="h" typed={shownTyped} number={shownHymn} page={beat} onPick={(n) => { pick(1); commitHymn(String(n)); }} />,
     <ScriptureMock key="s" verse={beat} />,
     <DisplayMock key="d" index={[13, 1, 8, 3][beat % 4]} t={t % 60} />,
     <RemoteMock key="r" index={9 + beat} />,
@@ -215,7 +303,8 @@ export default function Playground() {
 
   return (
     <div ref={ref} className="flex flex-col items-center gap-7">
-      <div className="w-full rounded-[18px] border border-white/[0.12] bg-white/[0.03] p-2 shadow-[0_40px_120px_rgba(20,60,120,0.35),0_0_0_1px_rgba(0,0,0,0.5)] backdrop-blur">
+      <MobileView mode={m} beat={beat} bulletinStep={manual ? 6 + step * 3 : (t % 9) * 2} hymn={shownHymn} t={t} />
+      <div className="hidden w-full rounded-[18px] border border-white/[0.12] bg-white/[0.03] p-2 shadow-[0_40px_120px_rgba(20,60,120,0.35),0_0_0_1px_rgba(0,0,0,0.5)] backdrop-blur sm:block">
         <div className="overflow-hidden rounded-[12px] border border-white/[0.08] bg-[#0d0d0f]">
           <div className="flex h-9 items-center gap-5 border-b border-white/[0.06] bg-black/40 px-4 text-[12px] text-[#a3a3a3]">
             <span className="font-bold text-white">easyPreparation</span>
@@ -292,6 +381,12 @@ export default function Playground() {
           <Key wide submit>Enter</Key>
           <span>찬송 불러오기</span>
         </form>
+        <span className="flex w-full items-center justify-center gap-1.5 sm:w-auto">
+          <span className="text-faint">체험판</span>
+          {DEMO_HYMNS.map((n) => (
+            <Key key={n} onClick={() => { pick(1); commitHymn(String(n)); }}>{n}</Key>
+          ))}
+        </span>
       </div>
     </div>
   );
