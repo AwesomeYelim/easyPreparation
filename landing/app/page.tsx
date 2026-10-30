@@ -1,4 +1,6 @@
-import Shot from "./components/Shot";
+import HeroLive from "./components/live/HeroLive";
+import WorkflowTabs from "./components/live/WorkflowTabs";
+import { CountUp, Reveal } from "./components/motion";
 import {
   IconBook,
   IconDoc,
@@ -9,19 +11,11 @@ import {
 } from "./components/icons";
 import { Band, Button, Card, SectionHead, Tag } from "./components/ui";
 
-// Screenshot slots. Drop files into /public/shots and set `src` here.
-const shots = {
-  bulletin: "/shots/bulletin.jpg", // 주보 편집 화면 (Pro Console)
-  display: "/shots/display.jpg", // Display 화면 (찬송 악보 슬라이드)
-  control: "/shots/control.jpg", // 제어판 (순서 패널 · PREV/NEXT)
-  mobile: "/shots/mobile.jpg", // 모바일 리모컨
-};
-
 const stats = [
-  { value: "645곡", label: "새찬송가 악보 자동 표시" },
-  { value: "7개", label: "성경 번역판 · 비교 모드" },
-  { value: "8종", label: "주보 시안 템플릿" },
-  { value: "3 OS", label: "macOS · Windows · Linux" },
+  { n: 645, suffix: "곡", label: "새찬송가 악보 자동 표시" },
+  { n: 7, suffix: "개", label: "성경 번역판 · 비교 모드" },
+  { n: 8, suffix: "종", label: "주보 시안 템플릿" },
+  { n: 3, suffix: " OS", label: "macOS · Windows · Linux" },
 ];
 
 const steps = [
@@ -29,29 +23,21 @@ const steps = [
     n: "01",
     title: "주보 편집",
     desc: "예배 순서를 끌어다 놓고 찬송 번호·성경 구절을 고르면 인쇄용 PDF와 시안 8종이 나옵니다.",
-    shot: shots.bulletin,
-    label: "주보 편집 화면",
   },
   {
     n: "02",
     title: "Display 송출",
     desc: "같은 순서가 프로젝터 화면·방송 오버레이·무대 모니터 세 가지로 렌더링됩니다. OBS Browser Source 하나면 끝.",
-    shot: shots.display,
-    label: "Display 화면",
   },
   {
     n: "03",
     title: "제어판으로 진행",
     desc: "항목 점프·자동 넘김·타이머. 예배 중 성경이나 찬양이 추가돼도 순서에 바로 끼워 넣습니다.",
-    shot: shots.control,
-    label: "제어판",
   },
   {
     n: "04",
     title: "어디서든 넘기기",
     desc: "같은 Wi-Fi의 스마트폰으로 QR 한 번에 연결. 자리에 앉아서도 슬라이드를 넘길 수 있습니다.",
-    shot: shots.mobile,
-    label: "모바일 리모컨",
   },
 ];
 
@@ -112,13 +98,17 @@ export default function Home() {
   return (
     <>
       {/* Hero */}
-      <section className="relative overflow-hidden bg-[radial-gradient(1200px_520px_at_20%_-10%,rgba(79,140,201,0.22),transparent_60%)] px-6 pb-20 pt-20 md:pt-[104px]">
+      <section className="relative overflow-hidden px-6 pb-20 pt-20 md:pt-[104px]">
+        <div
+          aria-hidden
+          className="glow-drift pointer-events-none absolute -inset-[10%] bg-[radial-gradient(1200px_520px_at_20%_-10%,rgba(79,140,201,0.22),transparent_60%)]"
+        />
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:48px_48px] [mask-image:linear-gradient(180deg,rgba(0,0,0,0.9),transparent_85%)]"
         />
         <div className="relative mx-auto grid max-w-site items-center gap-14 md:grid-cols-[1.05fr_1fr]">
-          <div className="flex flex-col gap-6">
+          <div className="live-fade flex flex-col gap-6">
             <span className="inline-flex h-7 items-center gap-2 self-start rounded-full border border-accent/35 bg-accent-deep/[0.12] pl-2 pr-3 text-xs font-semibold tracking-wide text-accent-light">
               <span className="h-1.5 w-1.5 rounded-full bg-accent" />
               교회 미디어팀을 위한 예배 준비 소프트웨어
@@ -149,32 +139,7 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Frame height follows the 1440x900 capture (16:10); the phone
-              sits inside reserved right/bottom padding so nothing clips. */}
-          <div className="relative pb-14 pr-[14%] sm:pb-16">
-            <div className="overflow-hidden rounded-card border border-white/[0.12] bg-surface shadow-[0_30px_60px_rgba(0,0,0,0.5),0_0_0_1px_rgba(0,0,0,0.4)]">
-              <div className="flex h-[34px] items-center gap-1.5 border-b border-line bg-raised px-3">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#2a3a55]" />
-                <span className="h-2.5 w-2.5 rounded-full bg-[#2a3a55]" />
-                <span className="h-2.5 w-2.5 rounded-full bg-[#2a3a55]" />
-                <span className="ml-2.5 h-[18px] flex-1 rounded border border-line bg-bg" />
-              </div>
-              <div className="aspect-[16/10]">
-                <Shot
-                  src={shots.bulletin}
-                  label="주보 편집 화면 (예배 순서 · 상세 편집 · 미리보기)"
-                  className="h-full"
-                />
-              </div>
-            </div>
-            <div className="absolute bottom-0 right-0 aspect-[390/844] w-[28%] max-w-[150px] overflow-hidden rounded-[26px] border-[5px] border-[#1c2740] bg-surface shadow-[0_24px_48px_rgba(0,0,0,0.55)]">
-              <Shot
-                src={shots.mobile}
-                label="모바일 리모컨"
-                className="h-full rounded-[20px] !border-0"
-              />
-            </div>
-          </div>
+          <HeroLive />
         </div>
       </section>
 
@@ -182,9 +147,9 @@ export default function Home() {
       <Band>
         <div className="mx-auto grid max-w-site grid-cols-2 gap-6 px-6 py-6 md:grid-cols-4">
           {stats.map((s) => (
-            <div key={s.value} className="flex flex-col items-center gap-1">
+            <div key={s.label} className="flex flex-col items-center gap-1">
               <span className="num text-[30px] font-extrabold text-white">
-                {s.value}
+                <CountUp to={s.n} suffix={s.suffix} />
               </span>
               <span className="text-[13px] text-dim">{s.label}</span>
             </div>
@@ -199,22 +164,9 @@ export default function Home() {
           title="예배 준비부터 진행까지, 한 곳에서"
           desc="토요일에 주보를 만들면 그 순서가 그대로 주일 화면이 됩니다. 프로그램을 옮겨 다니며 다시 입력할 일이 없습니다."
         />
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {steps.map((s) => (
-            <Card key={s.n} className="flex flex-col gap-4 p-5">
-              <div className="h-[140px] overflow-hidden rounded-md">
-                <Shot src={s.shot} label={s.label} className="h-full rounded-md" />
-              </div>
-              <div className="flex items-center gap-2.5">
-                <span className="num text-xs font-bold tracking-[0.1em] text-accent">
-                  {s.n}
-                </span>
-                <h3 className="text-[17px] font-bold text-white">{s.title}</h3>
-              </div>
-              <p className="text-sm leading-[1.65] text-muted">{s.desc}</p>
-            </Card>
-          ))}
-        </div>
+        <Reveal>
+          <WorkflowTabs steps={steps} />
+        </Reveal>
       </section>
 
       {/* Features */}
@@ -229,11 +181,11 @@ export default function Home() {
             desc="기본 기능은 전부 무료입니다. 방송 자동화가 필요할 때만 Pro로 올리면 됩니다."
           />
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map((f) => (
+            {features.map((f, i) => (
+              <Reveal key={f.title} delay={(i % 3) * 90} className="h-full">
               <Card
-                key={f.title}
                 highlight={f.pro}
-                className="flex flex-col gap-3.5 p-7"
+                className="flex h-full flex-col gap-3.5 p-7 transition duration-300 hover:-translate-y-1 hover:border-accent/40"
               >
                 <div className="flex items-center justify-between">
                   {f.icon}
@@ -242,6 +194,7 @@ export default function Home() {
                 <h3 className="text-lg font-bold text-white">{f.title}</h3>
                 <p className="text-sm leading-[1.65] text-muted">{f.desc}</p>
               </Card>
+              </Reveal>
             ))}
           </div>
         </section>
@@ -255,12 +208,14 @@ export default function Home() {
           desc="한 사람에게 모든 걸 맡기지 않아도 됩니다. 각자 자기 몫만 하면 주일이 굴러갑니다."
         />
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {roles.map((r) => (
-            <Card key={r.title} className="flex flex-col gap-3 p-7">
+          {roles.map((r, i) => (
+            <Reveal key={r.title} delay={i * 90} className="h-full">
+            <Card className="flex h-full flex-col gap-3 p-7 transition duration-300 hover:-translate-y-1 hover:border-accent/40">
               <span className="h-1 w-8 rounded-full bg-accent" />
               <h3 className="text-lg font-bold text-white">{r.title}</h3>
               <p className="text-sm leading-[1.65] text-muted">{r.desc}</p>
             </Card>
+            </Reveal>
           ))}
         </div>
       </section>

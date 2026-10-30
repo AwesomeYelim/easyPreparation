@@ -20,6 +20,64 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Live UI mocks (components/live) */
+@keyframes live-fade {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes live-press {
+  0% { transform: scale(1); filter: brightness(1); }
+  30% { transform: scale(0.94); filter: brightness(1.35); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+@keyframes live-pop {
+  from { opacity: 0; transform: scale(0.7); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes live-blink {
+  50% { opacity: 0.25; }
+}
+@keyframes live-wave {
+  0%, 100% { opacity: 0.3; transform: translateX(-4px); }
+  50% { opacity: 1; transform: translateX(4px); }
+}
+@keyframes live-progress {
+  from { width: 0; }
+  to { width: 100%; }
+}
+.live-fade { animation: live-fade 0.5s ease-out both; }
+.live-press { animation: live-press 0.45s ease-out; }
+.live-pop { animation: live-pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.live-blink { animation: live-blink 1.4s ease-in-out infinite; }
+.live-wave { animation: live-wave 1.6s ease-in-out infinite; }
+.live-progress { animation: live-progress linear forwards; }
+
+/* Scroll reveal (components/motion.tsx) */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+}
+.reveal-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Hero backdrop glow drifts slowly */
+@keyframes glow-drift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(6%, 4%); }
+}
+.glow-drift { animation: glow-drift 18s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Screenshot placeholder — replaced by <img> once real captures are supplied */
 .shot {
   border: 1px dashed #2a3a55;
