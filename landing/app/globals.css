@@ -52,6 +52,30 @@ body {
 .live-wave { animation: live-wave 1.6s ease-in-out infinite; }
 .live-progress { animation: live-progress linear forwards; }
 
+@keyframes live-caret {
+  50% { opacity: 0; }
+}
+.live-caret { animation: live-caret 1s steps(1) infinite; }
+
+/* Hero light beams (components/live/Beams.tsx) */
+@keyframes beam-drift {
+  0%, 100% { transform: translateY(-12%); }
+  50% { transform: translateY(12%); }
+}
+.beam {
+  filter: blur(34px);
+  mix-blend-mode: screen;
+  animation: beam-drift ease-in-out infinite;
+}
+.grain {
+  opacity: 0.18;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 /* Scroll reveal (components/motion.tsx) */
 .reveal {
   opacity: 0;
@@ -62,13 +86,6 @@ body {
   opacity: 1;
   transform: none;
 }
-
-/* Hero backdrop glow drifts slowly */
-@keyframes glow-drift {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(6%, 4%); }
-}
-.glow-drift { animation: glow-drift 18s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
