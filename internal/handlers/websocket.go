@@ -144,9 +144,10 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 
 								// PTZ 프리셋 자동 이동 — camera 씬으로 전환된 항목에서만
 								// (monitor 씬은 카메라가 화면에 안 보이므로 프리셋을 건드리지 않는다)
+								// 프리셋은 항목(셀) 단위 ptzPreset 필드 — 미설정이면 이동 없음
 								if title != "" {
 									cfg := obs.Get().GetConfig()
-									if preset, ok := cfg.Presets[title]; ok && preset > 0 && cfg.Scenes[sceneTitle] == cfg.CameraScene {
+									if preset := GetCurrentPtzPreset(); preset > 0 && cfg.Scenes[sceneTitle] == cfg.CameraScene {
 										go func(p int) {
 											if err := ptz.GotoPreset(p); err != nil {
 												log.Printf("[ptz] GotoPreset(%d) 실패 (navigate): %v", p, err)

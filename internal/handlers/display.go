@@ -56,6 +56,7 @@ func saveDisplayState() {
 	idx := currentIdx
 	subPage := currentSubPageIdx
 	cn := displayChurchName
+	wt := currentWorshipType
 	orderMu.RUnlock()
 
 	if snapshot == nil {
@@ -87,6 +88,8 @@ func saveDisplayState() {
 		"idx":        idx,
 		"subPageIdx": subPage,
 		"churchName": cn,
+		// 재시작 후에도 ptzPreset config 되쓰기(persistPtzPresetToConfig)가 어느 예배 타입인지 알 수 있게
+		"worshipType": wt,
 	}
 
 	if err := safefile.WriteJSON(displayStatePath(), state); err != nil {
@@ -129,10 +132,11 @@ func LoadDisplayState() {
 		return
 	}
 	var state struct {
-		Items      []map[string]interface{} `json:"items"`
-		Idx        int                      `json:"idx"`
-		SubPageIdx int                      `json:"subPageIdx"`
-		ChurchName string                   `json:"churchName"`
+		Items       []map[string]interface{} `json:"items"`
+		Idx         int                      `json:"idx"`
+		SubPageIdx  int                      `json:"subPageIdx"`
+		ChurchName  string                   `json:"churchName"`
+		WorshipType string                   `json:"worshipType"`
 	}
 	if err := json.Unmarshal(data, &state); err != nil {
 		log.Printf("[display] 상태 복원 실패: %v", err)
@@ -145,10 +149,11 @@ func LoadDisplayState() {
 		backupPath := filepath.Join(execPath, "data", "display_state_full.json")
 		if backupData, readErr := os.ReadFile(backupPath); readErr == nil {
 			var backupState struct {
-				Items      []map[string]interface{} `json:"items"`
-				Idx        int                      `json:"idx"`
-				SubPageIdx int                      `json:"subPageIdx"`
-				ChurchName string                   `json:"churchName"`
+				Items       []map[string]interface{} `json:"items"`
+				Idx         int                      `json:"idx"`
+				SubPageIdx  int                      `json:"subPageIdx"`
+				ChurchName  string                   `json:"churchName"`
+				WorshipType string                   `json:"worshipType"`
 			}
 			if json.Unmarshal(backupData, &backupState) == nil && len(backupState.Items) > len(state.Items) {
 				log.Printf("[display] 항목 부족 (%d개) — full_backup에서 복원 (%d개)", len(state.Items), len(backupState.Items))
@@ -191,6 +196,7 @@ func LoadDisplayState() {
 	currentIdx = state.Idx
 	currentSubPageIdx = state.SubPageIdx
 	displayChurchName = state.ChurchName
+	currentWorshipType = state.WorshipType
 	orderMu.Unlock()
 	log.Printf("[display] 상태 복원: %d개 항목, idx=%d, subPage=%d", len(processed), state.Idx, state.SubPageIdx)
 }
@@ -248,6 +254,19 @@ func GetCurrentTitle() string {
 		return t
 	}
 	return ""
+}
+
+// GetCurrentPtzPreset — 현재 항목에 붙은 PTZ 프리셋 번호 (없으면 0)
+// 프리셋은 항목(셀) 단위 필드 ptzPreset — 예배 타입·같은 제목 항목 간에 서로 독립
+func GetCurrentPtzPreset() int {
+	orderMu.RLock()
+	defer orderMu.RUnlock()
+	if currentIdx >= 0 && currentIdx < len(currentOrder) {
+		if p, ok := currentOrder[currentIdx]["ptzPreset"].(float64); ok {
+			return int(p)
+		}
+	}
+	return 0
 }
 
 // GetCurrentInfo — 현재 항목의 info 필드 조회
@@ -1050,12 +1069,58 @@ func DisplayItemPatchHandler(w http.ResponseWriter, r *http.Request) {
 			item["ptzPreset"] = float64(payload.PtzPreset)
 		}
 	}
+	itemKey, _ := item["key"].(string)
+	wt := currentWorshipType
 	orderMu.Unlock()
 
 	go saveDisplayState()
+	// 다음 주에도 유지되도록 현재 예배 타입 config의 같은 key 항목에도 반영
+	if payload.HasPtzPreset {
+		go persistPtzPresetToConfig(wt, itemKey, payload.PtzPreset)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+}
+
+// ptzConfigMu — config 파일 읽고-고치고-쓰기를 직렬화 (연달아 두 항목 저장 시 서로 덮어쓰는 것 방지)
+var ptzConfigMu sync.Mutex
+
+// persistPtzPresetToConfig — live 항목의 ptzPreset을 config/{worshipType}.json의 같은 key 항목에 기록
+// worshipType을 모르거나(이력 복원 등) config에 같은 key가 없으면(즉석 추가 항목) live 순서에만 남긴다
+func persistPtzPresetToConfig(worshipType, key string, preset int) {
+	if worshipType == "" || key == "" || !validWorshipTypes[worshipType] {
+		return
+	}
+	ptzConfigMu.Lock()
+	defer ptzConfigMu.Unlock()
+	filePath := filepath.Join(path.ExecutePath("easyPreparation"), "config", worshipType+".json")
+	data, err := safefile.ReadJSONWithRecovery(filePath)
+	if err != nil {
+		return
+	}
+	var items []map[string]interface{}
+	if err := json.Unmarshal(data, &items); err != nil {
+		log.Printf("[display] ptzPreset config 반영 실패 (파싱): %v", err)
+		return
+	}
+	found := false
+	for _, it := range items {
+		if k, _ := it["key"].(string); k == key {
+			if preset <= 0 {
+				delete(it, "ptzPreset")
+			} else {
+				it["ptzPreset"] = float64(preset)
+			}
+			found = true
+		}
+	}
+	if !found {
+		return
+	}
+	if err := safefile.WriteJSON(filePath, items); err != nil {
+		log.Printf("[display] ptzPreset config 반영 실패 (저장): %v", err)
+	}
 }
 
 // DisplayTimerHandler — POST /display/timer

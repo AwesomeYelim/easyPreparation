@@ -123,6 +123,14 @@ export const apiClient = {
       body: JSON.stringify({ index, subPageIdx: subPageIdx ?? 0 }),
     }),
 
+  // 항목(셀) 단위 PTZ 프리셋 — live 순서 + 현재 예배 타입 config에 함께 반영 (0 = 삭제)
+  patchDisplayItemPreset: (index: number, ptzPreset: number) =>
+    fetch(`${BASE_URL}/display/item-patch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ index, ptzPreset, hasPtzPreset: true }),
+    }).then(toJSON) as Promise<{ ok: boolean }>,
+
   getDisplayStatus: () =>
     fetch(`${BASE_URL}/display/status`).then((res) => {
       if (!res.ok) throw new Error(`display/status ${res.status}`);
@@ -627,10 +635,4 @@ export const apiClient = {
       body: JSON.stringify({ title, scene }),
     }).then(toJSON) as Promise<{ ok: boolean }>,
 
-  setObsPresetMapping: (title: string, preset: number) =>
-    fetch(`${BASE_URL}/api/obs/scene-mapping`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, preset }),
-    }).then(toJSON) as Promise<{ ok: boolean }>,
 };

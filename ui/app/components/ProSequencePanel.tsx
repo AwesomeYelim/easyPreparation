@@ -35,7 +35,6 @@ export default function ProSequencePanel() {
   const [cameraMode, setCameraMode] = useState(false);
   // obs.json scenes + presets 맵 (title 기반, 서버 저장)
   const [obsSceneMapping, setObsSceneMapping] = useState<Record<string, string>>({});
-  const [obsPresetMapping, setObsPresetMapping] = useState<Record<string, number>>({});
   const [obsCameraScene, setObsCameraScene] = useState("camera");
   const [obsDisplayScene, setObsDisplayScene] = useState("monitor");
   // 카메라에 저장된 프리셋 목록
@@ -143,7 +142,6 @@ export default function ProSequencePanel() {
     apiClient.getObsSceneMapping()
       .then((data: any) => {
         setObsSceneMapping(data.mapping ?? {});
-        setObsPresetMapping(data.presets ?? {});
         if (data.cameraScene) setObsCameraScene(data.cameraScene);
         if (data.displayScene) setObsDisplayScene(data.displayScene);
       })
@@ -664,7 +662,12 @@ export default function ProSequencePanel() {
 
                 {/* PTZ 프리셋 셀렉트 (카메라 씬 항목만 — monitor 씬은 숨김) */}
                 {obsSceneMapping[item.title] !== obsDisplayScene && (() => {
-                  const currentToken = String(obsPresetMapping[item.title] ?? "");
+                  // 프리셋은 항목(셀) 자체의 ptzPreset 필드 — 예배 타입·같은 제목 항목 간 독립
+                  const currentToken = String(item.ptzPreset || "");
+                  const savePreset = (val: number) => {
+                    setItems((prev) => prev.map((it, j) => (j === i ? { ...it, ptzPreset: val > 0 ? val : undefined } : it)));
+                    apiClient.patchDisplayItemPreset(i, val).catch(() => {});
+                  };
                   // 카메라 프리셋 있으면 셀렉트, 없으면 P· 사이클 버튼
                   if (cameraPresets.length > 0) {
                     return (
@@ -681,13 +684,7 @@ export default function ProSequencePanel() {
                         onChange={(e) => {
                           e.stopPropagation();
                           const val = parseInt(e.target.value) || 0;
-                          setObsPresetMapping((prev) => {
-                            const updated = { ...prev };
-                            if (val > 0) updated[item.title] = val;
-                            else delete updated[item.title];
-                            return updated;
-                          });
-                          apiClient.setObsPresetMapping(item.title, val).catch(() => {});
+                          savePreset(val);
                           // 선택 즉시 카메라 이동 (미리보기)
                           if (val > 0) apiClient.ptzGoto(val).catch(() => {});
                         }}
@@ -714,13 +711,7 @@ export default function ProSequencePanel() {
                       onClick={(e) => {
                         e.stopPropagation();
                         const next = (preset + 1) % 4;
-                        setObsPresetMapping((prev) => {
-                          const updated = { ...prev };
-                          if (next > 0) updated[item.title] = next;
-                          else delete updated[item.title];
-                          return updated;
-                        });
-                        apiClient.setObsPresetMapping(item.title, next).catch(() => {});
+                        savePreset(next);
                       }}
                     >
                       {preset > 0 ? `P${preset}` : "P·"}
