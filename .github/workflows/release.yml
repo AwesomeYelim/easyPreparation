@@ -158,7 +158,10 @@ jobs:
           APP=cmd/desktop/bin/easyPreparation.app
           codesign --force --deep -s - "$APP"
           xattr -cr "$APP"
+          # hdiutil 의 자동 크기 계산이 작게 잡혀 "No space left on device" 로 실패하는 일이 있어 크기를 직접 준다
+          SIZE_MB=$(( $(du -sm "$APP" | cut -f1) + 64 ))
           hdiutil create \
+            -size "${SIZE_MB}m" \
             -volname "easyPreparation" \
             -srcfolder "$APP" \
             -ov -format UDZO \
