@@ -115,6 +115,9 @@ jobs:
         with:
           node-version: '22'
       - name: Install Wails v3 CLI
+        # CLI 는 생성 기능만 쓰므로 CGO 없이 (Linux 에서 GTK4 를 찾지 않게)
+        env:
+          CGO_ENABLED: '0'
         run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
       - name: Install Linux dependencies
         if: runner.os == 'Linux'

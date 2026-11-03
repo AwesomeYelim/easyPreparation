@@ -42,9 +42,9 @@ case "$TARGET_OS" in
 
     if [ "${NSIS:-}" = "1" ]; then
       "$WAILS3" generate webview2bootstrapper -dir build/windows/nsis
-      # makensis 는 Windows 경로가 필요하다 (Git Bash: pwd -W)
-      ROOT="$(pwd -W 2>/dev/null || pwd)"
-      (cd build/windows/nsis && makensis -DARG_WAILS_AMD64_BINARY="$ROOT/bin/$APP.exe" project.nsi)
+      # makensis 의 File 은 역슬래시 Windows 경로만 찾는다 (D:/a/... 는 "no files found")
+      EXE_WIN="$(cygpath -w "$(pwd)/bin/$APP.exe")"
+      (cd build/windows/nsis && makensis -DARG_WAILS_AMD64_BINARY="$EXE_WIN" project.nsi)
       echo "Done: cmd/desktop/bin/$APP-amd64-installer.exe"
     fi
     ;;
