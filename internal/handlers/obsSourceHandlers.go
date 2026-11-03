@@ -209,46 +209,6 @@ func OBSSyncStreamKeyHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
 }
 
-// OBSStreamSettingsHandler — POST /api/obs/stream-settings {server, key}
-func OBSStreamSettingsHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-	if r.Method != http.MethodPost {
-		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-
-	var body struct {
-		Server string `json:"server"`
-		Key    string `json:"key"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "잘못된 요청"})
-		return
-	}
-	if body.Key == "" {
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "스트림 키를 입력하세요"})
-		return
-	}
-	if body.Server == "" {
-		body.Server = "rtmp://a.rtmp.youtube.com/live2"
-	}
-
-	m := obs.Get()
-	if m == nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "OBS 미연결"})
-		return
-	}
-	if err := m.SetStreamSettings(body.Server, body.Key); err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": err.Error()})
-		return
-	}
-	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
-}
-
 // OBSStatusHandler — GET /api/obs/status (feature gate 없음)
 func OBSStatusHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
@@ -671,49 +631,6 @@ func OBSCameraDevicesHandler(w http.ResponseWriter, r *http.Request) {
 		devices = []obs.DeviceInfo{}
 	}
 	json.NewEncoder(w).Encode(map[string]interface{}{"devices": devices})
-}
-
-// OBSCameraAddHandler — POST /api/obs/camera/add {scene, deviceId, inputName}
-func OBSCameraAddHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-	if r.Method != http.MethodPost {
-		httpx.Error(w, http.StatusMethodNotAllowed, "Method Not Allowed")
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-
-	var body struct {
-		Scene     string `json:"scene"`
-		DeviceID  string `json:"deviceId"`
-		InputName string `json:"inputName"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		httpx.Error(w, http.StatusBadRequest, "잘못된 요청")
-		return
-	}
-	if body.Scene == "" || body.DeviceID == "" {
-		httpx.Error(w, http.StatusBadRequest, "scene, deviceId 필수")
-		return
-	}
-	if body.InputName == "" {
-		body.InputName = "카메라"
-	}
-
-	m := obs.Get()
-	sceneItemID, err := m.CreateCameraSource(body.Scene, body.InputName, body.DeviceID)
-	if err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": err.Error()})
-		return
-	}
-
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"ok":          true,
-		"sceneItemId": sceneItemID,
-		"inputName":   body.InputName,
-	})
 }
 
 // OBSSourceToggleHandler — POST /api/obs/sources/toggle {scene, sceneItemId, enabled}

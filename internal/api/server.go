@@ -189,7 +189,6 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	// OBS 연결 설정 + 상태 (Feature gate 없음)
 	mux.Handle("/api/obs/connect", middleware.CORS(http.HandlerFunc(handlers.OBSConnectHandler)))
 	mux.Handle("/api/obs/status", middleware.CORS(http.HandlerFunc(handlers.OBSStatusHandler)))
-	mux.Handle("/api/obs/stream-settings", middleware.CORS(http.HandlerFunc(handlers.OBSStreamSettingsHandler)))
 	mux.Handle("/api/obs/sync-stream-key", middleware.CORS(http.HandlerFunc(handlers.OBSSyncStreamKeyHandler)))
 	mux.Handle("/api/obs/auto-configure", middleware.CORS(http.HandlerFunc(handlers.OBSAutoConfigureHandler)))
 
@@ -202,7 +201,6 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/api/obs/logo/history", middleware.CORS(http.HandlerFunc(handlers.OBSLogoHistoryHandler)))
 	mux.Handle("/api/obs/logo/image", middleware.CORS(http.HandlerFunc(handlers.OBSLogoImageHandler)))
 	mux.Handle("/api/obs/camera/devices", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSCameraDevicesHandler))
-	mux.Handle("/api/obs/camera/add", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSCameraAddHandler))
 	mux.Handle("/api/obs/sources/toggle", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSSourceToggleHandler))
 	mux.Handle("/api/obs/sources/remove", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSSourceRemoveHandler))
 	mux.Handle("/api/obs/setup-display", middleware.FeatureGate(license.FeatureOBSControl, handlers.OBSSetupDisplayHandler))

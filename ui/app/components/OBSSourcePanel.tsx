@@ -11,17 +11,19 @@ interface OBSSourcePanelProps {
   inline?: boolean;
 }
 
-type Tab = "setup" | "logo" | "camera" | "ptz" | "display" | "sources" | "pdf";
+// 소스 목록·카메라 추가·송출 설정 직접 입력은 OBS 에서 한다 — EP 는 예배 순서와 묶인 것만
+type Tab = "setup" | "logo" | "ptz" | "display" | "pdf";
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: "setup", label: "초기 설정", icon: "tune" },
   { key: "logo", label: "로고", icon: "image" },
-  { key: "camera", label: "카메라", icon: "videocam" },
   { key: "ptz", label: "PTZ", icon: "cameraswitch" },
   { key: "display", label: "Display", icon: "monitor" },
-  { key: "sources", label: "전체 소스", icon: "layers" },
   { key: "pdf", label: "PDF", icon: "picture_as_pdf" },
 ];
+
+// 로고 크기는 고정 — 세부 조정은 OBS 변형(Transform)에서
+const LOGO_SCALE = 0.15;
 
 const POSITIONS = [
   { key: "top-left", label: "좌상" },
@@ -40,23 +42,19 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
   // Logo state
   const [logoUploaded, setLogoUploaded] = useState(false);
   const [logoPosition, setLogoPosition] = useState("top-right");
-  const [logoScale, setLogoScale] = useState(0.15);
   const [logoApplied, setLogoApplied] = useState(false);
   const [logoItemId, setLogoItemId] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [logoHistory, setLogoHistory] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Camera state
   const [devices, setDevices] = useState<OBSDevice[]>([]);
   const [selectedDevice, setSelectedDevice] = useState("");
-  const [cameraName, setCameraName] = useState("카메라");
   const [loadingDevices, setLoadingDevices] = useState(false);
 
-  // Sources state
+  // EP 가 만든 소스(EP_Logo·EP_Display) 상태 확인용
   const [sources, setSources] = useState<OBSSourceItem[]>([]);
-  const [loadingSources, setLoadingSources] = useState(false);
 
   // Display setup state
   const [displayURL, setDisplayURL] = useState("http://localhost:8080/display");
@@ -87,9 +85,7 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
   const [setupLoading, setSetupLoading] = useState(false);
   const [setupResult, setSetupResult] = useState<OBSInitialSetupResult | null>(null);
 
-  // Stream key state
-  const [streamServer, setStreamServer] = useState("rtmp://a.rtmp.youtube.com/live2");
-  const [streamKey, setStreamKey] = useState("");
+  // Stream key state (YouTube 연동 → OBS 자동 적용만. 직접 입력은 OBS 설정에서)
   const [streamKeySaving, setStreamKeySaving] = useState(false);
   const [streamKeyDone, setStreamKeyDone] = useState(false);
   const [setupDone, setSetupDone] = useState(false);
@@ -129,14 +125,9 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
 
   const fetchSources = useCallback(async () => {
     if (!selectedScene) return;
-    setLoadingSources(true);
     try {
       const res = await apiClient.getOBSSources(selectedScene);
-      if ((res as any).error) {
-        // feature_locked 등 에러 응답 — 조용히 무시
-        setLoadingSources(false);
-        return;
-      }
+      if ((res as any).error) return; // feature_locked 등 — 조용히 무시
       setSources(res.items || []);
       const logoItem = (res.items || []).find((s) => s.sourceName === "EP_Logo");
       if (logoItem) {
@@ -146,7 +137,6 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
     } catch {
       setSources([]);
     }
-    setLoadingSources(false);
   }, [selectedScene]);
 
   const fetchPTZConfig = useCallback(() => {
@@ -348,7 +338,7 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
     }
     setBusy(true);
     try {
-      const res = await apiClient.applyOBSLogo(selectedScene, logoPosition, logoScale);
+      const res = await apiClient.applyOBSLogo(selectedScene, logoPosition, LOGO_SCALE);
       if (res.ok) {
         setLogoApplied(true);
         setLogoItemId(res.sceneItemId ?? null);
@@ -375,26 +365,6 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
       setDevices([]);
     }
     setLoadingDevices(false);
-  };
-
-  const handleAddCamera = async () => {
-    if (!selectedScene || !selectedDevice) {
-      showToast("씬과 카메라를 선택하세요");
-      return;
-    }
-    setBusy(true);
-    try {
-      const res = await apiClient.addOBSCamera(selectedScene, selectedDevice, cameraName || "카메라");
-      if (res.ok) {
-        showToast("카메라 추가 완료", "info");
-        fetchSources();
-      } else {
-        showToast(res.error || "추가 실패");
-      }
-    } catch {
-      showToast("추가 실패");
-    }
-    setBusy(false);
   };
 
   const handleSetupDisplay = async () => {
@@ -485,8 +455,8 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
             title={t.label}
             onClick={() => {
               setTab(t.key);
-              if (t.key === "camera" || t.key === "setup") fetchDevices();
-              if (t.key === "sources" || t.key === "camera" || t.key === "display") fetchSources();
+              if (t.key === "setup") fetchDevices();
+              if (t.key === "display") fetchSources();
               if (t.key === "logo") fetchLogoHistory();
               if (t.key === "ptz") { fetchPTZConfig(); if (ptzLoaded.current) handleLoadPtzPresets(); }
             }}
@@ -874,53 +844,9 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
                   >
                     {streamKeySaving ? "적용 중..." : "⟳  YouTube에서 자동으로 가져오기"}
                   </button>
-                  <div className="text-[10px] text-[#555] text-center">또는 직접 입력</div>
-                  <div>
-                    <label className="text-[11px] text-[#888]">RTMP 서버</label>
-                    <input
-                      className="w-full mt-1 px-2 py-1.5 bg-[#1a1a1a] border border-white/15 rounded text-xs text-white outline-none focus:border-[#4a9eff]"
-                      value={streamServer}
-                      onChange={(e) => { setStreamServer(e.target.value); setStreamKeyDone(false); }}
-                      placeholder="rtmp://a.rtmp.youtube.com/live2"
-                    />
+                  <div className="text-[10px] text-[#555] text-center">
+                    YouTube 를 쓰지 않으면 OBS → 설정 → 방송에서 직접 입력하세요.
                   </div>
-                  <div>
-                    <label className="text-[11px] text-[#888]">스트림 키</label>
-                    <input
-                      type="password"
-                      className="w-full mt-1 px-2 py-1.5 bg-[#1a1a1a] border border-white/15 rounded text-xs text-white outline-none focus:border-[#4a9eff]"
-                      value={streamKey}
-                      onChange={(e) => { setStreamKey(e.target.value); setStreamKeyDone(false); }}
-                      placeholder="YouTube Studio → 스트림 키"
-                    />
-                  </div>
-                  <button
-                    disabled={streamKeySaving || !streamKey}
-                    onClick={async () => {
-                      setStreamKeySaving(true);
-                      try {
-                        const res = await apiClient.obsSetStreamSettings(streamServer, streamKey);
-                        if (res.ok) {
-                          setStreamKeyDone(true);
-                          showToast("스트림 키 저장 완료 — 이제 방송 시작이 바로 됩니다", "info");
-                        } else {
-                          showToast(res.error || "저장 실패");
-                        }
-                      } catch {
-                        showToast("저장 실패");
-                      }
-                      setStreamKeySaving(false);
-                    }}
-                    className={`w-full py-2 rounded text-xs font-semibold border-none transition-colors ${
-                      streamKeyDone
-                        ? "bg-[#2e7d32] text-white cursor-default"
-                        : streamKeySaving || !streamKey
-                        ? "bg-[#204d87]/50 text-white/50 cursor-default"
-                        : "bg-[#204d87] text-white cursor-pointer hover:bg-[#2d5a8a]"
-                    }`}
-                  >
-                    {streamKeySaving ? "저장 중..." : streamKeyDone ? "저장 완료 ✓" : "OBS에 스트림 키 적용"}
-                  </button>
                 </div>
               </div>
             </div>
@@ -992,7 +918,7 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
                       onClick={() => {
                         setLogoPosition(p.key);
                         if (logoApplied && selectedScene) {
-                          apiClient.applyOBSLogo(selectedScene, p.key, logoScale);
+                          apiClient.applyOBSLogo(selectedScene, p.key, LOGO_SCALE);
                         }
                       }}
                       className={`flex-1 py-2 rounded-md text-xs cursor-pointer transition-all ${
@@ -1007,48 +933,6 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
                 </div>
               </div>
 
-              {/* Scale slider */}
-              <div className="mb-5">
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-[11px] text-[#888]">크기: {Math.round(logoScale * 100)}%</label>
-                  {/* 미니 캔버스 프리뷰 — 로고 위치/크기 시각화 */}
-                  <div
-                    className="relative rounded overflow-hidden border border-white/10 flex-shrink-0"
-                    style={{ width: 80, height: 45, background: "#0a0a0a" }}
-                  >
-                    <div
-                      style={{
-                        position: "absolute",
-                        width: `${logoScale * 100}%`,
-                        height: `${logoScale * 100}%`,
-                        background: "rgba(74,158,255,0.65)",
-                        borderRadius: 2,
-                        ...(logoPosition.includes("top") ? { top: 3 } : { bottom: 3 }),
-                        ...(logoPosition.includes("right") ? { right: 3 } : { left: 3 }),
-                      }}
-                    />
-                  </div>
-                </div>
-                <input
-                  type="range"
-                  min={0.05}
-                  max={0.5}
-                  step={0.01}
-                  value={logoScale}
-                  onChange={(e) => {
-                    const newScale = parseFloat(e.target.value);
-                    setLogoScale(newScale);
-                    if (logoApplied && selectedScene) {
-                      if (debounceRef.current) clearTimeout(debounceRef.current);
-                      debounceRef.current = setTimeout(() => {
-                        apiClient.applyOBSLogo(selectedScene, logoPosition, newScale);
-                      }, 300);
-                    }
-                  }}
-                  className="w-full"
-                />
-              </div>
-
               {/* Logo history thumbnails */}
               {logoHistory.length > 0 && (
                 <div className="mb-4">
@@ -1060,7 +944,7 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
                         title={name.split("name=").pop() || name}
                         onClick={async () => {
                           if (logoApplied && selectedScene) {
-                            await apiClient.applyOBSLogo(selectedScene, logoPosition, logoScale);
+                            await apiClient.applyOBSLogo(selectedScene, logoPosition, LOGO_SCALE);
                             showToast("로고 적용 완료", "info");
                             fetchSources();
                           }
@@ -1104,7 +988,7 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
                             await apiClient.toggleOBSSource(selectedScene, logoSource.sceneItemId, true);
                             showToast("로고 표시됨", "info");
                           } else {
-                            const res = await apiClient.applyOBSLogo(selectedScene, logoPosition, logoScale);
+                            const res = await apiClient.applyOBSLogo(selectedScene, logoPosition, LOGO_SCALE);
                             if (res.ok) {
                               setLogoApplied(true);
                               setLogoItemId(res.sceneItemId ?? null);
@@ -1127,7 +1011,7 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
                 );
               })()}
             </div>
-          ) : tab === "display" ? (
+          ) : (
             /* ===== Display Tab ===== */
             <div>
               <p className="text-[#aaa] text-xs mb-4 leading-relaxed">
@@ -1172,87 +1056,6 @@ export default function OBSSourcePanel({ open, onClose, inline = false }: OBSSou
                       />
                     ))}
                 </div>
-              )}
-            </div>
-          ) : tab === "camera" ? (
-            /* ===== Camera Tab ===== */
-            <div>
-              <div className="mb-3">
-                <div className="flex justify-between items-center">
-                  <label className="text-[11px] text-[#888]">카메라 디바이스</label>
-                  <button
-                    onClick={fetchDevices}
-                    className="bg-transparent border-none text-[#4a9eff] text-[11px] cursor-pointer"
-                  >
-                    {loadingDevices ? "조회 중..." : "새로고침"}
-                  </button>
-                </div>
-                <select
-                  className={`${selectClass} mt-1`}
-                  value={selectedDevice}
-                  onChange={(e) => setSelectedDevice(e.target.value)}
-                >
-                  <option value="">
-                    {loadingDevices ? "조회 중..." : "-- 디바이스 선택 --"}
-                  </option>
-                  {devices.map((d) => (
-                    <option key={d.value} value={d.value}>{d.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="mb-4">
-                <label className="text-[11px] text-[#888]">소스 이름</label>
-                <input
-                  className={`${selectClass} mt-1`}
-                  value={cameraName}
-                  onChange={(e) => setCameraName(e.target.value)}
-                  placeholder="카메라"
-                />
-              </div>
-
-              <button onClick={handleAddCamera} disabled={busy} className={btnPrimaryClass}>
-                {busy ? "추가 중..." : "추가"}
-              </button>
-
-              {sources.filter(
-                (s) => s.inputKind === "av_capture_input_v2" || s.inputKind === "dshow_input"
-              ).length > 0 && (
-                <div className="mt-5">
-                  <label className="text-[11px] text-[#888]">현재 카메라 소스</label>
-                  {sources
-                    .filter(
-                      (s) => s.inputKind === "av_capture_input_v2" || s.inputKind === "dshow_input"
-                    )
-                    .map((item) => (
-                      <SourceRow
-                        key={item.sceneItemId}
-                        item={item}
-                        onToggle={() => handleToggle(item)}
-                        onRemove={() => handleRemove(item)}
-                      />
-                    ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            /* ===== All Sources Tab ===== */
-            <div>
-              {loadingSources ? (
-                <div className="text-[#888] text-center py-5">로딩 중...</div>
-              ) : sources.length === 0 ? (
-                <div className="text-[#666] text-center py-5">
-                  {selectedScene ? "소스가 없습니다." : "씬을 선택하세요."}
-                </div>
-              ) : (
-                sources.map((item) => (
-                  <SourceRow
-                    key={item.sceneItemId}
-                    item={item}
-                    onToggle={() => handleToggle(item)}
-                    onRemove={() => handleRemove(item)}
-                  />
-                ))
               )}
             </div>
           )}

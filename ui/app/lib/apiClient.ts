@@ -508,13 +508,6 @@ export const apiClient = {
       devices: OBSDevice[]; error?: string;
     }>,
 
-  addOBSCamera: (scene: string, deviceId: string, inputName: string) =>
-    fetch(`${BASE_URL}/api/obs/camera/add`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scene, deviceId, inputName }),
-    }).then(toJSON) as Promise<{ ok: boolean; sceneItemId?: number; error?: string }>,
-
   toggleOBSSource: (scene: string, sceneItemId: number, enabled: boolean) =>
     fetch(`${BASE_URL}/api/obs/sources/toggle`, {
       method: "POST",
@@ -552,13 +545,6 @@ export const apiClient = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ip, port, password }),
     }).then(toJSON) as Promise<{ ok: boolean; connected: boolean; host: string }>,
-
-  obsSetStreamSettings: (server: string, key: string) =>
-    fetch(`${BASE_URL}/api/obs/stream-settings`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ server, key }),
-    }).then(toJSON) as Promise<{ ok: boolean; error?: string }>,
 
   obsSyncStreamKey: () =>
     fetch(`${BASE_URL}/api/obs/sync-stream-key`, { method: "POST" })
