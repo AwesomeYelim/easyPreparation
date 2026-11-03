@@ -85,7 +85,9 @@ tools/__pycache__/
 internal/embedded/frontend/*
 !internal/embedded/frontend/.gitkeep
 internal/embedded/data/schema.sql
-cmd/desktop/build/bin/
+cmd/desktop/bin/
+cmd/desktop/*.syso
+cmd/desktop/build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
 
 # Wails 생성 파일
 ui/wailsjs/

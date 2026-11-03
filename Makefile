@@ -25,7 +25,7 @@ else
     printf '. %s/.nvm/nvm.sh && nvm use 22 --silent && npm' "$(HOME)" || echo npm)
 endif
 
-# ── Node.js bin 경로 감지 (wails dev PATH 주입용) ────────────────────────────
+# ── Node.js bin 경로 감지 (dev-desktop PATH 주입용) ────────────────────────────
 # 우선순위: 1) 이미 PATH에 npm 있음  2) nvm(macOS/Linux)  3) nvm-windows(APPDATA)
 ifdef IS_WINDOWS
   _NPM_CMD     := $(shell where npm 2>/dev/null | head -1)
@@ -120,54 +120,32 @@ build-frontend:
 	@cd ui && NEXT_PUBLIC_API_BASE_URL= NEXT_PUBLIC_WS_URL= $(RUN_NPM) run build
 	@$(MAKE) embed-assets
 
-# ── Desktop 앱 빌드 (macOS) — wails.json이 cmd/desktop/에 있으므로 cd 필요 ──
+# ── Desktop 앱 빌드 (Wails v3) ────────────────────────────────────────────────
+# scripts/build-desktop.sh 가 실제 빌드를 한다 (release.yml 과 같은 스크립트).
+# wails3 CLI 필요: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
+# 결과물: cmd/desktop/bin/ (macOS .app · Windows .exe · Linux 바이너리)
+DESKTOP_BUILD = PATH="$$HOME/go/bin:/usr/local/go/bin:$$PATH" LDFLAGS="$(LDFLAGS)" ./scripts/build-desktop.sh
+
 build-desktop: build-frontend
-	@echo "Building Wails app (macOS)..."
-	@cd cmd/desktop && export PATH="$$HOME/go/bin:/usr/local/go/bin:$$PATH" && \
-	CGO_LDFLAGS="-framework UniformTypeIdentifiers" \
-	wails build -s -ldflags="$(LDFLAGS)" -o easyPreparation
-	@echo "Done: cmd/desktop/build/bin/easyPreparation.app"
+	@$(DESKTOP_BUILD)
 
-# ── Desktop 앱 빌드 (macOS 명시적 타겟) ──────────────────────────────────────
 build-desktop-macos: build-frontend
-	@echo "Building Wails app (macOS)..."
-	@cd cmd/desktop && export PATH="$$HOME/go/bin:/usr/local/go/bin:$$PATH" && \
-	CGO_LDFLAGS="-framework UniformTypeIdentifiers" \
-	wails build -s -o easyPreparation -ldflags="$(LDFLAGS)"
-	@echo "Done: cmd/desktop/build/bin/easyPreparation.app"
+	@$(DESKTOP_BUILD) darwin
 
-# ── Desktop 앱 빌드 (Windows) ─────────────────────────────────────────────────
-# -s: frontend는 build-frontend에서 이미 준비됨 (wails.json frontend:build 스킵)
+# NSIS=1 make build-desktop-windows → 설치 파일(easyPreparation-amd64-installer.exe)까지
 build-desktop-windows: build-frontend
-	@echo "Building Wails app (Windows amd64)..."
-	@cd cmd/desktop && export PATH="$$HOME/go/bin:/usr/local/go/bin:$$PATH" && \
-	wails build -s -o easyPreparation.exe -ldflags="$(LDFLAGS)"
-	@echo "Done: cmd/desktop/build/bin/easyPreparation.exe"
+	@$(DESKTOP_BUILD) windows
 
-# ── Desktop 앱 빌드 (Linux) ───────────────────────────────────────────────────
 build-desktop-linux: build-frontend
-	@echo "Building Wails app (Linux amd64)..."
-	@cd cmd/desktop && export PATH="$$HOME/go/bin:/usr/local/go/bin:$$PATH" && \
-	wails build -s -o easyPreparation -ldflags="$(LDFLAGS)" -platform linux/amd64
-	@echo "Done: cmd/desktop/build/bin/easyPreparation"
+	@$(DESKTOP_BUILD) linux
 
 # ── Desktop 개발 모드 ─────────────────────────────────────────────────────────
-# Next.js(:3000) 백그라운드 기동 → 준비 완료 후 wails dev 시작
+# Next.js(:3000) 백그라운드 기동 → 준비 완료 후 데스크톱 앱(-tags dev: 창이 :3000 을 띄움)
 # Ctrl+C 시 trap으로 하위 프로세스 모두 종료
 dev-desktop:
 	$(call kill_ports,3000 8080)
 	@echo "Starting Next.js dev (:3000) + Wails Desktop..."
-	@( \
-	  trap 'kill $$(jobs -p) 2>/dev/null; exit 0' EXIT INT TERM; \
-	  (cd ui && NEXT_PUBLIC_DEV_MODE=true NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws $(RUN_NPM) exec -- next dev -p 3000) & \
-	  echo "Next.js 시작 대기 중..."; \
-	  until curl -sf http://localhost:3000 >/dev/null 2>&1; do sleep 0.5; done; \
-	  echo "Next.js 준비 완료 — Wails Desktop 시작"; \
-	  cd cmd/desktop && \
-	  export PATH="$$HOME/go/bin:/usr/local/go/bin:$(NODE_BIN_DIR):$$PATH" && \
-	  export EASYPREP_DEV=true && \
-	  wails dev -s -frontenddevserverurl http://localhost:3000; \
-	)
+	@( 	  trap 'kill $$(jobs -p) 2>/dev/null; exit 0' EXIT INT TERM; 	  (cd ui && NEXT_PUBLIC_DEV_MODE=true NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws $(RUN_NPM) exec -- next dev -p 3000) & 	  echo "Next.js 시작 대기 중..."; 	  until curl -sf http://localhost:3000 >/dev/null 2>&1; do sleep 0.5; done; 	  echo "Next.js 준비 완료 — Wails Desktop 시작"; 	  export PATH="$$HOME/go/bin:/usr/local/go/bin:$(NODE_BIN_DIR):$$PATH" && 	  export EASYPREP_DEV=true && 	  go run -tags dev ./cmd/desktop; 	)
 
 # ── 랜딩 페이지 빌드 ──────────────────────────────────────────────────────────
 build-landing:

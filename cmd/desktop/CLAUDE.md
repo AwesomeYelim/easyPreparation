@@ -1,4 +1,4 @@
-# cmd/desktop — Wails v2 Desktop 앱
+# cmd/desktop — Wails v3 Desktop 앱
 
 WebView로 `http://localhost:8080` 로드. 서버와 동일한 라우터 사용.
 
@@ -12,18 +12,22 @@ easyPreparation.app
 
 ## 주요 동작
 
-- `startup()` — DB/OBS/YouTube/스케줄러 초기화 → `go api.StartServer()` → 서버 준비 후 `WindowShow`
+- `ServiceStartup()` — DB/OBS/YouTube/스케줄러 초기화 → `go api.StartServer()` → 서버 준비 후 메인 창 `Show()` → 순서 패널 창 미리 생성(`panel_window.go`)
 - 포트 8080 충돌 → `api.ServerError` 채널 → Wails 에러 다이얼로그 (panic 아님)
 - `shutdown()` — HTTP graceful shutdown(5초) → 스케줄러/OBS/DB 정리
 
 ## 빌드
 
 ```bash
-CGO_LDFLAGS="-framework UniformTypeIdentifiers" wails build -o easyPreparation
-make build-desktop  # 위 명령 래핑
+make build-desktop                              # 현재 OS → cmd/desktop/bin/
+./scripts/build-desktop.sh darwin|windows|linux # 실제 빌드 (release.yml 도 같은 스크립트)
+NSIS=1 ./scripts/build-desktop.sh windows       # + NSIS 설치 파일
 ```
 
-macOS `UniformTypeIdentifiers` 프레임워크 필수.
+- `wails3` CLI(v3.1.0)는 생성 기능만 쓴다: Windows `.syso`(아이콘·버전·매니페스트), NSIS WebView2 부트스트래퍼, macOS `icons.icns`. Taskfile·`wails.json` 없음.
+- 빌드 태그 `production` 필수(개발자 도구 끔). Linux 는 `gtk3`(webkit2gtk-4.1) — v3 기본은 GTK4.
+- 빌드 자산: `build/windows/{icon.ico,info.json,wails.exe.manifest,nsis/}`, `build/darwin/Info.plist`, `build/appicon.png`.
+- NSIS 설치 경로·제거 키(`AwesomeYelimeasyPreparation`)는 v2 와 같다 — 기존 설치 위에 덮어쓰기 가능.
 
 ## embed / 초기화
 

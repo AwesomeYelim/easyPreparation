@@ -92,7 +92,7 @@ jobs:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifact }}
 
-  # 3단계: Desktop 앱 빌드 (3 플랫폼, 네이티브 OS별 빌드)
+  # 3단계: Desktop 앱 빌드 (Wails v3, 3 플랫폼 네이티브 빌드 — scripts/build-desktop.sh)
   build-desktop:
     needs: build-frontend
     strategy:
@@ -114,8 +114,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+      - name: Install Wails v3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
@@ -149,19 +149,15 @@ jobs:
         if: matrix.os == 'macos-latest'
         env:
           CGO_ENABLED: '1'
-          CGO_LDFLAGS: '-framework UniformTypeIdentifiers'
         run: |
-          VERSION=${GITHUB_REF_NAME}
-          COMMIT=$(git rev-parse --short HEAD)
-          BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          LDFLAGS="-X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildTime=${BUILD_TIME}"
-          cd cmd/desktop
-          wails build -s -o easyPreparation -ldflags "${LDFLAGS}"
-          codesign --force --deep -s - build/bin/easyPreparation.app
-          xattr -cr build/bin/easyPreparation.app
+          export LDFLAGS="-X main.Version=${GITHUB_REF_NAME} -X main.Commit=$(git rev-parse --short HEAD) -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          ./scripts/build-desktop.sh darwin
+          APP=cmd/desktop/bin/easyPreparation.app
+          codesign --force --deep -s - "$APP"
+          xattr -cr "$APP"
           hdiutil create \
             -volname "easyPreparation" \
-            -srcfolder build/bin/easyPreparation.app \
+            -srcfolder "$APP" \
             -ov -format UDZO \
             "$GITHUB_WORKSPACE/easyPreparation_desktop_darwin_arm64.dmg"
       - name: Install NSIS (Windows)
@@ -173,27 +169,19 @@ jobs:
           echo "$nsisPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Build desktop app (Windows amd64)
         if: matrix.os == 'windows-latest'
-        shell: pwsh
+        shell: bash
         run: |
-          $VERSION = $env:GITHUB_REF_NAME
-          $COMMIT = git rev-parse --short HEAD
-          $BUILD_TIME = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
-          $LDFLAGS = "-X main.Version=$VERSION -X main.Commit=$COMMIT -X main.BuildTime=$BUILD_TIME"
-          Set-Location cmd/desktop
-          wails build -s -o easyPreparation -ldflags "$LDFLAGS" -platform windows/amd64 -nsis
-          Copy-Item build/bin/easyPreparation-amd64-installer.exe "../../easyPreparation_desktop_windows_amd64_setup.exe"
+          export LDFLAGS="-X main.Version=${GITHUB_REF_NAME} -X main.Commit=$(git rev-parse --short HEAD) -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          NSIS=1 ./scripts/build-desktop.sh windows
+          cp cmd/desktop/bin/easyPreparation-amd64-installer.exe easyPreparation_desktop_windows_amd64_setup.exe
       - name: Build desktop app (Linux amd64)
         if: matrix.os == 'ubuntu-latest'
         env:
           CGO_ENABLED: '1'
         run: |
-          VERSION=${GITHUB_REF_NAME}
-          COMMIT=$(git rev-parse --short HEAD)
-          BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          LDFLAGS="-X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildTime=${BUILD_TIME}"
-          cd cmd/desktop
-          wails build -s -o easyPreparation -ldflags "${LDFLAGS}" -tags webkit2_41 -platform linux/amd64
-          cp build/bin/easyPreparation ../../easyPreparation_desktop_linux_amd64
+          export LDFLAGS="-X main.Version=${GITHUB_REF_NAME} -X main.Commit=$(git rev-parse --short HEAD) -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          ./scripts/build-desktop.sh linux
+          cp cmd/desktop/bin/easyPreparation easyPreparation_desktop_linux_amd64
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}

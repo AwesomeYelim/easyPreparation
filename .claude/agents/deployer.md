@@ -44,15 +44,15 @@ build-frontend (1회) → build-server (4플랫폼) + build-desktop (3플랫폼)
 1. **`.gitignore` 패턴 주의**:
    - 바닥(bare) 패턴 `desktop`은 ANY 경로의 "desktop" 매칭 → `cmd/desktop/` 전체 무시됨
    - `build/`는 모든 레벨 매칭 → `/build/` (루트만)으로 제한
-   - `cmd/desktop/build/`는 Wails 템플릿 무시 → `cmd/desktop/build/bin/`만 무시
+   - `cmd/desktop/build/`는 빌드 자산(아이콘·NSIS·Info.plist) → 무시 금지. 결과물 `cmd/desktop/bin/`·`*.syso`만 무시
 
-2. **Wails CLI 플래그**:
-   - `-s` = 프론트엔드 빌드 스킵 (CI에서 pre-built artifact 사용 시 필수)
-   - `-skipfrontend`는 존재하지 않는 플래그 (사용 금지)
-   - `-skipbindings` = 바인딩 스킵
+2. **Desktop 빌드 = Wails v3** (`scripts/build-desktop.sh`, `wails build` 없음):
+   - `wails3` CLI(v3.1.0)는 `generate syso/icons/webview2bootstrapper` 만 사용, 빌드는 `go build -tags production`
+   - Linux 는 `-tags production,gtk3` (webkit2gtk-4.1). 태그 빠지면 GTK4/webkitgtk-6.0 을 찾다 실패
+   - Go 1.26 필요 (`go-version-file: go.mod`)
 
 3. **Ubuntu 24.04**:
-   - `libwebkit2gtk-4.0-dev` 제거됨 → `libwebkit2gtk-4.1-dev` + `-tags webkit2_41`
+   - `libwebkit2gtk-4.0-dev` 제거됨 → `libwebkit2gtk-4.1-dev` + `-tags gtk3` (v2 시절 `webkit2_41` 태그는 v3 에서 의미 없음)
 
 4. **Windows**:
    - NSIS 미설치 → `choco install nsis -y`

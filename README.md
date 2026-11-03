@@ -43,7 +43,7 @@
 │   씬 전환 + 송출    PWA 스마트폰      예배 시간 자동 감지        │
 │                                                                 │
 │   🎼 찬송가 검색    📺 예배 화면       💾 Desktop 앱             │
-│   645곡 DB 기반     실시간 슬라이드   Wails v2 macOS            │
+│   645곡 DB 기반     실시간 슬라이드   Wails v3 데스크톱          │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -62,7 +62,7 @@ flowchart TD
         MOBILE["Mobile PWA\n(스마트폰 리모컨)"]
     end
 
-    subgraph Desktop["Desktop App (Wails v2)"]
+    subgraph Desktop["Desktop App (Wails v3)"]
         WAILS["Wails WebView\n→ localhost:8080"]
     end
 
@@ -307,7 +307,7 @@ easyPreparation/
 ├── 🚀 cmd/
 │   ├── server/              # Go 서버 진입점 (:8080) — app.Initialize() 호출
 │   │   └── main.go
-│   └── desktop/             # Wails v2 Desktop 앱 진입점 — 같은 app.Initialize() 공유
+│   └── desktop/             # Wails v3 Desktop 앱 진입점 — 같은 app.Initialize() 공유
 │       ├── main.go          # Wails 생명주기 + 헬스체크/롤백 다이얼로그 + 창 표시
 │       ├── uibase_dev.go    # //go:build dev  → WebView 가 Next.js dev(:3000) 로
 │       └── uibase_prod.go   # //go:build !dev → WebView 가 내장 서버(:8080) 로
@@ -506,9 +506,11 @@ cd ui && npm install && npm run dev # Next.js :3000
 # 프로덕션 빌드
 make build        # bin/server (프론트엔드 내장 단독 실행 파일)
 
-# Desktop 앱 빌드 (macOS — Wails v2)
-make build-desktop   # → cmd/desktop/build/bin/easyPreparation.app
-make dev-desktop     # Desktop 개발 모드
+# Desktop 앱 빌드 (Wails v3 — 현재 OS 기준, scripts/build-desktop.sh)
+# 사전: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0  (Go 1.26+)
+make build-desktop   # → cmd/desktop/bin/ (macOS easyPreparation.app · Windows .exe · Linux 바이너리)
+NSIS=1 make build-desktop-windows   # Windows 설치 파일까지 (makensis 필요)
+make dev-desktop     # Desktop 개발 모드 (Next.js :3000 + go run -tags dev ./cmd/desktop)
 ```
 
 ---
@@ -692,7 +694,7 @@ git tag v1.2.0        && git push origin v1.2.0          # 정식 → latest 갱
 
 ---
 
-## 💾 Desktop 앱 (Wails v2)
+## 💾 Desktop 앱 (Wails v3)
 
 ```
 easyPreparation.app
@@ -702,12 +704,13 @@ easyPreparation.app
                                      └─ internal/api/server.go (동일 라우터)
 ```
 
-- **시작**: `startup()` — DB/OBS/YouTube/스케줄러 초기화 → HTTP 서버 시작 → `WindowShow`
+- **시작**: `ServiceStartup()` — DB/OBS/YouTube/스케줄러 초기화 → HTTP 서버 시작 → 메인 창 `Show()`
 - **종료**: `shutdown()` — HTTP graceful shutdown(5초) → 스케줄러 중지 → OBS/DB 닫기
 
 ```bash
-# macOS 빌드 (필수 CGO_LDFLAGS)
-CGO_LDFLAGS="-framework UniformTypeIdentifiers" wails build -o easyPreparation
+# 빌드 (wails3 CLI + go build — Taskfile 은 쓰지 않음)
+make build-desktop                        # 현재 OS
+./scripts/build-desktop.sh darwin|windows|linux
 ```
 
 ---

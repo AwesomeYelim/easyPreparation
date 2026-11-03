@@ -533,14 +533,15 @@ make build-desktop
 ```
 
 사전 조건:
-- Wails CLI 설치: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
+- Go 1.26 이상
+- Wails v3 CLI 설치: `go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0`
 - macOS: Xcode Command Line Tools 설치
 
-결과물: `build/bin/easyPreparation.app`
+결과물: `cmd/desktop/bin/easyPreparation.app` (Windows: `easyPreparation.exe`)
 
 ### 설치 및 실행
 
-1. `build/bin/easyPreparation.app`을 `/Applications`로 복사
+1. `cmd/desktop/bin/easyPreparation.app`을 `/Applications`로 복사
 2. 더블클릭으로 실행
 3. 앱이 자동으로 내장 서버를 시작하고 WebView를 엽니다
 
