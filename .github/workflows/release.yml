@@ -216,7 +216,12 @@ jobs:
           cat checksums.txt
       - name: Generate release notes
         run: |
-          PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${GITHUB_REF_NAME}$" | head -1)
+          # 정식 릴리스(v1.6.0)는 직전 정식 버전과 비교 — beta 태그가 같은 커밋이면 변경 사항이 비어 버린다
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
+            PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${GITHUB_REF_NAME}$" | head -1)
+          else
+            PREV_TAG=$(git tag --sort=-version:refname | grep -v -- '-' | grep -v "^${GITHUB_REF_NAME}$" | head -1)
+          fi
           echo "## 설치 방법" > release_notes.md
           echo "" >> release_notes.md
           echo "**macOS (터미널)**" >> release_notes.md
