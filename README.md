@@ -18,11 +18,11 @@
 
 [![CI](https://github.com/AwesomeYelim/easyPreparation/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/AwesomeYelim/easyPreparation/actions/workflows/test.yml)
 [![Release](https://img.shields.io/github/v/release/AwesomeYelim/easyPreparation?logo=github&color=brightgreen)](https://github.com/AwesomeYelim/easyPreparation/releases/latest)
-[![Go](https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white)](https://go.dev)
+[![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![SQLite](https://img.shields.io/badge/SQLite-modernc-003B57?logo=sqlite&logoColor=white)](https://pkg.go.dev/modernc.org/sqlite)
-[![Wails](https://img.shields.io/badge/Wails-v2-red?logo=go)](https://wails.io)
+[![Wails](https://img.shields.io/badge/Wails-v3-red?logo=go)](https://wails.io)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 
 [🏠 홈페이지](https://easy-preparation.vercel.app) · [📥 다운로드](https://easy-preparation.vercel.app/download) · [💳 요금제](https://easy-preparation.vercel.app/pricing) · [🚀 릴리즈](https://github.com/AwesomeYelim/easyPreparation/releases/latest)
@@ -158,12 +158,12 @@ flowchart TD
 | ⚡ **실시간 상태** | WebSocket 파일 생성 진행 + Display 위치 브로드캐스트 | Free |
 | 💾 **Desktop 앱** | Wails v3 — 서버 내장, 별도 설치 없이 실행 | Free |
 | 🪟 **순서 패널 분리** | OBS 독처럼 예배 순서 패널을 끌어서 떼고 붙임 — 분리 창에 Display 미리보기, 다른 모니터·항상 위 고정, 위치 기억 (데스크톱 앱, 끌어서 떼기는 Windows) | Free |
-| 📱 **모바일 리모컨** | `/mobile` — 같은 와이파이의 폰으로 QR 접속. 미리보기·이전/다음·점프·섹션 점프·자동 타이머·방송 시작/종료·순서 바꾸기 | Free |
+| 📱 **모바일 리모컨** | `/mobile` — 같은 와이파이의 폰으로 QR 접속(외부망은 cloudflared 터널). 미리보기·이전/다음·점프·섹션 점프·자동 타이머·방송 시작/종료·순서 바꾸기 | Free |
 | 🧙 **초기 설정 위저드** | 첫 실행 시 교회명(한글/영문) 입력, 간편 온보딩 | Free |
 | 🔔 **자동 업데이트 알림** | GitHub Releases → 새 버전 발견 시 헤더 배너 표시 | Free |
-| 🎥 **PTZ 카메라 제어** | 항목별 프리셋 매핑(`config/obs.json` `presets`) → Display 점프 시 자동 이동, 스트림 프리뷰·수동 이동 (`/api/ptz/*`) | Free |
+| 🎥 **PTZ 카메라 제어** | 예배 순서 항목마다 프리셋 지정(항목의 `ptzPreset` 필드, `config/{예배타입}.json` 에 저장) → Display 점프 시 자동 이동, 스트림 프리뷰·수동 이동 (`/api/ptz/*`) | Free |
 | 🔑 **라이선스 시스템** | Free / Pro / Enterprise, `FeatureGate`로 기능 게이팅 | — |
-| 📡 **OBS 통합 제어** | 씬 전환 + 스트리밍 시작/종료 + 상태 모니터링 | **Pro** |
+| 📡 **OBS 통합 제어** | 항목별 씬 자동 전환 + 스트리밍 시작/종료 + 상태 모니터링 + 초기 설정(씬·소스 자동 생성)·로고 넣기 | **Pro** |
 | ⏰ **자동 스케줄러** | 예배 시간 자동 감지 → 카운트다운 → OBS 스트리밍 시작 | **Pro** |
 | ▶️ **YouTube 연동** | OAuth → 라이브 방송 자동 생성 → OBS 스트림 키 자동 설정 | **Pro** |
 | 🖼️ **썸네일 자동 생성** | 예배 유형 + 날짜 기반 YouTube 썸네일 생성 + 업로드 | **Pro** |
@@ -172,22 +172,25 @@ flowchart TD
 
 ## 🖼️ 화면 구성
 
-> 주보 편집 화면 — 예배 순서 선택 → 항목 편집 → 미리보기
+> 메인 화면(`ProShell`) — OBS 처럼 패널을 나눈 진행 콘솔
 
 ```
-┌────────┬──────────────────────────────────────────────┐
-│        │  TopHeader                         [교회명]  │
-│  Left  ├──────────────┬────────────┬─────────────────┤
-│  Side  │  예배 순서   │ 선택 순서  │  생성된 내용    │
-│  bar   │  선택하기    │            │                 │
-│        │  ──────────  │ [전주]     │  전주           │
-│ [주보] │  [전주]      │ [예배부름] │  예배의 부름    │
-│ [찬양] │  [예배부름]  │ [찬송]     │  찬송  27장     │
-│ [성경] │  [찬송]      │ [교독] ... │  성시교독 31편  │
-│        │  [성경봉독]  │ ────────── │  ...            │
-│ [설정] │  ...         │ [상세편집] │                 │
-└────────┴──────────────┴────────────┴─────────────────┘
+┌──┬────────────────────────────────────────────────────────────────┐
+│  │ TopBar   ● OFF AIR  시계   Bulletin · Hymns · Scripture  [Broadcast] │
+│I ├───────────────┬───────────────────────────────┬────────────────┤
+│c │ 예배 순서  ⤢  │                               │ Studio         │
+│o │ ● camera  방송│   작업 영역                   │ 미리보기·화면· │
+│n │ ◀ PREV  NEXT ▶│   (주보 편집 / 찬송 / 성경)   │ 배경·썸네일·   │
+│  │ 1 전주        │                               │ 유튜브·스케줄· │
+│B │ 2 예배의 부름 │                               │ OBS·스타일     │
+│a │ ...           │                               │                │
+│r ├───────────────┴───────────────────────────────┴────────────────┤
+│  │ Service Timeline — 항목별 예상 시간 · 자동 넘김                  │
+└──┴────────────────────────────────────────────────────────────────┘
 ```
+
+- **예배 순서 패널**은 제목줄을 잡고 끌면 별도 창(`/remote`)으로 떨어지고, 다시 끌어다 놓으면 제자리로 돌아갑니다. 분리 창 위쪽에 Display 미리보기가 붙습니다(데스크톱 앱).
+- **폰 리모컨**(`/mobile`)은 같은 진행 상태를 공유합니다(`lib/useDisplaySession.ts`).
 
 ---
 
@@ -223,6 +226,16 @@ flowchart TD
 | RTMP 인코딩, 오디오 믹싱, 하드웨어 가속 직접 구현 | 10년+ 검증된 인코딩 파이프라인 |
 | 카메라 + 마이크 + 화면 합성 = 수개월 작업 | 이미 완성된 씬 합성 시스템 |
 | 실시간 방송 안정성 보장 어려움 | 전 세계 방송에서 검증됨 |
+
+**어디서 무엇을 하나** — EP 는 예배 순서와 묶여 움직이는 것만 맡고, OBS 화면을 그대로 옮긴 기능은 두지 않습니다(v1.6.1 에서 정리).
+
+| EP 에서 | OBS 에서 직접 |
+|:--|:--|
+| 항목별 씬 자동 전환(+자동 복귀) · 항목별 PTZ 프리셋 | 소스 목록 관리(켜기/끄기·삭제) |
+| 예약 송출(카운트다운 → 시작) · 송출 시작/종료(PC·폰) | 카메라 소스 추가 |
+| YouTube 방송 생성 + 스트림 키 자동 적용 | 스트림 키 직접 입력(YouTube 미사용 시: 설정 → 방송) |
+| 초기 설정(camera·monitor 씬, 카메라·모니터 캡처·EP_Display 소스 생성) | 로고 크기·세부 위치(변형) |
+| 로고 넣기(네 모서리, 15%) · EP_Display 소스 다시 만들기 | 오디오 믹싱 · 트랜지션 · 인코딩 설정 |
 
 ### ⏱️ 스케줄 자동화 흐름
 
@@ -309,8 +322,13 @@ easyPreparation/
 │   │   └── main.go
 │   └── desktop/             # Wails v3 Desktop 앱 진입점 — 같은 app.Initialize() 공유
 │       ├── main.go          # Wails 생명주기 + 헬스체크/롤백 다이얼로그 + 창 표시
+│       ├── panel_window.go  # 순서 패널 분리 창 (미리 띄운 숨김 창 · 끌어서 떼기/붙이기 · 위치 기억)
+│       ├── panel_window_windows.go  # Win32: 소유 창 · 커서 · 창 끌기 넘김 · 도킹 영역 판정
 │       ├── uibase_dev.go    # //go:build dev  → WebView 가 Next.js dev(:3000) 로
-│       └── uibase_prod.go   # //go:build !dev → WebView 가 내장 서버(:8080) 로
+│       ├── uibase_prod.go   # //go:build !dev → WebView 가 내장 서버(:8080) 로
+│       └── build/           # 아이콘 · Windows NSIS/매니페스트 · macOS Info.plist
+│
+├── 🛠️  scripts/             # build-desktop.sh (데스크톱 빌드, Makefile·release.yml 공용) · 설치 스크립트
 │
 ├── ⚙️  internal/             # Go 백엔드 패키지
 │   ├── api/                 # HTTP 라우터 (StartServer, StopServer)
@@ -325,7 +343,7 @@ easyPreparation/
 │   │   ├── forPresentation/ # 프레젠테이션용 PDF
 │   │   ├── define/          # 예배 순서 정의
 │   │   └── templates/       # 주보 시안 JSX 템플릿 (브라우저 인쇄)
-│   ├── handlers/            # HTTP + WebSocket + Display + 스케줄러 + 방송 시작(broadcast.go) 핸들러
+│   ├── handlers/            # HTTP + WebSocket + Display + 스케줄러 + 방송 시작(broadcast.go) + 순서 패널(panelDock.go) + 터널 핸들러
 │   ├── ptz/                 # PTZ 카메라 제어 (프리셋 이동, 스트림 프록시)
 │   ├── license/             # 라이선스 매니저 (Plan/Feature/오프라인 캐시)
 │   │   ├── types.go         # Plan/Feature 상수, PlanFeatures 맵
@@ -337,7 +355,8 @@ easyPreparation/
 │   ├── obs/                 # OBS WebSocket 매니저 (goobs, 자동 재연결)
 │   ├── presentation/        # gofpdf PDF 렌더러 (NFC 정규화)
 │   ├── quote/               # 성경 구절 DB 조회 (SQLite, 다중 버전)
-│   ├── selfupdate/          # GitHub Releases API 업데이트 체커
+│   ├── selfupdate/          # GitHub Releases API 업데이트 체커 + 내려받아 교체
+│   ├── version/             # 빌드 버전 정보 (-ldflags 로 주입)
 │   ├── thumbnail/           # YouTube 썸네일 생성
 │   ├── assets/              # PDF/PNG 에셋 다운로더 (Oracle Cloud nginx `AssetBaseURL` + data/cache 로컬 캐시)
 │   └── youtube/             # YouTube OAuth + 라이브 방송 + 썸네일 업로드
@@ -350,25 +369,30 @@ easyPreparation/
 │       │       ├── WorshipOrder.tsx
 │       │       ├── SelectedOrder.tsx
 │       │       ├── Detail.tsx, BibleSelect.tsx
-│       │       ├── ResultPage.tsx
-│       │       └── DisplayControlPanel.tsx
+│       │       └── ResultPage.tsx
 │       ├── lyrics/          # 가사 PPT 생성 + 찬송가 검색
 │       │   └── components/
 │       │       ├── LyricsManager.tsx
 │       │       └── HymnSearch.tsx
 │       ├── bible/           # 성경 검색 (7개 번역판, 비교 모드)
+│       ├── remote/          # 분리된 순서 패널 창 (데스크톱 앱이 띄움) — 미리보기 + 예배 순서
+│       ├── mobile/          # 폰 리모컨 (QR 접속, PWA)
 │       ├── components/      # 전역 컴포넌트
-│       │   ├── AppShell.tsx         # CSS Grid 루트 레이아웃
-│       │   ├── LeftSidebar.tsx      # 좌측 수직 네비게이션
-│       │   ├── TopHeader.tsx        # 상단 페이지 헤더
+│       │   ├── AppChrome.tsx        # 루트 — /remote·/mobile 은 화면 틀 없이, 나머지는 ProShell
+│       │   ├── ProShell.tsx         # CSS Grid 진행 콘솔 (아이콘 바 · 순서 패널 · 작업 영역 · Studio · 타임라인)
+│       │   ├── ProTopBar.tsx · ProIconBar.tsx · ProTimeline.tsx
+│       │   ├── ProSequencePanel.tsx # 예배 순서 패널 (메인·분리 창 공용, 떼기/붙이기)
+│       │   ├── ProInspectorPanel.tsx# 오른쪽 Studio — 미리보기·화면·배경·썸네일·유튜브·스케줄·OBS·스타일
+│       │   ├── inspector/           # Studio 탭들
+│       │   ├── remote/MobileRemote.tsx # 폰 리모컨 화면
+│       │   ├── OBSSourcePanel.tsx   # OBS 초기 설정 · 로고 · PTZ · Display 소스 · PDF
 │       │   ├── SetupWizard.tsx      # 첫 실행 교회 정보 입력
 │       │   ├── LicensePanel.tsx     # 라이선스 키 입력 + 상태
-│       │   ├── SchedulePanel.tsx    # 스케줄 설정 모달
-│       │   ├── OBSSourcePanel.tsx   # OBS 소스 관리
 │       │   ├── YouTubePanel.tsx     # YouTube 연동 + 방송 생성
 │       │   └── UpdateChecker.tsx    # 자동 업데이트 배너
 │       └── lib/
 │           ├── apiClient.ts         # Go 서버 API 호출 중앙화
+│           ├── useDisplaySession.ts # Display 진행 상태·조작 (순서 패널·폰 리모컨 공용)
 │           ├── LocalAuthContext.tsx # 로컬 인증 Context
 │           └── LicenseContext.tsx   # 라이선스 상태 전역 Context
 │
@@ -398,12 +422,17 @@ easyPreparation/
 RecoilProvider
   └─ LocalAuthProvider        (교회 설정 상태, SetupWizard 트리거)
        └─ LicenseProvider     (라이선스 플랜, FeatureGate)
-            └─ WebSocketProvider
-                 └─ AppShell (CSS Grid)
-                      ├─ LeftSidebar (좌측 네비)
-                      ├─ TopHeader (상단 헤더)
-                      ├─ { children }
-                      └─ GlobalDisplayPanel (조건부)
+            └─ AppChrome
+                 ├─ /remote · /mobile → WebSocketProvider → { children }   (화면 틀 없음)
+                 └─ 그 밖의 경로 → SetupWizard + WebSocketProvider
+                      ├─ ProShell (CSS Grid)
+                      │    ├─ ProTopBar · ProIconBar
+                      │    ├─ ProSequencePanel (예배 순서, 떼었다 붙임)
+                      │    ├─ ProMainArea { children }
+                      │    ├─ ProInspectorPanel (Studio)
+                      │    └─ ProTimeline
+                      ├─ GlobalDisplayPanel
+                      └─ LicensePanelMount
 ```
 
 ### 스타일링: Tailwind CSS v3 — Stitch 디자인 시스템
@@ -447,7 +476,7 @@ openDisplayWindow()                       // Display 창 열기 (중복 reload �
 ### 사전 요구사항
 
 ```shell
-# Go 1.25+ (go.mod 기준)
+# Go 1.26+ (go.mod 기준 — 낮은 버전이면 GOTOOLCHAIN=auto 로 자동 설치)
 # Node.js 22+ (npm)
 # Ghostscript (PDF → PNG 변환)
 
@@ -597,6 +626,43 @@ make dev-desktop     # Desktop 개발 모드 (Next.js :3000 + go run -tags dev .
 | `POST` | `/api/panel/detach` · `dock` · `focus` · `pin` | 순서 패널 떼기(`?drag=1` 끌어서) · 붙이기 · 앞으로 · 항상 위 (데스크톱 앱 전용) |
 | `GET` | `/mobile` | 스마트폰 리모컨 (Next 페이지 `ui/app/mobile`) |
 | `GET` | `/mobile/qr.png` | QR 코드 (로컬 IP 자동 감지) |
+| `GET` | `/api/tunnel/status` · `POST` `start` · `stop` | 외부망 리모컨용 cloudflared 터널 |
+| `GET` | `/api/update/status` · `POST` `download` · `apply` · `cancel` | 새 버전 내려받아 교체 |
+
+### OBS API (Pro — `status`·`connect`·`auto-configure`·`sync-stream-key` 는 게이트 없음)
+
+| Method | Path | 설명 |
+|:------:|------|------|
+| `GET` | `/api/obs/status` | 연결 상태 + 현재 씬 |
+| `POST` | `/api/obs/connect` | WebSocket 연결 `{ip, port, password}` |
+| `POST` | `/api/obs/auto-configure` | OBS WebSocket 서버 자동 활성화 + 재시작 |
+| `POST` | `/api/obs/setup-initial` | camera·monitor 씬 + 카메라·모니터 캡처·EP_Display 소스 생성 |
+| `POST` | `/api/obs/setup-display` | 선택 씬에 EP_Display 브라우저 소스 (다시) 만들기 |
+| `GET/POST` | `/api/obs/scene-mapping` | 항목 → 씬 매핑 |
+| `GET` | `/api/obs/scenes` · `sources?scene=` · `camera/devices` | 씬 · 씬의 소스 · 카메라 장치 목록 |
+| `POST` | `/api/obs/sources/toggle` · `sources/remove` | EP 가 만든 소스(EP_Logo·EP_Display) 켜기/끄기 · 삭제 |
+| `POST` | `/api/obs/logo/upload` · `logo/apply` | 로고 올리기 · 씬에 넣기(모서리 위치) |
+| `GET` | `/api/obs/logo/history` · `logo/image` | 최근 로고 |
+| `POST` | `/api/obs/sync-stream-key` | YouTube 스트림 키 → OBS 적용 |
+
+### PTZ · PDF 슬라이드 · 찬양 · 썸네일 · 영상 배경
+
+| Method | Path | 설명 |
+|:------:|------|------|
+| `GET/POST` | `/api/ptz/config` | PTZ 카메라 접속 설정 |
+| `POST` | `/api/ptz/goto` | 프리셋 이동 `{"preset": 1}` |
+| `GET` | `/api/ptz/ping` · `presets` · `stream` | 연결 확인 · 카메라 프리셋 목록 · MJPEG 스트림 프록시 |
+| `POST` | `/api/ptz/source` | 송출 화면 전환 `{"mode": "camera"\|"slides"}` |
+| `POST` | `/api/pdf/upload` | PDF 올려 슬라이드로 (최대 50MB) |
+| `GET/DELETE` | `/api/pdf/slides` | 슬라이드 상태 · 초기화 |
+| `POST` | `/api/pdf/navigate` · `count` | 슬라이드 이동 · 장 수 |
+| `GET/POST` | `/api/songs` | 직접 등록한 찬양 목록 · 추가 (`/api/songs/:id` GET·PUT·DELETE) |
+| `GET` | `/api/songs/search?q=` | 찬양 검색 |
+| `POST` | `/api/songs/import` | 찬양 가져오기 |
+| `GET/POST` | `/api/thumbnail/config` | 썸네일 설정 |
+| `GET` | `/api/thumbnail/preview` · `generated` | 미리보기 · 생성된 썸네일 목록 |
+| `POST` | `/api/thumbnail/upload` | 배경 이미지 올리기 |
+| `GET` | `/api/video-bg/list` · `POST` `upload` · `DELETE` `delete` | 영상 배경 |
 
 ---
 
@@ -651,6 +717,11 @@ mux.Handle("/api/schedule", middleware.FeatureGate(license.FeatureAutoScheduler,
 | `release.yml` | `v*` 태그 push | Server 4플랫폼 + Desktop 3플랫폼 빌드 → GitHub Release |
 | `test.yml` | `master` push + Pull Request | 3 OS `go vet`/`go build`/`-race` 스모크 테스트, `integration`(dev 빌드 API 테스트), `fresh-install`(prod 빌드 신규 설치 기동 검증) |
 | `landing.yml` | `landing/` 변경 PR | 랜딩 페이지 빌드 검증 |
+| `deploy.yml` | `master` push | **꺼져 있음** (2026-11-02~). 운영 서버 반영은 아래 방식으로 바뀜 |
+
+**운영 서버 반영**: 서버가 GitHub 정식 릴리스를 직접 받아 갑니다. 서버의 `~/bin/ep-update` 가 월~토 03:00(cron)에 최신 **정식** 릴리스(`releases/latest`, beta 제외)의 `easyPreparation_server_linux_amd64` 를 받아 `bulletin.service` 를 교체합니다. → 서버에 내보내려면 정식 태그(`vX.Y.Z`)를 붙이면 됩니다.
+
+**Desktop 빌드**: `scripts/build-desktop.sh` — `wails3` CLI(v3.1.0)는 아이콘·버전 정보·WebView2 설치기 생성만 하고 빌드는 `go build -tags production`(Linux 는 `production,gtk3`). Windows 는 NSIS 설치 파일, macOS 는 .app → dmg.
 
 ### 빌드 아티팩트
 
@@ -728,6 +799,7 @@ QR 코드:    http://{로컬IP}:8080/mobile/qr.png
 - 순서 목록: 현재/다음 표시, 탭해서 점프, 펼쳐서 섹션 점프, 손잡이로 순서 바꾸기
 - 이전/다음 버튼 · 좌우 스와이프 · 예약 송출 카운트다운
 - 서버 주소는 접속한 주소를 그대로 쓰므로 별도 설정이 필요 없음
+- 같은 와이파이가 아니면 cloudflared 터널(`/api/tunnel/start`)로 외부 주소를 받아 QR 로 접속
 
 iOS/Android Chrome에서 홈 화면에 추가하면 전체화면 앱으로 실행됩니다.
 
