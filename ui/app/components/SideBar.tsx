@@ -9,7 +9,8 @@ import HistoryList from "./HistoryList";
 import YouTubePanel from "./YouTubePanel";
 import { useLicense } from "@/lib/LicenseContext";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+  || (typeof window !== "undefined" ? window.location.origin : "http://localhost:8080");
 
 interface SidebarProps {
   open: boolean;

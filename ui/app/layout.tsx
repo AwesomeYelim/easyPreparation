@@ -1,22 +1,9 @@
 import RecoilProvider from "@/components/RecoilProvider";
 import { LocalAuthProvider } from "./lib/LocalAuthContext";
 import { LicenseProvider } from "./lib/LicenseContext";
-import SetupWizard from "./components/SetupWizard";
-import { WebSocketProvider } from "./components/WebSocketProvider";
-import GlobalDisplayPanel from "./components/GlobalDisplayPanel";
-import SettingsLoader from "./components/SettingsLoader";
 import ToastProvider from "./components/ToastProvider";
-import WebSocketToastBridge from "./components/WebSocketToastBridge";
-import WelcomeTour from "./components/WelcomeTour";
-import ProShell from "@/components/ProShell";
-import ProTopBar from "@/components/ProTopBar";
-import ProIconBar from "@/components/ProIconBar";
-import ProMainArea from "@/components/ProMainArea";
-import ProSequencePanel from "@/components/ProSequencePanel";
-import ProInspectorPanel from "@/components/ProInspectorPanel";
-import ProTimeline from "@/components/ProTimeline";
+import AppChrome from "@/components/AppChrome";
 import ClientOnly from "@/components/ClientOnly";
-import LicensePanelMount from "@/components/LicensePanelMount";
 import "@/globals.css";
 import type { Viewport, Metadata } from "next";
 
@@ -57,24 +44,7 @@ export default function RootLayout({
           <RecoilProvider>
             <LocalAuthProvider>
               <LicenseProvider>
-                <SetupWizard />
-                <WebSocketProvider>
-                  <WebSocketToastBridge />
-                  <WelcomeTour />
-                  <SettingsLoader />
-                  <ProShell>
-                    <ProTopBar />
-                    <ProIconBar />
-                    <ProSequencePanel />
-                    <ProMainArea>
-                      {children}
-                    </ProMainArea>
-                    <ProInspectorPanel />
-                    <ProTimeline />
-                  </ProShell>
-                  <GlobalDisplayPanel />
-                  <LicensePanelMount />
-                </WebSocketProvider>
+                <AppChrome>{children}</AppChrome>
               </LicenseProvider>
             </LocalAuthProvider>
           </RecoilProvider>

@@ -53,6 +53,34 @@ export async function openDisplayWindow(force = false) {
   displayWindow = window.open(`${BASE_URL}/display`, "display_window");
 }
 
+// ── 순서 패널 분리/도킹 (데스크톱 앱 전용) ──
+// Go 가 네이티브 창을 띄우고 숨긴다. 브라우저 모드(native=false)에서는 분리 기능을 쓰지 않는다.
+export interface PanelDockState {
+  detached: boolean;
+  pinned: boolean;
+  native: boolean;
+}
+
+const postPanel = (path: string, body?: unknown): Promise<PanelDockState> =>
+  fetch(`${BASE_URL}/api/panel/${path}`, {
+    method: "POST",
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  }).then((r) => r.json());
+
+export const panelApi = {
+  getState: (): Promise<PanelDockState> =>
+    fetch(`${BASE_URL}/api/panel/state`).then((r) => r.json()),
+  /** 별도 창으로 분리 (drag=true: 커서 아래에 띄우고 끄는 동작을 이어받음) */
+  detach: (opts?: { drag?: boolean }) => postPanel(opts?.drag ? "detach?drag=1" : "detach"),
+  /** 메인 창에 다시 붙이기 */
+  dock: () => postPanel("dock"),
+  /** 분리 창 앞으로 가져오기 */
+  focus: () => postPanel("focus"),
+  /** 항상 위 토글 */
+  setPinned: (pinned: boolean) => postPanel("pin", { pinned }),
+};
+
 export const apiClient = {
   // 성경 API — verses/search는 연속 호출 시 이전 응답이 최신 상태를 덮어쓰지 않도록 AbortSignal 지원
   getBibleVersions: () =>

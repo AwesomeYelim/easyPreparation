@@ -2,36 +2,39 @@
 
 import { useEffect, useState, useCallback, useRef, useLayoutEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil"; // eslint-disable-line @typescript-eslint/no-unused-vars
-import { displayItemsState, sequencePanelOpenState, itemTimersState, displayPositionState, inspectorTabState, displaySubPageState, scheduleActiveState, includeThumbnailOnStreamState, includeTitleOnStreamState } from "@/recoilState";
-import { apiClient, openDisplayWindow } from "@/lib/apiClient";
-import { WorshipOrderItem, OBSStatus, StreamStatus } from "@/types";
+import { sequencePanelOpenState, panelDetachedState, panelNativeState, itemTimersState, inspectorTabState, includeThumbnailOnStreamState, includeTitleOnStreamState } from "@/recoilState";
+import { apiClient, openDisplayWindow, panelApi } from "@/lib/apiClient";
 import { useWS } from "@/components/WebSocketProvider";
 import FeatureGate from "@/components/FeatureGate";
+import { useDisplaySession } from "@/lib/useDisplaySession";
 
-type ScheduleCountdown = {
-  label: string;
-  minutes: number;
-  seconds: number;
-} | null;
 
-export default function ProSequencePanel() {
+type ProSequencePanelProps = {
+  /** true = 분리된 창(/remote)에서 단독 렌더링 */
+  standalone?: boolean;
+};
+
+export default function ProSequencePanel({ standalone = false }: ProSequencePanelProps) {
   const seqOpen = useRecoilValue(sequencePanelOpenState);
-  const [items, setItems] = useRecoilState(displayItemsState);
+  const detached = useRecoilValue(panelDetachedState);
+  // 분리 기능은 데스크톱 앱에서만 (분리 창 안에서는 항상 붙이기·핀 표시)
+  const canDetach = useRecoilValue(panelNativeState) || standalone;
+  const [pinned, setPinned] = useState(false);
+  const headerDragRef = useRef<{ x: number; y: number; id: number } | null>(null);
   const setInspectorTab = useSetRecoilState(inspectorTabState);
+  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
 
-  const [idx, setIdx] = useRecoilState(displayPositionState);
-  const [subPageIdx, setSubPageIdx] = useRecoilState(displaySubPageState);
-  const [obsStatus, setObsStatus] = useState<OBSStatus>({ connected: false, currentScene: "" });
-  const [streamStatus, setStreamStatus] = useState<StreamStatus>({ active: false, reconnecting: false, timecode: "", bytesSent: 0 });
+  // 진행 상태·조작 — 폰 리모컨(MobileRemote)과 공통 (lib/useDisplaySession)
+  const session = useDisplaySession({ pollMs: 5000, onOrder: () => setExpandedItems(new Set()) });
+  const {
+    items, setItems, idx, subIdx: subPageIdx, timerOn: timerEnabled,
+    obsStatus, streamStatus, schedCountdown, loadingMsg, pageVisible,
+  } = session;
   const includeThumbnail = useRecoilValue(includeThumbnailOnStreamState);
   const includeTitle = useRecoilValue(includeTitleOnStreamState);
-  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
-  const [loadingMsg, setLoadingMsg] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const gridRef = useRef<HTMLDivElement>(null);
   const [gridCellWidth, setGridCellWidth] = useState(120);
-  const [schedCountdown, setSchedCountdown] = useState<ScheduleCountdown>(null);
-  const [timerEnabled, setTimerEnabled] = useState(false);
   const [cameraMode, setCameraMode] = useState(false);
   // obs.json scenes + presets 맵 (title 기반, 서버 저장)
   const [obsSceneMapping, setObsSceneMapping] = useState<Record<string, string>>({});
@@ -39,105 +42,17 @@ export default function ProSequencePanel() {
   const [obsDisplayScene, setObsDisplayScene] = useState("monitor");
   // 카메라에 저장된 프리셋 목록
   const [cameraPresets, setCameraPresets] = useState<{ token: string; name: string }[]>([]);
-  const scheduleActive = useRecoilValue(scheduleActiveState);
 
   // Per-item timer state: Recoil (shared with ProTimeline)
   const itemTimers = useRecoilValue(itemTimersState);
 
   const { subscribe } = useWS();
   const listRef = useRef<HTMLDivElement>(null);
-  const itemsRef = useRef(items);
-  itemsRef.current = items;
-  const idxRef = useRef(idx);
-  idxRef.current = idx;
   const dragRef = useRef<{ from: number; wasDragging: boolean } | null>(null);
-  const schedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const reorderLockRef = useRef(false);
-  const reorderSuppressRef = useRef(false);
-  const keyCounterRef = useRef(0);
 
-  const ensureUniqueKeys = useCallback((rawItems: WorshipOrderItem[]) => {
-    const seen = new Set<string>();
-    return rawItems.map((item) => {
-      let k = item.key;
-      if (!k || seen.has(k)) {
-        k = `_auto_${keyCounterRef.current++}`;
-        return { ...item, key: k };
-      }
-      seen.add(k);
-      return item;
-    });
-  }, []);
-
-  // --- WebSocket subscription ---
+  // --- OBS 장면 매핑·카메라 프리셋 (보일 때 1회) ---
   useEffect(() => {
-    return subscribe((msg) => {
-      if (msg.type === "position" && typeof msg.idx === "number") {
-        setIdx(msg.idx);
-        if (typeof msg.subPageIdx === "number") setSubPageIdx(msg.subPageIdx);
-      }
-      if (msg.type === "timer_state") {
-        if (typeof msg.idx === "number") setIdx(msg.idx);
-        if (typeof msg.subPageIdx === "number") setSubPageIdx(msg.subPageIdx);
-        if (typeof msg.enabled === "boolean") setTimerEnabled(msg.enabled);
-      }
-      if (msg.type === "order" && Array.isArray(msg.items)) {
-        setLoadingMsg("");
-        if (!reorderSuppressRef.current) {
-          setItems(ensureUniqueKeys(msg.items as WorshipOrderItem[]));
-          setExpandedItems(new Set());
-          if (typeof msg.idx === "number") {
-            setIdx(msg.idx);
-            // append/remove처럼 재생 위치가 유지되는 브로드캐스트는 subPageIdx를 함께 보냄 — 없을 때만 리셋
-            setSubPageIdx(typeof msg.subPageIdx === "number" ? msg.subPageIdx : 0);
-          } else {
-            setIdx(0);
-            setSubPageIdx(0);
-          }
-        }
-      }
-      if (msg.type === "display_loading") {
-        if (msg.done) {
-          setLoadingMsg("");
-        } else {
-          setLoadingMsg(msg.message || "준비 중...");
-        }
-      }
-      if (msg.type === "schedule_countdown") {
-        setSchedCountdown({
-          label: msg.label,
-          minutes: msg.minutes,
-          seconds: msg.seconds,
-        });
-        if (schedTimeoutRef.current) clearTimeout(schedTimeoutRef.current);
-        schedTimeoutRef.current = setTimeout(() => setSchedCountdown(null), 3000);
-      }
-      if (msg.type === "schedule_started") {
-        setSchedCountdown(null);
-        if (schedTimeoutRef.current) clearTimeout(schedTimeoutRef.current);
-      }
-    });
-  }, [subscribe, setItems, ensureUniqueKeys]);
-
-  // --- Polling ---
-  useEffect(() => {
-    const poll = () => {
-      apiClient.getDisplayStatus()
-        .then((data: any) => {
-          if (data.obs) setObsStatus(data.obs);
-          if (data.stream) setStreamStatus(data.stream);
-          if (typeof data.timerEnabled === "boolean") setTimerEnabled(data.timerEnabled);
-          if (Array.isArray(data.items) && data.items.length > 0 && !reorderSuppressRef.current) {
-            setItems(ensureUniqueKeys(data.items as WorshipOrderItem[]));
-            if (typeof data.idx === "number") setIdx(data.idx);
-            // 새로고침 시 subPageIdx가 0으로 유실되던 문제 — 서버 상태를 그대로 복원
-            if (typeof data.subPageIdx === "number") setSubPageIdx(data.subPageIdx);
-          }
-        })
-        .catch((e: unknown) => console.error("display/status poll 에러:", e));
-    };
-    poll();
-    const t = setInterval(poll, 5000);
+    if (!pageVisible) return;
     // obs.json scenes + presets 매핑 1회 로드
     apiClient.getObsSceneMapping()
       .then((data: any) => {
@@ -150,28 +65,22 @@ export default function ProSequencePanel() {
     apiClient.ptzGetPresets()
       .then((res) => { if (res.ok && res.presets) setCameraPresets(res.presets); })
       .catch(() => {});
-    return () => clearInterval(t);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pageVisible]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 사이드바 자동 스크롤 없음 — 현재 항목이 바뀌어도(클릭/자연 진행/폴링 모두) 운영자의 스크롤 위치를 건드리지 않는다.
 
   // --- Navigation ---
-  const handleNav = useCallback((dir: "prev" | "next") => {
-    apiClient.navigateDisplay(dir);
-  }, []);
+  const { navigate: handleNav, jump, setStream, reorder } = session;
 
   const handleJump = useCallback((index: number) => {
-    setIdx(index);
-    apiClient.jumpDisplay(index);
-    setInspectorTab("preview");
-  }, [setInspectorTab]);
+    jump(index);
+    if (!standalone) setInspectorTab("preview"); // 분리 창에서는 메인 창 탭을 건드리지 않음
+  }, [jump, setInspectorTab, standalone]);
 
   const handleSectionJump = useCallback((itemIdx: number, subPage: number) => {
-    setIdx(itemIdx);
-    setSubPageIdx(subPage);
-    apiClient.jumpDisplay(itemIdx, subPage);
-    setInspectorTab("preview");
-  }, [setInspectorTab]);
+    jump(itemIdx, subPage);
+    if (!standalone) setInspectorTab("preview");
+  }, [jump, setInspectorTab, standalone]);
 
   const handleRemove = useCallback((index: number) => {
     apiClient.removeFromDisplay(index);
@@ -187,15 +96,14 @@ export default function ProSequencePanel() {
 
   // --- Stream toggle ---
   const handleStreamToggle = useCallback(() => {
-    const action = streamStatus.active ? "stop" : "start";
-    apiClient.streamControl(action, includeThumbnail, false, includeTitle);
-  }, [streamStatus.active, includeThumbnail, includeTitle]);
+    setStream(!streamStatus.active, { includeThumbnail, includeTitle }).catch(() => {});
+  }, [setStream, streamStatus.active, includeThumbnail, includeTitle]);
 
   // --- 테스트 방송 (썸네일 없이, 제목 "TEST ...") ---
   const handleTestStream = useCallback(() => {
     if (streamStatus.active) return;
-    apiClient.streamControl("start", false, true);
-  }, [streamStatus.active]);
+    setStream(true, { includeThumbnail: false, isTest: true }).catch(() => {});
+  }, [setStream, streamStatus.active]);
 
   // --- Drag & drop ---
   const clearDragHighlight = useCallback(() => {
@@ -234,30 +142,8 @@ export default function ProSequencePanel() {
     if (!dragRef.current) return;
     const fromIndex = dragRef.current.from;
     dragRef.current = null;
-    if (fromIndex === toIndex) return;
-    if (reorderLockRef.current) return;
-
-    reorderLockRef.current = true;
-    reorderSuppressRef.current = true;
-    setItems((prev) => {
-      const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      return next;
-    });
-    setIdx((prev) => {
-      if (prev === fromIndex) return toIndex;
-      let newIdx = prev;
-      if (fromIndex < prev) newIdx--;
-      if (toIndex <= newIdx) newIdx++;
-      return Math.max(0, Math.min(newIdx, items.length - 1));
-    });
-
-    apiClient.reorderDisplay(fromIndex, toIndex).finally(() => {
-      reorderLockRef.current = false;
-      setTimeout(() => { reorderSuppressRef.current = false; }, 1500);
-    });
-  }, [clearDragHighlight, items.length, setItems]);
+    reorder(fromIndex, toIndex);
+  }, [clearDragHighlight, reorder]);
 
   const toggleItemExpand = useCallback((index: number) => {
     setExpandedItems((prev) => {
@@ -308,7 +194,35 @@ export default function ProSequencePanel() {
     };
   }, [handleNav]);
 
-  if (!seqOpen) return null;
+  // 분리 창 핀(항상 위) 상태 — 서버 저장값 + WS panel_dock
+  useEffect(() => {
+    if (!standalone) return;
+    panelApi.getState().then((st) => setPinned(!!st.pinned)).catch(() => {});
+    return subscribe((msg) => {
+      if (msg.type === "panel_dock" && typeof msg.pinned === "boolean") setPinned(msg.pinned);
+    });
+  }, [standalone, subscribe]);
+
+  // 제목줄 끌어서 떼기 — 일정 거리 이상 끌면 분리 창이 커서 아래에 뜨고 드래그를 이어받는다(데스크톱)
+  const onTitlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0 || (e.target as HTMLElement).closest("button")) return;
+    headerDragRef.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onTitlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = headerDragRef.current;
+    if (!d || d.id !== e.pointerId) return;
+    if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 24) return;
+    headerDragRef.current = null;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    panelApi.detach({ drag: true }).catch(() => {});
+  };
+  const onTitlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (headerDragRef.current?.id === e.pointerId) headerDragRef.current = null;
+  };
+
+  // 메인 창: 분리돼 있으면 패널을 그리지 않는다. (훅은 위에서 계속 동작 → 화살표 키 진행 유지)
+  if (!standalone && (!seqOpen || detached)) return null;
 
   const currentItem = items[idx];
 
@@ -316,8 +230,44 @@ export default function ProSequencePanel() {
     <div
       className="flex flex-col bg-pro-surface border-r border-pro-border overflow-hidden"
       data-testid="seq-panel"
-      style={{ gridColumn: "2", gridRow: "2" }}
+      style={standalone ? { flex: 1, minHeight: 0 } : { gridColumn: "2", gridRow: "2" }}
     >
+      {/* ── 독 제목줄 (OBS 독 방식): 끌어서 떼기 · 더블클릭으로 떼기/붙이기 ── */}
+      <div
+        className="flex items-center justify-between h-7 pl-3 pr-1.5 bg-pro-elevated/60 border-b border-pro-border select-none flex-shrink-0"
+        style={standalone || !canDetach ? undefined : { cursor: "grab", touchAction: "none" }}
+        data-testid="seq-panel-titlebar"
+        onPointerDown={standalone || !canDetach ? undefined : onTitlePointerDown}
+        onPointerMove={standalone || !canDetach ? undefined : onTitlePointerMove}
+        onPointerUp={standalone || !canDetach ? undefined : onTitlePointerUp}
+        onPointerCancel={standalone || !canDetach ? undefined : onTitlePointerUp}
+        onDoubleClick={canDetach ? () => (standalone ? panelApi.dock() : panelApi.detach()).catch(() => {}) : undefined}
+      >
+        <span className="text-[11px] font-semibold text-pro-text-dim tracking-wide">예배 순서</span>
+        <div className="flex items-center gap-0.5">
+          {standalone && (
+            <button
+              onClick={() => { const next = !pinned; setPinned(next); panelApi.setPinned(next).catch(() => setPinned(!next)); }}
+              title={pinned ? "항상 위 해제" : "모든 창 위에 고정"}
+              data-testid="seq-panel-pin"
+              className={`w-6 h-6 flex items-center justify-center rounded transition-colors ${
+                pinned ? "text-[#4a9eff] bg-[#4a9eff]/15" : "text-pro-text-dim hover:text-pro-text hover:bg-pro-hover"
+              }`}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: "14px", fontVariationSettings: `'FILL' ${pinned ? 1 : 0}` }}>push_pin</span>
+            </button>
+          )}
+          {canDetach && (<button
+            onClick={() => (standalone ? panelApi.dock() : panelApi.detach()).catch(() => {})}
+            title={standalone ? "메인 창에 다시 붙이기" : "별도 창으로 떼기 (제목줄을 끌어도 됩니다)"}
+            data-testid={standalone ? "seq-panel-dock" : "seq-panel-detach"}
+            className="w-6 h-6 flex items-center justify-center rounded text-pro-text-dim hover:text-pro-text hover:bg-pro-hover transition-colors"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>{standalone ? "close_fullscreen" : "open_in_new"}</span>
+          </button>)}
+        </div>
+      </div>
+
       {/* ── Header: OBS dot + scene | LIVE badge | stream button ── */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-pro-border flex-shrink-0">
         <div className="flex items-center gap-2 min-w-0">

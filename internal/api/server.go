@@ -39,11 +39,17 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	mux.Handle("/api/save-to-downloads", middleware.CORS(http.HandlerFunc(handlers.SaveToDownloadsHandler)))
 	mux.Handle("/api/open-display", middleware.CORS(http.HandlerFunc(handlers.OpenDisplayInBrowserHandler)))
 	mux.Handle("/api/open-mobile", middleware.CORS(http.HandlerFunc(handlers.OpenMobileInBrowserHandler)))
+	// 순서 패널 분리/도킹 (데스크톱: 네이티브 창, 웹: window.open)
+	mux.Handle("/api/panel/state", middleware.CORS(http.HandlerFunc(handlers.PanelStateHandler)))
+	mux.Handle("/api/panel/detach", middleware.CORS(http.HandlerFunc(handlers.PanelDetachHandler)))
+	mux.Handle("/api/panel/dock", middleware.CORS(http.HandlerFunc(handlers.PanelDockHandler)))
+	mux.Handle("/api/panel/focus", middleware.CORS(http.HandlerFunc(handlers.PanelFocusHandler)))
+	mux.Handle("/api/panel/pin", middleware.CORS(http.HandlerFunc(handlers.PanelPinHandler)))
 	mux.Handle("/searchLyrics", handlers.SearchLyrics())
 	mux.Handle("/submitLyrics", handlers.SubmitLyricsHandler(dataChan))
 
 	// 모바일 PWA 리모컨
-	mux.HandleFunc("/mobile", handlers.MobileRemoteHandler)
+	// "/mobile" 화면 자체는 Next 페이지(ui/app/mobile)를 spaHandler 가 서빙한다. 아래는 PWA 부속 파일.
 	mux.HandleFunc("/mobile/manifest.json", handlers.MobileManifestHandler)
 	mux.HandleFunc("/mobile/sw.js", handlers.MobileServiceWorkerHandler)
 	mux.HandleFunc("/mobile/icon-192.svg", handlers.MobileIconHandler)
@@ -305,18 +311,18 @@ func spaHandler(frontFS fs.FS) http.Handler {
 		path := r.URL.Path
 		// API나 ws는 여기 안 옴 (이미 위에서 매칭됨)
 
-		// 파일 존재 확인
-		tryPath := strings.TrimPrefix(path, "/")
+		// 파일 존재 확인 — "remote/" 처럼 슬래시로 끝나는 경로는 fs.FS 가 열지 못하므로 떼고 확인
+		tryPath := strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/")
 		if tryPath == "" {
-			tryPath = "index.html"
+			tryPath = "."
 		}
-		f, err := frontFS.Open(tryPath)
-		if err != nil {
-			// 파일 없으면 index.html (SPA 라우팅)
-			r.URL.Path = "/index.html"
-		} else {
+		if f, err := frontFS.Open(tryPath); err == nil {
 			f.Close()
+			fileServer.ServeHTTP(w, r) // 파일 또는 디렉토리(index.html 자동 서빙)
+			return
 		}
-		fileServer.ServeHTTP(w, r)
+		// 파일 없으면 index.html (SPA 라우팅).
+		// r.URL.Path 를 "/index.html" 로 바꾸면 FileServer 가 "./" 로 301 → 원래 경로로 되돌아가 무한 리디렉트가 된다.
+		http.ServeFileFS(w, r, frontFS, "index.html")
 	})
 }

@@ -2,7 +2,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
+import { useRecoilValue } from "recoil";
 import Sidebar from "./SideBar";
+import { panelDetachedState } from "@/recoilState";
+import { panelApi } from "@/lib/apiClient";
 
 const NAV_ITEMS = [
   { href: "/bulletin", icon: "newspaper", label: "주보" },
@@ -12,7 +15,8 @@ const NAV_ITEMS = [
 
 function QRPopover({ onClose }: { onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
-  const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+  // 프로덕션 빌드는 env 가 비어 있으므로 접속 주소(origin)를 쓴다 — 빈 값이면 WS 가 상대경로("/ws")가 됨
+  const BASE = process.env.NEXT_PUBLIC_API_BASE_URL || window.location.origin;
   const localMobileUrl = BASE.replace(/:\d+$/, ":8080") + "/mobile";
   const [tunnelUrl, setTunnelUrl] = useState<string | null>(null);
   const [qrKey, setQrKey] = useState(0); // QR 이미지 강제 리로드용
@@ -88,6 +92,7 @@ function QRPopover({ onClose }: { onClose: () => void }) {
 
 export default function ProIconBar() {
   const pathname = usePathname();
+  const panelDetached = useRecoilValue(panelDetachedState);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
 
@@ -127,6 +132,23 @@ export default function ProIconBar() {
             );
           })}
         </nav>
+
+        {/* 순서 패널이 분리돼 있을 때: 분리 창 앞으로 가져오기 */}
+        {panelDetached && (
+          <button
+            className="w-9 h-9 flex items-center justify-center rounded-lg bg-pro-accent/20 text-pro-accent hover:bg-pro-accent/30 transition-all"
+            onClick={() => panelApi.focus().catch(() => {})}
+            title="분리된 예배 순서 창 앞으로 가져오기"
+            data-testid="panel-focus"
+          >
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: "18px", fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
+            >
+              open_in_new
+            </span>
+          </button>
+        )}
 
         {/* QR 버튼 (설정 위) */}
         <div className="relative">

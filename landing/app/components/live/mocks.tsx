@@ -242,42 +242,52 @@ export function ConsoleMock({ index, t, period, clockBase = 10 * 3600 + 58 * 60 
 
 /* --------------------------------------------------------- Mobile remote */
 
-export function PhoneMock({ index }: { index: number }) {
+export function PhoneMock({ index, live = false }: { index: number; live?: boolean }) {
   const cur = ((index % N) + N) % N;
-  const list = [cur - 1, cur, cur + 1, cur + 2].filter((i) => i >= 0 && i < N);
+  const list = [cur - 1, cur, cur + 1, cur + 2, cur + 3].filter((i) => i >= 0 && i < N);
   return (
-    <div className="flex h-full flex-col bg-[#f5f7fc] font-sans text-[#0f1b3d]">
-      <div className="flex h-16 items-center gap-4 border-b border-[#dde3ef] px-6">
+    <div className="flex h-full flex-col bg-[#f9f9ff] font-sans text-[#002045]">
+      <div className="flex h-16 items-center gap-4 px-6">
         <span className="text-[22px]">☰</span>
         <span className="text-[22px] font-extrabold">easyPreparation</span>
-        <span className="ml-auto h-2.5 w-2.5 rounded-full bg-[#22c55e]" />
+        <span className="ml-auto flex items-center gap-1.5 text-[13px] font-semibold text-[#1a7f37]">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#22c55e]" /> 연결됨
+        </span>
       </div>
-      <div className="mx-5 mt-5 overflow-hidden rounded-2xl border-2 border-[#3b82f6]">
-        <Slide index={cur} />
+      {/* 위쪽 고정: 작은 미리보기 + STAGE · TIMER · LIVE */}
+      <div className="mx-5 flex gap-3">
+        <div className="min-w-0 flex-1 overflow-hidden rounded-2xl">
+          <Slide index={cur} />
+        </div>
+        <div className="flex w-[104px] shrink-0 flex-col gap-2 text-[12px] font-bold tracking-wide">
+          <span className="flex flex-1 items-center justify-center rounded-xl bg-[#f0f3ff]">STAGE</span>
+          <span className="flex flex-1 items-center justify-center rounded-xl bg-[#f0f3ff]">TIMER</span>
+          <span className={`flex flex-1 items-center justify-center rounded-xl transition-colors duration-300 ${live ? "bg-[#ba1a1a] text-white" : "bg-[#f0f3ff]"}`}>● LIVE</span>
+        </div>
       </div>
-      <div className="mx-5 mt-4 grid grid-cols-3 gap-3 text-center text-[12px] font-bold tracking-wide">
-        <span className="rounded-2xl bg-[#3b6ff5] py-4 text-white">STAGE<br />DISPLAY</span>
-        <span className="rounded-2xl border border-[#cfd6e4] bg-white py-4">AUTO<br />TIMER</span>
-        <span className="rounded-2xl border border-[#cfd6e4] bg-white py-4">● LIVE</span>
-      </div>
-      <div className="mx-5 mt-6 flex items-end justify-between">
+      <div className="mx-5 mt-5 flex items-end justify-between">
         <span className="text-[28px] font-extrabold">Sequence</span>
-        <span className="num text-[18px] font-bold text-[#2563eb]">{cur + 1} / {N}</span>
+        <span className="num text-[18px] font-bold text-[#43474e]">{cur + 1} / {N}</span>
       </div>
       <div className="mx-5 mt-3 flex flex-col gap-2.5">
         {list.map((i) => (
-          <div key={i} className={`flex items-center gap-4 rounded-2xl px-4 py-3 transition-colors duration-300 ${i === cur ? "bg-[#dbe6ff] ring-2 ring-[#3b6ff5]" : "bg-[#e9eef8]"}`}>
-            <span className="num flex h-11 w-11 items-center justify-center rounded-full bg-white text-[15px] font-bold">{pad2(i + 1)}</span>
-            <span>
+          <div
+            key={i}
+            className={`flex items-center gap-4 rounded-2xl px-4 py-3 transition-colors duration-300 ${i === cur ? "border-l-4 border-[#0051d5] bg-white shadow-[0_2px_12px_rgba(0,32,69,0.1)]" : "bg-[#f0f3ff]"}`}
+          >
+            <span className={`num flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[15px] font-bold ${i === cur ? "bg-[#0051d5]/10 text-[#0051d5]" : "bg-[#e2e8f8] text-[#43474e]"}`}>{pad2(i + 1)}</span>
+            <span className="min-w-0">
+              <span className="block h-[14px] text-[11px] font-bold tracking-[0.1em] text-[#0051d5]">{i === cur ? "CURRENT" : i === cur + 1 ? "NEXT" : ""}</span>
               <span className="block text-[18px] font-bold">{sequence[i].title}</span>
-              <span className="block text-[14px] text-[#5b6680]">{sequence[i].detail}</span>
+              <span className="block truncate text-[14px] text-[#5b6680]">{sequence[i].detail !== "-" && sequence[i].detail}</span>
             </span>
+            <span className="ml-auto text-[20px] text-[#74777f]">⠿</span>
           </div>
         ))}
       </div>
       <div className="mx-5 mb-5 mt-auto grid grid-cols-[1fr_2fr] gap-3">
-        <span className="rounded-2xl border border-[#cfd6e4] bg-[#e9eef8] py-4 text-center text-[18px] font-bold">← 이전</span>
-        <span key={cur} className="live-press rounded-2xl bg-[#0b57d0] py-4 text-center text-[18px] font-bold text-white">다음 →</span>
+        <span className="rounded-2xl bg-[#e2e8f8] py-4 text-center text-[18px] font-bold">← 이전</span>
+        <span key={cur} className="live-press rounded-2xl bg-[#0051d5] py-4 text-center text-[18px] font-bold text-white">다음 →</span>
       </div>
     </div>
   );
@@ -388,6 +398,141 @@ export function RemoteMock({ index }: { index: number }) {
         <div className="overflow-hidden rounded-xl border border-[#2e2e2e]">
           <Slide index={index} />
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------- Sequence panel: drag out, dock back */
+
+function MiniList({ index, rows = 9 }: { index: number; rows?: number }) {
+  const cur = ((index % N) + N) % N;
+  const start = Math.min(Math.max(0, cur - 2), N - rows);
+  return (
+    <div className="flex flex-col">
+      {sequence.slice(start, start + rows).map((it, k) => {
+        const i = start + k;
+        const on = i === cur;
+        return (
+          <div key={i} className={`flex h-[34px] items-center gap-2.5 border-l-[3px] px-3 text-[13px] transition-colors duration-300 ${on ? "border-[#3b82f6] bg-[#26324a] text-white" : "border-transparent text-[#d4d4d4]"}`}>
+            <span className="num w-4 text-right text-[11px] text-[#6b6b6b]">{i + 1}</span>
+            <span className="font-semibold">{it.title}</span>
+            <span className="truncate text-[#7a7a7a]">{it.detail !== "-" && it.detail}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function DockTitle({ floating, pinned, hot }: { floating: boolean; pinned?: boolean; hot?: boolean }) {
+  return (
+    <div className={`flex h-8 items-center gap-2 border-b border-[#2e2e2e] px-3 text-[12px] font-semibold transition-colors duration-300 ${hot ? "bg-[#1e3a5f] text-white" : "bg-[#262626] text-[#a3a3a3]"}`}>
+      예배 순서
+      <span className="ml-auto flex items-center gap-2 text-[13px]">
+        {floating && <span className={`h-2.5 w-2.5 rounded-full ${pinned ? "bg-[#4a9eff]" : "bg-[#4b4b4b]"}`} title="항상 위" />}
+        <span className="text-[#8a8a8a]">{floating ? "⤡" : "↗"}</span>
+      </span>
+    </div>
+  );
+}
+
+const DOCK_CYCLE = 9;
+
+/**
+ * 1280×720: the main window on the left, a second monitor on the right.
+ * The sequence panel is dragged out of the main window, lands on monitor 2
+ * with a live preview on top, then gets dragged back onto its slot.
+ */
+export function DockMock({ t }: { t: number }) {
+  const p = t % DOCK_CYCLE;
+  const docked = p <= 1 || p === DOCK_CYCLE - 1;
+  const lifting = p === 2;
+  const onMonitor = p >= 3 && p <= 6;
+  const returning = p === 7;
+  const index = 3 + (onMonitor ? p - 3 : p > 6 ? 4 : 0);
+
+  const fx = lifting ? 300 : onMonitor ? 905 : 92;
+  const fy = lifting ? 150 : onMonitor ? 120 : 132;
+  const cursor = docked && p !== DOCK_CYCLE - 1 ? { x: 150, y: 142 } : { x: fx + 70, y: fy + 14 };
+  const caption = docked
+    ? "제목줄을 잡고 끌면"
+    : lifting
+      ? "그대로 떨어져 나오고"
+      : onMonitor
+        ? "원하는 모니터에서 진행 · 미리보기 포함"
+        : "다시 끌어다 놓으면 제자리에";
+
+  return (
+    <div className="relative h-full overflow-hidden bg-[radial-gradient(900px_500px_at_30%_40%,#1b2a44,#0b0d12)] font-sans text-[#e5e5e5]">
+      <div className="absolute right-[24px] top-[70px] h-[600px] w-[380px] rounded-2xl border-2 border-dashed border-white/10">
+        <span className="absolute -top-7 left-1 text-[13px] font-semibold text-[#6b7280]">모니터 2</span>
+      </div>
+
+      <div className="absolute left-[24px] top-[70px] flex h-[600px] w-[820px] flex-col overflow-hidden rounded-xl border border-white/[0.12] bg-[#1c1c1c] shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
+        <div className="flex h-9 items-center gap-3 border-b border-[#2e2e2e] px-3 text-[12px]">
+          <span className="rounded bg-[#2563eb] px-1 text-[11px] font-extrabold italic text-white">ep</span>
+          <span className="font-bold text-white">easyPreparation</span>
+          <span className="ml-auto rounded bg-[#3b82f6] px-3 py-0.5 font-bold text-white">Broadcast</span>
+        </div>
+        <div className="flex min-h-0 flex-1">
+          <div className="w-[40px] border-r border-[#2e2e2e]" />
+          <div className="relative shrink-0 overflow-hidden border-r border-[#2e2e2e] transition-[width] duration-500 ease-out" style={{ width: docked || returning ? 250 : 0 }}>
+            {returning ? (
+              <div className="absolute inset-2 rounded-md border-2 border-dashed border-[#3b82f6] bg-[#3b82f6]/10" />
+            ) : (
+              <div className="w-[250px]">
+                <DockTitle floating={false} hot={p === 1} />
+                <MiniList index={index} rows={12} />
+              </div>
+            )}
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-3 p-5">
+            <p className="text-[20px] font-extrabold text-white">Worship Sequence</p>
+            {[0, 1, 2, 3, 4, 5, 6].map((r) => (
+              <span key={r} className="h-[14px] rounded bg-[#262626]" style={{ width: `${88 - r * 7}%` }} />
+            ))}
+          </div>
+          <div className="flex w-[210px] flex-col gap-2 border-l border-[#2e2e2e] p-3">
+            <p className="text-[12px] font-bold text-white">Studio · 미리보기</p>
+            <div className="overflow-hidden rounded-md border border-[#3b82f6]/60">
+              <Slide index={index} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="absolute w-[340px] overflow-hidden rounded-lg border border-white/[0.14] bg-[#1c1c1c] shadow-[0_30px_70px_rgba(0,0,0,0.6)] transition-all duration-700 ease-out"
+        style={{ left: fx, top: fy, opacity: docked ? 0 : 1, transform: docked ? "scale(0.96)" : "scale(1)" }}
+      >
+        <div className="flex h-6 items-center bg-[#2b2b2b] px-2 text-[11px] text-[#9ca3af]">예배 순서</div>
+        <div className="p-2">
+          <div className="overflow-hidden rounded-md">
+            <Slide index={index} />
+          </div>
+        </div>
+        <DockTitle floating pinned={p >= 4 && p <= 6} hot={returning} />
+        <div className="flex items-center gap-2 border-b border-[#2e2e2e] px-3 py-2">
+          <span className="flex h-7 flex-1 items-center justify-center rounded border border-[#3a3a3a] bg-[#262626] text-[12px] font-bold">◀ PREV</span>
+          <span className="num w-12 text-center text-[11px] text-[#8a8a8a]">{(((index % N) + N) % N) + 1} / {N}</span>
+          <span key={index} className="live-press flex h-7 flex-1 items-center justify-center rounded border border-[#3a3a3a] bg-[#262626] text-[12px] font-bold">NEXT ▶</span>
+        </div>
+        <MiniList index={index} rows={7} />
+      </div>
+
+      <svg
+        width="26"
+        height="26"
+        viewBox="0 0 24 24"
+        className="pointer-events-none absolute drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] transition-all duration-700 ease-out"
+        style={{ left: cursor.x, top: cursor.y }}
+      >
+        <path d="M4 2l15 9-6.5 1.6L9.6 19z" fill="#fff" stroke="#111" strokeWidth="1.2" strokeLinejoin="round" />
+      </svg>
+
+      <div key={caption} className="live-fade absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-4 py-1.5 text-[13px] font-semibold text-[#cbd5e1]">
+        {caption}
       </div>
     </div>
   );

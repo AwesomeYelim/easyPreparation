@@ -18,7 +18,17 @@ const localStorageEffect = <T>(key: string) => ({ setSelf, onSet }: any) => {
     if (isReset) localStorage.removeItem(key);
     else localStorage.setItem(key, JSON.stringify(newValue));
   });
-  return () => clearTimeout(timer);
+  // 다른 창(분리된 순서 패널 창 등)이 같은 키를 바꾸면 매번 storage 이벤트가 온다 → 이 창의 값도 갱신.
+  // 값을 쓴 창 자신에게는 이벤트가 오지 않으므로 되먹임 루프가 생기지 않는다.
+  const onStorage = (e: StorageEvent) => {
+    if (e.storageArea !== localStorage || e.key !== key || e.newValue == null) return;
+    try { setSelf(JSON.parse(e.newValue) as T); } catch {}
+  };
+  window.addEventListener("storage", onStorage);
+  return () => {
+    clearTimeout(timer);
+    window.removeEventListener("storage", onStorage);
+  };
 };
 
 // 예배 순서 상태 (API에서 로드 + localStorage 영속화 — 수동 추가 항목 보존)
@@ -99,6 +109,18 @@ export const sequencePanelOpenState = atom<boolean>({
   default: true,
 });
 
+// 순서 패널이 별도 창으로 분리돼 있는지 (서버 /api/panel/state + WS panel_dock 으로 갱신)
+export const panelDetachedState = atom<boolean>({
+  key: "panelDetachedState",
+  default: false,
+});
+
+// 순서 패널 분리를 쓸 수 있는지 — 데스크톱 앱(네이티브 창)일 때만 true. 브라우저 모드에서는 분리 버튼을 숨긴다.
+export const panelNativeState = atom<boolean>({
+  key: "panelNativeState",
+  default: false,
+});
+
 // Inspector 패널(우측 정보 패널) 열림/닫힘
 export const inspectorOpenState = atom<boolean>({
   key: "inspectorOpenState",
@@ -159,10 +181,12 @@ export const scheduleActiveState = atom<boolean>({
 export const includeThumbnailOnStreamState = atom<boolean>({
   key: "includeThumbnailOnStreamState",
   default: true,
+  effects: [localStorageEffect<boolean>("ep_include_thumbnail")], // 분리 창과 공유
 });
 
 // 방송 시작 시 유튜브 제목·설명 자동 생성 여부 — 썸네일과 독립적으로 on/off
 export const includeTitleOnStreamState = atom<boolean>({
   key: "includeTitleOnStreamState",
   default: true,
+  effects: [localStorageEffect<boolean>("ep_include_title")], // 분리 창과 공유
 });

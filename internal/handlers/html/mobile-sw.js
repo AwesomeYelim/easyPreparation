@@ -1,6 +1,7 @@
 
-const CACHE_NAME = 'ep-remote-v1';
-const OFFLINE_URL = '/mobile';
+// v2: /mobile 이 React 페이지로 바뀜 — 예전 HTML 오프라인 캐시를 지운다
+const CACHE_NAME = 'ep-remote-v2';
+const OFFLINE_URL = '/mobile/';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

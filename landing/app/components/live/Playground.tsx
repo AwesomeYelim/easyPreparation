@@ -139,7 +139,7 @@ const modes: Mode[] = [
   { key: "hymn", label: "찬송", icon: <IconMusic />, title: "찬송 번호만.", desc: "번호를 치고 Enter — 악보가 슬라이드로 뜹니다. 여기선 28 · 96 · 288 · 524장을, 앱에선 645곡 전부를." },
   { key: "bible", label: "성경", icon: <IconBook />, title: "성경 비교 모드.", desc: "두 번역판을 나란히. ← → 로 절을 넘깁니다." },
   { key: "display", label: "송출", icon: <IconScreen />, title: "화면 세 가지.", desc: "프로젝터 · 방송 오버레이 · 무대 모니터가 같은 순서로 움직입니다." },
-  { key: "remote", label: "리모컨", icon: <IconPhone />, title: "폰으로 넘기기.", desc: "같은 Wi-Fi의 스마트폰이 리모컨이 됩니다." },
+  { key: "remote", label: "리모컨", icon: <IconPhone />, title: "폰으로 넘기기.", desc: "QR 한 번이면 같은 Wi-Fi의 폰이 리모컨이 됩니다. 미리보기를 보며 넘기고, 방송도 켭니다." },
 ];
 
 function Key({ children, onClick, wide, submit }: { children: ReactNode; onClick?: () => void; wide?: boolean; submit?: boolean }) {

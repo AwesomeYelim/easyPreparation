@@ -156,8 +156,9 @@ flowchart TD
 | 🖥️ **예배 화면** | OBS Browser Source 연동, 성경/찬송/교독/가사 슬라이드 | Free |
 | 🎛️ **Display 제어** | append 방식 항목 추가, 제어판에서 삭제/점프/자동 넘김 | Free |
 | ⚡ **실시간 상태** | WebSocket 파일 생성 진행 + Display 위치 브로드캐스트 | Free |
-| 💾 **Desktop 앱** | Wails v2 macOS .app — 서버 내장, 별도 설치 없이 실행 | Free |
-| 📱 **모바일 PWA** | `/mobile` — 스마트폰으로 슬라이드 next/prev 리모컨 제어 | Free |
+| 💾 **Desktop 앱** | Wails v3 — 서버 내장, 별도 설치 없이 실행 | Free |
+| 🪟 **순서 패널 분리** | OBS 독처럼 예배 순서 패널을 끌어서 떼고 붙임 — 분리 창에 Display 미리보기, 다른 모니터·항상 위 고정, 위치 기억 (데스크톱 앱, 끌어서 떼기는 Windows) | Free |
+| 📱 **모바일 리모컨** | `/mobile` — 같은 와이파이의 폰으로 QR 접속. 미리보기·이전/다음·점프·섹션 점프·자동 타이머·방송 시작/종료·순서 바꾸기 | Free |
 | 🧙 **초기 설정 위저드** | 첫 실행 시 교회명(한글/영문) 입력, 간편 온보딩 | Free |
 | 🔔 **자동 업데이트 알림** | GitHub Releases → 새 버전 발견 시 헤더 배너 표시 | Free |
 | 🎥 **PTZ 카메라 제어** | 항목별 프리셋 매핑(`config/obs.json` `presets`) → Display 점프 시 자동 이동, 스트림 프리뷰·수동 이동 (`/api/ptz/*`) | Free |
@@ -474,8 +475,11 @@ apt install ghostscript
 ### 환경변수 (선택)
 
 ```env
-# ui/.env.local (기본값: http://localhost:8080)
+# ui/.env.development.local — 개발(make dev, Next :3000)에서만 Go 서버 주소 지정
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+# 프로덕션 빌드(make build)는 이 값을 비워서 빌드한다 → 앱은 접속한 주소(origin)로 API·WS 를 호출.
+# 그래서 같은 와이파이의 폰이 http://<PC IP>:8080/mobile 로 접속해도 그대로 동작한다.
+# (ui/.env.local 에 넣으면 프로덕션 빌드에도 섞일 수 있으니 .env.development.local 을 쓸 것)
 
 # Go 서버
 EASYPREP_DATA_DIR=/path/to/data-root   # 데이터 루트 강제 지정 (config/, data/, logs/ 가 이 아래에 생성). 테스트·다중 인스턴스용
@@ -587,7 +591,9 @@ make dev-desktop     # Desktop 개발 모드
 | `GET` | `/api/youtube/auth` | YouTube OAuth 동의 화면 |
 | `POST` | `/api/youtube/setup-obs` | 방송 생성 + 스트림 키 → OBS 자동 설정 |
 | `POST` | `/api/thumbnail/generate` | 썸네일 생성 (Pro) |
-| `GET` | `/mobile` | 스마트폰 리모컨 PWA |
+| `GET` | `/api/panel/state` | 순서 패널 분리 상태 `{detached, pinned, native}` |
+| `POST` | `/api/panel/detach` · `dock` · `focus` · `pin` | 순서 패널 떼기(`?drag=1` 끌어서) · 붙이기 · 앞으로 · 항상 위 (데스크톱 앱 전용) |
+| `GET` | `/mobile` | 스마트폰 리모컨 (Next 페이지 `ui/app/mobile`) |
 | `GET` | `/mobile/qr.png` | QR 코드 (로컬 IP 자동 감지) |
 
 ---
@@ -713,7 +719,12 @@ CGO_LDFLAGS="-framework UniformTypeIdentifiers" wails build -o easyPreparation
 QR 코드:    http://{로컬IP}:8080/mobile/qr.png
 ```
 
-제어판 UI → QR 아이콘 클릭 → 스마트폰으로 스캔 → 예배 슬라이드 next/prev 제어
+제어판 UI → QR 아이콘 클릭 → 스마트폰으로 스캔 → 리모컨 화면
+
+- 위쪽 고정: Display 미리보기 + STAGE · TIMER · LIVE(방송 시작/종료, 확인 창)
+- 순서 목록: 현재/다음 표시, 탭해서 점프, 펼쳐서 섹션 점프, 손잡이로 순서 바꾸기
+- 이전/다음 버튼 · 좌우 스와이프 · 예약 송출 카운트다운
+- 서버 주소는 접속한 주소를 그대로 쓰므로 별도 설정이 필요 없음
 
 iOS/Android Chrome에서 홈 화면에 추가하면 전체화면 앱으로 실행됩니다.
 

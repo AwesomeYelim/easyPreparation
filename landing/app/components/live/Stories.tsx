@@ -16,7 +16,7 @@ const paintings = {
   sierra: { src: "/art/sierra.jpg", credit: "A. Bierstadt, 〈시에라네바다〉 1868" },
 };
 
-function Canvas({ art, children }: { art: keyof typeof paintings; children: ReactNode }) {
+export function Canvas({ art, children }: { art: keyof typeof paintings; children: ReactNode }) {
   const p = paintings[art];
   return (
     <figure className="flex flex-col gap-2">
@@ -31,7 +31,7 @@ function Canvas({ art, children }: { art: keyof typeof paintings; children: Reac
   );
 }
 
-function Window({ title, children, className = "" }: { title: string; children: ReactNode; className?: string }) {
+export function Window({ title, children, className = "" }: { title: string; children: ReactNode; className?: string }) {
   return (
     <div className={`overflow-hidden rounded-xl border border-white/[0.12] bg-[#131417]/95 shadow-[0_30px_70px_rgba(0,0,0,0.55)] backdrop-blur ${className}`}>
       <div className="flex h-8 items-center gap-1.5 border-b border-white/[0.06] px-3">
@@ -72,7 +72,7 @@ function StepLog({ lines, footer }: { lines: Line[]; footer?: (done: boolean) =>
   );
 }
 
-function Row({ title, sub, children, flip }: { title: string; sub: string; children: ReactNode; flip?: boolean }) {
+export function Row({ title, sub, children, flip }: { title: string; sub: string; children: ReactNode; flip?: boolean }) {
   return (
     <div className={`grid items-center gap-8 md:gap-14 ${flip ? "md:grid-cols-[1.45fr_1fr]" : "md:grid-cols-[1fr_1.45fr]"}`}>
       <div className={`flex flex-col gap-3 ${flip ? "md:order-2" : ""}`}>

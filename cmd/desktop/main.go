@@ -10,11 +10,12 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync/atomic"
 
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"time"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 
 	"easyPreparation_1.0/internal/app"
 	"easyPreparation_1.0/internal/bulletin"
@@ -35,15 +36,55 @@ var (
 
 // App — Wails 앱 구조체
 type App struct {
-	ctx  context.Context
-	core *app.App
+	ctx     context.Context
+	core    *app.App
+	wapp    *application.App
+	mainWin *application.WebviewWindow
+	// quitting — 메인 창을 닫아 앱이 종료되는 중. 이때 분리 창이 닫혀도 분리 상태를 유지한다.
+	quitting atomic.Bool
+	// panel — 순서 패널 분리 창 (panel_window.go)
+	panel panelDock
+}
+
+// showError — 에러 다이얼로그 (v2 MessageDialog ErrorDialog 대체)
+func (a *App) showError(title, msg string) {
+	a.wapp.Dialog.Error().SetTitle(title).SetMessage(msg).Show()
+}
+
+func (a *App) showInfo(title, msg string) {
+	a.wapp.Dialog.Info().SetTitle(title).SetMessage(msg).Show()
+}
+
+// askYesNo — Yes/No 질문 다이얼로그. 사용자가 고른 라벨을 반환한다.
+func (a *App) askYesNo(title, msg string) string {
+	result := make(chan string, 1)
+	d := a.wapp.Dialog.Question().SetTitle(title).SetMessage(msg)
+	d.AddButton("Yes").OnClick(func() { result <- "Yes" })
+	no := d.AddButton("No").OnClick(func() { result <- "No" })
+	no.SetAsDefault().SetAsCancel()
+	d.Show()
+	select {
+	case r := <-result:
+		return r
+	case <-time.After(10 * time.Minute):
+		return "No"
+	}
 }
 
 // startup — Wails WebView가 초기화된 후 호출됨
 // 서버/DB/라이선스/OBS/스케줄러 초기화는 internal/app.Initialize 가 담당하고,
 // 여기서는 데스크톱 고유 동작(다운로드 경로, 시작 실패 다이얼로그, 헬스체크·롤백, 창 표시)만 처리한다.
-func (a *App) startup(ctx context.Context) {
+func (a *App) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
 	a.ctx = ctx
+
+	// 순서 패널 분리 창 제어 등록 (서버 시작 전에 등록해야 첫 요청부터 네이티브 모드)
+	handlers.SetPanelWindowHooks(&handlers.PanelWindowHooks{
+		Open:      a.showPanelWindow,
+		OpenDrag:  a.showPanelWindowAtCursor,
+		Focus:     a.focusPanelWindow,
+		Close:     a.hidePanelWindow,
+		SetPinned: a.setPanelPinned,
+	})
 
 	// Desktop 모드 활성화 — ~/Downloads에 파일 저장 (서버 시작 전에 설정)
 	if homeDir, err := os.UserHomeDir(); err == nil {
@@ -55,13 +96,9 @@ func (a *App) startup(ctx context.Context) {
 		EmbeddedDataFS: embedded.DataFS(),
 		OnServerError: func(err error) {
 			log.Printf("[desktop] 서버 시작 실패: %v", err)
-			wailsruntime.WindowShow(ctx)
-			wailsruntime.MessageDialog(ctx, wailsruntime.MessageDialogOptions{
-				Type:    wailsruntime.ErrorDialog,
-				Title:   "easyPreparation 시작 실패",
-				Message: err.Error(),
-			})
-			wailsruntime.Quit(ctx)
+			a.mainWin.Show()
+			a.showError("easyPreparation 시작 실패", err.Error())
+			a.wapp.Quit()
 		},
 	})
 
@@ -76,29 +113,15 @@ func (a *App) startup(ctx context.Context) {
 		healthy := app.RunHealthCheck(app.LocalBaseURL)
 		if !healthy && selfupdate.GetUpdater().HasBackup() {
 			// 이전 버전 백업이 있고 헬스체크 실패 → 롤백 제안
-			wailsruntime.WindowShow(ctx)
-			result, _ := wailsruntime.MessageDialog(ctx, wailsruntime.MessageDialogOptions{
-				Type:          wailsruntime.QuestionDialog,
-				Title:         "문제 감지됨",
-				Message:       "앱 상태 검사에서 문제가 발견되었습니다.\n이전 버전으로 되돌리시겠습니까?\n\n(아니오를 선택하면 현재 버전으로 계속합니다)",
-				DefaultButton: "No",
-				Buttons:       []string{"Yes", "No"},
-			})
+			a.mainWin.Show()
+			result := a.askYesNo("문제 감지됨", "앱 상태 검사에서 문제가 발견되었습니다.\n이전 버전으로 되돌리시겠습니까?\n\n(아니오를 선택하면 현재 버전으로 계속합니다)")
 			if result == "Yes" {
 				if err := selfupdate.GetUpdater().Rollback(); err != nil {
 					log.Printf("[desktop] 롤백 실패: %v", err)
-					wailsruntime.MessageDialog(ctx, wailsruntime.MessageDialogOptions{
-						Type:    wailsruntime.ErrorDialog,
-						Title:   "롤백 실패",
-						Message: "이전 버전으로 복구하지 못했습니다: " + err.Error(),
-					})
+					a.showError("롤백 실패", "이전 버전으로 복구하지 못했습니다: "+err.Error())
 				} else {
-					wailsruntime.MessageDialog(ctx, wailsruntime.MessageDialogOptions{
-						Type:    wailsruntime.InfoDialog,
-						Title:   "롤백 완료",
-						Message: "이전 버전으로 복구되었습니다. 앱을 다시 시작해주세요.",
-					})
-					wailsruntime.Quit(ctx)
+					a.showInfo("롤백 완료", "이전 버전으로 복구되었습니다. 앱을 다시 시작해주세요.")
+					a.wapp.Quit()
 					return
 				}
 			}
@@ -107,8 +130,12 @@ func (a *App) startup(ctx context.Context) {
 			selfupdate.GetUpdater().CleanupBackup()
 		}
 
-		wailsruntime.WindowShow(ctx)
+		a.mainWin.Show()
+
+		// 분리 창을 숨긴 채 미리 만들어 둔다 (떼는 순간 즉시 표시). 지난 실행에서 분리돼 있었으면 바로 표시.
+		a.initPanelWindow()
 	}()
+	return nil
 }
 
 // SaveZip — 서버에서 ZIP을 받아 ~/Downloads에 저장 후 Finder로 표시
@@ -154,17 +181,17 @@ func (a *App) SaveZip(target string) string {
 	} else {
 		fileURL = "file://" + dir
 	}
-	wailsruntime.BrowserOpenURL(a.ctx, fileURL)
+	_ = a.wapp.Browser.OpenURL(fileURL)
 	return ""
 }
 
 // OpenURL — 시스템 브라우저에서 URL 열기 (파일 다운로드 등 WebView2가 처리 못하는 경우 사용)
 func (a *App) OpenURL(url string) {
-	wailsruntime.BrowserOpenURL(a.ctx, url)
+	_ = a.wapp.Browser.OpenURL(url)
 }
 
 // shutdown — 앱 종료 시 호출됨. 서버 정지·스케줄러·OBS·DB·로그 정리는 app.Shutdown 이 역순으로 수행.
-func (a *App) shutdown(ctx context.Context) {
+func (a *App) shutdown() {
 	log.Println("[desktop] 앱 종료 중...")
 	if a.core != nil {
 		a.core.Shutdown()
@@ -191,20 +218,14 @@ func main() {
 
 	desktop := &App{}
 
-	err := wails.Run(&options.App{
-		Title:         "easyPreparation",
-		Width:         1400,
-		Height:        900,
-		MinWidth:      1400,
-		MaxWidth:      1400,
-		MinHeight:     768,
-		DisableResize: false,
-		Fullscreen:    false,
-		StartHidden:   true, // startup에서 서버 준비 후 WindowShow 호출
-		OnStartup:     desktop.startup,
-		OnShutdown:    desktop.shutdown,
-		Bind:          []interface{}{desktop},
-		AssetServer: &assetserver.Options{
+	desktop.wapp = application.New(application.Options{
+		Name:       "easyPreparation",
+		Services:   []application.Service{application.NewService(desktop)},
+		OnShutdown: desktop.shutdown,
+		Mac: application.MacOptions{
+			ApplicationShouldTerminateAfterLastWindowClosed: true,
+		},
+		Assets: application.AssetOptions{
 			// 서버 준비될 때까지 로딩 화면 표시 후 자동 전환
 			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -233,7 +254,25 @@ func main() {
 			}),
 		},
 	})
-	if err != nil {
+
+	desktop.mainWin = desktop.wapp.Window.NewWithOptions(application.WebviewWindowOptions{
+		Name:      "main",
+		Title:     "easyPreparation",
+		Width:     1400,
+		Height:    900,
+		MinWidth:  1400,
+		MaxWidth:  1400,
+		MinHeight: 768,
+		Hidden:    true, // ServiceStartup에서 서버 준비 후 Show
+		URL:       "/",
+	})
+	// 메인 창을 닫으면 앱 종료 (remote 창만 남지 않게)
+	desktop.mainWin.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		desktop.quitting.Store(true)
+		desktop.wapp.Quit()
+	})
+
+	if err := desktop.wapp.Run(); err != nil {
 		log.Fatal("[desktop] Wails 실행 실패:", err)
 	}
 }

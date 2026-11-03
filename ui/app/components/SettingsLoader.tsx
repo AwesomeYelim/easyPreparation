@@ -6,7 +6,8 @@ import { useSetRecoilState } from "recoil";
 import { userSettingsState, userInfoState } from "@/recoilState";
 import { apiClient } from "@/lib/apiClient";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+  || (typeof window !== "undefined" ? window.location.origin : "http://localhost:8080");
 
 export default function SettingsLoader() {
   const { church, isLoading } = useAuth();

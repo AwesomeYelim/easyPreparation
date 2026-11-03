@@ -89,7 +89,8 @@ embed-assets:
 # ── 프로덕션 빌드 (Next.js static export → Go embed) ─────────────────────────
 build:
 	@echo "Building Next.js (static export)..."
-	@cd ui && $(RUN_NPM) run build
+	@# API/WS 주소를 빌드에 박지 않는다(.env.local 무시) — 앱은 접속한 주소(origin)를 써서 폰(LAN IP)에서도 동작
+	@cd ui && NEXT_PUBLIC_API_BASE_URL= NEXT_PUBLIC_WS_URL= $(RUN_NPM) run build
 	@$(MAKE) embed-assets
 	@echo "Building Go binary (with embedded frontend + data)..."
 	@go build -ldflags="$(LDFLAGS)" -o bin/server ./cmd/server/
@@ -115,7 +116,8 @@ clean:
 # ── 프론트엔드 + 데이터 준비 (Desktop 빌드 공통 선행 작업) ──────────────────────
 build-frontend:
 	@echo "Building Next.js (static export)..."
-	@cd ui && $(RUN_NPM) run build
+	@# API/WS 주소를 빌드에 박지 않는다(.env.local 무시) — 앱은 접속한 주소(origin)를 써서 폰(LAN IP)에서도 동작
+	@cd ui && NEXT_PUBLIC_API_BASE_URL= NEXT_PUBLIC_WS_URL= $(RUN_NPM) run build
 	@$(MAKE) embed-assets
 
 # ── Desktop 앱 빌드 (macOS) — wails.json이 cmd/desktop/에 있으므로 cd 필요 ──

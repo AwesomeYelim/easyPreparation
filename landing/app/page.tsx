@@ -1,3 +1,4 @@
+import Anywhere from "./components/live/Anywhere";
 import Beams from "./components/live/Beams";
 import Playground from "./components/live/Playground";
 import ProCarousel from "./components/live/ProCarousel";
@@ -135,6 +136,17 @@ export default function Home() {
         <Stories />
       </section>
 
+      {/* Anywhere: detachable sequence panel + phone remote */}
+      <Band>
+        <section id="remote" className="mx-auto flex max-w-site scroll-mt-24 flex-col gap-16 px-6 py-24 md:py-[120px]">
+          <div className="flex flex-col items-center text-center text-[22px] font-bold leading-[1.4] md:text-[28px]">
+            <h2 className="text-white">어디서든, 편한 화면에서 진행.</h2>
+            <p className="text-dim">보조 모니터로 떼어 내거나, 폰 하나로 넘기거나.</p>
+          </div>
+          <Anywhere />
+        </section>
+      </Band>
+
       {/* Features */}
       <Band>
         <section
@@ -210,7 +222,7 @@ export default function Home() {
               <p className="num text-[34px] font-extrabold text-white">무료</p>
               <p className="text-sm leading-[1.65] text-muted">
                 주보 PDF · 찬송/교독 악보 · 성경 · 예배 화면 3종 · 가사 PPT ·
-                모바일 리모컨 · 자동 업데이트
+                폰 리모컨 · 순서 패널 분리 · 자동 업데이트
               </p>
               <Button href="/download" variant="ghost" className="mt-auto">
                 무료 다운로드
