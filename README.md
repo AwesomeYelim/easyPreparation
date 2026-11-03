@@ -1,56 +1,262 @@
 <div align="center">
 
-```
-  ╔═══════════════════════════════════════════════════╗
-  ║                                                   ║
-  ║    ( ˶ˆᗜˆ˵ )  ✝  easyPreparation                ║
-  ║                                                   ║
-  ║    매주 예배 준비... 이제 쉽게 해요!              ║
-  ║                                                   ║
-  ╚═══════════════════════════════════════════════════╝
-```
-
-<img src="landing/public/ep-logo-192.png" width="80" alt="easyPreparation logo" />
+<img src="landing/public/ep-logo-192.png" width="88" alt="easyPreparation" />
 
 # easyPreparation
 
-**교회 주보 · 가사 PPT · 예배 화면 자동화 플랫폼** ✝️
+**주보부터 송출까지, 예배 준비를 한 화면에서.** ✝️
 
-[![CI](https://github.com/AwesomeYelim/easyPreparation/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/AwesomeYelim/easyPreparation/actions/workflows/test.yml)
-[![Release](https://img.shields.io/github/v/release/AwesomeYelim/easyPreparation?logo=github&color=brightgreen)](https://github.com/AwesomeYelim/easyPreparation/releases/latest)
-[![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)](https://go.dev)
-[![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![SQLite](https://img.shields.io/badge/SQLite-modernc-003B57?logo=sqlite&logoColor=white)](https://pkg.go.dev/modernc.org/sqlite)
-[![Wails](https://img.shields.io/badge/Wails-v3-red?logo=go)](https://wails.io)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+주보 PDF · 찬송/성경 슬라이드 · 프로젝터 · OBS/YouTube 송출 · 폰 리모컨
+
+[![CI](https://github.com/AwesomeYelim/easyPreparation/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/AwesomeYelim/easyPreparation/actions/workflows/test.yml) [![Release](https://img.shields.io/github/v/release/AwesomeYelim/easyPreparation?logo=github&color=brightgreen)](https://github.com/AwesomeYelim/easyPreparation/releases/latest) [![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)](https://go.dev) [![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org) [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org) [![SQLite](https://img.shields.io/badge/SQLite-modernc-003B57?logo=sqlite&logoColor=white)](https://pkg.go.dev/modernc.org/sqlite) [![Wails](https://img.shields.io/badge/Wails-v3-red?logo=go)](https://wails.io) [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 
 [🏠 홈페이지](https://easy-preparation.vercel.app) · [📥 다운로드](https://easy-preparation.vercel.app/download) · [💳 요금제](https://easy-preparation.vercel.app/pricing) · [🚀 릴리즈](https://github.com/AwesomeYelim/easyPreparation/releases/latest)
+
+<br/>
+
+<img src="docs/images/readme/console.png" width="100%" alt="easyPreparation 진행 콘솔 — 왼쪽 예배 순서, 가운데 주보 편집, 오른쪽 Display 미리보기, 아래 타임라인" />
 
 </div>
 
 ---
 
-## ✨ 주요 기능 한눈에 보기
+## ✨ 무엇을 해 주나요
+
+<table>
+<tr>
+<td width="33%" valign="top">
+
+### 📄 준비
+- 예배 순서만 고르면 **주보 PDF**(인쇄용 A4 + 발표용) 완성
+- 찬송 **645곡** · 성경 **7개 번역판** 내장
+- 가사 검색 → **가사 슬라이드** 자동 생성
+
+</td>
+<td width="33%" valign="top">
+
+### 🖥️ 진행
+- 순서대로 **프로젝터 화면**(Display)이 넘어감
+- 항목마다 **자동 타이머** · 타임라인
+- 순서 패널을 **떼어서 다른 모니터로**
+
+</td>
+<td width="33%" valign="top">
+
+### 📡 송출
+- 항목마다 **OBS 씬 · PTZ 카메라** 자동 전환
+- 예배 시간에 **카운트다운 → 송출 시작**
+- **YouTube 방송 · 썸네일** 자동 생성
+
+</td>
+</tr>
+</table>
+
+## 🎬 주일 아침, 이렇게 흘러갑니다
+
+```mermaid
+flowchart LR
+    A["📝 예배 순서 고르기<br/>찬송·성경·기도자"] --> B["📄 주보 PDF<br/>인쇄 · 발표용"]
+    A --> C["🖥️ 프로젝터<br/>슬라이드 자동 구성"]
+    C --> D["⏰ 예배 시간<br/>카운트다운 → 송출 시작"]
+    D --> E["🎥 OBS · YouTube<br/>씬 · 카메라 자동 전환"]
+    C <--> F["📱 폰 리모컨<br/>이전 · 다음 · LIVE"]
+```
+
+## 🪟 어디서든 진행
+
+<table>
+<tr>
+<td width="50%" align="center" valign="top">
+<img src="docs/images/readme/panel.png" width="300" alt="떼어낸 순서 패널 창" /><br/>
+<b>순서 패널, 떼어서 원하는 모니터로</b><br/>
+<sub>OBS 독처럼 제목줄을 잡고 끌면 별도 창으로 떨어지고, 다시 끌어다 놓으면 제자리로.<br/>위쪽에 Display 미리보기 · 항상 위 고정 · 위치 기억 (데스크톱 앱)</sub>
+</td>
+<td width="50%" align="center" valign="top">
+<img src="docs/images/readme/mobile.png" width="300" alt="폰 리모컨" /><br/>
+<b>폰이 리모컨이 됩니다. 앱 설치 없이</b><br/>
+<sub>제어판의 QR 을 찍으면 끝. 미리보기 · LIVE 버튼 위쪽 고정,<br/>탭해서 점프 · 손잡이로 순서 바꾸기 · 좌우 스와이프</sub>
+</td>
+</tr>
+</table>
+
+<details>
+<summary><b>📱 폰 리모컨 자세히</b></summary>
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                                                                 │
-│   📄 주보 PDF       🎵 가사 PPT       📖 성경 검색              │
-│   인쇄용 + 발표용   bugs.co.kr 연동   7개 번역판 지원           │
-│                                                                 │
-│   🎬 OBS 연동       📱 모바일 리모컨  ⏰ 자동 스케줄러          │
-│   씬 전환 + 송출    PWA 스마트폰      예배 시간 자동 감지        │
-│                                                                 │
-│   🎼 찬송가 검색    📺 예배 화면       💾 Desktop 앱             │
-│   645곡 DB 기반     실시간 슬라이드   Wails v3 데스크톱          │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+같은 WiFi:  http://{로컬IP}:8080/mobile
+QR 코드:    http://{로컬IP}:8080/mobile/qr.png
 ```
+
+제어판 UI → QR 아이콘 클릭 → 스마트폰으로 스캔 → 리모컨 화면
+
+- 위쪽 고정: Display 미리보기 + STAGE · TIMER · LIVE(방송 시작/종료, 확인 창)
+- 순서 목록: 현재/다음 표시, 탭해서 점프, 펼쳐서 섹션 점프, 손잡이로 순서 바꾸기
+- 이전/다음 버튼 · 좌우 스와이프 · 예약 송출 카운트다운
+- 서버 주소는 접속한 주소를 그대로 쓰므로 별도 설정이 필요 없음
+- 같은 와이파이가 아니면 cloudflared 터널(`/api/tunnel/start`)로 외부 주소를 받아 QR 로 접속
+
+iOS/Android Chrome에서 홈 화면에 추가하면 전체화면 앱으로 실행됩니다.
+
+</details>
+
+## 📥 설치
+
+| 운영체제 | 방법 |
+|:--|:--|
+| **Windows** | [`easyPreparation_desktop_windows_amd64_setup.exe`](https://github.com/AwesomeYelim/easyPreparation/releases/latest/download/easyPreparation_desktop_windows_amd64_setup.exe) 내려받아 실행 · 또는 PowerShell `irm https://github.com/AwesomeYelim/easyPreparation/releases/latest/download/install-windows.ps1 \| iex` |
+| **macOS** (Apple Silicon) | 터미널 `curl -fsSL https://github.com/AwesomeYelim/easyPreparation/releases/latest/download/install-mac.sh \| bash` |
+| **Linux · 서버** | [릴리즈](https://github.com/AwesomeYelim/easyPreparation/releases/latest) 의 `easyPreparation_server_linux_amd64` 실행 → 브라우저로 `http://<IP>:8080` |
+
+새 버전이 나오면 앱 위쪽에 **업데이트 배너**가 뜹니다.
+
+## 🎯 기능과 플랜
+
+| 기능 | 설명 | 플랜 |
+|------|------|:----:|
+| 📄 **주보 생성** | 인쇄용(A4) + 프레젠테이션용 PDF 자동 생성 | Free |
+| ✏️ **주보 편집** | 예배 순서 드래그 앤 드롭, 성경 구절 선택, 교회 소식 트리 편집 | Free |
+| 🎵 **가사 PPT 생성** | 곡명 입력 → 가사 자동 검색(bugs.co.kr) → 중복 제거 → ZIP | Free |
+| 🎼 **찬송가 검색** | 645곡 새찬송가 번호/제목/가사 검색, Display 전송 | Free |
+| 📖 **성경 검색** | 구약/신약 탭, 장/절 선택, 7개 번역판, 비교 모드(2컬럼) | Free |
+| 🖥️ **예배 화면** | OBS Browser Source 연동, 성경/찬송/교독/가사 슬라이드 | Free |
+| 🎛️ **Display 제어** | append 방식 항목 추가, 제어판에서 삭제/점프/자동 넘김 | Free |
+| ⚡ **실시간 상태** | WebSocket 파일 생성 진행 + Display 위치 브로드캐스트 | Free |
+| 💾 **Desktop 앱** | Wails v3 — 서버 내장, 별도 설치 없이 실행 | Free |
+| 🪟 **순서 패널 분리** | OBS 독처럼 예배 순서 패널을 끌어서 떼고 붙임 — 분리 창에 Display 미리보기, 다른 모니터·항상 위 고정, 위치 기억 (데스크톱 앱, 끌어서 떼기는 Windows) | Free |
+| 📱 **모바일 리모컨** | `/mobile` — 같은 와이파이의 폰으로 QR 접속(외부망은 cloudflared 터널). 미리보기·이전/다음·점프·섹션 점프·자동 타이머·방송 시작/종료·순서 바꾸기 | Free |
+| 🧙 **초기 설정 위저드** | 첫 실행 시 교회명(한글/영문) 입력, 간편 온보딩 | Free |
+| 🔔 **자동 업데이트 알림** | GitHub Releases → 새 버전 발견 시 헤더 배너 표시 | Free |
+| 🎥 **PTZ 카메라 제어** | 예배 순서 항목마다 프리셋 지정(항목의 `ptzPreset` 필드, `config/{예배타입}.json` 에 저장) → Display 점프 시 자동 이동, 스트림 프리뷰·수동 이동 (`/api/ptz/*`) | Free |
+| 🔑 **라이선스 시스템** | Free / Pro / Enterprise, `FeatureGate`로 기능 게이팅 | — |
+| 📡 **OBS 통합 제어** | 항목별 씬 자동 전환 + 스트리밍 시작/종료 + 상태 모니터링 + 초기 설정(씬·소스 자동 생성)·로고 넣기 | **Pro** |
+| ⏰ **자동 스케줄러** | 예배 시간 자동 감지 → 카운트다운 → OBS 스트리밍 시작 | **Pro** |
+| ▶️ **YouTube 연동** | OAuth → 라이브 방송 자동 생성 → OBS 스트림 키 자동 설정 | **Pro** |
+| 🖼️ **썸네일 자동 생성** | 예배 유형 + 날짜 기반 YouTube 썸네일 생성 + 업로드 | **Pro** |
+
+## 📡 OBS 와 함께 쓰기
+
+> easyPreparation은 **콘텐츠 · 타이밍 · 제어**를 담당하고, OBS는 **인코딩 · 합성 · 송출**만 담당합니다.
+
+```mermaid
+flowchart LR
+    subgraph EP["🧠 easyPreparation — 콘텐츠 · 타이밍 · 제어"]
+        SCH["⏰ 스케줄러<br/>예배 시간 감지 · 카운트다운"]
+        DSP["🖥️ Display 렌더링<br/>/display · /display/overlay"]
+        CTL["🎛️ 제어판 · 폰 리모컨<br/>항목 점프 · LIVE"]
+    end
+    subgraph OBS["💪 OBS Studio — 인코딩 · 합성 · 송출"]
+        SCN["씬 전환"]
+        BRS["Browser Source"]
+        ENC["카메라 · 오디오 · RTMP 송출"]
+    end
+    SCH -- "WebSocket (goobs)" --> SCN
+    SCH -- "스트리밍 시작/종료" --> ENC
+    CTL -- "항목별 씬 · PTZ" --> SCN
+    DSP -- "http" --> BRS
+```
+
+| 자체 구현 시 | OBS 활용 시 |
+|:------------|:------------|
+| RTMP 인코딩, 오디오 믹싱, 하드웨어 가속 직접 구현 | 10년+ 검증된 인코딩 파이프라인 |
+| 카메라 + 마이크 + 화면 합성 = 수개월 작업 | 이미 완성된 씬 합성 시스템 |
+| 실시간 방송 안정성 보장 어려움 | 전 세계 방송에서 검증됨 |
+
+**어디서 무엇을 하나** — EP 는 예배 순서와 묶여 움직이는 것만 맡고, OBS 화면을 그대로 옮긴 기능은 두지 않습니다(v1.6.1 에서 정리).
+
+| EP 에서 | OBS 에서 직접 |
+|:--|:--|
+| 항목별 씬 자동 전환(+자동 복귀) · 항목별 PTZ 프리셋 | 소스 목록 관리(켜기/끄기·삭제) |
+| 예약 송출(카운트다운 → 시작) · 송출 시작/종료(PC·폰) | 카메라 소스 추가 |
+| YouTube 방송 생성 + 스트림 키 자동 적용 | 스트림 키 직접 입력(YouTube 미사용 시: 설정 → 방송) |
+| 초기 설정(camera·monitor 씬, 카메라·모니터 캡처·EP_Display 소스 생성) | 로고 크기·세부 위치(변형) |
+| 로고 넣기(네 모서리, 15%) · EP_Display 소스 다시 만들기 | 오디오 믹싱 · 트랜지션 · 인코딩 설정 |
+
+<details>
+<summary><b>⏱️ 예약 송출이 동작하는 순서</b></summary>
+
+```mermaid
+sequenceDiagram
+    participant S as 스케줄러
+    participant D as Display / Overlay
+    participant C as 제어판
+    participant O as OBS
+
+    Note over S: 예배 시간 N분 전
+    loop 매초 카운트다운
+        S->>D: schedule_countdown (WS)
+        S->>C: schedule_countdown (WS)
+        D-->>D: 카운트다운 오버레이 표시
+        C-->>C: 빨간 배너 MM:SS
+    end
+
+    Note over S: 예배 시간 도달 (T-0)
+    S->>S: config/{worshipType}.json 로드
+    S->>D: order (WS) — 예배 순서 교체
+    S->>O: StartStream (goobs)
+    S->>O: SwitchScene (goobs)
+    S->>C: schedule_started (WS)
+    D-->>D: 카운트다운 해제 → 첫 슬라이드
+    C-->>C: 카운트다운 해제 → LIVE 뱃지
+```
+
+</details>
+
+<details>
+<summary><b>🔧 OBS 직접 설정하기 (앱의 "초기 설정"·"자동 설정"을 쓰지 않을 때)</b></summary>
+
+#### 1. OBS Studio 설치
+
+[https://obsproject.com](https://obsproject.com) 에서 운영체제에 맞는 버전을 다운로드합니다.
+
+> **OBS 28 이상 권장** — WebSocket 서버가 내장되어 별도 플러그인 불필요
+
+#### 2. WebSocket 서버 활성화
+
+OBS 메뉴 → **도구(Tools) → WebSocket 서버 설정**
+
+| 항목 | 값 |
+|------|-----|
+| WebSocket 서버 활성화 | ✅ 체크 |
+| 서버 포트 | `4455` (기본값) |
+| 인증 활성화 | 선택 — 활성화 시 비밀번호 설정 |
+
+#### 3. `config/obs.json` 작성
+
+```json
+{
+  "host": "localhost:4455",
+  "password": "your_password_here",
+  "scenes": {
+    "찬송": "camera",
+    "기도": "camera",
+    "말씀": "camera",
+    "성경": "monitor",
+    "교독문": "monitor"
+  },
+  "cameraScene": "camera",
+  "displayScene": "monitor",
+  "fadeMs": 800,
+  "fadeDelaySec": 3
+}
+```
+
+> `config/obs.json`이 없으면 OBS 연동 전체 비활성(에러 없음)
+
+#### 4. Browser Source 추가
+
+| Source | URL | 용도 |
+|--------|-----|------|
+| Browser Source #1 | `http://localhost:8080/display` | 프로젝터 출력 (악보 이미지 포함) |
+| Browser Source #2 | `http://localhost:8080/display/overlay` | 방송 자막 (반투명 배경, 가사/성경) |
+
+</details>
 
 ---
 
-## 🗺️ 아키텍처
+## 🛠️ 개발자 문서
+
+<details>
+<summary><b>🗺️ 아키텍처</b></summary>
 
 ```mermaid
 flowchart TD
@@ -142,178 +348,9 @@ flowchart TD
     Server --> YOUTUBE
 ```
 
----
-
-## 🎯 Features
-
-| 기능 | 설명 | 플랜 |
-|------|------|:----:|
-| 📄 **주보 생성** | 인쇄용(A4) + 프레젠테이션용 PDF 자동 생성 | Free |
-| ✏️ **주보 편집** | 예배 순서 드래그 앤 드롭, 성경 구절 선택, 교회 소식 트리 편집 | Free |
-| 🎵 **가사 PPT 생성** | 곡명 입력 → 가사 자동 검색(bugs.co.kr) → 중복 제거 → ZIP | Free |
-| 🎼 **찬송가 검색** | 645곡 새찬송가 번호/제목/가사 검색, Display 전송 | Free |
-| 📖 **성경 검색** | 구약/신약 탭, 장/절 선택, 7개 번역판, 비교 모드(2컬럼) | Free |
-| 🖥️ **예배 화면** | OBS Browser Source 연동, 성경/찬송/교독/가사 슬라이드 | Free |
-| 🎛️ **Display 제어** | append 방식 항목 추가, 제어판에서 삭제/점프/자동 넘김 | Free |
-| ⚡ **실시간 상태** | WebSocket 파일 생성 진행 + Display 위치 브로드캐스트 | Free |
-| 💾 **Desktop 앱** | Wails v3 — 서버 내장, 별도 설치 없이 실행 | Free |
-| 🪟 **순서 패널 분리** | OBS 독처럼 예배 순서 패널을 끌어서 떼고 붙임 — 분리 창에 Display 미리보기, 다른 모니터·항상 위 고정, 위치 기억 (데스크톱 앱, 끌어서 떼기는 Windows) | Free |
-| 📱 **모바일 리모컨** | `/mobile` — 같은 와이파이의 폰으로 QR 접속(외부망은 cloudflared 터널). 미리보기·이전/다음·점프·섹션 점프·자동 타이머·방송 시작/종료·순서 바꾸기 | Free |
-| 🧙 **초기 설정 위저드** | 첫 실행 시 교회명(한글/영문) 입력, 간편 온보딩 | Free |
-| 🔔 **자동 업데이트 알림** | GitHub Releases → 새 버전 발견 시 헤더 배너 표시 | Free |
-| 🎥 **PTZ 카메라 제어** | 예배 순서 항목마다 프리셋 지정(항목의 `ptzPreset` 필드, `config/{예배타입}.json` 에 저장) → Display 점프 시 자동 이동, 스트림 프리뷰·수동 이동 (`/api/ptz/*`) | Free |
-| 🔑 **라이선스 시스템** | Free / Pro / Enterprise, `FeatureGate`로 기능 게이팅 | — |
-| 📡 **OBS 통합 제어** | 항목별 씬 자동 전환 + 스트리밍 시작/종료 + 상태 모니터링 + 초기 설정(씬·소스 자동 생성)·로고 넣기 | **Pro** |
-| ⏰ **자동 스케줄러** | 예배 시간 자동 감지 → 카운트다운 → OBS 스트리밍 시작 | **Pro** |
-| ▶️ **YouTube 연동** | OAuth → 라이브 방송 자동 생성 → OBS 스트림 키 자동 설정 | **Pro** |
-| 🖼️ **썸네일 자동 생성** | 예배 유형 + 날짜 기반 YouTube 썸네일 생성 + 업로드 | **Pro** |
-
----
-
-## 🖼️ 화면 구성
-
-> 메인 화면(`ProShell`) — OBS 처럼 패널을 나눈 진행 콘솔
-
-```
-┌──┬────────────────────────────────────────────────────────────────┐
-│  │ TopBar   ● OFF AIR  시계   Bulletin · Hymns · Scripture  [Broadcast] │
-│I ├───────────────┬───────────────────────────────┬────────────────┤
-│c │ 예배 순서  ⤢  │                               │ Studio         │
-│o │ ● camera  방송│   작업 영역                   │ 미리보기·화면· │
-│n │ ◀ PREV  NEXT ▶│   (주보 편집 / 찬송 / 성경)   │ 배경·썸네일·   │
-│  │ 1 전주        │                               │ 유튜브·스케줄· │
-│B │ 2 예배의 부름 │                               │ OBS·스타일     │
-│a │ ...           │                               │                │
-│r ├───────────────┴───────────────────────────────┴────────────────┤
-│  │ Service Timeline — 항목별 예상 시간 · 자동 넘김                  │
-└──┴────────────────────────────────────────────────────────────────┘
-```
-
-- **예배 순서 패널**은 제목줄을 잡고 끌면 별도 창(`/remote`)으로 떨어지고, 다시 끌어다 놓으면 제자리로 돌아갑니다. 분리 창 위쪽에 Display 미리보기가 붙습니다(데스크톱 앱).
-- **폰 리모컨**(`/mobile`)은 같은 진행 상태를 공유합니다(`lib/useDisplaySession.ts`).
-
----
-
-## 📡 OBS 통합 아키텍처
-
-> easyPreparation은 **콘텐츠 · 타이밍 · 제어**를 담당하고, OBS는 **인코딩 · 합성 · 송출**만 담당합니다.
-
-```
-┌─ easyPreparation (두뇌) ─────────────────┐      ┌─ OBS Studio (근육) ──────────┐
-│                                           │      │                              │
-│  스케줄러                                 │      │                              │
-│  ├─ 예배 시간 자동 감지                   │      │                              │
-│  ├─ T-N분: 카운트다운 시작          ──────┼──ws──┼→ 씬 전환                     │
-│  └─ T-0초: 순서 로드 + 스트리밍     ──────┼──ws──┼→ 스트리밍 시작/종료          │
-│                                           │      │                              │
-│  Display 렌더링                           │      │   ┌──────────────────────┐   │
-│  ├─ /display (프로젝터용)           ◀─────┼──────┼── │ Browser Source #1    │   │
-│  ├─ /display/overlay (방송 자막)    ◀─────┼──────┼── │ Browser Source #2    │   │
-│  └─ 카운트다운 오버레이                   │      │   └──────────────────────┘   │
-│                                           │      │                              │
-│  제어판                                   │      │   카메라 입력                │
-│  ├─ 항목 점프 / 드래그 재배치             │      │   오디오 믹싱                │
-│  ├─ LIVE 뱃지 + 수동 방송 시작/종료       │      │   씬 합성 + 트랜지션         │
-│  └─ 카운트다운 배너                       │      │   RTMP 인코딩 + 송출         │
-│                                           │      │                              │
-└───────────────────────────────────────────┘      └──────────────────────────────┘
-          │                                                     │
-          └─────────────── WebSocket (goobs) ──────────────────┘
-```
-
-| 자체 구현 시 | OBS 활용 시 |
-|:------------|:------------|
-| RTMP 인코딩, 오디오 믹싱, 하드웨어 가속 직접 구현 | 10년+ 검증된 인코딩 파이프라인 |
-| 카메라 + 마이크 + 화면 합성 = 수개월 작업 | 이미 완성된 씬 합성 시스템 |
-| 실시간 방송 안정성 보장 어려움 | 전 세계 방송에서 검증됨 |
-
-**어디서 무엇을 하나** — EP 는 예배 순서와 묶여 움직이는 것만 맡고, OBS 화면을 그대로 옮긴 기능은 두지 않습니다(v1.6.1 에서 정리).
-
-| EP 에서 | OBS 에서 직접 |
-|:--|:--|
-| 항목별 씬 자동 전환(+자동 복귀) · 항목별 PTZ 프리셋 | 소스 목록 관리(켜기/끄기·삭제) |
-| 예약 송출(카운트다운 → 시작) · 송출 시작/종료(PC·폰) | 카메라 소스 추가 |
-| YouTube 방송 생성 + 스트림 키 자동 적용 | 스트림 키 직접 입력(YouTube 미사용 시: 설정 → 방송) |
-| 초기 설정(camera·monitor 씬, 카메라·모니터 캡처·EP_Display 소스 생성) | 로고 크기·세부 위치(변형) |
-| 로고 넣기(네 모서리, 15%) · EP_Display 소스 다시 만들기 | 오디오 믹싱 · 트랜지션 · 인코딩 설정 |
-
-### ⏱️ 스케줄 자동화 흐름
-
-```mermaid
-sequenceDiagram
-    participant S as 스케줄러
-    participant D as Display / Overlay
-    participant C as 제어판
-    participant O as OBS
-
-    Note over S: 예배 시간 N분 전
-    loop 매초 카운트다운
-        S->>D: schedule_countdown (WS)
-        S->>C: schedule_countdown (WS)
-        D-->>D: 카운트다운 오버레이 표시
-        C-->>C: 빨간 배너 MM:SS
-    end
-
-    Note over S: 예배 시간 도달 (T-0)
-    S->>S: config/{worshipType}.json 로드
-    S->>D: order (WS) — 예배 순서 교체
-    S->>O: StartStream (goobs)
-    S->>O: SwitchScene (goobs)
-    S->>C: schedule_started (WS)
-    D-->>D: 카운트다운 해제 → 첫 슬라이드
-    C-->>C: 카운트다운 해제 → LIVE 뱃지
-```
-
-### 🔧 OBS 설치 및 설정
-
-#### 1. OBS Studio 설치
-
-[https://obsproject.com](https://obsproject.com) 에서 운영체제에 맞는 버전을 다운로드합니다.
-
-> **OBS 28 이상 권장** — WebSocket 서버가 내장되어 별도 플러그인 불필요
-
-#### 2. WebSocket 서버 활성화
-
-OBS 메뉴 → **도구(Tools) → WebSocket 서버 설정**
-
-| 항목 | 값 |
-|------|-----|
-| WebSocket 서버 활성화 | ✅ 체크 |
-| 서버 포트 | `4455` (기본값) |
-| 인증 활성화 | 선택 — 활성화 시 비밀번호 설정 |
-
-#### 3. `config/obs.json` 작성
-
-```json
-{
-  "host": "localhost:4455",
-  "password": "your_password_here",
-  "scenes": {
-    "찬송": "camera",
-    "기도": "camera",
-    "말씀": "camera",
-    "성경": "monitor",
-    "교독문": "monitor"
-  },
-  "cameraScene": "camera",
-  "displayScene": "monitor",
-  "fadeMs": 800,
-  "fadeDelaySec": 3
-}
-```
-
-> `config/obs.json`이 없으면 OBS 연동 전체 비활성(에러 없음)
-
-#### 4. Browser Source 추가
-
-| Source | URL | 용도 |
-|--------|-----|------|
-| Browser Source #1 | `http://localhost:8080/display` | 프로젝터 출력 (악보 이미지 포함) |
-| Browser Source #2 | `http://localhost:8080/display/overlay` | 방송 자막 (반투명 배경, 가사/성경) |
-
----
-
-## 📁 프로젝트 구조
+</details>
+<details>
+<summary><b>📁 프로젝트 구조</b></summary>
 
 ```
 easyPreparation/
@@ -412,9 +449,9 @@ easyPreparation/
 └── Makefile
 ```
 
----
-
-## 🖥️ 프론트엔드 아키텍처
+</details>
+<details>
+<summary><b>🖥️ 프론트엔드 아키텍처</b></summary>
 
 ### Provider 계층
 
@@ -469,9 +506,9 @@ apiClient.saveSchedule(config)            // POST /api/schedule
 openDisplayWindow()                       // Display 창 열기 (중복 reload 방지)
 ```
 
----
-
-## 🚀 시작하기
+</details>
+<details>
+<summary><b>🚀 개발 환경 · 실행</b></summary>
 
 ### 사전 요구사항
 
@@ -542,9 +579,9 @@ NSIS=1 make build-desktop-windows   # Windows 설치 파일까지 (makensis 필�
 make dev-desktop     # Desktop 개발 모드 (Next.js :3000 + go run -tags dev ./cmd/desktop)
 ```
 
----
-
-## 🔌 API 엔드포인트
+</details>
+<details>
+<summary><b>🔌 API 엔드포인트</b></summary>
 
 서버는 `0.0.0.0:8080`에서 실행됩니다.
 
@@ -664,9 +701,9 @@ make dev-desktop     # Desktop 개발 모드 (Next.js :3000 + go run -tags dev .
 | `POST` | `/api/thumbnail/upload` | 배경 이미지 올리기 |
 | `GET` | `/api/video-bg/list` · `POST` `upload` · `DELETE` `delete` | 영상 배경 |
 
----
-
-## 🔑 라이선스 시스템
+</details>
+<details>
+<summary><b>🔑 라이선스 시스템</b></summary>
 
 ### 플랜별 기능
 
@@ -706,9 +743,9 @@ mux.Handle("/api/schedule", middleware.FeatureGate(license.FeatureAutoScheduler,
 4. 활성화 정보 → data/license.json 캐시 (DB 없는 환경도 유지)
 ```
 
----
-
-## 🚢 CI/CD + 릴리즈
+</details>
+<details>
+<summary><b>🚢 CI/CD + 릴리즈</b></summary>
 
 ### GitHub Actions 워크플로우
 
@@ -763,9 +800,9 @@ git tag v1.2.0        && git push origin v1.2.0          # 정식 → latest 갱
 
 > `test.yml` 의 `fresh-install` 잡이 매 push 마다 "prod 빌드 → 빈 디렉터리 기동 → schema 적용 → `/api/health` 200 → graceful 종료" 를 검증하므로, 신규 설치 경로가 깨지면 CI 에서 먼저 실패합니다.
 
----
-
-## 💾 Desktop 앱 (Wails v3)
+</details>
+<details>
+<summary><b>💾 Desktop 앱 (Wails v3)</b></summary>
 
 ```
 easyPreparation.app
@@ -784,28 +821,9 @@ make build-desktop                        # 현재 OS
 ./scripts/build-desktop.sh darwin|windows|linux
 ```
 
----
-
-## 📱 모바일 PWA 리모컨
-
-```
-같은 WiFi:  http://{로컬IP}:8080/mobile
-QR 코드:    http://{로컬IP}:8080/mobile/qr.png
-```
-
-제어판 UI → QR 아이콘 클릭 → 스마트폰으로 스캔 → 리모컨 화면
-
-- 위쪽 고정: Display 미리보기 + STAGE · TIMER · LIVE(방송 시작/종료, 확인 창)
-- 순서 목록: 현재/다음 표시, 탭해서 점프, 펼쳐서 섹션 점프, 손잡이로 순서 바꾸기
-- 이전/다음 버튼 · 좌우 스와이프 · 예약 송출 카운트다운
-- 서버 주소는 접속한 주소를 그대로 쓰므로 별도 설정이 필요 없음
-- 같은 와이파이가 아니면 cloudflared 터널(`/api/tunnel/start`)로 외부 주소를 받아 QR 로 접속
-
-iOS/Android Chrome에서 홈 화면에 추가하면 전체화면 앱으로 실행됩니다.
-
----
-
-## 📋 data.info Field Reference
+</details>
+<details>
+<summary><b>📋 data.info Field Reference</b></summary>
 
 예배 순서 JSON의 `info` 필드 규칙:
 
@@ -818,9 +836,9 @@ iOS/Android Chrome에서 홈 화면에 추가하면 전체화면 앱으로 실�
 | `"notice"` | 교회 소식 블록 | ChurchNews UI |
 | `"-"` | 자동 처리 (편집 불가) | "이 항목은 자동으로 처리됩니다" |
 
----
-
-## 🗃️ DB 테이블
+</details>
+<details>
+<summary><b>🗃️ DB 테이블</b></summary>
 
 | 테이블 | 설명 |
 |--------|------|
@@ -835,9 +853,9 @@ iOS/Android Chrome에서 홈 화면에 추가하면 전체화면 앱으로 실�
 
 **DB 엔진**: SQLite (`modernc.org/sqlite`, CGO 불필요). `data/schema.sql` 기반 자동 초기화.
 
----
-
-## 📖 성경 번역판
+</details>
+<details>
+<summary><b>📖 성경 번역판</b></summary>
 
 | ID | 이름 | 비고 |
 |:--:|------|------|
@@ -851,9 +869,9 @@ iOS/Android Chrome에서 홈 화면에 추가하면 전체화면 앱으로 실�
 
 비교 모드: Bible 페이지에서 두 번역판을 나란히 비교 가능.
 
----
-
-## 🌐 External Resources
+</details>
+<details>
+<summary><b>🌐 External Resources</b></summary>
 
 | 리소스 | 용도 |
 |--------|------|
@@ -864,9 +882,9 @@ iOS/Android Chrome에서 홈 화면에 추가하면 전체화면 앱으로 실�
 | **GitHub Releases API** | 자동 업데이트 체크 (`AwesomeYelim/easyPreparation`) |
 | **bugs.co.kr** | 가사 검색 크롤링 |
 
----
-
-## 📐 PDF Size Reference
+</details>
+<details>
+<summary><b>📐 PDF Size Reference</b></summary>
 
 코드 기본값 (`internal/extract/extract.go` `initConfig`). `config/custom.json` 으로 덮어쓸 수 있으며, 아래 수치는 OS 와 무관하게 동일합니다.
 
@@ -885,3 +903,4 @@ iOS/Android Chrome에서 홈 화면에 추가하면 전체화면 앱으로 실�
   width : 1409.0,  height : 880.0
 ```
 
+</details>
