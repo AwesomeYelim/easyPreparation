@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -39,9 +38,8 @@ type ScheduleConfig struct {
 var (
 	scheduleMu   sync.RWMutex
 	scheduleConf ScheduleConfig
-	// 같은 단계 중복 실행 방지: "worshipType_YYYYMMDD_prep|start" → 실행 시각.
-	// 파일(data/schedule_runs.json)에도 남겨, 앱을 다시 켜도 같은 날 두 번 실행하지 않는다.
-	scheduleRuns   = map[string]string{}
+	// 같은 단계 중복 실행 방지: "worshipType_YYYYMMDD_prep|start" → true
+	scheduleRuns   = map[string]bool{}
 	scheduleRunsMu sync.Mutex
 	schedulerStop  chan struct{}
 	// 수동 방송 시작 중복 방지
@@ -136,7 +134,6 @@ func InitScheduler() {
 	scheduleMu.Lock()
 	scheduleConf = loadScheduleConfig()
 	scheduleMu.Unlock()
-	loadScheduleRuns()
 	// 기존 goroutine 정리 (double-init 방지)
 	if schedulerStop != nil {
 		close(schedulerStop)
@@ -165,38 +162,14 @@ func schedulerLoop() {
 	}
 }
 
-func scheduleRunsPath() string {
-	execPath := path.ExecutePath("easyPreparation")
-	return filepath.Join(execPath, "data", "schedule_runs.json")
-}
-
-func loadScheduleRuns() {
-	runs := map[string]string{}
-	if data, err := os.ReadFile(scheduleRunsPath()); err == nil {
-		_ = json.Unmarshal(data, &runs)
-	}
-	scheduleRunsMu.Lock()
-	scheduleRuns = runs
-	scheduleRunsMu.Unlock()
-}
-
-// claimScheduleRun — 오늘 이 단계를 아직 안 했으면 실행했다고 기록하고 true.
-// 오늘 날짜가 아닌 기록은 지운다.
-func claimScheduleRun(key, today string) bool {
+// claimScheduleRun — 이 단계를 아직 안 했으면 실행했다고 기록하고 true
+func claimScheduleRun(key string) bool {
 	scheduleRunsMu.Lock()
 	defer scheduleRunsMu.Unlock()
-	if _, done := scheduleRuns[key]; done {
+	if scheduleRuns[key] {
 		return false
 	}
-	for k := range scheduleRuns {
-		if !strings.Contains(k, "_"+today+"_") {
-			delete(scheduleRuns, k)
-		}
-	}
-	scheduleRuns[key] = time.Now().Format(time.RFC3339)
-	if err := safefile.WriteJSON(scheduleRunsPath(), scheduleRuns); err != nil {
-		log.Printf("[scheduler] 실행 기록 저장 실패: %v", err)
-	}
+	scheduleRuns[key] = true
 	return true
 }
 
@@ -257,14 +230,10 @@ func checkSchedule(now time.Time) {
 			})
 		}
 		base := entry.WorshipType + "_" + today + "_"
-		if st.prep && claimScheduleRun(base+"prep", today) {
-			// 순서에 쓰는 악보·성경 본문을 미리 받아 둔다 — 예배 시각에 순서가 바로 뜨도록
-			go warmScheduledOrder(entry)
-			if conf.AutoStream {
-				go prepareScheduledStream(entry)
-			}
+		if st.prep && conf.AutoStream && claimScheduleRun(base+"prep") {
+			go prepareScheduledStream(entry)
 		}
-		if st.start && claimScheduleRun(base+"start", today) {
+		if st.start && claimScheduleRun(base+"start") {
 			go startScheduledWorship(entry)
 		}
 	}
@@ -377,16 +346,6 @@ func loadScheduledOrder(entry ScheduleEntry) ([]map[string]interface{}, error) {
 		order[i] = preprocessItem(item)
 	}
 	return order, nil
-}
-
-// warmScheduledOrder — 카운트다운 시작 때 순서를 한 번 전처리해 악보 이미지 등을 캐시에 받아 둔다
-func warmScheduledOrder(entry ScheduleEntry) {
-	start := time.Now()
-	if _, err := loadScheduledOrder(entry); err != nil {
-		scheduleNotice(entry, err.Error())
-		return
-	}
-	log.Printf("[scheduler] 순서 미리 준비 완료: %s (%s)", entry.Label, time.Since(start).Round(time.Millisecond))
 }
 
 func executeSchedule(entry ScheduleEntry) {
