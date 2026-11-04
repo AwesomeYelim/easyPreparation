@@ -100,7 +100,7 @@ export default function MobileRemote() {
   });
   const {
     connected: isOpen, items, idx, subIdx, subTotal, timerOn, streamStatus, streamBusy,
-    schedCountdown, loadingMsg,
+    schedCountdown, schedNotice, loadingMsg,
   } = session;
   const live = streamStatus.active;
 
@@ -288,6 +288,13 @@ export default function MobileRemote() {
               <span className="text-[16px] font-bold font-mono tracking-widest">
                 {String(schedCountdown.minutes).padStart(2, "0")}:{String(schedCountdown.seconds).padStart(2, "0")}
               </span>
+            </div>
+          )}
+
+          {/* 예배 자동 시작 알림 */}
+          {schedNotice && (
+            <div className="mt-2 px-3 py-2 rounded-xl text-[12px] leading-snug" style={{ wordBreak: "keep-all", background: "#fff4d6", color: C.onSurface, border: `1px solid ${C.outlineVariant}` }}>
+              <span className="font-semibold">{schedNotice.label}</span> · {schedNotice.message}
             </div>
           )}
 

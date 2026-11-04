@@ -21,6 +21,8 @@ import { usePageVisible } from "@/lib/usePageVisible";
 import { OBSStatus, StreamStatus, WorshipOrderItem } from "@/types";
 
 export type ScheduleCountdown = { label: string; minutes: number; seconds: number } | null;
+/** 예배 자동 시작이 건너뛰거나 실패한 이유 (잠깐 보였다 사라짐) */
+export type ScheduleNotice = { label: string; message: string } | null;
 
 type Options = {
   /** display/status 폴링 주기 (ms) */
@@ -46,6 +48,7 @@ export function useDisplaySession({ pollMs = 5000, onOrder, onIdxChange }: Optio
   const [streamStatus, setStreamStatus] = useState<StreamStatus>(EMPTY_STREAM);
   const [streamBusy, setStreamBusy] = useState(false);
   const [schedCountdown, setSchedCountdown] = useState<ScheduleCountdown>(null);
+  const [schedNotice, setSchedNotice] = useState<ScheduleNotice>(null);
   const [loadingMsg, setLoadingMsg] = useState("");
 
   const idxRef = useRef(idx);
@@ -57,6 +60,7 @@ export function useDisplaySession({ pollMs = 5000, onOrder, onIdxChange }: Optio
   const reorderLockRef = useRef(false);
   const reorderSuppressRef = useRef(false);
   const schedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const noticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const keyCounterRef = useRef(0);
   // 콜백은 ref 로 — 호출하는 쪽이 매 렌더 새 함수를 넘겨도 WS 구독을 다시 걸지 않는다
   const onOrderRef = useRef(onOrder);
@@ -130,6 +134,11 @@ export function useDisplaySession({ pollMs = 5000, onOrder, onIdxChange }: Optio
         case "schedule_started":
           setSchedCountdown(null);
           if (schedTimeoutRef.current) clearTimeout(schedTimeoutRef.current);
+          break;
+        case "schedule_notice":
+          setSchedNotice({ label: msg.label, message: msg.message });
+          if (noticeTimeoutRef.current) clearTimeout(noticeTimeoutRef.current);
+          noticeTimeoutRef.current = setTimeout(() => setSchedNotice(null), 15000);
           break;
       }
     });
@@ -215,7 +224,7 @@ export function useDisplaySession({ pollMs = 5000, onOrder, onIdxChange }: Optio
     connected: isOpen,
     pageVisible,
     items, setItems, idx, setIdx, subIdx, setSubIdx, subTotal,
-    timerOn, obsStatus, streamStatus, streamBusy, schedCountdown, loadingMsg,
+    timerOn, obsStatus, streamStatus, streamBusy, schedCountdown, schedNotice, loadingMsg,
     navigate, jump, toggleTimer, setStream, reorder,
   };
 }

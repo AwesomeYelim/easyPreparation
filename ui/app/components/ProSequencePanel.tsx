@@ -28,7 +28,7 @@ export default function ProSequencePanel({ standalone = false }: ProSequencePane
   const session = useDisplaySession({ pollMs: 5000, onOrder: () => setExpandedItems(new Set()) });
   const {
     items, setItems, idx, subIdx: subPageIdx, timerOn: timerEnabled,
-    obsStatus, streamStatus, schedCountdown, loadingMsg, pageVisible,
+    obsStatus, streamStatus, schedCountdown, schedNotice, loadingMsg, pageVisible,
   } = session;
   const includeThumbnail = useRecoilValue(includeThumbnailOnStreamState);
   const includeTitle = useRecoilValue(includeTitleOnStreamState);
@@ -357,6 +357,13 @@ export default function ProSequencePanel({ standalone = false }: ProSequencePane
           <span className="text-base font-bold font-mono tracking-widest text-white">
             {String(schedCountdown.minutes).padStart(2, "0")}:{String(schedCountdown.seconds).padStart(2, "0")}
           </span>
+        </div>
+      )}
+
+      {/* ── 예배 자동 시작 알림 ── */}
+      {schedNotice && (
+        <div className="px-3 py-2 bg-amber-900/70 border-b border-pro-border flex-shrink-0 text-[11px] text-white leading-snug" style={{ wordBreak: "keep-all" }}>
+          <span className="font-semibold">{schedNotice.label}</span> · {schedNotice.message}
         </div>
       )}
 

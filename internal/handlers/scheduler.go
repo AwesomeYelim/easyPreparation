@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -38,12 +39,22 @@ type ScheduleConfig struct {
 var (
 	scheduleMu   sync.RWMutex
 	scheduleConf ScheduleConfig
-	// 동일 스케줄 중복 실행 방지: "worshipType_YYYYMMDD" → true
-	lastExecuted   = map[string]bool{}
-	lastExecutedMu sync.Mutex
+	// 같은 단계 중복 실행 방지: "worshipType_YYYYMMDD_prep|start" → 실행 시각.
+	// 파일(data/schedule_runs.json)에도 남겨, 앱을 다시 켜도 같은 날 두 번 실행하지 않는다.
+	scheduleRuns   = map[string]string{}
+	scheduleRunsMu sync.Mutex
 	schedulerStop  chan struct{}
 	// 수동 방송 시작 중복 방지
 	streamStartMu sync.Mutex
+)
+
+const (
+	// 예배 시각을 놓쳤을 때(절전·앱 늦게 켬) 이 시간 안이면 늦게라도 실행한다
+	scheduleGrace = 5 * time.Minute
+	// 이 시간 안에 운영자가 순서를 보내거나 넘겼으면 진행 중인 예배로 보고 순서를 바꾸지 않는다
+	operatorActiveWindow = 60 * time.Minute
+	// 자동 송출 시작 후 OBS 가 실제로 송출을 시작할 때까지 기다리는 초 (OBS 확인 창 대비)
+	obsStartWait = 120
 )
 
 func schedulePath() string {
@@ -125,6 +136,7 @@ func InitScheduler() {
 	scheduleMu.Lock()
 	scheduleConf = loadScheduleConfig()
 	scheduleMu.Unlock()
+	loadScheduleRuns()
 	// 기존 goroutine 정리 (double-init 방지)
 	if schedulerStop != nil {
 		close(schedulerStop)
@@ -153,52 +165,231 @@ func schedulerLoop() {
 	}
 }
 
+func scheduleRunsPath() string {
+	execPath := path.ExecutePath("easyPreparation")
+	return filepath.Join(execPath, "data", "schedule_runs.json")
+}
+
+func loadScheduleRuns() {
+	runs := map[string]string{}
+	if data, err := os.ReadFile(scheduleRunsPath()); err == nil {
+		_ = json.Unmarshal(data, &runs)
+	}
+	scheduleRunsMu.Lock()
+	scheduleRuns = runs
+	scheduleRunsMu.Unlock()
+}
+
+// claimScheduleRun — 오늘 이 단계를 아직 안 했으면 실행했다고 기록하고 true.
+// 오늘 날짜가 아닌 기록은 지운다.
+func claimScheduleRun(key, today string) bool {
+	scheduleRunsMu.Lock()
+	defer scheduleRunsMu.Unlock()
+	if _, done := scheduleRuns[key]; done {
+		return false
+	}
+	for k := range scheduleRuns {
+		if !strings.Contains(k, "_"+today+"_") {
+			delete(scheduleRuns, k)
+		}
+	}
+	scheduleRuns[key] = time.Now().Format(time.RFC3339)
+	if err := safefile.WriteJSON(scheduleRunsPath(), scheduleRuns); err != nil {
+		log.Printf("[scheduler] 실행 기록 저장 실패: %v", err)
+	}
+	return true
+}
+
+// scheduleStep — 한 예배 항목에 대해 지금 해야 할 일
+type scheduleStep struct {
+	countdown int  // >0 이면 카운트다운 남은 초 (방송할 것)
+	prep      bool // 송출 준비 구간 안 (카운트다운 시작 ~ 예배 시각 + 유예)
+	start     bool // 순서 시작 구간 안 (예배 시각 ~ 예배 시각 + 유예)
+}
+
+// dueScheduleStep — 시각만으로 판단하는 순수 함수 (중복 실행 방지는 호출하는 쪽에서)
+//   prep : 카운트다운 시작 시각(예배 시각 - countdownMinutes)부터. 자동 송출이면 YouTube 방송 준비 + OBS 송출 시작
+//          (시청자도 Display 의 카운트다운을 보게 된다)
+//   start: 예배 시각부터. 순서 로드 + 첫 항목 장면 전환
+// 두 단계 모두 시각을 놓쳤어도(절전·앱 늦게 켬) 예배 시각 + scheduleGrace 안이면 늦게라도 실행한다.
+func dueScheduleStep(entry ScheduleEntry, now time.Time, countdownMinutes int) scheduleStep {
+	var st scheduleStep
+	if !entry.Enabled || entry.Weekday != int(now.Weekday()) {
+		return st
+	}
+	countdownDur := time.Duration(countdownMinutes) * time.Minute
+	if countdownDur < 0 {
+		countdownDur = 0
+	}
+	target := time.Date(now.Year(), now.Month(), now.Day(), entry.Hour, entry.Minute, 0, 0, now.Location())
+	diff := target.Sub(now)
+
+	if diff > 0 && diff <= countdownDur {
+		st.countdown = int(diff.Seconds())
+		if st.countdown < 1 {
+			st.countdown = 1
+		}
+	}
+	if diff > countdownDur || diff < -scheduleGrace {
+		return st
+	}
+	st.prep = true
+	st.start = diff <= 0
+	return st
+}
+
+// checkSchedule — 1초마다 호출. 예배마다 prep/start 단계를 하루 한 번씩 실행한다.
 func checkSchedule(now time.Time) {
 	scheduleMu.RLock()
 	conf := scheduleConf
 	scheduleMu.RUnlock()
 
-	weekday := int(now.Weekday())
+	today := now.Format("20060102")
 	for _, entry := range conf.Entries {
-		if !entry.Enabled || entry.Weekday != weekday {
-			continue
-		}
-		// 예배 시작 시각
-		target := time.Date(now.Year(), now.Month(), now.Day(), entry.Hour, entry.Minute, 0, 0, now.Location())
-		diff := target.Sub(now)
-		countdownDur := time.Duration(conf.CountdownMinutes) * time.Minute
-
-		if diff > 0 && diff <= countdownDur {
-			// 카운트다운 구간
-			remaining := int(diff.Seconds())
-			minutes := remaining / 60
-			seconds := remaining % 60
+		st := dueScheduleStep(entry, now, conf.CountdownMinutes)
+		if st.countdown > 0 {
 			BroadcastMessage("schedule_countdown", map[string]interface{}{
 				"worshipType": entry.WorshipType,
 				"label":       entry.Label,
-				"remaining":   remaining,
-				"minutes":     minutes,
-				"seconds":     seconds,
+				"remaining":   st.countdown,
+				"minutes":     st.countdown / 60,
+				"seconds":     st.countdown % 60,
 			})
 		}
-
-		// T-0 실행 (±1초 허용)
-		if diff >= -1*time.Second && diff <= 1*time.Second {
-			execKey := fmt.Sprintf("%s_%s", entry.WorshipType, now.Format("20060102"))
-			lastExecutedMu.Lock()
-			if lastExecuted[execKey] {
-				lastExecutedMu.Unlock()
-				continue
+		base := entry.WorshipType + "_" + today + "_"
+		if st.prep && claimScheduleRun(base+"prep", today) {
+			// 순서에 쓰는 악보·성경 본문을 미리 받아 둔다 — 예배 시각에 순서가 바로 뜨도록
+			go warmScheduledOrder(entry)
+			if conf.AutoStream {
+				go prepareScheduledStream(entry)
 			}
-			lastExecuted[execKey] = true
-			lastExecutedMu.Unlock()
-
-			go executeSchedule(entry, conf.AutoStream)
+		}
+		if st.start && claimScheduleRun(base+"start", today) {
+			go startScheduledWorship(entry)
 		}
 	}
 }
 
-func executeSchedule(entry ScheduleEntry, autoStream bool) {
+// scheduleNotice — 자동 시작이 무언가를 건너뛰거나 실패했을 때 운영자 화면에 알린다
+func scheduleNotice(entry ScheduleEntry, message string) {
+	log.Printf("[scheduler] %s: %s", entry.Label, message)
+	BroadcastMessage("schedule_notice", map[string]interface{}{
+		"worshipType": entry.WorshipType,
+		"label":       entry.Label,
+		"message":     message,
+	})
+}
+
+// prepareScheduledStream — 카운트다운 시작 때 송출을 먼저 시작한다.
+// 이미 송출 중이면(운영자가 먼저 켬) 그 방송을 건드리지 않는다.
+func prepareScheduledStream(entry ScheduleEntry) {
+	obsM := obs.Get()
+	if obsM.GetStreamStatus().Active {
+		scheduleNotice(entry, "이미 송출 중이라 자동 송출은 건너뜁니다")
+		return
+	}
+	if !streamStartMu.TryLock() {
+		scheduleNotice(entry, "방송 시작이 진행 중이라 자동 송출은 건너뜁니다")
+		return
+	}
+	defer streamStartMu.Unlock()
+	if !obsM.GetStatus().Connected {
+		// 미연결이면 StartStreaming 이 조용히 아무것도 안 하므로 여기서 알린다
+		scheduleNotice(entry, "OBS 가 연결되어 있지 않아 자동 송출을 하지 못했습니다")
+		return
+	}
+	log.Printf("[scheduler] 송출 준비: %s (%s)", entry.Label, entry.WorshipType)
+
+	ytM := youtube.Get()
+	if !ytM.IsEnabled() {
+		// YouTube 미연결 → OBS 에 설정된 송출 대상으로 시작
+		go GenerateAndUploadThumbnail(entry.WorshipType)
+		if err := obsM.StartStreaming(); err != nil {
+			scheduleNotice(entry, "OBS 송출 시작 실패: "+err.Error())
+			return
+		}
+		if !waitForOBSStreaming(obsM, obsStartWait) {
+			scheduleNotice(entry, "OBS 가 송출을 시작하지 않았습니다. OBS 송출 설정과 확인 창을 보세요")
+		}
+		return
+	}
+
+	title := entry.Label
+	description := ""
+	if cfg, _ := thumbnail.LoadConfig(); cfg != nil {
+		sermonTitle, scripture := sermonDataPreferLive(entry.WorshipType)
+		_, title = cfg.ResolveTheme(entry.WorshipType, time.Now(), sermonTitle, scripture)
+		description = cfg.ResolveDescription(entry.WorshipType, time.Now(), sermonTitle, scripture)
+	}
+
+	server, key, broadcastID, err := prepareYouTubeBroadcast(entry.WorshipType, title, description, true)
+	if err != nil {
+		log.Printf("[scheduler] YouTube 방송 생성 실패: %v", err)
+		scheduleNotice(entry, "YouTube 방송 만들기 실패, OBS 설정대로 송출합니다")
+		if err := obsM.StartStreaming(); err != nil {
+			scheduleNotice(entry, "OBS 송출 시작 실패: "+err.Error())
+		}
+		return
+	}
+	if err := obsM.SetStreamSettingsWithBroadcastID(server, key, broadcastID); err != nil {
+		log.Printf("[scheduler] OBS 스트림 설정 실패: %v", err)
+	}
+	if err := obsM.StartStreaming(); err != nil {
+		scheduleNotice(entry, "OBS 송출 시작 실패: "+err.Error())
+		return
+	}
+	if !waitForOBSStreaming(obsM, obsStartWait) {
+		scheduleNotice(entry, "OBS 가 송출을 시작하지 않았습니다. OBS 확인 창이 떠 있는지 보세요")
+		return
+	}
+	if err := youtube.TransitionToLive(broadcastID); err != nil {
+		log.Printf("[scheduler] YouTube live 전환 실패: %v", err)
+	}
+}
+
+// startScheduledWorship — 예배 시각에 순서를 로드하고 첫 항목 장면으로 바꾼다.
+// 운영자가 최근에 순서를 보내거나 넘겼으면 진행 중인 예배로 보고 그대로 둔다.
+func startScheduledWorship(entry ScheduleEntry) {
+	if operatorActiveWithin(operatorActiveWindow) {
+		scheduleNotice(entry, "이미 진행 중이라 순서를 바꾸지 않았습니다")
+		BroadcastMessage("schedule_started", map[string]interface{}{
+			"worshipType": entry.WorshipType,
+			"label":       entry.Label,
+			"skipped":     true,
+		})
+		return
+	}
+	executeSchedule(entry)
+}
+
+// loadScheduledOrder — config/{worshipType}.json 을 읽어 전처리(성경 본문·악보 받기 등)까지 한 순서
+func loadScheduledOrder(entry ScheduleEntry) ([]map[string]interface{}, error) {
+	configFile := filepath.Join(path.ExecutePath("easyPreparation"), "config", entry.WorshipType+".json")
+	data, err := os.ReadFile(configFile)
+	if err != nil {
+		return nil, fmt.Errorf("예배 순서 파일이 없어 순서를 불러오지 못했습니다")
+	}
+	var order []map[string]interface{}
+	if err := json.Unmarshal(data, &order); err != nil {
+		return nil, fmt.Errorf("예배 순서 파일을 읽지 못했습니다")
+	}
+	for i, item := range order {
+		order[i] = preprocessItem(item)
+	}
+	return order, nil
+}
+
+// warmScheduledOrder — 카운트다운 시작 때 순서를 한 번 전처리해 악보 이미지 등을 캐시에 받아 둔다
+func warmScheduledOrder(entry ScheduleEntry) {
+	start := time.Now()
+	if _, err := loadScheduledOrder(entry); err != nil {
+		scheduleNotice(entry, err.Error())
+		return
+	}
+	log.Printf("[scheduler] 순서 미리 준비 완료: %s (%s)", entry.Label, time.Since(start).Round(time.Millisecond))
+}
+
+func executeSchedule(entry ScheduleEntry) {
 	log.Printf("[scheduler] 예배 시작: %s (%s)", entry.Label, entry.WorshipType)
 
 	// 스케줄러가 순서를 교체하기 전에 현재 상태를 별도 백업
@@ -209,31 +400,18 @@ func executeSchedule(entry ScheduleEntry, autoStream bool) {
 		log.Printf("[scheduler] 기존 display_state 백업: %s", backupPath)
 	}
 
-	// config/{worshipType}.json 로드
-	configFile := filepath.Join(execPath, "config", entry.WorshipType+".json")
-	data, err := os.ReadFile(configFile)
+	order, err := loadScheduledOrder(entry)
 	if err != nil {
-		log.Printf("[scheduler] config 파일 없음: %s — 스킵", configFile)
+		scheduleNotice(entry, err.Error())
 		BroadcastMessage("schedule_started", map[string]interface{}{
 			"worshipType": entry.WorshipType,
 			"label":       entry.Label,
-			"error":       "config 파일 없음",
+			"error":       err.Error(),
 		})
 		return
 	}
 
-	var order []map[string]interface{}
-	if err := json.Unmarshal(data, &order); err != nil {
-		log.Printf("[scheduler] config 파싱 실패: %v — 스킵", err)
-		return
-	}
-
-	// 전처리
-	for i, item := range order {
-		order[i] = preprocessItem(item)
-	}
-
-	// 타이머 초기화 + 순서 교체
+	// 타이머 초기화 + 순서 교체 (스케줄러의 교체는 운영자 활동으로 치지 않는다)
 	stopServerTimer()
 	orderMu.Lock()
 	currentOrder = order
@@ -252,65 +430,6 @@ func executeSchedule(entry ScheduleEntry, autoStream bool) {
 		if title, ok := order[0]["title"].(string); ok {
 			go obs.Get().SwitchScene(title)
 		}
-	}
-
-	// 자동 스트리밍: YouTube 방송 생성 → 썸네일 업로드 → OBS 스트림 설정 → 송출 시작
-	if autoStream {
-		ytM := youtube.Get()
-		if ytM.IsEnabled() {
-			// 썸네일 설정에서 제목·설명 가져오기
-			cfg, _ := thumbnail.LoadConfig()
-			title := entry.Label
-			description := ""
-			if cfg != nil {
-				sermonTitle, scripture := sermonDataPreferLive(entry.WorshipType)
-				_, t := cfg.ResolveTheme(entry.WorshipType, time.Now(), sermonTitle, scripture)
-				title = t
-				description = cfg.ResolveDescription(entry.WorshipType, time.Now(), sermonTitle, scripture)
-			}
-
-			// YouTube 방송 생성 + 썸네일 업로드 + OBS 송출 중이면 정지 (setup-obs 와 공유)
-			server, key, broadcastID, err := prepareYouTubeBroadcast(entry.WorshipType, title, description, true)
-			if err != nil {
-				log.Printf("[scheduler] YouTube 방송 생성 실패: %v — 기존 방식으로 스트리밍", err)
-				// YouTube 실패해도 기존 OBS 스트리밍은 시도
-				if err := obs.Get().StartStreaming(); err != nil {
-					log.Printf("[scheduler] OBS 스트리밍 시작 실패: %v", err)
-				}
-			} else {
-				obsM := obs.Get()
-
-				// OBS 스트림 설정
-				if err := obsM.SetStreamSettingsWithBroadcastID(server, key, broadcastID); err != nil {
-					log.Printf("[scheduler] OBS 스트림 설정 실패: %v", err)
-				}
-
-				// OBS 송출 시작
-				if err := obsM.StartStreaming(); err != nil {
-					log.Printf("[scheduler] OBS 스트리밍 시작 실패: %v", err)
-				}
-
-				// OBS 실제 스트리밍 확인 후 YouTube live 전환
-				go func(bid string) {
-					if waitForOBSStreaming(obsM, 30) {
-						if err := youtube.TransitionToLive(bid); err != nil {
-							log.Printf("[scheduler] YouTube live 전환 실패: %v", err)
-						}
-					} else {
-						log.Println("[scheduler] OBS 스트리밍 미확인 — YouTube live 전환 스킵")
-					}
-				}(broadcastID)
-			}
-		} else {
-			// YouTube 미연결 → 기존 OBS 스트리밍만
-			GenerateAndUploadThumbnail(entry.WorshipType)
-			if err := obs.Get().StartStreaming(); err != nil {
-				log.Printf("[scheduler] OBS 스트리밍 시작 실패: %v", err)
-			}
-		}
-	} else {
-		// autoStream 꺼져 있으면 썸네일만 생성
-		go GenerateAndUploadThumbnail(entry.WorshipType)
 	}
 
 	BroadcastMessage("schedule_started", map[string]interface{}{
@@ -421,7 +540,7 @@ func ScheduleTestHandler(w http.ResponseWriter, r *http.Request) {
 
 	case "trigger":
 		// 즉시 실행 (config 파일 로드 + 전처리 + broadcast)
-		go executeSchedule(*entry, false) // autoStream=false (테스트이므로)
+		go executeSchedule(*entry) // 순서 로드만 (송출은 하지 않음)
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "message": "스케줄 즉시 실행"})
 
 	default:

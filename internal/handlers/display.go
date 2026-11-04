@@ -36,7 +36,19 @@ var (
 	currentWorshipType string // 현재 로드된 예배 타입 (config 변경 시 자동 갱신 판단용)
 	lastSermonTitle    string // 마지막으로 Display에 전송된 순서의 말씀 제목 (유튜브 설명란 싱크용 스냅샷)
 	lastScripture      string // 마지막으로 Display에 전송된 순서의 성경봉독 참조
+	// 운영자가 마지막으로 순서를 보내거나 넘긴 시각 (orderMu 로 보호).
+	// 예배 자동 시작이 진행 중인 예배를 덮어쓰지 않도록 판단하는 데 쓴다.
+	// 재시작 시 복원된 상태는 활동으로 치지 않는다(지난주 위치가 남아 있어도 자동 시작을 막지 않게).
+	lastOperatorActivity time.Time
 )
+
+// operatorActiveWithin — 최근 d 안에 운영자가 순서를 보내거나 넘겼는지
+func operatorActiveWithin(d time.Duration) bool {
+	orderMu.RLock()
+	t := lastOperatorActivity
+	orderMu.RUnlock()
+	return !t.IsZero() && time.Since(t) <= d
+}
 
 // ── Display 상태 파일 영속화 ──
 
@@ -239,6 +251,9 @@ func UpdateDisplayIdx(newIdx int, newSubPageIdx int) {
 	orderMu.Lock()
 	defer orderMu.Unlock()
 	if newIdx >= 0 && newIdx < len(currentOrder) {
+		if newIdx != currentIdx || newSubPageIdx != currentSubPageIdx {
+			lastOperatorActivity = time.Now()
+		}
 		currentIdx = newIdx
 		currentSubPageIdx = newSubPageIdx
 		go saveDisplayState()
@@ -691,6 +706,7 @@ func DisplayOrderHandler(w http.ResponseWriter, r *http.Request) {
 	orderMu.Lock()
 	currentOrder = order
 	currentIdx = 0
+	lastOperatorActivity = time.Now()
 	displayChurchName = newChurchName
 	currentWorshipType = newWorshipType
 	lastSermonTitle = snapSermonTitle
@@ -813,6 +829,7 @@ func DisplayJumpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	currentIdx = payload.Index
 	currentSubPageIdx = payload.SubPageIdx
+	lastOperatorActivity = time.Now()
 	item := currentOrder[currentIdx]
 	title, _ := item["title"].(string)
 	info, _ := item["info"].(string)
@@ -883,6 +900,7 @@ func DisplayLyricsOrderHandler(w http.ResponseWriter, r *http.Request) {
 	orderMu.Lock()
 	currentOrder = order
 	currentIdx = 0
+	lastOperatorActivity = time.Now()
 	cn := displayChurchName
 	orderMu.Unlock()
 
