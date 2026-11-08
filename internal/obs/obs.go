@@ -170,6 +170,7 @@ func (m *Manager) SwitchScene(title string) {
 	}
 
 	go func() {
+		m.setFadeTransition(client)
 		params := scenes.NewSetCurrentProgramSceneParams().WithSceneName(sceneName)
 		_, err := client.Scenes.SetCurrentProgramScene(params)
 		if err != nil {
@@ -181,6 +182,71 @@ func (m *Manager) SwitchScene(title string) {
 		m.mu.Unlock()
 		log.Printf("[obs] 씬 전환: %s → %s", title, sceneName)
 	}()
+}
+
+// setFadeTransition — 씬 전환 방식을 Fade(config.FadeMs)로 맞춘다. OBS 기본 Cut 이면 화면이 툭 바뀌어 깜박여 보인다.
+func (m *Manager) setFadeTransition(client *goobs.Client) {
+	t := transitions.NewSetCurrentSceneTransitionParams().WithTransitionName("Fade")
+	_, _ = client.Transitions.SetCurrentSceneTransition(t)
+	d := transitions.NewSetCurrentSceneTransitionDurationParams().WithTransitionDuration(float64(m.config.FadeMs))
+	_, _ = client.Transitions.SetCurrentSceneTransitionDuration(d)
+}
+
+// LeavesDisplayScene — title 의 매핑 씬이, 지금 방송 중인 display 씬을 벗어나는 전환인지 (I/O 없음)
+func (m *Manager) LeavesDisplayScene(title string) bool {
+	if m == nil || !m.enabled {
+		return false
+	}
+	sceneName, ok := m.resolveScene(title)
+	if !ok {
+		return false
+	}
+	m.mu.RLock()
+	current, connected := m.currentScene, m.connected
+	m.mu.RUnlock()
+	return connected && current == m.config.DisplayScene && sceneName != current
+}
+
+const earlySwitchTimeout = 2 * time.Second
+
+// SwitchSceneEarly — display 씬에서 다른 씬으로 나갈 때, Display 화면이 바뀌기 *전에* 먼저 Fade 전환하고
+// 전환이 끝날 때까지 기다린다. 방송에는 이전 슬라이드가 그대로 보이다가 카메라로 넘어가고, 그 뒤에 display 가 몰래 바뀐다.
+// (블로킹 — 호출 쪽에서 고루틴으로 실행할 것)
+func (m *Manager) SwitchSceneEarly(title string) {
+	if !m.LeavesDisplayScene(title) {
+		return
+	}
+	sceneName, _ := m.resolveScene(title)
+	m.mu.RLock()
+	client := m.client
+	m.mu.RUnlock()
+	if client == nil {
+		return
+	}
+
+	// OBS 가 응답하지 않아도 Display 이동이 막히지 않도록 대기 상한을 둔다 (goobs 기본 응답 타임아웃은 요청당 10초)
+	done := make(chan error, 1)
+	go func() {
+		m.setFadeTransition(client)
+		params := scenes.NewSetCurrentProgramSceneParams().WithSceneName(sceneName)
+		_, err := client.Scenes.SetCurrentProgramScene(params)
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if err != nil {
+			log.Printf("[obs] 선전환 실패 (%s → %s): %v", title, sceneName, err)
+			return
+		}
+	case <-time.After(earlySwitchTimeout):
+		log.Printf("[obs] 선전환 응답 없음 (%s → %s) — 기다리지 않고 진행", title, sceneName)
+		return
+	}
+	m.mu.Lock()
+	m.currentScene = sceneName
+	m.mu.Unlock()
+	log.Printf("[obs] 선전환: %s → %s (display 갱신 전)", title, sceneName)
+	time.Sleep(time.Duration(m.config.FadeMs+100) * time.Millisecond)
 }
 
 // SetSceneDirect — 씬 이름 그대로 전환 (config 매핑 없이 직접 지정)

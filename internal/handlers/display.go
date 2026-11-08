@@ -32,6 +32,7 @@ var (
 	currentOrder       []map[string]interface{}
 	currentIdx         int
 	currentSubPageIdx  int
+	currentSubPageTotal int // Display 가 마지막으로 보고한 현재 항목의 서브페이지 수 (navigate 도착 항목 예측용)
 	displayChurchName  string
 	currentWorshipType string // 현재 로드된 예배 타입 (config 변경 시 자동 갱신 판단용)
 	lastSermonTitle    string // 마지막으로 Display에 전송된 순서의 말씀 제목 (유튜브 설명란 싱크용 스냅샷)
@@ -247,7 +248,7 @@ const apostlesCreed = `나는 전능하신 아버지 하나님, 천지의 창조
 var displayHTML string
 
 // UpdateDisplayIdx — display HTML이 WS로 보고한 현재 위치 업데이트
-func UpdateDisplayIdx(newIdx int, newSubPageIdx int) {
+func UpdateDisplayIdx(newIdx int, newSubPageIdx int, subPageTotal int) {
 	orderMu.Lock()
 	defer orderMu.Unlock()
 	if newIdx >= 0 && newIdx < len(currentOrder) {
@@ -256,8 +257,42 @@ func UpdateDisplayIdx(newIdx int, newSubPageIdx int) {
 		}
 		currentIdx = newIdx
 		currentSubPageIdx = newSubPageIdx
+		currentSubPageTotal = subPageTotal
 		go saveDisplayState()
 	}
+}
+
+// navigateTargetTitle — navigate 메시지가 항목을 바꿀 때 도착 항목의 OBS 매핑 title.
+// 서브페이지만 넘기거나 도착 항목을 알 수 없으면 "". (Display 의 navigate 규칙과 동일하게 예측)
+func navigateTargetTitle(payload map[string]interface{}) string {
+	dir, _ := payload["direction"].(string)
+	orderMu.RLock()
+	defer orderMu.RUnlock()
+
+	target := -1
+	switch dir {
+	case "next":
+		if !(currentSubPageTotal > 1 && currentSubPageIdx < currentSubPageTotal-1) {
+			target = currentIdx + 1
+		}
+	case "prev":
+		if !(currentSubPageTotal > 1 && currentSubPageIdx > 0) {
+			target = currentIdx - 1
+		}
+	case "jump":
+		if i, ok := payload["idx"].(int); ok {
+			target = i
+		}
+	}
+	if target < 0 || target >= len(currentOrder) {
+		return ""
+	}
+	// lyrics_display 항목은 항상 "찬양" 매핑 기준 (websocket.go 의 씬 전환과 동일)
+	if info, _ := currentOrder[target]["info"].(string); info == "lyrics_display" {
+		return "찬양"
+	}
+	title, _ := currentOrder[target]["title"].(string)
+	return title
 }
 
 // GetCurrentTitle — OBS 씬 전환용 현재 항목 title 조회
