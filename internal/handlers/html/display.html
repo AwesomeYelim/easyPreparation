@@ -560,11 +560,24 @@ function renderItem(item, pageIdx) {
         '<div style="position:absolute;' + _lv + ';' + _lh + ';z-index:10;pointer-events:none"><img src="' + logoUrl + '" alt="logo" style="height:' + Math.max(3, Math.round(logoSizePercent * 0.5)) + 'vh;max-width:' + Math.round(logoSizePercent * 2.5) + 'vw;width:auto;object-fit:contain;opacity:0.88;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.55))"></div>');
     }
     reportPosition();
-    requestAnimationFrame(function() {
+    var fadeIn = function() {
       requestAnimationFrame(function() {
-        slideEl.classList.add('visible');
+        requestAnimationFrame(function() {
+          slideEl.classList.add('visible');
+        });
       });
-    });
+    };
+    // 슬라이드 이미지(교독문·찬송 악보)가 로드되기 전에 보이면 body 전역 배경이 먼저 비친다 → 로드 후 fade-in (최대 1.5초)
+    var img = slideEl.querySelector('img.slide-image');
+    if (img && !img.complete) {
+      var shown = false;
+      var go = function() { if (!shown) { shown = true; fadeIn(); } };
+      img.onload = go;
+      img.onerror = go;
+      setTimeout(go, 1500);
+    } else {
+      fadeIn();
+    }
   }, 120);
 }
 
