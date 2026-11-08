@@ -30,7 +30,29 @@ type panelDock struct {
 const (
 	panelDefaultW = 340
 	panelDefaultH = 860
+
+	// 메인 창 기본 폭. 순서 패널이 분리돼 있으면 패널 컬럼(ProShell 280px)만큼 창 폭도 줄인다.
+	mainWinWidth     = 1400
+	mainWinMinHeight = 768
+	panelColumnW     = 280
 )
+
+// setMainWidth — 패널 분리 여부에 맞춰 메인 창 폭 조정. UI 스레드에서 호출할 것.
+// 패널이 있던 왼쪽 끝을 접는다: 줄일 땐 왼쪽 가장자리를 오른쪽으로, 늘릴 땐 왼쪽으로 옮겨 내용이 제자리에 있게 한다.
+// SetSize 는 최소/최대 폭을 새 폭에 맞춰 알아서 조정한다 (별도로 잠그지 않음).
+func (a *App) setMainWidth(panelDetached bool) {
+	w := mainWinWidth
+	if panelDetached {
+		w -= panelColumnW
+	}
+	cw, h := a.mainWin.Size()
+	if cw == w {
+		return
+	}
+	x, y := a.mainWin.Position()
+	a.mainWin.SetSize(w, h)
+	a.mainWin.SetPosition(x+cw-w, y)
+}
 
 // initPanelWindow — 메인 창 표시 후 1회 호출. 숨긴 분리 창을 만들고, 지난 실행에서 분리돼 있었으면 표시.
 func (a *App) initPanelWindow() {
@@ -69,6 +91,7 @@ func (a *App) initPanelWindow() {
 			e.Cancel()
 			a.savePanelGeometry()
 			win.Hide()
+			a.setMainWidth(false)
 			handlers.OnPanelWindowClosed()
 		})
 
@@ -95,9 +118,11 @@ func (a *App) initPanelWindow() {
 			a.updateDockHint(false)
 			if inZone {
 				win.Hide()
+				a.setMainWidth(false)
 				handlers.OnPanelWindowClosed()
 				return
 			}
+			a.setMainWidth(true)
 			a.savePanelGeometry()
 		})
 	})
@@ -138,6 +163,7 @@ func (a *App) showPanelWindow(st handlers.PanelDockState) {
 		win.SetAlwaysOnTop(st.Pinned)
 		win.Show()
 		win.Focus()
+		a.setMainWidth(true)
 	})
 }
 
@@ -155,6 +181,8 @@ func (a *App) showPanelWindowAtCursor(st handlers.PanelDockState) {
 		win.SetAlwaysOnTop(st.Pinned)
 		win.Show()
 		win.Focus()
+		// 메인 창 폭은 여기서 줄이지 않는다 — 드래그를 넘기는 도중에 메인 창 크기·위치가 바뀌면 OS 이동 루프가 끊겨 멈춘다.
+		// 놓는 시점(WindowEndMove)에 줄인다.
 		beginWindowDrag(win)
 	})
 }
@@ -179,7 +207,10 @@ func (a *App) hidePanelWindow() {
 		return
 	}
 	a.savePanelGeometry()
-	application.InvokeSync(func() { win.Hide() })
+	application.InvokeSync(func() {
+		win.Hide()
+		a.setMainWidth(false)
+	})
 }
 
 func (a *App) setPanelPinned(pinned bool) {

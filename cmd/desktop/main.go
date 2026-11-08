@@ -258,11 +258,11 @@ func main() {
 	desktop.mainWin = desktop.wapp.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:      "main",
 		Title:     "easyPreparation",
-		Width:     1400,
+		Width:     mainWinWidth,
 		Height:    900,
-		MinWidth:  1400,
-		MaxWidth:  1400,
-		MinHeight: 768,
+		MinWidth:  mainWinWidth,
+		MaxWidth:  mainWinWidth,
+		MinHeight: mainWinMinHeight,
 		Hidden:    true, // ServiceStartup에서 서버 준비 후 Show
 		URL:       "/",
 	})
