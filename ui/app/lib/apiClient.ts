@@ -50,7 +50,9 @@ export async function openDisplayWindow(force = false) {
     displayWindow.focus();
     return;
   }
-  displayWindow = window.open(`${BASE_URL}/display`, "display_window");
+  // 개발 환경(:3000)에서는 Next 를 거치면 WebSocket 프록시가 안 되므로 Go 서버(:8080)로 직접 연다
+  const displayOrigin = window.location.port === "3000" ? "http://localhost:8080" : BASE_URL;
+  displayWindow = window.open(`${displayOrigin}/display`, "display_window");
 }
 
 // ── 순서 패널 분리/도킹 (데스크톱 앱 전용) ──
