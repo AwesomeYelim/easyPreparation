@@ -219,39 +219,16 @@ func BroadcastMessage(messageType string, payload map[string]interface{}) {
 	}
 	if messageType == "navigate" {
 		log.Printf("[broadcast] navigate to %d clients", len(clients))
+		// monitor→camera 전환이면 OBS 를 지금 바로 전환하고, Display 에는 전환이 끝날 때까지 화면 교체를 미루라고 알린다.
+		// (overlay·제어판은 holdMs 를 무시하므로 씬 전환과 동시에 바뀐다)
+		if title := navigateTargetTitle(payload); title != "" {
+			if hold := obs.Get().SwitchSceneEarly(title); hold > 0 {
+				message["holdMs"] = hold
+			}
+		}
 	}
 	msgBytes, _ := json.Marshal(message)
-	if messageType == "navigate" {
-		broadcastNavigate(msgBytes, payload)
-		return
-	}
 	broadcastTo(msgBytes, nil)
-}
-
-// navigate 순서 보장 큐 — 선전환이 끝나기를 기다리는 동안 뒤이은 navigate 가 앞질러 나가지 않게 한다
-var (
-	navQueue      = make(chan func(), 32)
-	navWorkerOnce sync.Once
-)
-
-// broadcastNavigate — 도착 항목이 monitor→camera 전환이면 OBS 를 먼저 전환하고 Display 에는 그 뒤에 보낸다.
-// 모든 navigate 가 같은 큐를 거쳐 순서가 뒤바뀌지 않는다.
-func broadcastNavigate(msgBytes []byte, payload map[string]interface{}) {
-	title := navigateTargetTitle(payload)
-	early := title != "" && obs.Get().LeavesDisplayScene(title)
-	navWorkerOnce.Do(func() {
-		go func() {
-			for f := range navQueue {
-				f()
-			}
-		}()
-	})
-	navQueue <- func() {
-		if early {
-			obs.Get().SwitchSceneEarly(title)
-		}
-		broadcastTo(msgBytes, nil)
-	}
 }
 
 var keepAliveStop chan struct{}

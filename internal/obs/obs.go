@@ -58,6 +58,7 @@ type Manager struct {
 	enabled      bool
 	connected    bool
 	currentScene string
+	transitionMs int // OBS 에 설정된 현재 전환 길이 (선전환 때 읽어 둔 값)
 	stopCh       chan struct{}
 	fadeCancel   chan struct{} // 현재 fadeBack 타이머 취소용
 	loopStarted  bool         // connectLoop 고루틴 실행 여부
@@ -170,7 +171,6 @@ func (m *Manager) SwitchScene(title string) {
 	}
 
 	go func() {
-		m.setFadeTransition(client)
 		params := scenes.NewSetCurrentProgramSceneParams().WithSceneName(sceneName)
 		_, err := client.Scenes.SetCurrentProgramScene(params)
 		if err != nil {
@@ -184,69 +184,46 @@ func (m *Manager) SwitchScene(title string) {
 	}()
 }
 
-// setFadeTransition — 씬 전환 방식을 Fade(config.FadeMs)로 맞춘다. OBS 기본 Cut 이면 화면이 툭 바뀌어 깜박여 보인다.
-func (m *Manager) setFadeTransition(client *goobs.Client) {
-	t := transitions.NewSetCurrentSceneTransitionParams().WithTransitionName("Fade")
-	_, _ = client.Transitions.SetCurrentSceneTransition(t)
-	d := transitions.NewSetCurrentSceneTransitionDurationParams().WithTransitionDuration(float64(m.config.FadeMs))
-	_, _ = client.Transitions.SetCurrentSceneTransitionDuration(d)
-}
-
-// LeavesDisplayScene — title 의 매핑 씬이, 지금 방송 중인 display 씬을 벗어나는 전환인지 (I/O 없음)
-func (m *Manager) LeavesDisplayScene(title string) bool {
+// SwitchSceneEarly — 지금 방송 중인 display 씬을 벗어나는 전환이면 OBS 를 바로 전환하고, Display 가 화면 교체를 미뤄야 할
+// 시간(ms)을 반환한다 (전환이 아니면 0). OBS 응답을 기다리지 않고 즉시 반환한다.
+// 전환 방식·길이는 앱이 정하지 않는다(OBS 설정). 대기 시간은 마지막으로 읽은 OBS 전환 길이, 아직 모르면 500ms. 여유 200ms 는 OBS 요청 지연·프레임 간격 때문에 전환이 끝나기 전에 Display 가 바뀌지 않게 하려는 것.
+func (m *Manager) SwitchSceneEarly(title string) int {
 	if m == nil || !m.enabled {
-		return false
+		return 0
 	}
 	sceneName, ok := m.resolveScene(title)
 	if !ok {
-		return false
+		return 0
 	}
 	m.mu.RLock()
-	current, connected := m.currentScene, m.connected
+	current, connected, client, hold := m.currentScene, m.connected, m.client, m.transitionMs
 	m.mu.RUnlock()
-	return connected && current == m.config.DisplayScene && sceneName != current
-}
-
-const earlySwitchTimeout = 2 * time.Second
-
-// SwitchSceneEarly — display 씬에서 다른 씬으로 나갈 때, Display 화면이 바뀌기 *전에* 먼저 Fade 전환하고
-// 전환이 끝날 때까지 기다린다. 방송에는 이전 슬라이드가 그대로 보이다가 카메라로 넘어가고, 그 뒤에 display 가 몰래 바뀐다.
-// (블로킹 — 호출 쪽에서 고루틴으로 실행할 것)
-func (m *Manager) SwitchSceneEarly(title string) {
-	if !m.LeavesDisplayScene(title) {
-		return
-	}
-	sceneName, _ := m.resolveScene(title)
-	m.mu.RLock()
-	client := m.client
-	m.mu.RUnlock()
-	if client == nil {
-		return
+	if !connected || client == nil || current != m.config.DisplayScene || sceneName == current {
+		return 0
 	}
 
-	// OBS 가 응답하지 않아도 Display 이동이 막히지 않도록 대기 상한을 둔다 (goobs 기본 응답 타임아웃은 요청당 10초)
-	done := make(chan error, 1)
 	go func() {
-		m.setFadeTransition(client)
 		params := scenes.NewSetCurrentProgramSceneParams().WithSceneName(sceneName)
-		_, err := client.Scenes.SetCurrentProgramScene(params)
-		done <- err
-	}()
-	select {
-	case err := <-done:
-		if err != nil {
+		if _, err := client.Scenes.SetCurrentProgramScene(params); err != nil {
 			log.Printf("[obs] 선전환 실패 (%s → %s): %v", title, sceneName, err)
 			return
 		}
-	case <-time.After(earlySwitchTimeout):
-		log.Printf("[obs] 선전환 응답 없음 (%s → %s) — 기다리지 않고 진행", title, sceneName)
-		return
+		m.mu.Lock()
+		m.currentScene = sceneName
+		m.mu.Unlock()
+		log.Printf("[obs] 선전환: %s → %s (display 갱신 전)", title, sceneName)
+		// 다음 전환의 대기 시간용으로 OBS 의 현재 전환 길이를 읽어 둔다
+		if t, err := client.Transitions.GetCurrentSceneTransition(); err == nil && t.TransitionDuration > 0 {
+			m.mu.Lock()
+			m.transitionMs = int(t.TransitionDuration)
+			m.mu.Unlock()
+		}
+	}()
+
+	if hold <= 0 {
+		return 500
 	}
-	m.mu.Lock()
-	m.currentScene = sceneName
-	m.mu.Unlock()
-	log.Printf("[obs] 선전환: %s → %s (display 갱신 전)", title, sceneName)
-	time.Sleep(time.Duration(m.config.FadeMs+100) * time.Millisecond)
+	return hold + 200
 }
 
 // SetSceneDirect — 씬 이름 그대로 전환 (config 매핑 없이 직접 지정)
