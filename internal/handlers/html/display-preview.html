@@ -66,9 +66,6 @@ var slides = /*__SLIDES__*/[];
 var idx    = /*__IDX__*/0;
 var subPageIdx = /*__SUBPAGE__*/0;
 var subPages   = [];
-var logoUrl    = '';
-var logoPosition     = 'bottom-right';
-var logoSizePercent  = 18;
 var activeVideoBg    = '';
 var globalImageBgDisabled = false;
 
@@ -122,18 +119,12 @@ function applyVideoBg(filename) {
 
 async function initDisplayConfig() {
   try {
-    const logoRes = await fetch('/api/logo', { method: 'HEAD' });
-    if (logoRes.ok) logoUrl = '/api/logo';
-  } catch (e) {}
-  try {
     const cfgRes = await fetch('/api/display-config');
     if (cfgRes.ok) {
       const cfg = await cfgRes.json();
       applyFont(cfg.font);
       globalImageBgDisabled = !!cfg.globalImageBgDisabled;
       applyVideoBg(cfg.globalVideoBg || '');
-      if (cfg.logoPosition) logoPosition = cfg.logoPosition;
-      if (cfg.logoSizePercent) logoSizePercent = cfg.logoSizePercent;
     }
   } catch (e) {}
 }
@@ -174,15 +165,9 @@ function renderItem(item, pageIdx) {
 
   const posText  = slides.length ? (idx + 1) + ' / ' + slides.length : '';
   const pageText = subPages.length > 1 ? '1 / ' + subPages.length : '';
-  const churchBox = logoUrl ? (function() {
-    const vPos = logoPosition.startsWith('top') ? 'top:1.5vh' : 'bottom:1.5vh';
-    const hPos = logoPosition.endsWith('right')  ? 'right:2vw'  : 'left:2vw';
-    return '<div style="position:absolute;' + vPos + ';' + hPos + ';display:flex;align-items:flex-end">' +
-      '<img src="' + logoUrl + '" alt="logo" style="max-height:7vh;width:' + logoSizePercent + 'vw;object-fit:contain;opacity:0.88;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.55))"></div>';
-  })() : '';
   const footer = '<div class="divider"></div>' +
     '<div class="slide-pos">' + posText + '</div>' +
-    (pageText ? '<div class="page-indicator">' + pageText + '</div>' : '') + churchBox;
+    (pageText ? '<div class="page-indicator">' + pageText + '</div>' : '');
   const header =
     '<div class="label">' + esc(lead) + '</div>' +
     '<div class="order-title">' + esc(title) + '</div>';

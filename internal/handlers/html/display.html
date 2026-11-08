@@ -235,9 +235,6 @@ let idx = 0;
 let subPages = [];   // 성경 본문 or 이미지 페이지
 let subPageIdx = 0;
 let churchName = '';
-let logoUrl = ''; // 로고 URL (없으면 '')
-let logoPosition = 'bottom-right'; // top-left | top-right | bottom-left | bottom-right
-let logoSizePercent = 18; // vw%
 
 /* ── sessionStorage: 마지막 슬라이드 즉시 복원 ── */
 (function restoreLastSlide(){
@@ -277,15 +274,9 @@ async function restoreStateFromServer() {
   } catch(e) { console.warn('[Display] 상태 복원 실패:', e); }
 }
 
-/* ───── 초기화: 로고 + 폰트 설정 로드 ───── */
+/* ───── 초기화: 폰트 설정 로드 ───── */
 async function initDisplayConfig() {
-  // 로고 체크
-  try {
-    const logoRes = await fetch('/api/logo', { method: 'HEAD' });
-    if (logoRes.ok) logoUrl = '/api/logo';
-  } catch (e) {}
-
-  // 폰트 + 비디오 배경 + 로고 위치 설정 로드
+  // 폰트 + 비디오 배경 설정 로드
   try {
     const cfgRes = await fetch('/api/display-config');
     if (cfgRes.ok) {
@@ -293,8 +284,6 @@ async function initDisplayConfig() {
       applyFont(cfg.font);
       globalImageBgDisabled = !!cfg.globalImageBgDisabled;
       applyVideoBg(cfg.globalVideoBg || 'lent.mp4'); // 설정 없으면 기본 영상
-      if (cfg.logoPosition) logoPosition = cfg.logoPosition;
-      if (cfg.logoSizePercent) logoSizePercent = cfg.logoSizePercent;
       // sessionStorage 복원 슬라이드가 있으면 새 config로 다시 렌더
       if (slides.length > 0) { renderItem(slides[idx], subPageIdx); }
     }
@@ -392,8 +381,6 @@ function connect() {
       applyFont(msg.font);
       globalImageBgDisabled = !!msg.globalImageBgDisabled;
       applyVideoBg(msg.globalVideoBg || 'lent.mp4'); // body 배경도 함께 업데이트
-      if (msg.logoPosition) logoPosition = msg.logoPosition;
-      if (msg.logoSizePercent) logoSizePercent = msg.logoSizePercent;
       if (slides.length > 0) { renderItem(slides[idx], subPageIdx); }
     }
     if (msg.type === 'schedule_countdown') {
@@ -552,13 +539,6 @@ function renderItem(item, pageIdx) {
   slideEl.classList.remove('visible');
   setTimeout(function() {
     _doRenderItem(item, pageIdx);
-    // 로고 — 모든 렌더링 경로 후 slide에 직접 추가 (footer 영향 없음)
-    if (logoUrl) {
-      var _lv = logoPosition.startsWith('top') ? 'top:1.5vh' : 'bottom:1.5vh';
-      var _lh = logoPosition.endsWith('right') ? 'right:2vw' : 'left:2vw';
-      document.getElementById('slide').insertAdjacentHTML('beforeend',
-        '<div style="position:absolute;' + _lv + ';' + _lh + ';z-index:10;pointer-events:none"><img src="' + logoUrl + '" alt="logo" style="height:' + Math.max(3, Math.round(logoSizePercent * 0.5)) + 'vh;max-width:' + Math.round(logoSizePercent * 2.5) + 'vw;width:auto;object-fit:contain;opacity:0.88;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.55))"></div>');
-    }
     reportPosition();
     var fadeIn = function() {
       requestAnimationFrame(function() {
