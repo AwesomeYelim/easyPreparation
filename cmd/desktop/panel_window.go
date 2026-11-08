@@ -6,7 +6,7 @@ package main
 // 떼기 = 위치 지정 + 표시, 붙이기 = 숨김. 창을 다시 만들지 않으니 떼는 순간 이미 그려진 화면이 뜬다.
 // 분리 창도 서버 WS 클라이언트라 숨겨져 있는 동안에도 상태가 최신이다.
 //
-// Windows 전용 동작(메인 창 소유, 드래그 이어받기, 도킹 영역 판정)은 panel_window_windows.go,
+// Windows 전용 동작(드래그 이어받기, 도킹 영역 판정)은 panel_window_windows.go,
 // 그 외 OS 는 panel_window_other.go 의 no-op 이다.
 
 import (
@@ -58,8 +58,8 @@ func (a *App) initPanelWindow() {
 		if st.W > 0 && st.H > 0 {
 			win.SetPosition(st.X, st.Y)
 		}
-		// 메인 창 소유 → 항상 메인 위, 메인 최소화 시 같이 숨김 (Windows)
-		setPanelOwner(win, a.mainWin)
+		// 메인 창 소유로 두지 않는다 — 소유 창을 클릭하면 Windows 가 소유자(메인 창)까지 같이 앞으로 올려서
+		// 분리 창만 따로 포커스할 수 없다. 메인 위에 계속 두고 싶으면 '항상 위' 핀을 쓴다.
 
 		// X 버튼 = 붙이기. 창은 없애지 않고 숨긴다. 앱 종료 중일 때만 실제로 닫힌다.
 		win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {

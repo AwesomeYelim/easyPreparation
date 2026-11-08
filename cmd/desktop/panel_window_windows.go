@@ -13,7 +13,6 @@ import (
 
 var (
 	user32               = syscall.NewLazyDLL("user32.dll")
-	procSetWindowLongPtr = user32.NewProc("SetWindowLongPtrW")
 	procGetCursorPos     = user32.NewProc("GetCursorPos")
 	procGetWindowRect    = user32.NewProc("GetWindowRect")
 	procGetDpiForWindow  = user32.NewProc("GetDpiForWindow")
@@ -23,7 +22,6 @@ var (
 )
 
 const (
-	gwlpHwndParent  = ^uintptr(7) // -8 (GWLP_HWNDPARENT)
 	wmNcLButtonDown = 0x00A1
 	htCaption       = 2
 
@@ -42,16 +40,6 @@ func hwndOf(w *application.WebviewWindow) uintptr {
 		return 0
 	}
 	return uintptr(w.NativeWindow())
-}
-
-// setPanelOwner — 분리 창의 소유자를 메인 창으로 지정.
-// 소유된 창은 항상 소유자 위에 있고, 소유자가 최소화되면 같이 숨는다 (OBS 플로팅 독과 같은 성격).
-func setPanelOwner(panel, main *application.WebviewWindow) {
-	p, m := hwndOf(panel), hwndOf(main)
-	if p == 0 || m == 0 {
-		return
-	}
-	procSetWindowLongPtr.Call(p, gwlpHwndParent, m)
 }
 
 // cursorPos — 화면 커서 위치 (물리 픽셀)
