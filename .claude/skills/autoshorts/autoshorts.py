@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -11,7 +12,18 @@ from pathlib import Path
 SKILL_DIR = Path(__file__).resolve().parent
 HEADER_ASS = SKILL_DIR / "templates" / "header.ass"
 LOGO_PNG = SKILL_DIR / "templates" / "logo.png"
-FONTS_DIR = "'C\\:/Windows/Fonts'"
+
+
+def fonts_dir_arg() -> str:
+    # 환경변수 > 윈도우 기본 폴더 > 맥/리눅스 설정 폴더 순서야
+    env = os.environ.get("AUTOSHORTS_FONTS_DIR")
+    if env:
+        path = env
+    elif os.name == "nt":
+        path = "C:/Windows/Fonts"
+    else:
+        path = str(Path.home() / ".config" / "autoshorts" / "fonts")
+    return "'" + path.replace("\\", "/").replace(":", "\\:") + "'"
 
 BAND = 540
 AREA_H = 1380
@@ -184,7 +196,7 @@ def build_filter(spec: Spec, total: float, ass_name: str) -> tuple[str, str]:
         f"[{logo_idx}:v]scale=240:-1[lg];color=c=0x00E5FF:s=1080x10:r=30[bar];"
         f"[{prev}][lg]overlay=24:16[tmp];"
         f"[tmp][bar]overlay=x='-W+W*t/{total:.2f}':y=0:eval=frame:shortest=1[c];"
-        f"[c]ass={ass_name}:fontsdir={FONTS_DIR}[v]"
+        f"[c]ass={ass_name}:fontsdir={fonts_dir_arg()}[v]"
     )
     return "".join(parts), audio
 
