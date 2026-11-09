@@ -1,0 +1,13 @@
+﻿[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+WrapStyle: 2
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Sub,NanumGothic ExtraBold,84,&H00FFFFFF,&H00FFFFFF,&H78000000,&H00000000,0,0,0,0,100,100,0,0,3,16,0,2,60,60,290,1
+Style: T1,NanumGothic ExtraBold,96,&H00FFFFFF,&H00FFFFFF,&H00FFFFFF,&H00000000,0,0,0,0,100,100,0,0,1,3,0,5,40,40,0,1
+Style: T2,NanumGothic ExtraBold,96,&H00FFE500,&H00FFE500,&H00FFE500,&H00000000,0,0,0,0,100,100,0,0,1,3,0,5,40,40,0,1
+
