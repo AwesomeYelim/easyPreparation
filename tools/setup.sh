@@ -28,7 +28,7 @@ check() {
 echo "=== easyPreparation 환경 체크 ==="
 check "Go    " "go version 2>/dev/null | awk '{print \$3}'"
 check "Node  " "node --version 2>/dev/null"
-check "Make  " "mingw32-make --version 2>/dev/null | head -1 | awk '{print \$1,\$2,\$3}' || make --version 2>/dev/null | head -1"
+check "Make  " "(mingw32-make --version 2>/dev/null || make --version 2>/dev/null) | head -1 | awk '{print \$1,\$2,\$3}'"
 check "Python" "python3 --version 2>/dev/null || python --version 2>/dev/null"
 
 # Python venv 상태

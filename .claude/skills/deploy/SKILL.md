@@ -12,6 +12,6 @@ disable-model-invocation: true
 
 ---
 
-`.claude/agents/deployer.md` 파일을 읽은 뒤, 해당 내용 + 위 Git 상태를 포함하여 배포자 서브에이전트(Bash 타입)를 Task 도구로 실행하세요.
+위 Git 상태와 요청을 넣어 `deployer` 서브에이전트를 Agent 도구로 실행한다. 정식 릴리스는 배포 서버가 다음 날 03:00 자동 반영하므로(일요일 제외), 태그 push 전에 사용자 승인을 받는다.
 
 배포 대상 버전/요청: $ARGUMENTS

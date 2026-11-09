@@ -96,3 +96,4 @@ ui/package.json.md5
 
 # 빌드 바이너리
 /desktop
+.claude/bin/output/

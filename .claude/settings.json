@@ -6,12 +6,6 @@
       "Bash(file:*)",
       "Bash(cd:*)",
       "Bash(.claude/bin/indexer:*)",
-      "Bash(bash run.sh:*)",
-      "Bash(./run.sh:*)",
-      "Bash(bash tools/setup.sh)",
-      "Bash(bash tools/tools.sh:*)",
-      "Bash(PYTHONUTF8=1 tools/.venv/Scripts/python.exe:*)",
-      "Bash(tools/.venv/Scripts/python.exe:*)",
       "Bash(git:*)",
       "Bash(curl:*)",
       "Bash(go run:*)",
@@ -36,38 +30,25 @@
       "Bash(unzip:*)",
       "Bash(zip:*)",
       "Bash(sha256sum:*)",
-      "Bash(open:*)",
       "Bash(which:*)",
-      "Bash(xattr:*)"
+      "Bash(bash tools/setup.sh:*)",
+      "Bash(bash tools/hooks/:*)",
+      "Bash(bash scripts/push-context.sh)",
+      "Bash(npx tsc:*)",
+      "Bash(jq:*)"
     ]
   },
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "startup",
         "hooks": [
           {
             "type": "command",
-            "command": "mkdir -p \"$CLAUDE_PROJECT_DIR/.claude/bin/output\" && cd \"$CLAUDE_PROJECT_DIR/.claude/bin\" && OS=$(uname -s) && ARCH=$(uname -m) && case \"$OS-$ARCH\" in Linux-x86_64) BIN=indexer-linux-amd64;; Darwin-x86_64) BIN=indexer-darwin-amd64;; Darwin-arm64) BIN=indexer-darwin-arm64;; MINGW*|MSYS*|CYGWIN*) BIN=indexer.exe;; *) BIN=indexer.exe;; esac && ./$BIN -build"
+            "command": "mkdir -p \"$CLAUDE_PROJECT_DIR/.claude/bin/output\" && cd \"$CLAUDE_PROJECT_DIR/.claude/bin\" && OS=$(uname -s) && ARCH=$(uname -m) && case \"$OS-$ARCH\" in Linux-x86_64) BIN=indexer-linux-amd64;; Darwin-x86_64) BIN=indexer-darwin-amd64;; Darwin-arm64) BIN=indexer-darwin-arm64;; *) BIN=indexer.exe;; esac && chmod +x ./$BIN 2>/dev/null; ./$BIN -build 2>&1 | tail -2"
           },
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/tools/setup.sh\" 2>&1 | tail -8"
-          },
-          {
-            "type": "command",
-            "command": "mkdir -p \"$CLAUDE_PROJECT_DIR/.claude/state\" && : > \"$CLAUDE_PROJECT_DIR/.claude/state/edited-files.log\""
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/tools/hooks/scope-guard.sh\""
           }
         ]
       }
@@ -80,50 +61,38 @@
             "type": "command",
             "command": "cd \"$CLAUDE_PROJECT_DIR\" && git diff --name-only 2>/dev/null | head -5 | while read f; do [ -n \"$f\" ] && [ -f \"$f\" ] && bash tools/hooks/post-edit-check.sh \"$f\"; done || true",
             "statusMessage": "Anti-pattern check"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
+          },
           {
             "type": "command",
-            "command": "cd \"$CLAUDE_PROJECT_DIR\" && CHANGED=$(git diff --name-only 2>/dev/null | grep '\\.go$' | head -1) && [ -n \"$CHANGED\" ] && export PATH=\"/usr/local/go/bin:$PATH\" && go vet ./cmd/... ./internal/... 2>&1 | head -12 || true"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
+            "command": "file=$(jq -r '.tool_input.file_path // \"\" | gsub(\"\\\\\\\\\"; \"/\")'); case \"$file\" in *.go) out=$(cd \"$CLAUDE_PROJECT_DIR\" && go vet \"$(dirname \"$file\")\" 2>&1) || { printf '%s\n' \"$out\" | head -15 >&2; exit 2; };; esac; true",
+            "statusMessage": "go vet"
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/tools/hooks/ts-check.sh\"",
+            "statusMessage": "tsc"
+          },
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/tools/hooks/visual-regression.sh\""
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/tools/hooks/ts-check.sh\""
           }
         ]
       }
     ],
     "Stop": [
       {
-        "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$CLAUDE_PROJECT_DIR\" && echo '=== 세션 종료 — 변경 파일 ===' && git status --short 2>/dev/null | head -25 && bash tools/hooks/diff-self-review.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/tools/hooks/diff-self-review.sh\""
           }
         ]
       }
     ]
   },
   "env": {
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80"
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80",
+    "MAX_THINKING_TOKENS": "10000",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"
   }
 }

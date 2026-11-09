@@ -1,0 +1,7 @@
+{
+  "scan_paths": [
+    { "path": "cmd",      "mode": "subdirs" },
+    { "path": "internal", "mode": "subdirs" },
+    { "path": "tools",    "mode": "dir", "name": "TOOLS" }
+  ]
+}
