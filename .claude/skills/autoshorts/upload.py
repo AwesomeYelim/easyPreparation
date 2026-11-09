@@ -106,6 +106,34 @@ def login_listen(wait_sec: int = 600) -> None:
     login_finish(got[0])
 
 
+API = "https://www.googleapis.com/youtube/v3/videos"
+
+
+def api_call(method: str, url: str, token: str, body: dict | None = None) -> dict:
+    data = json.dumps(body).encode("utf-8") if body is not None else None
+    headers = {"Authorization": f"Bearer {token}"}
+    if data is not None:
+        headers["Content-Type"] = "application/json; charset=UTF-8"
+    with open_checked(urllib.request.Request(url, data=data, method=method, headers=headers), 60, "API 호출") as resp:
+        return json.loads(resp.read())
+
+
+def show_status(ids: list[str]) -> None:
+    token = access_token()
+    res = api_call("GET", f"{API}?part=status&id={','.join(ids)}", token)
+    for item in res.get("items", []):
+        st = item["status"]
+        print(f"{item['id']} 공개={st['privacyStatus']} 업로드={st['uploadStatus']} 거절={st.get('rejectionReason', '-')}")
+
+
+def set_privacy(ids: list[str], privacy: str) -> None:
+    token = access_token()
+    for vid in ids:
+        body = {"id": vid, "status": {"privacyStatus": privacy, "selfDeclaredMadeForKids": False}}
+        api_call("PUT", f"{API}?part=status", token, body)
+        print(f"{vid} -> {privacy}")
+
+
 def check_meta(title: str, tags: list[str]) -> None:
     if not title or len(title) > 100:
         raise ValueError(f"제목은 1~100자여야 해 (지금 {len(title)}자)")
@@ -183,6 +211,13 @@ def run_queue(queue_path: Path) -> int:
 def main(argv: list[str]) -> int:
     if len(argv) == 2 and argv[0] == "--queue":
         return run_queue(Path(argv[1]))
+    if len(argv) >= 2 and argv[0] in ("--status", "--set-public"):
+        try:
+            show_status(argv[1:]) if argv[0] == "--status" else set_privacy(argv[1:], "public")
+        except (OSError, KeyError) as err:
+            print(f"오류: {err}", file=sys.stderr)
+            return 1
+        return 0
     if argv == ["--login-url"]:
         print(login_url())
         return 0
