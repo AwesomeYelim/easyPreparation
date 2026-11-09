@@ -49,7 +49,7 @@ def access_token() -> str:
         return json.loads(resp.read())["access_token"]
 
 
-REDIRECT = "http://localhost:1"
+REDIRECT = "http://localhost:8080/api/youtube/callback"
 SCOPES = "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube"
 
 
