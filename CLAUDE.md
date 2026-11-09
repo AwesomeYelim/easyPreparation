@@ -48,3 +48,7 @@ make build-desktop  # Wails Desktop
 
 대규모 변경(4개+ 파일) 또는 사용자가 계획표 전달 시 사용.
 "코드 리뷰" → 리뷰어 / "포트 정리" → 감시자 / "배포" → 배포자
+
+## Context
+Decisions, status and next steps are copied from life/notes/side/easyprep.md (edit them there):
+@docs/context.md
