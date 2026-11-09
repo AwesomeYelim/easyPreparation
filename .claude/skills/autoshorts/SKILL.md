@@ -1,6 +1,6 @@
 ---
 name: autoshorts
-description: 예배 라이브 유튜브 영상에서 한 문장 메시지 쇼츠 후보를 뽑아(체크포인트 1 - 주제·타이밍·자막 교정 확인), 확정 레시피로 9:16 쇼츠(검은 띠 2줄 제목, 박스 자막, 스톡 컷어웨이, 로고)를 렌더해 보여 주고(체크포인트 2), 업로드용 메타데이터(말씀 정보 제목·태그·풀영상 링크)를 만들어 확인받는다(체크포인트 3). PC 전용(yt-dlp, ffmpeg). "쇼츠 만들어줘", "/autoshorts <유튜브 URL>" 등에 사용.
+description: 예배 라이브 유튜브 영상에서 한 문장 메시지 쇼츠 후보를 뽑아(체크포인트 1 - 주제·타이밍·자막 교정 확인), 확정 레시피로 9:16 쇼츠(검은 띠 2줄 제목, 박스 자막, 스톡 컷어웨이, 로고)를 렌더해 보여 주고(체크포인트 2), 업로드용 메타데이터(말씀 정보 제목·태그·풀영상 링크)를 만들어 확인받고(체크포인트 3) upload.py 로 업로드한다. 로컬 기기 전용(yt-dlp, ffmpeg). "쇼츠 만들어줘", "/autoshorts <유튜브 URL>" 등에 사용.
 ---
 
 # autoshorts — 설교 라이브 → 쇼츠 (사람 확인 3곳)
@@ -12,9 +12,10 @@ description: 예배 라이브 유튜브 영상에서 한 문장 메시지 쇼츠
 - 사용자가 `/autoshorts <유튜브 URL>`, "예배 영상으로 쇼츠 만들어", "이번 주 쇼츠 후보 뽑아줘" 등으로 요청할 때.
 - 입력은 유튜브 라이브/다시보기 URL 하나. 자동 실행(예배 영상이 올라오면 세션이 무인으로 시작)일 때의 규칙은 아래 "자동 실행으로 시작된 경우".
 
-## 전제 (PC 전용)
-- `yt-dlp`, `ffmpeg` 가 PATH 에 있어야 한다. 없으면 설치 전에 사용자에게 묻는다(`winget install yt-dlp.yt-dlp Gyan.FFmpeg`).
-- 한글 폰트 `C:\Windows\Fonts\NanumGothicExtraBold.ttf` 사용(자막 `fontsdir=C\:/Windows/Fonts`).
+## 전제 (로컬 기기 전용: 윈도우 또는 맥)
+- `yt-dlp`, `ffmpeg` 가 PATH 에 있어야 한다. 없으면 설치 전에 사용자에게 묻는다(윈도우 `winget install yt-dlp.yt-dlp Gyan.FFmpeg`, 맥 `brew install yt-dlp ffmpeg`).
+- 한글 폰트 나눔고딕 ExtraBold 사용. 윈도우는 `C:\Windows\Fonts`, 맥은 `~/.config/autoshorts/fonts/`, 환경변수 `AUTOSHORTS_FONTS_DIR` 로 바꿀 수 있다.
+- 자동 시작: `watch.py`(같은 폴더)가 새 주일예배(일요일 13~22시)와 지난 영상 백로그(하루 1편)를 감지해 이 스킬을 켠다. 설정 `~/.config/autoshorts/config.json`, 상태 `~/.local/state/autoshorts/`. 맥은 launchd 로 예약.
 - 클라우드 세션은 유튜브 봇 차단으로 영상을 못 받는다 → PC 로컬에서만 실행. 한글 폰트도 클라우드엔 없다.
 - 작업 폴더 `<작업루트>\<영상ID>\`(예: `C:\workspace\autoshorts-work\<영상ID>\`)에 영상·자막·스톡·결과물을 둔다. `src.mp4` 가 이미 있으면 다운로드를 생략한다. **영상은 저장소에 커밋하지 않는다.** 시안은 대화로 전송한다.
 - `autoshorts.py`(이 폴더, 파이썬 표준 라이브러리만 사용, `python` 으로 실행):
@@ -48,9 +49,11 @@ description: 예배 라이브 유튜브 영상에서 한 문장 메시지 쇼츠
 **체크포인트 2 — 사용자가 확인**: 영상 내용·컷어웨이·제목·끝 처리. 수정 지시는 즉시 반영해 다시 렌더하고, 반복되는 취향 수정은 레시피 값(`autoshorts.py`)을 고친다.
 
 ### 3. 업로드 메타데이터 → 체크포인트 3 (직접 업로드)
-- 1차는 **자동 업로드를 하지 않는다.** 쇼츠마다 붙여넣기용 블록(제목, 설명, 태그 줄)을 아래 "업로드 메타데이터" 규칙으로 만들어 대화에 보여 준다. 태그는 글자 수를 세어 500자 이내인지 함께 적는다.
-- 사용자가 YouTube Studio 에서 직접 업로드하고 공개 범위를 정한다(성도 일화 클립은 목사님 확인 전 공개 금지). 쇼츠 "관련 동영상"(풀영상 연결)도 Studio 에서 수동.
-- 이후 확장(미결): `internal/youtube/youtube.go` 의 `UploadVideo` 에 Tags 추가(운영 중인 앱이라 변경 전 diff 승인 필요), 방송 PC 토큰이 업로드 스코프로 발급됐는지 확인. 코드 스코프(`youtube`, `youtube.upload`)는 이미 있다.
+- 쇼츠마다 제목·설명·태그를 아래 "업로드 메타데이터" 규칙으로 만들어 대화에 보여 주고 승인받는다. 태그는 글자 수를 세어 500자 이내인지 함께 적는다.
+- 승인되면 `upload.py` 로 올린다(파이썬 표준 라이브러리만, ep 앱 코드와 무관). 처음엔 `private` 으로 올리고 `--status` 로 처리 결과를 확인한 뒤 사용자 지시가 있을 때 `--set-public` 으로 공개한다(성도 일화 클립은 목사님 확인 전 공개 금지).
+  - 큐 JSON(`items[]`: key, file, title, description, tags, privacy, status=ready)을 만들어 `upload.py --queue <큐.json>` 으로 일괄 업로드. 성공하면 status 가 uploaded 가 되고 video_id 가 적힌다. 단일 파일은 `upload.py <영상> --title T --desc-file D --tags a,b --privacy private`.
+  - 인증 파일은 저장소 밖 `~/.config/autoshorts/`(또는 `AUTOSHORTS_GOOGLE_DIR`)의 `google_oauth.json`, `youtube_token.json`. 토큰이 만료되면(`invalid_grant`) 이 기기에서 `upload.py --login-listen` 을 띄워 두고 `--login-url` 주소를 브라우저에서 승인한다.
+  - 쇼츠 "관련 동영상"(풀영상 연결)은 API 로 설정 불가 → 설명 링크가 기본.
 
 ## 자동 실행으로 시작된 경우
 예배 영상이 올라오면 트리거가 세션을 무인으로 시작하고 첫 메시지가 `/autoshorts <URL>` 일 수 있다. 이때는 사용자가 앞에 없다.
@@ -103,7 +106,7 @@ description: 예배 라이브 유튜브 영상에서 한 문장 메시지 쇼츠
 - Studio 의 쇼츠 "관련 동영상"(풀영상 연결)은 API 로 설정 불가 → 수동, 설명 링크가 기본.
 
 ## 하지 말 것
-- 사용자 확인 없이 렌더 진행, 자동 업로드, 성도 일화 클립 공개, 영상 파일 저장소 커밋.
+- 사용자 확인 없이 렌더 진행, 체크포인트 3 승인 없는 업로드, 성도 일화 클립 공개, 영상 파일 저장소 커밋.
 - 체크포인트 1 전에 구간·자막·제목을 확정해 버리기.
 - 음성 대조 없이 고유 표현 자막 교정.
 - 공개 저장소다: 호스트명·키·개인 정보·사용자 PC 경로를 이 폴더의 파일에 적지 않는다.
