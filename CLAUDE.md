@@ -49,6 +49,11 @@ make build-desktop  # Wails Desktop
 대규모 변경(4개+ 파일) 또는 사용자가 계획표 전달 시 사용.
 "코드 리뷰" → 리뷰어 / "포트 정리" → 감시자 / "배포" → 배포자
 
-## Context
-Decisions, status and next steps are copied from life/notes/side/easyprep.md (edit them there):
+## Context — docs/context.md 가 맥락 원본
+운영 현황·결정·진행 중 브랜치·다음 할 일:
 @docs/context.md
+
+- 로컬·클라우드(폰) 어느 세션이든 끝낼 때 docs/context.md 의 "현재 상태"·"진행 중 브랜치"·"다음 할 일" 을 고치고 `bash scripts/push-context.sh` 를 실행한다. 작업 브랜치와 상관없이 이 파일만 master 에 push 한다(코드는 그대로 브랜치에).
+- 클라우드 세션이 못 하는 일(교회 PC·배포 서버·로컬 `.env`·Windows/OBS 실측)은 "다음 할 일" 에 `(PC)` 를 붙여 남긴다.
+- 공개 저장소다. 호스트명·키·개인 정보는 적지 않는다.
+- life 저장소의 같은 노트는 매시간 받아 가는 복사본이다.
