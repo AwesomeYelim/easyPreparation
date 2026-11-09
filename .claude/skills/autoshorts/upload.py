@@ -26,6 +26,15 @@ def load_client() -> dict:
     return raw.get("installed") or raw.get("web") or raw
 
 
+def open_checked(req: urllib.request.Request, timeout: int, step: str):
+    # 400 같은 오류가 어느 단계인지, 서버가 준 사유와 함께 보이게 해
+    try:
+        return urllib.request.urlopen(req, timeout=timeout)
+    except urllib.error.HTTPError as err:
+        detail = err.read().decode("utf-8", "replace")[:300]
+        raise OSError(f"{step} 실패 HTTP {err.code}: {detail}") from err
+
+
 def access_token() -> str:
     client = load_client()
     token_path = AUTH_DIR / "youtube_token.json"
@@ -36,7 +45,7 @@ def access_token() -> str:
         "refresh_token": token["refresh_token"],
         "grant_type": "refresh_token",
     }).encode()
-    with urllib.request.urlopen(urllib.request.Request(TOKEN_URL, data=body), timeout=30) as resp:
+    with open_checked(urllib.request.Request(TOKEN_URL, data=body), 30, "토큰 갱신") as resp:
         return json.loads(resp.read())["access_token"]
 
 
@@ -61,14 +70,14 @@ def upload(video: Path, title: str, desc: str, tags: list[str], privacy: str) ->
         "X-Upload-Content-Length": str(size),
         "X-Upload-Content-Type": "video/mp4",
     })
-    with urllib.request.urlopen(start, timeout=60) as resp:
+    with open_checked(start, 60, "업로드 세션 시작") as resp:
         session_url = resp.headers["Location"]
     with video.open("rb") as fh:
         put = urllib.request.Request(session_url, data=fh, method="PUT", headers={
             "Content-Length": str(size),
             "Content-Type": "video/mp4",
         })
-        with urllib.request.urlopen(put, timeout=1800) as resp:
+        with open_checked(put, 1800, "파일 전송") as resp:
             return json.loads(resp.read())["id"]
 
 
