@@ -49,6 +49,37 @@ def access_token() -> str:
         return json.loads(resp.read())["access_token"]
 
 
+REDIRECT = "http://localhost:1"
+SCOPES = "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube"
+
+
+def login_url() -> str:
+    client = load_client()
+    query = urllib.parse.urlencode({
+        "client_id": client["client_id"], "redirect_uri": REDIRECT, "response_type": "code",
+        "scope": SCOPES, "access_type": "offline", "prompt": "consent",
+    })
+    return "https://accounts.google.com/o/oauth2/v2/auth?" + query
+
+
+def login_finish(redirected: str) -> None:
+    # 승인 뒤 브라우저 주소창에 뜬 localhost 주소(또는 code 값)를 받아 토큰으로 바꿔
+    text = redirected.strip()
+    code = urllib.parse.parse_qs(urllib.parse.urlparse(text).query).get("code", [text])[0]
+    client = load_client()
+    body = urllib.parse.urlencode({
+        "code": code, "client_id": client["client_id"], "client_secret": client["client_secret"],
+        "redirect_uri": REDIRECT, "grant_type": "authorization_code",
+    }).encode()
+    with open_checked(urllib.request.Request(TOKEN_URL, data=body), 30, "코드 교환") as resp:
+        token = json.loads(resp.read())
+    if "refresh_token" not in token:
+        raise ValueError("refresh_token 이 안 왔어. 로그인 주소를 새로 받아 다시 승인해")
+    path = AUTH_DIR / "youtube_token.json"
+    path.write_text(json.dumps(token), encoding="utf-8")
+    os.chmod(path, 0o600)
+
+
 def check_meta(title: str, tags: list[str]) -> None:
     if not title or len(title) > 100:
         raise ValueError(f"제목은 1~100자여야 해 (지금 {len(title)}자)")
@@ -126,6 +157,17 @@ def run_queue(queue_path: Path) -> int:
 def main(argv: list[str]) -> int:
     if len(argv) == 2 and argv[0] == "--queue":
         return run_queue(Path(argv[1]))
+    if argv == ["--login-url"]:
+        print(login_url())
+        return 0
+    if len(argv) == 2 and argv[0] == "--login-code":
+        try:
+            login_finish(argv[1])
+        except (ValueError, OSError, KeyError) as err:
+            print(f"오류: {err}", file=sys.stderr)
+            return 1
+        print("토큰 저장 완료")
+        return 0
     parser = argparse.ArgumentParser(description="쇼츠 업로드")
     parser.add_argument("video")
     parser.add_argument("--title", required=True)
