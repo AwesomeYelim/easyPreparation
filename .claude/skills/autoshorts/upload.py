@@ -88,7 +88,35 @@ def already_uploaded(video: Path) -> str:
     return ""
 
 
+def run_queue(queue_path: Path) -> int:
+    # 큐 JSON 의 status 가 ready 인 항목만 올리고, 성공하면 uploaded 와 video_id 를 적어
+    data = json.loads(queue_path.read_text(encoding="utf-8-sig"))
+    failed = 0
+    for item in data["items"]:
+        if item.get("status") != "ready":
+            continue
+        video = Path(item["file"])
+        if not video.is_absolute():
+            video = (queue_path.parent / video).resolve()
+        try:
+            prev = already_uploaded(video)
+            video_id = prev or upload(video, item["title"], item["description"], item["tags"], item.get("privacy", "private"))
+        except (ValueError, OSError, KeyError, urllib.error.URLError) as err:
+            print(f"{item['key']} 실패: {err}", file=sys.stderr)
+            failed += 1
+            continue
+        if not prev:
+            record(video, video_id, item["title"], item.get("privacy", "private"))
+        item["status"] = "uploaded"
+        item["video_id"] = video_id
+        queue_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"{item['key']} https://youtu.be/{video_id}")
+    return 1 if failed else 0
+
+
 def main(argv: list[str]) -> int:
+    if len(argv) == 2 and argv[0] == "--queue":
+        return run_queue(Path(argv[1]))
     parser = argparse.ArgumentParser(description="쇼츠 업로드")
     parser.add_argument("video")
     parser.add_argument("--title", required=True)
