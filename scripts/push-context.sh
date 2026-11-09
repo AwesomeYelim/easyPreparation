@@ -1,23 +1,17 @@
 #!/usr/bin/env bash
-# Commit docs/context.md alone to the default branch, whatever branch this session is on.
+# Commit docs/context.md alone on the current branch and push that branch.
 # Run it when a session ends (local or cloud) after updating docs/context.md.
+# Any branch is fine: the life repo's sync-context workflow takes the newest docs/context.md
+# from all branches every hour and copies it to master, so the next session starts from it.
 set -euo pipefail
-root="$(git rev-parse --show-toplevel)"
-cd "$root"
-base="$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##' || true)"
-base="${base:-master}"
-git fetch -q origin "$base"
-tmp="$(mktemp -d)"
-cleanup() { git -C "$root" worktree remove --force "$tmp" >/dev/null 2>&1 || rm -rf "$tmp"; }
-trap cleanup EXIT
-git worktree add -q --detach "$tmp" "origin/$base"
-cp docs/context.md "$tmp/docs/context.md"
-cd "$tmp"
+cd "$(git rev-parse --show-toplevel)"
+branch="$(git branch --show-current)"
+[ -n "$branch" ] || { echo "context: detached HEAD, check out a branch first" >&2; exit 1; }
 git add docs/context.md
-if git diff --cached --quiet; then
+if git diff --cached --quiet -- docs/context.md; then
   echo "context: no change"
-  exit 0
+else
+  git commit -q -m "docs: update context [skip ci]" -- docs/context.md
 fi
-git commit -q -m "docs: update context [skip ci]"
-git push -q origin "HEAD:$base"
-echo "context: pushed to $base"
+git push -q origin "HEAD:$branch"
+echo "context: pushed $branch (master gets it within the hour)"

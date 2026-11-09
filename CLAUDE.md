@@ -53,7 +53,8 @@ make build-desktop  # Wails Desktop
 운영 현황·결정·진행 중 브랜치·다음 할 일:
 @docs/context.md
 
-- 로컬·클라우드(폰) 어느 세션이든 끝낼 때 docs/context.md 의 "현재 상태"·"진행 중 브랜치"·"다음 할 일" 을 고치고 `bash scripts/push-context.sh` 를 실행한다. 작업 브랜치와 상관없이 이 파일만 master 에 push 한다(코드는 그대로 브랜치에).
+- 로컬·클라우드(폰) 어느 세션이든 끝낼 때 docs/context.md 의 "현재 상태"·"진행 중 브랜치"·"다음 할 일" 을 고치고 `bash scripts/push-context.sh` 를 실행한다. 이 파일만 지금 브랜치에 커밋·push 한다. life 저장소 워크플로가 매시간 모든 브랜치에서 가장 최근 docs/context.md 를 골라 master 에 반영한다.
+- 세션을 시작할 때 `git fetch origin` 후 master 보다 최근 맥락이 다른 브랜치에 있는지 본다(반영 전 최대 1시간): `git log -1 --all --format="%cr %D" -- docs/context.md`.
 - 클라우드 세션이 못 하는 일(교회 PC·배포 서버·로컬 `.env`·Windows/OBS 실측)은 "다음 할 일" 에 `(PC)` 를 붙여 남긴다.
 - 공개 저장소다. 호스트명·키·개인 정보는 적지 않는다.
 - life 저장소의 같은 노트는 매시간 받아 가는 복사본이다.
