@@ -97,6 +97,18 @@ def get_streams(cfg: Config, count: int) -> list[Stream]:
     return rows
 
 
+def live_status_of(cfg: Config, s: Stream, log: Logger) -> str:
+    # 목록 모드는 live_status 를 NA 로 주는 yt-dlp 가 있어서 영상 하나씩 다시 물어봐
+    if s.live in ("was_live", "is_live", "is_upcoming", "not_live"):
+        return s.live
+    cmd = [cfg.yt_dlp, "--skip-download", "--print", "%(live_status)s", f"https://www.youtube.com/watch?v={s.id}"]
+    try:
+        return run_capture(cmd).strip().splitlines()[-1]
+    except (RuntimeError, IndexError, subprocess.TimeoutExpired) as err:
+        log(f"상태 확인 실패({s.id}): {err}")
+        return "unknown"
+
+
 def has_captions(cfg: Config, video_id: str, log: Logger) -> bool:
     cmd = [cfg.yt_dlp, "--skip-download", "--print", "%(automatic_captions|{})j", f"https://www.youtube.com/watch?v={video_id}"]
     try:
@@ -184,8 +196,9 @@ def mode_new(cfg: Config, state: dict, dry: bool, log: Logger) -> None:
     for s in get_streams(cfg, 8):
         if find_video(state, s.id):
             continue
-        if s.live != "was_live":
-            log(f"아직 라이브 중이거나 예정: {s.id} {s.title}")
+        status = live_status_of(cfg, s, log)
+        if status not in ("was_live", "not_live"):
+            log(f"아직 라이브 중이거나 예정({status}): {s.id} {s.title}")
             continue
         if kind_of(s.title) == "praise":
             state["videos"].insert(0, {"id": s.id, "kind": "praise", "status": "hold-praise", "title": s.title})
