@@ -80,6 +80,32 @@ def login_finish(redirected: str) -> None:
     os.chmod(path, 0o600)
 
 
+def login_listen(wait_sec: int = 600) -> None:
+    # 이 기기 브라우저가 승인 뒤 돌려보내는 localhost:8080 요청을 직접 받아 토큰까지 저장해
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    got: list[str] = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:  # noqa: N802
+            got.append(self.path)
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write("승인 완료. 이 창을 닫아도 돼.".encode("utf-8"))
+
+        def log_message(self, *_args) -> None:
+            return
+
+    server = HTTPServer(("127.0.0.1", 8080), Handler)
+    server.timeout = wait_sec
+    server.handle_request()
+    server.server_close()
+    if not got:
+        raise ValueError("시간 안에 승인 요청이 오지 않았어")
+    login_finish(got[0])
+
+
 def check_meta(title: str, tags: list[str]) -> None:
     if not title or len(title) > 100:
         raise ValueError(f"제목은 1~100자여야 해 (지금 {len(title)}자)")
@@ -159,6 +185,14 @@ def main(argv: list[str]) -> int:
         return run_queue(Path(argv[1]))
     if argv == ["--login-url"]:
         print(login_url())
+        return 0
+    if argv == ["--login-listen"]:
+        try:
+            login_listen()
+        except (ValueError, OSError, KeyError) as err:
+            print(f"오류: {err}", file=sys.stderr)
+            return 1
+        print("토큰 저장 완료")
         return 0
     if len(argv) == 2 and argv[0] == "--login-code":
         try:
