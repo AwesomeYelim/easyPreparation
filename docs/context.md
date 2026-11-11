@@ -1,7 +1,7 @@
 # easyPreparation 운영·개발 허브 (2026-11-09 기준)
 
 easyPreparation(교회 예배 준비·송출 앱) 의 운영 현황·결정·다음 할 일. 여기엔 결론만.
-예배 영상 쇼츠 제작은 이 저장소의 스킬(`.claude/skills/autoshorts/`)로 옮겨 가는 중이다. 유료화·수익 메모와 쇼츠 제작의 판단 이력은 life 저장소(`notes/finance/side-income.md`, `notes/side/autoshorts.md`)에 있다.
+예배 영상 쇼츠 제작(autoshorts 스킬)은 이 저장소 일이 아니라서 2026-11-12 별도 저장소로 옮겼다. 유료화·수익 메모와 쇼츠 제작의 판단 이력은 life 저장소(`notes/finance/side-income.md`, `notes/side/autoshorts.md`)에 있다.
 
 ## 세션 여는 법 — 이 파일이 맥락 원본
 - 로컬·클라우드(폰) 어느 세션이든 이 저장소만 열면 된다. `CLAUDE.md` 가 이 파일을 불러온다.
@@ -26,15 +26,13 @@ easyPreparation(교회 예배 준비·송출 앱) 의 운영 현황·결정·다
 권하는 순서: 교회용 라이선스 발급(`make build-devlicense-windows`) → 데이터 경로 지정 → 배포 서버를 beta 시험장으로(ep-update 에 beta 옵션) → 토요일 리허설 → 몇 주간 개발 모드를 비상구로 유지.
 
 ## 진행 중 브랜치
-- 없음 (autoshorts 스킬은 11-09 master 에 병합됨: `.claude/skills/autoshorts/` 의 SKILL.md·`autoshorts.py`·`watch.py`·`upload.py`·템플릿)
+- 없음
 - (세션이 브랜치를 만들면 `브랜치 — 목적 — 남은 일` 한 줄로 적고, master 에 병합되면 지운다)
 
 ## 다음 할 일
 - [ ] church-pc 가 켜지면 실제 실행 방식(개발/운영) 확인
 - [ ] 라이선스 발급 + beta 시험장 중 무엇부터 할지 사용자 결정
 - [ ] (PC) 배포 서버 클라우드 계정에 남은 예전 부트 볼륨 1개 확인 후 정리 여부 결정
-- [ ] (PC) autoshorts 첫 실전(11-09, 영상 `5dE5NBj4LVM` 다시 브엘세바로): 자동 시작 세션에서 슬래시 명령 실행·`fetch`·다운로드 확인 완료, 후보 5개 제시 → 체크포인트 1 사용자 답 대기(후보 선택·자막 교정 2건)
-- [ ] autoshorts 자동 시작 확인: 맥(launchd)이 일요일 13~22시 30분마다 새 주일예배를, 매일 아침 지난 영상 1편(백로그 16편)을 `watch.py` 로 감지해 세션을 연다. 첫 백로그 세션이 실제로 열리는지 확인(`~/.local/state/autoshorts/` 의 로그)
 - [ ] 찬양 컷(준비찬양·오후찬양예배) 별도 스킬: 먼저 오후예배 영상 1개를 직접 보고 구성 확인. 저작권(교회 스트리밍 라이선스) 확인 필요. 오후예배 영상은 `watch.py` 가 기록만 하고 대기시킨다
 - [ ] 쇼츠 업로드는 `upload.py`(앱 코드와 무관, 표준 라이브러리)로 해결. 구글 클라우드 OAuth 동의 화면이 "테스트" 상태면 토큰이 7일마다 만료 → "프로덕션으로 게시" 필요(미검증 앱 경고는 남음). Pexels 공식 API 키 도입 여부 결정
 
