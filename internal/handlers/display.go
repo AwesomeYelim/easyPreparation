@@ -997,6 +997,9 @@ func DisplayAppendHandler(w http.ResponseWriter, r *http.Request) {
 		var result map[string]interface{}
 		if info == "lyrics_display" {
 			result = preprocessLyricsItem(item)
+			// 사용자가 확정해 보낸 가사 → 다음 검색에서 먼저 나오도록 저장
+			lyrics, _ := result["contents"].(string)
+			saveCustomSongLyrics(title, lyrics)
 		} else {
 			result = preprocessItem(item)
 		}

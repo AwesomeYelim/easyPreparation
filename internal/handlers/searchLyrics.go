@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -98,9 +99,9 @@ func searchCustomSongs(title string) string {
 	err := apiDB.QueryRow(`
 		SELECT id, lyrics FROM custom_songs
 		WHERE title LIKE '%' || ? || '%'
-		ORDER BY used_count DESC
+		ORDER BY (title = ?) DESC, used_count DESC
 		LIMIT 1
-	`, titleTrim).Scan(&id, &lyrics)
+	`, titleTrim, titleTrim).Scan(&id, &lyrics)
 	if err != nil {
 		// 결과 없음 또는 오류 — 다음 단계로 넘어감
 		return ""
@@ -115,6 +116,27 @@ func searchCustomSongs(title string) string {
 	`, time.Now().UTC().Format("2006-01-02T15:04:05Z"), id)
 
 	return lyrics
+}
+
+// saveCustomSongLyrics — 사용자가 Display 로 보낸(=확정한) 가사를 custom_songs 에 저장한다.
+// 같은 제목이 있으면 가사만 갱신하고, 없으면 새로 등록한다. 다음 검색부터 이 가사가 먼저 나온다.
+func saveCustomSongLyrics(title, lyrics string) {
+	title = strings.TrimSpace(title)
+	if apiDB == nil || title == "" || strings.TrimSpace(lyrics) == "" {
+		return
+	}
+
+	res, err := apiDB.Exec(`UPDATE custom_songs SET lyrics = ? WHERE title = ?`, lyrics, title)
+	if err != nil {
+		log.Printf("[lyrics] failed to update custom song %q: %v", title, err)
+		return
+	}
+	if n, _ := res.RowsAffected(); n > 0 {
+		return
+	}
+	if _, err := apiDB.Exec(`INSERT INTO custom_songs (title, lyrics) VALUES (?, ?)`, title, lyrics); err != nil {
+		log.Printf("[lyrics] failed to insert custom song %q: %v", title, err)
+	}
 }
 
 // searchHymnDB — bibleDB의 hymns 테이블에서 제목/첫줄로 검색.

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -15,18 +16,25 @@ const gasazipBaseURL = "https://gasazip.com"
 // lyricsHTTPClient — 가사 사이트 접속 불가 시 무한 대기 방지용 타임아웃 클라이언트
 var lyricsHTTPClient = &http.Client{Timeout: 8 * time.Second}
 
-// SearchLyricsList — 가사집(gasazip.com)에서 제목으로 곡을 찾아 가사를 채운다.
-// 검색 결과 중 제목이 query 로 시작하는 첫 곡을 쓴다. 맞는 곡이 없으면 Lyrics 는 빈 값으로 남는다.
+// SearchLyricsList — 가사집(gasazip.com)에서 곡을 찾아 가사를 채운다.
+// query 는 "제목" 또는 "제목 - 가수". 고르는 기준은 findSongPath 참고.
+// 맞는 곡이 없으면 Lyrics 는 빈 값으로 남는다.
 func (si *SlideData) SearchLyricsList(query string) error {
 	if len(si.Content) > 0 {
 		return nil
 	}
 
-	searchDoc, err := fetchDoc(gasazipBaseURL + "/search.html?q=" + url.QueryEscape(query))
+	// "제목 - 가수" 분리. 가사집은 검색어에 가수를 넣어도 결과가 같아서 제목으로만 검색한다.
+	title, artist := query, ""
+	if i := strings.LastIndex(query, " - "); i >= 0 {
+		title, artist = query[:i], query[i+3:]
+	}
+
+	searchDoc, err := fetchDoc(gasazipBaseURL + "/search.html?q=" + url.QueryEscape(strings.TrimSpace(title)))
 	if err != nil {
 		return err
 	}
-	songPath := findSongPath(searchDoc, query)
+	songPath := findSongPath(searchDoc, title, artist)
 	if songPath == "" {
 		return nil
 	}
