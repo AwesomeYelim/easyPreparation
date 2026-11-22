@@ -267,6 +267,15 @@ func StartServer(dataChan chan types.DataEnvelope, readyCh ...chan struct{}) {
 	// 정적 파일 서빙 (프로덕션 모드에서 embed된 Next.js static export)
 	if FrontendFS != nil {
 		mux.Handle("/", spaHandler(FrontendFS))
+	} else {
+		// 개발 모드: /mobile 화면은 Next dev(:3000)에만 있다. QR(:8080/mobile)로 들어온 폰을 :3000 으로 넘긴다.
+		mux.HandleFunc("/mobile", func(w http.ResponseWriter, r *http.Request) {
+			host := r.Host
+			if h, _, err := net.SplitHostPort(host); err == nil {
+				host = h
+			}
+			http.Redirect(w, r, "http://"+host+":3000/mobile/", http.StatusFound)
+		})
 	}
 
 	// net.Listen으로 포트 바인딩 — 준비 완료 시점 감지 가능
