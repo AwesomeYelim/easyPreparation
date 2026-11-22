@@ -115,7 +115,7 @@ iOS/Android Chrome에서 홈 화면에 추가하면 전체화면 앱으로 실�
 |------|------|:----:|
 | 📄 **주보 생성** | 인쇄용(A4) + 프레젠테이션용 PDF 자동 생성 | Free |
 | ✏️ **주보 편집** | 예배 순서 드래그 앤 드롭, 성경 구절 선택, 교회 소식 트리 편집 | Free |
-| 🎵 **가사 PPT 생성** | 곡명 입력 → 가사 자동 검색(bugs.co.kr) → 중복 제거 → ZIP | Free |
+| 🎵 **가사 PPT 생성** | 곡명 입력 → 가사 자동 검색(gasazip.com) → 중복 제거 → ZIP | Free |
 | 🎼 **찬송가 검색** | 645곡 새찬송가 번호/제목/가사 검색, Display 전송 | Free |
 | 📖 **성경 검색** | 구약/신약 탭, 장/절 선택, 7개 번역판, 비교 모드(2컬럼) | Free |
 | 🖥️ **예배 화면** | OBS Browser Source 연동, 성경/찬송/교독/가사 슬라이드 | Free |
@@ -297,7 +297,7 @@ flowchart TD
 
     subgraph Ext["External Services"]
         R2["Oracle Cloud nginx\n찬송가 · 성시교독 PDF/PNG (로컬 캐시)"]
-        BUGS["bugs.co.kr\n가사 검색"]
+        GASAZIP["gasazip.com\n가사 검색"]
         OBS["OBS WebSocket\n씬 전환 + 스트리밍"]
         PTZ["PTZ 카메라\n프리셋 이동 (HTTP)"]
         SQLITE[("SQLite\n성경 DB + 찬송가 + 설정")]
@@ -338,7 +338,7 @@ flowchart TD
     B_PRINT --> OUT_BP
     B_PRES --> OUT_BPR
     SEARCH --> L_CRAWL
-    L_CRAWL --> BUGS
+    L_CRAWL --> GASAZIP
     SUB_L --> L_PDF
     L_PDF --> OUT_L
     DL -->|ZIP| OUT_BP
@@ -594,7 +594,7 @@ make dev-desktop     # Desktop 개발 모드 (Next.js :3000 + go run -tags dev .
 | `WS` | `/ws` | WebSocket (진행 상황 + Display 제어 + 카운트다운) |
 | `POST` | `/submit` | 주보 생성 요청 |
 | `POST` | `/submitLyrics` | 가사 PDF 생성 → ZIP 응답 |
-| `POST` | `/searchLyrics` | 가사 검색 (bugs.co.kr) |
+| `POST` | `/searchLyrics` | 가사 검색 (gasazip.com) |
 | `GET` | `/download?target=<name>` | 주보 PDF ZIP 다운로드 |
 
 ### Display API
@@ -880,7 +880,7 @@ make build-desktop                        # 현재 OS
 | **OBS WebSocket** | 방송 씬 전환 + 스트리밍 + 상태 모니터링 (goobs) |
 | **YouTube Data API v3** | 라이브 방송 생성/관리, 썸네일 업로드 (OAuth 2.0) |
 | **GitHub Releases API** | 자동 업데이트 체크 (`AwesomeYelim/easyPreparation`) |
-| **bugs.co.kr** | 가사 검색 크롤링 |
+| **gasazip.com** | 가사 검색 크롤링 |
 
 </details>
 <details>

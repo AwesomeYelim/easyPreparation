@@ -459,11 +459,11 @@ export default function LyricsManager() {
             <span>
               가사 참조 사이트:{" "}
               <a
-                href="https://music.bugs.co.kr/"
+                href="https://gasazip.com/"
                 target="_blank"
                 className="text-secondary hover:underline"
               >
-                https://music.bugs.co.kr/
+                https://gasazip.com/
               </a>
             </span>
           </div>

@@ -9,5 +9,5 @@
 ## 주의
 
 - `internal/presentation/` 래퍼 사용 (NFC 정규화)
-- 가사 크롤링: bugs.co.kr
+- 가사 크롤링: gasazip.com (가사집)
 - 출력: `output/lyrics/*.pdf`

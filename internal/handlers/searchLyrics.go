@@ -58,10 +58,10 @@ func SearchLyrics() http.Handler {
 					lyrics = searchHymnDB(song.Title)
 				}
 
-				// 3단계: 찬송가 DB에도 없으면 bugs.co.kr 크롤링
+				// 3단계: 찬송가 DB에도 없으면 가사집(gasazip.com) 크롤링
 				if lyrics == "" {
 					newSong := &parser.SlideData{}
-					if err := newSong.SearchLyricsList("https://music.bugs.co.kr/search/lyrics?q=%s", song.Title, false); err != nil {
+					if err := newSong.SearchLyricsList(song.Title); err != nil {
 						BroadcastProgress("SearchLyrics Error", -1, fmt.Sprintf("가사 검색 실패 (%s): %v", song.Title, err))
 					}
 					lyrics = newSong.Lyrics
