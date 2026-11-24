@@ -5,6 +5,7 @@ import { useRecoilValue, useRecoilState, useSetRecoilState } from "recoil";
 import { userInfoState, lyricsSongsState, displayPanelOpenState, userSettingsState } from "@/recoilState";
 import { apiClient, openDisplayWindow } from "@/lib/apiClient";
 import toast from "react-hot-toast";
+import type { SongBlock } from "@/types";
 
 // ── 히스토리 (localStorage) ───────────────────────────────────────────────
 const HISTORY_KEY = "ep_lyrics_history";
@@ -48,6 +49,31 @@ function addToHistory(songsToSave: { title: string; lyrics: string; bpm: number 
   }
   updated.sort((a, b) => b.usedAt.localeCompare(a.usedAt));
   persistHistory(updated.slice(0, MAX_HISTORY));
+}
+
+// 가사 검색 결과 출처 배지 — 가사집은 다른 버전일 수 있어 확인 필요 표시
+function SourceBadge({ song }: { song: SongBlock }) {
+  const base = "px-1.5 py-0.5 rounded text-[11px] font-medium";
+  if (!song.lyrics.trim()) {
+    if (song.searchError)
+      return <span className={`${base} bg-red-100 text-red-700`} title={song.searchError}>검색 실패</span>;
+    if (song.source === "none") return <span className={`${base} bg-slate-100 text-slate-500`}>못 찾음</span>;
+    return null;
+  }
+  switch (song.source) {
+    case "saved":
+      return <span className={`${base} bg-emerald-100 text-emerald-700`}>저장본</span>;
+    case "hymn":
+      return <span className={`${base} bg-blue-100 text-blue-700`}>찬송가</span>;
+    case "gasazip":
+      return (
+        <span className={`${base} bg-amber-100 text-amber-700`} title="가사집에서 찾은 가사 — 부르는 버전과 같은지 확인하세요">
+          가사집 · 확인 필요
+        </span>
+      );
+    default:
+      return null;
+  }
 }
 
 function formatRelative(isoStr: string): string {
@@ -221,15 +247,24 @@ export default function LyricsManager() {
       if (!response.ok) throw new Error("가사 검색 요청 실패");
       const data = await response.json();
 
-      const updatedSongs = songs.map((song) => {
-        const matched = data.searchedSongs.find(
-          (s: { title: string }) => s.title === song.title
-        );
+      // 응답은 요청과 같은 순서
+      const searched: { lyrics?: string; source?: string; error?: string }[] = data.searchedSongs ?? [];
+      const updatedSongs = songs.map((song, i) => {
+        const matched = searched[i];
         const raw = matched?.lyrics || song.lyrics;
         const lyrics = raw ? deduplicateLines(raw) : raw;
+        // input(이미 적힌 가사)은 기존 출처 유지
+        const source =
+          matched?.source === "saved" || matched?.source === "hymn" || matched?.source === "gasazip"
+            ? matched.source
+            : matched?.source === "input"
+              ? song.source
+              : "none";
         return {
           ...song,
           lyrics,
+          source,
+          searchError: matched?.error || undefined,
           expanded: lyrics ? true : song.expanded,
         };
       });
@@ -499,6 +534,7 @@ export default function LyricsManager() {
                   ▼
                 </span>
                 {song.title}
+                <SourceBadge song={song} />
               </span>
               <div className="flex items-center gap-2">
                 <label

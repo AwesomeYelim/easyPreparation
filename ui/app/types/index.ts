@@ -39,6 +39,9 @@ export type SongBlock = {
   lyrics: string;
   bpm: number;
   expanded: boolean;
+  // 가사 검색 결과 출처 — saved(저장본) | hymn(찬송가) | gasazip(가사집) | none(못 찾음). 검색 전엔 없음
+  source?: "saved" | "hymn" | "gasazip" | "none";
+  searchError?: string; // 가사집 접속 실패 사유
 };
 
 export type UserChurchInfo = {

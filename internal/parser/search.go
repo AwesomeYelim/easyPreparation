@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -24,13 +23,10 @@ func (si *SlideData) SearchLyricsList(query string) error {
 		return nil
 	}
 
-	// "제목 - 가수" 분리. 가사집은 검색어에 가수를 넣어도 결과가 같아서 제목으로만 검색한다.
-	title, artist := query, ""
-	if i := strings.LastIndex(query, " - "); i >= 0 {
-		title, artist = query[:i], query[i+3:]
-	}
+	// 가사집은 검색어에 가수를 넣어도 결과가 같아서 제목으로만 검색한다.
+	title, artist := SplitQuery(query)
 
-	searchDoc, err := fetchDoc(gasazipBaseURL + "/search.html?q=" + url.QueryEscape(strings.TrimSpace(title)))
+	searchDoc, err := fetchDoc(gasazipBaseURL + "/search.html?q=" + url.QueryEscape(title))
 	if err != nil {
 		return err
 	}
